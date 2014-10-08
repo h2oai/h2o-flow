@@ -62,6 +62,16 @@ Flow.Repl = (_) ->
   _selectedCellIndex = -1
   _clipboardCell = null
   _lastDeletedCell = null
+  _renderers =
+    h1: -> Flow.HtmlTag _, 'h1'
+    h2: -> Flow.HtmlTag _, 'h2'
+    h3: -> Flow.HtmlTag _, 'h3'
+    h4: -> Flow.HtmlTag _, 'h4'
+    h5: -> Flow.HtmlTag _, 'h5'
+    h6: -> Flow.HtmlTag _, 'h6'
+    md: -> Flow.Markdown _
+    cs: -> Flow.Coffeescript _
+    raw: -> Flow.Raw _
 
   countLines = (text) ->
     newlineCount = 1
@@ -86,17 +96,7 @@ Flow.Repl = (_) ->
 
   createCell = (type='cs', input='') ->
     _type = node$ type
-    _renderer = lift$ _type, (type) ->
-      switch type
-        when 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
-          Flow.HtmlTag _, type
-        when 'md'
-          Flow.Markdown _
-        when 'cs'
-          Flow.Coffeescript _
-        else
-          Flow.Raw _
-
+    _renderer = lift$ _type, (type) -> _renderers[type]()
     _isSelected = node$ no
     _isActive = node$ no
     _hasError = node$ no
