@@ -113,8 +113,11 @@ Flow.Repl = (_) ->
 
     # select and display input when activated
     apply$ _isActive, (isActive) ->
-      selectCell self if isActive
-      _hasInput yes if isActive
+      if isActive
+        selectCell self
+        _hasInput yes
+        _output null if _renderer().isCode is no
+      return
 
     # deactivate when deselected
     apply$ _isSelected, (isSelected) ->
