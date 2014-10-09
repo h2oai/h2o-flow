@@ -36,6 +36,17 @@ ko.bindingHandlers.cursorPosition =
       arg.read = -> $(element).textrange 'get', 'position'
     return
 
+ko.bindingHandlers.autoResize =
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    $el = $ element
+      .on 'input', ->
+        defer ->
+          $el
+            .css 'height', 'auto'
+            .height element.scrollHeight
+    return
+
+
 Flow.Application = (_) ->
   _view = Flow.Repl _
   Flow.DialogManager _
