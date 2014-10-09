@@ -165,7 +165,6 @@ gulp.task 'compile-browser-assets', ->
     .pipe gulp.dest config.dir.deploy + 'css/'
 
   gulp.src config.lib.replcss
-    .pipe concat 'lib-flow.css'
     .pipe gulp.dest config.dir.deploy + 'css/'
 
   gulp.src config.lib.cssmap

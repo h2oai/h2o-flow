@@ -6,7 +6,8 @@ html(lang='en')
     meta(name='viewport', content='width=device-width, initial-scale=1')
     title H2O Flow
     meta(name='description', content='H2O REPL')
-    link(rel='stylesheet', href='css/lib-flow.css', type='text/css')
+    link(rel='stylesheet', href='css/font-awesome.css', type='text/css')
+    link(rel='stylesheet', href='css/bootstrap.css', type='text/css')
     link(rel='stylesheet', href='css/flow.css', type='text/css')
     link(rel='stylesheet', href='//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.2/styles/tomorrow.min.css', type='text/css')
     //- link(rel='stylesheet', href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,700italic,300,700,400', type='text/css')
@@ -75,7 +76,7 @@ html(lang='en')
         .f-cell-input(data-bind="visible:hasInput")
           textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, attr:{ 'rows':lineCount }, cursorPosition:_cursorPosition")
         // ko if:isBusy
-        .progress(style='height:9px')
+        .progress
           .progress-bar.progress-bar-striped.progress-bar-warning.active(role='progressbar' style='width:100%')
             span.sr-only Computing&hellip;
         // /ko
