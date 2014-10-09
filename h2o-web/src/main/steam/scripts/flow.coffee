@@ -1,5 +1,26 @@
 Flow = if exports? then exports else @Flow = {}
 
+# 
+# CLI usage:
+# help
+# list frames
+# list models, list models with compatible frames
+# list jobs
+# list scores
+# list nodes
+# ? import dataset
+# ? browse files
+# ? parse
+# ? inspect dataset
+# ? column summary
+# ? histogram / box plot / top n / characteristics plots
+# ? create model
+# ? score model
+# ? compare scorings
+#   ? input / output comparison
+#   ? parameter / threshold plots
+# ? predictions
+
 marked.setOptions
   smartypants: yes
   highlight: (code, lang) ->
@@ -49,12 +70,50 @@ Flow.Markdown = (_) ->
       html = marked input.trim() or '(No content)'
       go null,
         html: html
-        template: 'flow-md'
+        template: 'flow-html'
     catch error
       go error
 
+objectToHtmlTable = (obj) ->
+  if obj is undefined
+    '(undefined)'
+  else if obj is null
+    '(null)'
+  else if isString obj
+    if obj
+      obj
+    else
+      '(Empty string)'
+  else if isArray obj
+    html = ''
+    for value, i in obj
+      html += "<tr><td>#{i + 1}</td><td>#{objectToHtmlTable value}</td></tr>"
+    if html
+      "<table class='table table-striped table-condensed'>#{html}</table>"
+    else
+      '(Empty array)'
+  else if isObject obj
+    html = ''
+    for key, value of obj
+      html += "<tr><td>#{key}</td><td>#{objectToHtmlTable value}</td></tr>"
+    if html
+      "<table class='table table-striped table-condensed'>#{html}</table>"
+    else
+      '(Empty object)'
+  else
+    obj
+
 Flow.Coffeescript = (_) ->
   render: (input, go) ->
+    input = JSON.parse input
+    html = if input
+      "<div>#{objectToHtmlTable input}</div>"
+    else
+      '<code>Nothing</code>'
+
+    go null,
+      html: html
+      template: 'flow-json'
 
 Flow.Repl = (_) ->
   _cells = nodes$ []
@@ -123,7 +182,11 @@ Flow.Repl = (_) ->
     apply$ _isSelected, (isSelected) ->
       _isActive no unless isSelected
 
+    # tied to mouse-clicks on the cell
     select = -> selectCell self
+
+    # tied to mouse-double-clicks on html content
+    activate = -> _isActive yes
 
     execute = (go) ->
       renderer = _renderer()
@@ -155,6 +218,7 @@ Flow.Repl = (_) ->
       output: _output
       lineCount: _lineCount
       select: select
+      activate: activate
       execute: execute
       _cursorPosition: _cursorPosition
       cursorPosition: -> _cursorPosition.read()
