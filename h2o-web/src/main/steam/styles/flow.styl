@@ -12,6 +12,7 @@ tomorrow-blue = #4271ae
 tomorrow-purple = #8959a8
 f-color-yellow = #FAF185
 f-color-yellow-dk = #F6E76A
+f-color-yellow-lt = #FBF3B5
 f-color-orange = #F5A623
 
 monospace()
@@ -20,6 +21,11 @@ monospace()
 body
   font-family 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif
 
+pre
+  background url(../img/stripes.png)
+  border none
+  border-radius 0
+
 textarea
   &:focus
     outline none
@@ -27,6 +33,20 @@ textarea
 input
   &:focus
     outline none
+
+
+
+//
+// Bootstrap overrides
+//
+
+.alert
+  border-radius 0
+
+
+//
+//
+//
 
 .f-header
   border-top 5px solid f-color-yellow
@@ -50,31 +70,44 @@ input
     padding 1px 3px
     text-align center
   .f-cell-input
-    //border-left 5px solid f-color-yellow-dk
     textarea
       width 100%
       max-height 500px
       border none
+      border-left 2px solid tomorrow-orange
       monospace()
-      background f-color-yellow
+      background f-color-yellow-lt
       padding 5px 10px
+    &.f-cell-input-ok
+      textarea
+        background url(../img/stripes.png)
   // rework this into a bootrap overrides section
   .progress
     height 9px
     margin 20px
-  &.f-cell-busy
-    border-color tomorrow-red //TODO
-  &.f-cell-error
-    border-color tomorrow-red
   &.f-cell-selected
     border-color f-color-yellow
     .f-cell-type
       display block
   &.f-cell-active
+    border-color f-color-orange
     .f-cell-type
       background f-color-orange
       color #fff
-    border-color f-color-orange
+    .f-cell-input
+      &.f-cell-input-ok
+        textarea
+          background f-color-yellow-lt
+  &.f-cell-busy
+    border-color tomorrow-aqua
+    .f-cell-type
+      background tomorrow-aqua
+      color #fff
+  &.f-cell-error
+    border-color red
+    .f-cell-type
+      background red
+      color #fff
   
 // 
 // Styles that apply only to html cells 
@@ -83,13 +116,8 @@ input
 .f-html-output
   h1, h2, h3, blockquote
     font-weight 300
-  pre
-    border none
-    border-radius 0
 
 .f-raw-output
   pre
-    border none
-    border-radius 0
     background inherit
 

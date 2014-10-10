@@ -1,6 +1,13 @@
 Flow = if exports? then exports else @Flow = {}
 
 # 
+# TODO
+#
+# keyboard help dialog
+# menu system
+# tooltips on celltype flags
+
+
 # CLI usage:
 # help
 # list frames
@@ -46,6 +53,27 @@ ko.bindingHandlers.autoResize =
             .height element.scrollHeight
     return
 
+# Like _.compose, but async. 
+# Equivalent to caolan/async.waterfall()
+async = (tasks) ->
+  _tasks = slice tasks, 0
+
+  next = (args, go) ->
+    task = shift _tasks
+    if task
+      apply task, null, args.concat (error, results...) ->
+        if error
+          go error
+        else
+          next results, go
+    else
+      apply go, null, [ null ].concat args
+
+  (args..., go) ->
+    next args, go
+
+deepClone = (obj) ->
+  JSON.parse JSON.stringify obj
 
 Flow.Application = (_) ->
   _view = Flow.Repl _
@@ -114,17 +142,93 @@ objectToHtmlTable = (obj) ->
   else
     obj
 
-Flow.Coffeescript = (_) ->
-  render: (input, go) ->
-    input = JSON.parse input
-    html = if input
-      "<div>#{objectToHtmlTable input}</div>"
-    else
-      '<code>Nothing</code>'
 
-    go null,
-      html: html
-      template: 'flow-json'
+javascriptProgramTemplate = esprima.parse 'function foo(){ return a + b; }'
+Flow.Coffeescript = (_) ->
+  safetyWrapCoffeescript = (cs, go) ->
+    lines = cs
+      # normalize CR/LF
+      .replace /[\n\r]/g, '\n'
+      # split into lines
+      .split '\n'
+
+    # indent once
+    block = map lines, (line) -> '  ' + line
+
+    # enclose in execute-immediate closure
+    block.unshift 'context.result = do ->'
+
+    # join and proceed
+    go null, join block, '\n'
+
+  compileCoffeescript = (cs, go) ->
+    try
+      go null, CoffeeScript.compile cs, bare: yes
+    catch error
+      go
+        message: 'Error compiling coffee-script'
+        exception: error
+
+  parseJavascript = (js, go) ->
+    try
+      go null, esprima.parse js
+    catch error
+      go
+        message: 'Error parsing javascript expression'
+        exception: error
+
+  createJavascriptClosure = (ast, go) ->
+    # Clone the template, set a unique name, replace the 
+    #  function body with the incoming ast
+    program = deepClone javascriptProgramTemplate
+    functionDeclaration = head program.body
+    functionDeclaration.id.name = "flow_closure_#{uniqueId()}"
+    functionBlock = functionDeclaration.body
+    functionBlock.body = ast
+
+    go null, ast
+
+  generateJavascript = (ast, go) ->
+    try
+      go null, escodegen.generate program
+    catch error
+      return go
+        message: 'Error generating javascript'
+        exception: error
+
+  compileJavascript = (js, go) ->
+    try
+      closure = new Function 'context', js
+      go null, closure
+    catch error
+      go
+        message: 'Error compiling javascript'
+        exception: error
+
+  executeJavascript = (context) ->
+    (closure, go) ->
+      try
+        go null, closure context
+      catch error
+        go
+          message: 'Error executing javascript'
+          exception: error
+
+  render: (input, go) ->
+    context = {}
+    tasks = [
+      safetyWrapCoffeescript
+      compileCoffeescript
+      compileJavascript
+      executeJavascript context
+    ]
+    (async tasks) input, (error, result) ->
+      if error
+        go error
+      else
+        go null,
+          text: context.result
+          template: 'flow-raw'
 
 Flow.Repl = (_) ->
   _cells = nodes$ []
@@ -175,6 +279,7 @@ Flow.Repl = (_) ->
     _hasInput = node$ yes
     _input = node$ input
     _output = node$ null
+    _hasOutput = lift$ _output, (output) -> if output? then yes else no
     _lineCount = lift$ _input, countLines
 
     # This is a shim.
@@ -200,17 +305,25 @@ Flow.Repl = (_) ->
     activate = -> _isActive yes
 
     execute = (go) ->
+      input = _input().trim()
+      return unless input
       renderer = _renderer()
       _isBusy yes
-      renderer.render _input(), (error, result) ->
+      renderer.render input, (error, result) ->
         if error
           _hasError yes
-          #XXX display error
-          debug error
+          if error.exception?
+            _output
+              error: error
+              template: 'flow-error'
+          else
+            _output
+              text: JSON.stringify error, null, 2
+              template: 'flow-raw'
         else
           _hasError no
           _output result
-          _hasInput renderer.isCode is yes
+          _hasInput renderer.isCode isnt no
 
         _isBusy no
 
@@ -224,9 +337,10 @@ Flow.Repl = (_) ->
       hasError: _hasError
       isBusy: _isBusy
       isReady: _isReady
-      hasInput: _hasInput
       input: _input
+      hasInput: _hasInput
       output: _output
+      hasOutput: _hasOutput
       lineCount: _lineCount
       select: select
       activate: activate
