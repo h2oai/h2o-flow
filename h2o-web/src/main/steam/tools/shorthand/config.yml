@@ -502,9 +502,6 @@ has:
 matches:
   type: qualify
   object: lodash
-property:
-  type: qualify
-  object: lodash
 isEqual:
   type: qualify
   object: lodash
