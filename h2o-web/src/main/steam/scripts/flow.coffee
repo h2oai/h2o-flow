@@ -90,21 +90,21 @@ Flow.DialogManager = (_) ->
 
 Flow.HtmlTag = (_, level) ->
   isCode: no
-  render: (input, go) ->
+  render: (guid, input, go) ->
     go null,
       text: input.trim() or '(Untitled)'
       template: "flow-#{level}"
 
 Flow.Raw = (_) ->
   isCode: no
-  render: (input, go) ->
+  render: (guid, input, go) ->
     go null,
       text: input
       template: 'flow-raw'
 
 Flow.Markdown = (_) ->
   isCode: no
-  render: (input, go) ->
+  render: (guid, input, go) ->
     try
       html = marked input.trim() or '(No content)'
       go null,
@@ -142,10 +142,155 @@ objectToHtmlTable = (obj) ->
   else
     obj
 
+Flow.H2O = (_) ->
+  createResponse = (status, data, xhr) ->
+    status: status, data: data, xhr: xhr
+
+  handleResponse = (go, jqxhr) ->
+    jqxhr
+      .done (data, status, xhr) ->
+        go null, createResponse status, data, xhr
+      .fail (xhr, status, error) ->
+        go createResponse status, xhr.responseJSON, xhr
+
+  h2oGet = (path, go) ->
+    handleResponse go, $.getJSON path
+
+  h2oPost = (path, opts, go) ->
+    handleResponse go, $.post path, opts
+
+  processResponse = (go) ->
+    (error, result) ->
+      if error
+        #TODO error logging / retries, etc.
+        go error, result
+      else
+        if result.data.response?.status is 'error'
+          go result.data.error, result.data
+        else
+          go error, result.data
+
+  request = (path, go) ->
+    h2oGet path, processResponse go
+
+  post = (path, opts, go) ->
+    h2oPost path, opts, processResponse go
+
+  composePath = (path, opts) ->
+    if opts
+      params = mapWithKey opts, (v, k) -> "#{k}=#{v}"
+      path + '?' + join params, '&'
+    else
+      path
+
+  requestWithOpts = (path, opts, go) ->
+    request (composePath path, opts), go
+
+  requestJobs = (go) ->
+    request '/Jobs.json', go
+
+  requestJob = (key, go) ->
+    #opts = key: encodeURIComponent key
+    #requestWithOpts '/Job.json', opts, go
+    request "/Jobs.json/#{encodeURIComponent key}", (error, result) ->
+      if error
+        go error, result
+      else
+        go error, result.jobs[0]
+
+  link$ _.requestJobs, requestJobs
+  link$ _.requestJob, requestJob
+
+Flow.Routines = (_) ->
+  _future = (f, args) ->
+    self = (go) ->
+      apply f, [null]
+        .concat args
+        .concat (error, result) ->
+          if error
+            self.error = error
+            self.fulfilled = no
+            self.rejected = yes
+            go error if isFunction go
+          else
+            self.result = result
+            self.fulfilled = yes
+            self.rejected = no
+            go null, result if isFunction go
+          self.settled = yes
+          self.pending = no
+
+    self.method = f
+    self.args = args
+    self.fulfilled = no
+    self.rejected = no
+    self.settled = no
+    self.pending = yes
+
+    self.isFuture = yes
+
+    self
+
+  future = (f, args...) -> _future f, args
+
+  renderJobs = (ft, results) ->
+
+  renderJob = (ft, result) ->
+
+  lookupRenderer = (method) ->
+    switch method
+      when jobs
+        renderJobs
+      when job
+        renderJob
+    
+#  show = (arg) ->
+#    if arg
+#      if arg.isFuture
+#        arg (error, result) ->
+#          if error
+#            error:
+#              message: "Error evaluating future"
+#              cause: error
+#          else
+#            renderer = lookupRenderer arg.method
+#            if renderer
+#              renderer arg, result
+#            else
+#    else
+#      #XXX print usage
+#      throw new Error "Illegal Argument: '#{arg}'"
+
+  frames = (arg) ->
+
+  frame = (arg) ->
+
+  models = (arg) ->
+
+  model = (arg) ->
+
+  jobs = (arg) ->
+    future _.requestJobs
+
+  job = (arg) ->
+    if isString arg
+      future _.requestJob, arg
+    else if isObject arg
+      if arg.key?
+        job arg.key
+      else
+        #XXX print usage
+        throw new Error "Illegal Argument: '#{arg}'"
+    else
+      #XXX print usage
+      throw new Error "Illegal Argument: '#{arg}'"
+
+  jobs: jobs
+  job: job
 
 javascriptProgramTemplate = esprima.parse 'function foo(){ return a + b; }'
-Flow.Coffeescript = (_) ->
-  safetyWrapCoffeescript = (cs, go) ->
+safetyWrapCoffeescript = (guid) ->
+  (cs, go) ->
     lines = cs
       # normalize CR/LF
       .replace /[\n\r]/g, '\n'
@@ -156,78 +301,195 @@ Flow.Coffeescript = (_) ->
     block = map lines, (line) -> '  ' + line
 
     # enclose in execute-immediate closure
-    block.unshift 'context.result = do ->'
+    block.unshift "context._results_['#{guid}'] = do ->"
 
     # join and proceed
     go null, join block, '\n'
 
-  compileCoffeescript = (cs, go) ->
+compileCoffeescript = (cs, go) ->
+  try
+    go null, CoffeeScript.compile cs, bare: yes
+  catch error
+    go
+      message: 'Error compiling coffee-script'
+      cause: error
+
+parseJavascript = (js, go) ->
+  #XXX Test this - worst case scenario
+  x = '''
+    var foo = 6 * 7;
+    var bar = 10;
+    function foo() {
+      foo = 20;
+      bar = function(){};
+      var foo = 10;
+      for (var foo = 0; foo < 10; foo++) {
+        var foo = foo++;
+        foo = foo++;
+      }
+    }
+  '''
+
+  try
+    go null, esprima.parse js
+  catch error
+    go
+      message: 'Error parsing javascript expression'
+      cause: error
+
+
+identifyDeclarations = (node) ->
+  return null unless node
+
+  switch node.type
+    when 'VariableDeclaration'
+      return (name: declaration.id.name, type: 'var', object:'context' for declaration in node.declarations when declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier')
+        
+    when 'FunctionDeclaration'
+      #
+      # XXX Not sure about the semantics here.
+      #
+      if node.id.type is 'Identifier'
+        return [ name: node.id.name, type: 'function', object: 'context' ]
+    when 'ForStatement'
+      return identifyDeclarations node.init
+    when 'ForInStatement', 'ForOfStatement'
+      return identifyDeclarations node.left
+  return null
+
+parseDeclarations = (block) ->
+  identifiers = []
+  for node in block.body
+    if declarations = identifyDeclarations node
+      for declaration in declarations
+        identifiers.push declaration
+  indexBy identifiers, (identifier) -> identifier.name
+
+isRedeclared = (stack, identifier) ->
+  i = stack.length
+  while i--
+    return true if stack[i][identifier] 
+  false
+
+traverseJavascript = (parent, key, node, f) ->
+  if isArray node
+    i = node.length
+    while i--
+      child = node[i]
+      if child isnt null and isObject child
+        traverseJavascript node, i, child, f
+        f node, i, child
+  else 
+    for own i, child of node
+      if child isnt null and isObject child
+        traverseJavascript node, i, child, f
+        f node, i, child
+  return
+
+deleteAstNode = (parent, i) ->
+  if _.isArray parent
+    parent.splice i, 1
+  else if isObject parent
+    delete parent[i]
+
+rewriteJavascript = (_context) ->
+  (program, go) ->
+    topLevelDeclarations = parseDeclarations program.body[0].expression.right.callee.body
+    for name of _context when name isnt '_routines_' and name isnt '_results_'
+      topLevelDeclarations[name] =
+        type: 'var'
+        name: name
+        object: 'context'
+    
     try
-      go null, CoffeeScript.compile cs, bare: yes
-    catch error
-      go
-        message: 'Error compiling coffee-script'
-        exception: error
+      traverseJavascript null, null, program, (parent, i, node) ->
+        # remove hoisted vars		
+        if node.type is 'VariableDeclaration'		
+          declarations = node.declarations.filter (declaration) ->		
+            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and topLevelDeclarations[declaration.id.name]		
+          if declarations.length is 0
+            # purge this node so that escodegen doesn't fail		
+            deleteAstNode parent, i		
+          else		
+            # replace with cleaned-up declarations
+            node.declarations = declarations
 
-  parseJavascript = (js, go) ->
-    try
-      go null, esprima.parse js
-    catch error
-      go
-        message: 'Error parsing javascript expression'
-        exception: error
+        #
+        # XXX Nasty hack - re-implement
+        #
+        # bail out if imported identifiers are used as function params
+        else if node.type is 'FunctionExpression' or node.type is 'FunctionDeclaration'
+          for param in node.params when param.type is 'MemberExpression'
+            throw new Error "Function has a formal parameter name-clash with identifier '#{param.object.name}'. Correct this and try again." 
 
-  createJavascriptClosure = (ast, go) ->
-    # Clone the template, set a unique name, replace the 
-    #  function body with the incoming ast
-    program = deepClone javascriptProgramTemplate
-    functionDeclaration = head program.body
-    functionDeclaration.id.name = "flow_closure_#{uniqueId()}"
-    functionBlock = functionDeclaration.body
-    functionBlock.body = ast
+        # replace identifier with qualified name
+        else if node.type is 'Identifier'
+          return if parent.type is 'VariableDeclarator' and i is 'id' # ignore var declarations
+          return if i is 'property' # ignore members
+          return unless identifier = topLevelDeclarations[node.name]
 
-    go null, ast
-
-  generateJavascript = (ast, go) ->
-    try
-      go null, escodegen.generate program
+          parent[i] =
+            type: 'MemberExpression'
+            computed: no
+            object:
+              type: 'Identifier'
+              name: identifier.object
+            property:
+              type: 'Identifier'
+              name: identifier.name
     catch error
       return go
-        message: 'Error generating javascript'
-        exception: error
+        message: 'Error rewriting javascript'
+        cause: error
 
-  compileJavascript = (js, go) ->
+    go null, program
+
+generateJavascript = (program, go) ->
+  try
+    go null, escodegen.generate program
+  catch error
+    return go
+      message: 'Error generating javascript'
+      cause: error
+
+compileJavascript = (js, go) ->
+  debug js
+  try
+    closure = new Function 'context', js
+    go null, closure
+  catch error
+    go
+      message: 'Error compiling javascript'
+      cause: error
+
+executeJavascript = (context) ->
+  (closure, go) ->
     try
-      closure = new Function 'context', js
-      go null, closure
+      go null, closure context
     catch error
       go
-        message: 'Error compiling javascript'
-        exception: error
+        message: 'Error executing javascript'
+        cause: error
 
-  executeJavascript = (context) ->
-    (closure, go) ->
-      try
-        go null, closure context
-      catch error
-        go
-          message: 'Error executing javascript'
-          exception: error
-
-  render: (input, go) ->
-    context = {}
+Flow.Coffeescript = (_, _context) ->
+  _routineNames = keys _context
+  render: (guid, input, go) ->
     tasks = [
-      safetyWrapCoffeescript
+      safetyWrapCoffeescript guid
       compileCoffeescript
+      parseJavascript
+      rewriteJavascript _context
+      generateJavascript
       compileJavascript
-      executeJavascript context
+      executeJavascript _context
     ]
     (async tasks) input, (error, result) ->
       if error
         go error
       else
+        debug _context
         go null,
-          text: context.result
+          text: _context._results_[guid]
           template: 'flow-raw'
 
 Flow.Repl = (_) ->
@@ -236,6 +498,10 @@ Flow.Repl = (_) ->
   _selectedCellIndex = -1
   _clipboardCell = null
   _lastDeletedCell = null
+  _context = 
+    _results_: {}
+    _routines_: Flow.Routines _
+
   _renderers =
     h1: -> Flow.HtmlTag _, 'h1'
     h2: -> Flow.HtmlTag _, 'h2'
@@ -244,7 +510,7 @@ Flow.Repl = (_) ->
     h5: -> Flow.HtmlTag _, 'h5'
     h6: -> Flow.HtmlTag _, 'h6'
     md: -> Flow.Markdown _
-    cs: -> Flow.Coffeescript _
+    cs: -> Flow.Coffeescript _, _context
     raw: -> Flow.Raw _
 
   countLines = (text) ->
@@ -269,6 +535,7 @@ Flow.Repl = (_) ->
     return
 
   createCell = (type='cs', input='') ->
+    _guid = uniqueId()
     _type = node$ type
     _renderer = lift$ _type, (type) -> _renderers[type]()
     _isSelected = node$ no
@@ -309,10 +576,10 @@ Flow.Repl = (_) ->
       return unless input
       renderer = _renderer()
       _isBusy yes
-      renderer.render input, (error, result) ->
+      renderer.render _guid, input, (error, result) ->
         if error
           _hasError yes
-          if error.exception?
+          if error.cause?
             _output
               error: error
               template: 'flow-error'
@@ -331,6 +598,7 @@ Flow.Repl = (_) ->
       go() if go
 
     self =
+      guid: _guid
       type: _type
       isSelected: _isSelected
       isActive: _isActive

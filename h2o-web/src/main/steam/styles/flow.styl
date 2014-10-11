@@ -76,11 +76,12 @@ input
       border none
       border-left 2px solid tomorrow-orange
       monospace()
-      background f-color-yellow-lt
+      background url(../img/stripes.png)
       padding 5px 10px
-    &.f-cell-input-ok
+    &.f-cell-has-output
       textarea
-        background url(../img/stripes.png)
+        border-left 2px solid tomorrow-blue
+
   // rework this into a bootrap overrides section
   .progress
     height 9px
@@ -95,9 +96,8 @@ input
       background f-color-orange
       color #fff
     .f-cell-input
-      &.f-cell-input-ok
-        textarea
-          background f-color-yellow-lt
+      textarea
+        background f-color-yellow-lt
   &.f-cell-busy
     border-color tomorrow-aqua
     .f-cell-type
