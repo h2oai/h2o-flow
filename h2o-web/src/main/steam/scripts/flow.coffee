@@ -1,5 +1,30 @@
 Flow = if exports? then exports else @Flow = {}
 
+# XXX add following contents to startup cells.
+
+#   # Welcome to H<sub>2</sub>O Flow!
+#   
+#   **Flow** is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like [IPython Notebooks](http://ipython.org/notebook.html).
+#   
+#   A Flow is composed of a series of executable *cells*. Each *cell* has an input and an output. To provide input to a cell.
+#   
+#   Flow is a modal editor, which means that when you are not editing the contents.
+#   
+#   - To edit a cell, hit `Enter`.
+#   - When you're done editing, hit `Esc`.
+#   
+#   Hitting `Esc` after editing a cell puts you in *Command Mode*. You can do a variety of actions in Command Mode:
+#   - `a` adds a new cell **a**bove the current cell.
+#   - `b` adds a new cell __b__elow the current cell.
+#   - `d` `d` __d__eletes the current cell. Yes, you need to press `d` twice.
+#   
+#   To view a list of commands, enter help in the cell below, followed by Ctrl+Enter.
+#   
+#   [________________________]
+#   
+#   To view a list of keyboard shortcuts, type h.
+
+
 # 
 # TODO
 #
@@ -204,21 +229,28 @@ Flow.H2O = (_) ->
 Flow.Routines = (_) ->
   _future = (f, args) ->
     self = (go) ->
-      apply f, [null]
-        .concat args
-        .concat (error, result) ->
-          if error
-            self.error = error
-            self.fulfilled = no
-            self.rejected = yes
-            go error if isFunction go
-          else
-            self.result = result
-            self.fulfilled = yes
-            self.rejected = no
-            go null, result if isFunction go
-          self.settled = yes
-          self.pending = no
+      if self.settled
+        # continue with cached error/result
+        if self.rejected
+          go self.error
+        else
+          go null, self.result
+      else
+        apply f, [null]
+          .concat args
+          .concat (error, result) ->
+            if error
+              self.error = error
+              self.fulfilled = no
+              self.rejected = yes
+              go error
+            else
+              self.result = result
+              self.fulfilled = yes
+              self.rejected = no
+              go null, result
+            self.settled = yes
+            self.pending = no
 
     self.method = f
     self.args = args
@@ -230,6 +262,35 @@ Flow.Routines = (_) ->
     self.isFuture = yes
 
     self
+
+  collate = (args..., go) ->
+    _tasks = [] 
+    _results = []
+
+    for arg, i in args
+      if arg?.isFuture
+        _tasks.push future: arg, resultIndex: i
+      else
+        _results[i] = arg
+
+    _actual = 0
+    _settled = no
+
+    forEach _tasks, (task) ->
+      call task.future, null, (error, result) ->
+        return if _settled
+        if error
+          _settled = yes
+          go
+            message: "Error evalutating future[#{task.resultIndex}]"
+            cause: error
+        else
+          _results[task.resultIndex] = result
+          _actual++
+          if _actual is _tasks.length
+            _settled = yes
+            go null, _results
+        return
 
   future = (f, args...) -> _future f, args
 
@@ -343,14 +404,14 @@ identifyDeclarations = (node) ->
 
   switch node.type
     when 'VariableDeclaration'
-      return (name: declaration.id.name, type: 'var', object:'context' for declaration in node.declarations when declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier')
+      return (name: declaration.id.name, object:'context' for declaration in node.declarations when declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier')
         
     when 'FunctionDeclaration'
       #
       # XXX Not sure about the semantics here.
       #
       if node.id.type is 'Identifier'
-        return [ name: node.id.name, type: 'function', object: 'context' ]
+        return [ name: node.id.name, object: 'context' ]
     when 'ForStatement'
       return identifyDeclarations node.init
     when 'ForInStatement', 'ForOfStatement'
@@ -366,24 +427,41 @@ parseDeclarations = (block) ->
   indexBy identifiers, (identifier) -> identifier.name
 
 isRedeclared = (stack, identifier) ->
-  i = stack.length
+  i = scopes.length
   while i--
-    return true if stack[i][identifier] 
+    return true if scopes[i][identifier] 
   false
 
 traverseJavascript = (parent, key, node, f) ->
   if isArray node
     i = node.length
+    # walk backwards to allow callers to delete nodes
     while i--
       child = node[i]
-      if child isnt null and isObject child
+      if isObject child
         traverseJavascript node, i, child, f
         f node, i, child
   else 
     for own i, child of node
-      if child isnt null and isObject child
+      if isObject child
         traverseJavascript node, i, child, f
         f node, i, child
+  return
+
+traverseJavascript2 = (grandparent, property, parent, key, node, f) ->
+  if isArray node
+    i = node.length
+    # walk backwards to allow callers to delete nodes
+    while i--
+      child = node[i]
+      if isObject child
+        traverseJavascript2 parent, key, node, i, child, f
+        f parent, key, node, i, child
+  else 
+    for own i, child of node
+      if isObject child
+        traverseJavascript2 parent, key, node, i, child, f
+        f parent, key, node, i, child
   return
 
 deleteAstNode = (parent, i) ->
@@ -392,12 +470,99 @@ deleteAstNode = (parent, i) ->
   else if isObject parent
     delete parent[i]
 
-rewriteJavascript = (_context) ->
+createLocalScope = (node) ->
+  # parse all declarations in this scope
+  localScope = parseDeclarations node.body
+
+  # include formal parameters
+  for param in node.params when param.type is 'Identifier'
+    localScope[param.name] = name: param.name, object: 'local'
+
+  localScope
+
+# redefine scope by coalescing down to non-local identifiers
+coalesceScopes = (scopes) ->
+  currentScope = {}
+  for scope, i in scopes
+    if i is 0
+      for name, identifier of scope
+        currentScope[name] = identifier
+    else
+      for name, identifier of scope
+        currentScope[name] = null
+  currentScope
+
+traverseJavascriptScoped = (scopes, parentScope, parent, key, node, f) ->
+  isNewScope = node.type is 'FunctionExpression' or node.type is 'FunctionDeclaration'
+  if isNewScope
+    # create and push a new local scope onto scope stack
+    push scopes, createLocalScope node
+    currentScope = coalesceScopes scopes
+  else
+    currentScope = parentScope
+
+  for key, child of node
+    if isObject child
+      traverseJavascriptScoped scopes, currentScope, node, key, child, f
+      f currentScope, node, key, child 
+
+  if isNewScope
+    # discard local scope
+    pop scopes
+
+  return
+
+
+rewriteJavascript = (context) ->
   (program, go) ->
     topLevelDeclarations = parseDeclarations program.body[0].expression.right.callee.body
-    for name of _context when name isnt '_routines_' and name isnt '_results_'
+
+    for name of context when name isnt '_routines_' and name isnt '_results_' #XXX pass routines and results as params, keep context clean
       topLevelDeclarations[name] =
-        type: 'var'
+        name: name
+        object: 'context'
+
+    try
+      traverseJavascript2 null, null, null, null, program, (grandparent, property, parent, key, node) ->
+        if node.type is 'VariableDeclaration'		
+          declarations = node.declarations.filter (declaration) ->		
+            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not topLevelDeclarations[declaration.id.name]		
+          if declarations.length is 0
+            # purge this node so that escodegen doesn't fail		
+            deleteAstNode parent, key		
+          else		
+            # replace with cleaned-up declarations
+            node.declarations = declarations
+
+      traverseJavascriptScoped [ topLevelDeclarations ], topLevelDeclarations, null, null, program, (globalScope, parent, key, node) ->
+        if node.type is 'Identifier'
+          return if parent.type is 'VariableDeclarator' and key is 'id' # ignore var declarations
+          return if key is 'property' # ignore members
+          return unless identifier = globalScope[node.name]
+
+          # qualify identifier with 'context'
+          parent[key] =
+            type: 'MemberExpression'
+            computed: no
+            object:
+              type: 'Identifier'
+              name: identifier.object
+            property:
+              type: 'Identifier'
+              name: identifier.name
+
+    catch error
+      return go
+        message: 'Error rewriting javascript'
+        cause: error
+
+    go null, program
+
+rewriteJavascript__old = (_context) ->
+  (program, go) ->
+    topLevelDeclarations = parseDeclarations program.body[0].expression.right.callee.body
+    for name of _context when name isnt '_routines_' and name isnt '_results_' #XXX pass routines and results as params, keep context clean
+      topLevelDeclarations[name] =
         name: name
         object: 'context'
     
@@ -406,7 +571,7 @@ rewriteJavascript = (_context) ->
         # remove hoisted vars		
         if node.type is 'VariableDeclaration'		
           declarations = node.declarations.filter (declaration) ->		
-            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and topLevelDeclarations[declaration.id.name]		
+            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not topLevelDeclarations[declaration.id.name]		
           if declarations.length is 0
             # purge this node so that escodegen doesn't fail		
             deleteAstNode parent, i		
@@ -437,6 +602,7 @@ rewriteJavascript = (_context) ->
             property:
               type: 'Identifier'
               name: identifier.name
+
     catch error
       return go
         message: 'Error rewriting javascript'
@@ -529,6 +695,7 @@ Flow.Repl = (_) ->
     return if _selectedCell is target
     _selectedCell.isSelected no if _selectedCell
     _selectedCell = target
+    #TODO also set focus so that tabs don't jump to the first cell
     _selectedCell.isSelected yes
     _selectedCellIndex = _cells.indexOf _selectedCell
     checkConsistency()
