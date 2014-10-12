@@ -448,22 +448,6 @@ traverseJavascript = (parent, key, node, f) ->
         f node, i, child
   return
 
-traverseJavascript2 = (grandparent, property, parent, key, node, f) ->
-  if isArray node
-    i = node.length
-    # walk backwards to allow callers to delete nodes
-    while i--
-      child = node[i]
-      if isObject child
-        traverseJavascript2 parent, key, node, i, child, f
-        f parent, key, node, i, child
-  else 
-    for own i, child of node
-      if isObject child
-        traverseJavascript2 parent, key, node, i, child, f
-        f parent, key, node, i, child
-  return
-
 deleteAstNode = (parent, i) ->
   if _.isArray parent
     parent.splice i, 1
@@ -512,29 +496,46 @@ traverseJavascriptScoped = (scopes, parentScope, parent, key, node, f) ->
 
   return
 
-
-rewriteJavascript = (context) ->
+createRootScope = (context) ->
   (program, go) ->
-    topLevelDeclarations = parseDeclarations program.body[0].expression.right.callee.body
-
-    for name of context when name isnt '_routines_' and name isnt '_results_' #XXX pass routines and results as params, keep context clean
-      topLevelDeclarations[name] =
-        name: name
-        object: 'context'
-
     try
-      traverseJavascript2 null, null, null, null, program, (grandparent, property, parent, key, node) ->
+      rootScope = parseDeclarations program.body[0].expression.right.callee.body
+
+      for name of context when name isnt '_routines_' and name isnt '_results_' #XXX pass routines and results as params, keep context clean
+        rootScope[name] =
+          name: name
+          object: 'context'
+      go null, rootScope, program
+
+    catch error
+      go
+        message: 'Error parsing root scope'
+        cause: error
+
+removeHoistedDeclarations = (context) ->
+  (rootScope, program, go) ->
+    try
+      traverseJavascript null, null, program, (parent, key, node) ->
         if node.type is 'VariableDeclaration'		
           declarations = node.declarations.filter (declaration) ->		
-            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not topLevelDeclarations[declaration.id.name]		
+            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not rootScope[declaration.id.name]		
           if declarations.length is 0
             # purge this node so that escodegen doesn't fail		
             deleteAstNode parent, key		
           else		
             # replace with cleaned-up declarations
             node.declarations = declarations
+      go null, rootScope, program
+    catch error
+      go
+        message: 'Error rewriting javascript'
+        cause: error
 
-      traverseJavascriptScoped [ topLevelDeclarations ], topLevelDeclarations, null, null, program, (globalScope, parent, key, node) ->
+
+rewriteJavascript = (context) ->
+  (rootScope, program, go) ->
+    try
+      traverseJavascriptScoped [ rootScope ], rootScope, null, null, program, (globalScope, parent, key, node) ->
         if node.type is 'Identifier'
           return if parent.type is 'VariableDeclarator' and key is 'id' # ignore var declarations
           return if key is 'property' # ignore members
@@ -550,13 +551,12 @@ rewriteJavascript = (context) ->
             property:
               type: 'Identifier'
               name: identifier.name
-
+      go null, program
     catch error
-      return go
+      go
         message: 'Error rewriting javascript'
         cause: error
 
-    go null, program
 
 rewriteJavascript__old = (_context) ->
   (program, go) ->
@@ -644,6 +644,8 @@ Flow.Coffeescript = (_, _context) ->
       safetyWrapCoffeescript guid
       compileCoffeescript
       parseJavascript
+      createRootScope _context
+      removeHoistedDeclarations _context
       rewriteJavascript _context
       generateJavascript
       compileJavascript
