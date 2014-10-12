@@ -362,7 +362,7 @@ safetyWrapCoffeescript = (guid) ->
     block = map lines, (line) -> '  ' + line
 
     # enclose in execute-immediate closure
-    block.unshift "context._results_['#{guid}'] = do ->"
+    block.unshift "_h2o_results_['#{guid}'] = do ->"
 
     # join and proceed
     go null, join block, '\n'
@@ -376,21 +376,6 @@ compileCoffeescript = (cs, go) ->
       cause: error
 
 parseJavascript = (js, go) ->
-  #XXX Test this - worst case scenario
-  x = '''
-    var foo = 6 * 7;
-    var bar = 10;
-    function foo() {
-      foo = 20;
-      bar = function(){};
-      var foo = 10;
-      for (var foo = 0; foo < 10; foo++) {
-        var foo = foo++;
-        foo = foo++;
-      }
-    }
-  '''
-
   try
     go null, esprima.parse js
   catch error
@@ -404,14 +389,14 @@ identifyDeclarations = (node) ->
 
   switch node.type
     when 'VariableDeclaration'
-      return (name: declaration.id.name, object:'context' for declaration in node.declarations when declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier')
+      return (name: declaration.id.name, object:'_h2o_context_' for declaration in node.declarations when declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier')
         
     when 'FunctionDeclaration'
       #
       # XXX Not sure about the semantics here.
       #
       if node.id.type is 'Identifier'
-        return [ name: node.id.name, object: 'context' ]
+        return [ name: node.id.name, object: '_h2o_context_' ]
     when 'ForStatement'
       return identifyDeclarations node.init
     when 'ForInStatement', 'ForOfStatement'
@@ -425,12 +410,6 @@ parseDeclarations = (block) ->
       for declaration in declarations
         identifiers.push declaration
   indexBy identifiers, (identifier) -> identifier.name
-
-isRedeclared = (stack, identifier) ->
-  i = scopes.length
-  while i--
-    return true if scopes[i][identifier] 
-  false
 
 traverseJavascript = (parent, key, node, f) ->
   if isArray node
@@ -496,15 +475,15 @@ traverseJavascriptScoped = (scopes, parentScope, parent, key, node, f) ->
 
   return
 
-createRootScope = (context) ->
+createRootScope = (sandbox) ->
   (program, go) ->
     try
       rootScope = parseDeclarations program.body[0].expression.right.callee.body
 
-      for name of context when name isnt '_routines_' and name isnt '_results_' #XXX pass routines and results as params, keep context clean
+      for name of sandbox.context when name isnt '_routines_' and name isnt '_results_' #XXX pass routines and results as params, keep context clean
         rootScope[name] =
           name: name
-          object: 'context'
+          object: '_h2o_context_'
       go null, rootScope, program
 
     catch error
@@ -512,103 +491,53 @@ createRootScope = (context) ->
         message: 'Error parsing root scope'
         cause: error
 
-removeHoistedDeclarations = (context) ->
-  (rootScope, program, go) ->
-    try
-      traverseJavascript null, null, program, (parent, key, node) ->
-        if node.type is 'VariableDeclaration'		
-          declarations = node.declarations.filter (declaration) ->		
-            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not rootScope[declaration.id.name]		
-          if declarations.length is 0
-            # purge this node so that escodegen doesn't fail		
-            deleteAstNode parent, key		
-          else		
-            # replace with cleaned-up declarations
-            node.declarations = declarations
-      go null, rootScope, program
-    catch error
-      go
-        message: 'Error rewriting javascript'
-        cause: error
+#TODO DO NOT call this for raw javascript:
+# Require alternate strategy: 
+#   Declarations with 'var' need to be local to the cell.
+#   Undeclared identifiers are assumed to be global.
+#   'use strict' should be unsupported.
+removeHoistedDeclarations = (rootScope, program, go) ->
+  try
+    traverseJavascript null, null, program, (parent, key, node) ->
+      if node.type is 'VariableDeclaration'		
+        declarations = node.declarations.filter (declaration) ->		
+          declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not rootScope[declaration.id.name]		
+        if declarations.length is 0
+          # purge this node so that escodegen doesn't fail		
+          deleteAstNode parent, key		
+        else		
+          # replace with cleaned-up declarations
+          node.declarations = declarations
+    go null, rootScope, program
+  catch error
+    go
+      message: 'Error rewriting javascript'
+      cause: error
 
 
-rewriteJavascript = (context) ->
-  (rootScope, program, go) ->
-    try
-      traverseJavascriptScoped [ rootScope ], rootScope, null, null, program, (globalScope, parent, key, node) ->
-        if node.type is 'Identifier'
-          return if parent.type is 'VariableDeclarator' and key is 'id' # ignore var declarations
-          return if key is 'property' # ignore members
-          return unless identifier = globalScope[node.name]
+rewriteJavascript = (rootScope, program, go) ->
+  try
+    traverseJavascriptScoped [ rootScope ], rootScope, null, null, program, (globalScope, parent, key, node) ->
+      if node.type is 'Identifier'
+        return if parent.type is 'VariableDeclarator' and key is 'id' # ignore var declarations
+        return if key is 'property' # ignore members
+        return unless identifier = globalScope[node.name]
 
-          # qualify identifier with 'context'
-          parent[key] =
-            type: 'MemberExpression'
-            computed: no
-            object:
-              type: 'Identifier'
-              name: identifier.object
-            property:
-              type: 'Identifier'
-              name: identifier.name
-      go null, program
-    catch error
-      go
-        message: 'Error rewriting javascript'
-        cause: error
-
-
-rewriteJavascript__old = (_context) ->
-  (program, go) ->
-    topLevelDeclarations = parseDeclarations program.body[0].expression.right.callee.body
-    for name of _context when name isnt '_routines_' and name isnt '_results_' #XXX pass routines and results as params, keep context clean
-      topLevelDeclarations[name] =
-        name: name
-        object: 'context'
-    
-    try
-      traverseJavascript null, null, program, (parent, i, node) ->
-        # remove hoisted vars		
-        if node.type is 'VariableDeclaration'		
-          declarations = node.declarations.filter (declaration) ->		
-            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not topLevelDeclarations[declaration.id.name]		
-          if declarations.length is 0
-            # purge this node so that escodegen doesn't fail		
-            deleteAstNode parent, i		
-          else		
-            # replace with cleaned-up declarations
-            node.declarations = declarations
-
-        #
-        # XXX Nasty hack - re-implement
-        #
-        # bail out if imported identifiers are used as function params
-        else if node.type is 'FunctionExpression' or node.type is 'FunctionDeclaration'
-          for param in node.params when param.type is 'MemberExpression'
-            throw new Error "Function has a formal parameter name-clash with identifier '#{param.object.name}'. Correct this and try again." 
-
-        # replace identifier with qualified name
-        else if node.type is 'Identifier'
-          return if parent.type is 'VariableDeclarator' and i is 'id' # ignore var declarations
-          return if i is 'property' # ignore members
-          return unless identifier = topLevelDeclarations[node.name]
-
-          parent[i] =
-            type: 'MemberExpression'
-            computed: no
-            object:
-              type: 'Identifier'
-              name: identifier.object
-            property:
-              type: 'Identifier'
-              name: identifier.name
-
-    catch error
-      return go
-        message: 'Error rewriting javascript'
-        cause: error
-
+        # qualify identifier with '_h2o_context_'
+        parent[key] =
+          type: 'MemberExpression'
+          computed: no
+          object:
+            type: 'Identifier'
+            name: identifier.object
+          property:
+            type: 'Identifier'
+            name: identifier.name
     go null, program
+  catch error
+    go
+      message: 'Error rewriting javascript'
+      cause: error
 
 generateJavascript = (program, go) ->
   try
@@ -621,43 +550,42 @@ generateJavascript = (program, go) ->
 compileJavascript = (js, go) ->
   debug js
   try
-    closure = new Function 'context', js
+    closure = new Function '_h2o_context_', '_h2o_routines_', '_h2o_results_', js
     go null, closure
   catch error
     go
       message: 'Error compiling javascript'
       cause: error
 
-executeJavascript = (context) ->
+executeJavascript = (sandbox) ->
   (closure, go) ->
     try
-      go null, closure context
+      go null, closure sandbox.context, sandbox.routines, sandbox.results
     catch error
       go
         message: 'Error executing javascript'
         cause: error
 
-Flow.Coffeescript = (_, _context) ->
-  _routineNames = keys _context
+Flow.Coffeescript = (_, sandbox) ->
   render: (guid, input, go) ->
     tasks = [
       safetyWrapCoffeescript guid
       compileCoffeescript
       parseJavascript
-      createRootScope _context
-      removeHoistedDeclarations _context
-      rewriteJavascript _context
+      createRootScope sandbox
+      removeHoistedDeclarations
+      rewriteJavascript
       generateJavascript
       compileJavascript
-      executeJavascript _context
+      executeJavascript sandbox
     ]
     (async tasks) input, (error, result) ->
       if error
         go error
       else
-        debug _context
+        debug sandbox
         go null,
-          text: _context._results_[guid]
+          text: sandbox.results[guid]
           template: 'flow-raw'
 
 Flow.Repl = (_) ->
@@ -666,9 +594,10 @@ Flow.Repl = (_) ->
   _selectedCellIndex = -1
   _clipboardCell = null
   _lastDeletedCell = null
-  _context = 
-    _results_: {}
-    _routines_: Flow.Routines _
+  _sandbox =
+    context: {}
+    routines: Flow.Routines _
+    results: {}
 
   _renderers =
     h1: -> Flow.HtmlTag _, 'h1'
@@ -678,7 +607,7 @@ Flow.Repl = (_) ->
     h5: -> Flow.HtmlTag _, 'h5'
     h6: -> Flow.HtmlTag _, 'h6'
     md: -> Flow.Markdown _
-    cs: -> Flow.Coffeescript _, _context
+    cs: -> Flow.Coffeescript _, _sandbox
     raw: -> Flow.Raw _
 
   countLines = (text) ->
