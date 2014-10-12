@@ -480,7 +480,7 @@ createRootScope = (sandbox) ->
     try
       rootScope = parseDeclarations program.body[0].expression.right.callee.body
 
-      for name of sandbox.context when name isnt '_routines_' and name isnt '_results_' #XXX pass routines and results as params, keep context clean
+      for name of sandbox.context
         rootScope[name] =
           name: name
           object: '_h2o_context_'
@@ -515,29 +515,43 @@ removeHoistedDeclarations = (rootScope, program, go) ->
       cause: error
 
 
-rewriteJavascript = (rootScope, program, go) ->
-  try
-    traverseJavascriptScoped [ rootScope ], rootScope, null, null, program, (globalScope, parent, key, node) ->
-      if node.type is 'Identifier'
-        return if parent.type is 'VariableDeclarator' and key is 'id' # ignore var declarations
-        return if key is 'property' # ignore members
-        return unless identifier = globalScope[node.name]
+createGlobalScope = (rootScope, routines) ->
+  globalScope = {}
 
-        # qualify identifier with '_h2o_context_'
-        parent[key] =
-          type: 'MemberExpression'
-          computed: no
-          object:
-            type: 'Identifier'
-            name: identifier.object
-          property:
-            type: 'Identifier'
-            name: identifier.name
-    go null, program
-  catch error
-    go
-      message: 'Error rewriting javascript'
-      cause: error
+  for name, identifier of rootScope
+    globalScope[name] = identifier
+
+  for name of routines
+    globalScope[name] = name: name, object: 'h2o'
+
+  globalScope
+
+rewriteJavascript = (sandbox) ->
+  (rootScope, program, go) ->
+    globalScope = createGlobalScope rootScope, sandbox.routines 
+
+    try
+      traverseJavascriptScoped [ globalScope ], globalScope, null, null, program, (globalScope, parent, key, node) ->
+        if node.type is 'Identifier'
+          return if parent.type is 'VariableDeclarator' and key is 'id' # ignore var declarations
+          return if key is 'property' # ignore members
+          return unless identifier = globalScope[node.name]
+
+          # qualify identifier with '_h2o_context_'
+          parent[key] =
+            type: 'MemberExpression'
+            computed: no
+            object:
+              type: 'Identifier'
+              name: identifier.object
+            property:
+              type: 'Identifier'
+              name: identifier.name
+      go null, program
+    catch error
+      go
+        message: 'Error rewriting javascript'
+        cause: error
 
 generateJavascript = (program, go) ->
   try
@@ -550,7 +564,7 @@ generateJavascript = (program, go) ->
 compileJavascript = (js, go) ->
   debug js
   try
-    closure = new Function '_h2o_context_', '_h2o_routines_', '_h2o_results_', js
+    closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', js
     go null, closure
   catch error
     go
@@ -560,7 +574,7 @@ compileJavascript = (js, go) ->
 executeJavascript = (sandbox) ->
   (closure, go) ->
     try
-      go null, closure sandbox.context, sandbox.routines, sandbox.results
+      go null, closure sandbox.routines, sandbox.context, sandbox.results
     catch error
       go
         message: 'Error executing javascript'
@@ -574,7 +588,7 @@ Flow.Coffeescript = (_, sandbox) ->
       parseJavascript
       createRootScope sandbox
       removeHoistedDeclarations
-      rewriteJavascript
+      rewriteJavascript sandbox
       generateJavascript
       compileJavascript
       executeJavascript sandbox
