@@ -714,6 +714,8 @@ Flow.Repl = (_) ->
     _input = node$ input
     _outputs = nodes$ []
     _hasOutput = lift$ _outputs, (outputs) -> outputs.length > 0
+    _isOutputVisible = node$ yes
+    _isOutputHidden = lift$ _isOutputVisible, (visible) -> not visible
     _lineCount = lift$ _input, countLines
 
     # This is a shim.
@@ -785,6 +787,10 @@ Flow.Repl = (_) ->
       hasInput: _hasInput
       outputs: _outputs
       hasOutput: _hasOutput
+      isOutputVisible: _isOutputVisible
+      toggleOutput: -> _isOutputVisible not _isOutputVisible()
+      showOutput: -> _isOutputVisible yes
+      hideOutput: -> _isOutputVisible no
       lineCount: _lineCount
       select: select
       activate: activate
@@ -912,6 +918,9 @@ Flow.Repl = (_) ->
     debug 'saveFlow'
     no
 
+  toggleOutput = ->
+    _selectedCell.toggleOutput()
+
   selectNextCell = ->
     cells = _cells()
     unless _selectedCellIndex is cells.length - 1
@@ -963,7 +972,7 @@ Flow.Repl = (_) ->
     [ 's', 'save notebook', saveFlow ]
     #[ 'mod+s', 'save notebook', saveFlow ]
     # [ 'l', 'toggle line numbers' ]
-    # [ 'o', 'toggle output' ]
+    [ 'o', 'toggle output', toggleOutput ]
     # [ 'shift+o', 'toggle output scrolling' ]
     # [ 'q', 'close pager' ]
     [ 'h', 'keyboard shortcuts', displayHelp ]

@@ -95,7 +95,7 @@ html(lang='en')
           .progress-bar.progress-bar-striped.progress-bar-warning.active(role='progressbar' style='width:100%')
             span.sr-only Computing&hellip;
         // /ko
-        .f-cell-outputs(data-bind='template: { name: templateOf, foreach:outputs }')
+        .f-cell-outputs(data-bind='visible:isOutputVisible, template: { name: templateOf, foreach:outputs }')
 
     script(src='//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.2/highlight.min.js')
     script(src='js/lib-flow.js')
