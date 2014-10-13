@@ -658,15 +658,16 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         (iterate tasks) (results) -> go null, results
 
 Flow.Repl = (_) ->
+  _sandbox =
+    context: {}
+    routines: Flow.Routines _
+    results: {}
+
   _cells = nodes$ []
   _selectedCell = null
   _selectedCellIndex = -1
   _clipboardCell = null
   _lastDeletedCell = null
-  _sandbox =
-    context: {}
-    routines: Flow.Routines _
-    results: {}
 
   _renderers =
     h1: -> Flow.HtmlTag _, 'h1'
@@ -810,13 +811,20 @@ Flow.Repl = (_) ->
     _selectedCell.isActive yes
     no
 
-  convertCellToCode = -> _selectedCell.type 'cs'
+  convertCellToCode = ->
+    _selectedCell.type 'cs'
 
-  convertCellToHeading = (level) -> -> _selectedCell.type "h#{level}"
+  convertCellToHeading = (level) -> -> 
+    _selectedCell.type "h#{level}"
+    _selectedCell.execute()
 
-  convertCellToMarkdown = -> _selectedCell.type 'md'
+  convertCellToMarkdown = ->
+    _selectedCell.type 'md'
+    _selectedCell.execute()
 
-  convertCellToRaw = -> _selectedCell.type 'raw'
+  convertCellToRaw = ->
+    _selectedCell.type 'raw'
+    _selectedCell.execute()
 
   copyCell = ->
     _clipboardCell = cloneCell _selectedCell
