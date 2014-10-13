@@ -87,9 +87,11 @@ ko.bindingHandlers.dom =
       $element.append arg
     return
 
+templateOf = (view) -> view.template
+
 # Like _.compose, but async. 
 # Equivalent to caolan/async.waterfall()
-async = (tasks) ->
+pipe = (tasks) ->
   _tasks = slice tasks, 0
 
   next = (args, go) ->
@@ -106,9 +108,26 @@ async = (tasks) ->
   (args..., go) ->
     next args, go
 
+iterate = (tasks) ->
+  _tasks = slice tasks, 0
+  _results = []
+  next = (go) ->
+    task = shift _tasks
+    if task
+      task (error, result) ->
+        if error
+          _results.push [ error ]
+        else
+          _results.push [ null, result ]
+        next go
+    else
+      go _results
+
+  (go) ->
+    next go
+
 deepClone = (obj) ->
   JSON.parse JSON.stringify obj
-
 
 exception = (message, cause) -> message: message, cause: cause
 
@@ -130,28 +149,31 @@ Flow.DialogManager = (_) ->
 
 Flow.HtmlTag = (_, level) ->
   isCode: no
-  render: (guid, input, go) ->
-    go null,
+  render: (input, go) ->
+    go null, [
       text: input.trim() or '(Untitled)'
       template: "flow-#{level}"
-
-Flow.Raw = (_) ->
-  isCode: no
-  render: (guid, input, go) ->
-    go null,
-      text: input
-      template: 'flow-raw'
+    ]
 
 Flow.Markdown = (_) ->
   isCode: no
-  render: (guid, input, go) ->
+  render: (input, go) ->
     try
       html = marked input.trim() or '(No content)'
-      go null,
+      go null, [
         html: html
         template: 'flow-html'
+      ]
     catch error
       go error
+
+Flow.Raw = (_) ->
+  isCode: no
+  render: (input, go) ->
+    go null, [
+      text: input
+      template: 'flow-raw'
+    ]
 
 objectToHtmlTable = (obj) ->
   if obj is undefined
@@ -356,7 +378,6 @@ Flow.Routines = (_) ->
   jobs: jobs
   job: job
 
-javascriptProgramTemplate = esprima.parse 'function foo(){ return a + b; }'
 safetyWrapCoffeescript = (guid) ->
   (cs, go) ->
     lines = cs
@@ -369,7 +390,7 @@ safetyWrapCoffeescript = (guid) ->
     block = map lines, (line) -> '  ' + line
 
     # enclose in execute-immediate closure
-    block.unshift "_h2o_results_['#{guid}'] = do ->"
+    block.unshift "_h2o_results_['#{guid}'].push do ->"
 
     # join and proceed
     go null, join block, '\n'
@@ -481,7 +502,7 @@ traverseJavascriptScoped = (scopes, parentScope, parent, key, node, f) ->
 createRootScope = (sandbox) ->
   (program, go) ->
     try
-      rootScope = parseDeclarations program.body[0].expression.right.callee.body
+      rootScope = parseDeclarations program.body[0].expression.arguments[0].callee.body
 
       for name of sandbox.context
         rootScope[name] =
@@ -557,22 +578,54 @@ generateJavascript = (program, go) ->
     return go exception 'Error generating javascript', error
 
 compileJavascript = (js, go) ->
-  debug js
   try
-    closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', js
+    closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', 'show', js
     go null, closure
   catch error
     go exception 'Error compiling javascript', error
 
-executeJavascript = (sandbox) ->
+executeJavascript = (sandbox, show) ->
   (closure, go) ->
     try
-      go null, closure sandbox.routines, sandbox.context, sandbox.results
+      go null, closure sandbox.routines, sandbox.context, sandbox.results, show
     catch error
       go exception 'Error executing javascript', error
 
-Flow.Coffeescript = (_, sandbox) ->
-  render: (guid, input, go) ->
+Flow.Coffeescript = (_, guid, sandbox) ->
+
+  show = (args...) ->
+    for arg in args
+      sandbox.results[guid].push arg
+    show
+
+  render = (ft) -> (go) ->
+    if ft?.isFuture
+      ft (error, result) ->
+        if error
+          go exception 'Error evaluating cell', error
+        else
+          if ft.render
+            ft.render result, (error, result) ->
+              if error
+                go exception 'Error rendering cell output', error
+              else
+                go null, result 
+          else if ft.print
+            go null,
+              text: ft.print result #TODO implement chrome dev tools style JSON inspector
+              template: 'flow-raw'
+          else
+            #XXX pick smarter renderers based on content
+            go null,
+              text: ft
+              template: 'flow-raw'
+    else
+      go null,
+        text: ft
+        template: 'flow-raw'
+
+  render: (input, go) ->
+    sandbox.results[guid] = []
     tasks = [
       safetyWrapCoffeescript guid
       compileCoffeescript
@@ -582,38 +635,16 @@ Flow.Coffeescript = (_, sandbox) ->
       rewriteJavascript sandbox
       generateJavascript
       compileJavascript
-      executeJavascript sandbox
+      executeJavascript sandbox, show
     ]
-    (async tasks) input, (error, result) ->
+    (pipe tasks) input, (error, result) ->
       if error
         go error
       else
-        debug sandbox
-        ft = sandbox.results[guid] 
-        if ft?.isFuture
-          ft (error, result) ->
-            if error
-              go exception 'Error evaluating cell', error
-            else
-              if ft.render
-                ft.render result, (error, result) ->
-                  if error
-                    go exception 'Error rendering cell output', error
-                  else
-                    go null, result 
-              else if ft.print
-                go null,
-                  text: ft.print result #TODO implement chrome dev tools style JSON inspector
-                  template: 'flow-raw'
-              else
-                #XXX pick smarter renderers based on content
-                go null,
-                  text: ft
-                  template: 'flow-raw'
-        else
-          go null,
-            text: ft
-            template: 'flow-raw'
+        fts = sandbox.results[guid] 
+        tasks = map (if fts.length then fts else [ result ]), render
+        (iterate tasks) (results) ->
+          go null, results
 
 Flow.Repl = (_) ->
   _cells = nodes$ []
@@ -634,7 +665,7 @@ Flow.Repl = (_) ->
     h5: -> Flow.HtmlTag _, 'h5'
     h6: -> Flow.HtmlTag _, 'h6'
     md: -> Flow.Markdown _
-    cs: -> Flow.Coffeescript _, _sandbox
+    cs: (guid) -> Flow.Coffeescript _, guid, _sandbox
     raw: -> Flow.Raw _
 
   countLines = (text) ->
@@ -660,9 +691,9 @@ Flow.Repl = (_) ->
     return
 
   createCell = (type='cs', input='') ->
-    _guid = uniqueId()
+    _guid = do uniqueId
     _type = node$ type
-    _renderer = lift$ _type, (type) -> _renderers[type]()
+    _renderer = lift$ _type, (type) -> _renderers[type] _guid
     _isSelected = node$ no
     _isActive = node$ no
     _hasError = node$ no
@@ -670,8 +701,8 @@ Flow.Repl = (_) ->
     _isReady = lift$ _isBusy, (isBusy) -> not isBusy
     _hasInput = node$ yes
     _input = node$ input
-    _output = node$ null
-    _hasOutput = lift$ _output, (output) -> if output? then yes else no
+    _outputs = nodes$ []
+    _hasOutput = lift$ _outputs, (outputs) -> outputs.length > 0
     _lineCount = lift$ _input, countLines
 
     # This is a shim.
@@ -683,7 +714,7 @@ Flow.Repl = (_) ->
       if isActive
         selectCell self
         _hasInput yes
-        _output null if _renderer().isCode is no
+        _outputs [] if _renderer().isCode is no
       return
 
     # deactivate when deselected
@@ -701,20 +732,29 @@ Flow.Repl = (_) ->
       return unless input
       renderer = _renderer()
       _isBusy yes
-      renderer.render _guid, input, (error, result) ->
+      renderer.render input, (error, results) ->
         if error
           _hasError yes
           if error.cause?
-            _output
+            _outputs [
               error: error
               template: 'flow-error'
+            ]
           else
-            _output
+            _outputs [
               text: JSON.stringify error, null, 2
               template: 'flow-raw'
+            ]
         else
           _hasError no
-          _output result
+          outputs = for [ error, result ] in results
+            if error
+              _hasError yes
+              error
+            else
+              result
+
+          _outputs outputs
           _hasInput renderer.isCode isnt no
 
         _isBusy no
@@ -732,7 +772,7 @@ Flow.Repl = (_) ->
       isReady: _isReady
       input: _input
       hasInput: _hasInput
-      output: _output
+      outputs: _outputs
       hasOutput: _hasOutput
       lineCount: _lineCount
       select: select
@@ -740,6 +780,7 @@ Flow.Repl = (_) ->
       execute: execute
       _cursorPosition: _cursorPosition
       cursorPosition: -> _cursorPosition.read()
+      templateOf: templateOf
       template: 'flow-cell'
 
   cloneCell = (cell) ->
@@ -963,7 +1004,7 @@ Flow.Repl = (_) ->
   initialize()
 
   cells: _cells
-  template: (view) -> view.template
+  templateOf: templateOf
 
 $ ->
   window.flow = flow = Flow.Application do Flow.ApplicationContext

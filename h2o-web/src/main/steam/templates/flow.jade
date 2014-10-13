@@ -33,7 +33,7 @@ html(lang='en')
     .container
       .f-header
         img.f-logo(src="img/flow.png")
-      .f-repl(data-bind='template:{ name:template, foreach:cells }')
+      .f-repl(data-bind='template:{ name:templateOf, foreach:cells }')
     // /ko
     
     script(type="text/html" id="flow-h1")
@@ -95,9 +95,7 @@ html(lang='en')
           .progress-bar.progress-bar-striped.progress-bar-warning.active(role='progressbar' style='width:100%')
             span.sr-only Computing&hellip;
         // /ko
-        // ko with:output
-        .f-cell-output(data-bind='template:template, data:$data')
-        // /ko
+        .f-cell-outputs(data-bind='template: { name: templateOf, foreach:outputs }')
 
     script(src='//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.2/highlight.min.js')
     script(src='js/lib-flow.js')
