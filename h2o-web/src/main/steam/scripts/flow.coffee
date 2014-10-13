@@ -390,7 +390,7 @@ safetyWrapCoffeescript = (guid) ->
     block = map lines, (line) -> '  ' + line
 
     # enclose in execute-immediate closure
-    block.unshift "_h2o_results_['#{guid}'].push do ->"
+    block.unshift "_h2o_results_['#{guid}'].implicits.push do ->"
 
     # join and proceed
     go null, join block, '\n'
@@ -592,10 +592,9 @@ executeJavascript = (sandbox, show) ->
       go exception 'Error executing javascript', error
 
 Flow.Coffeescript = (_, guid, sandbox) ->
-
-  show = (args...) ->
-    for arg in args
-      sandbox.results[guid].push arg
+  show = (arg) ->
+    if arg isnt show
+      sandbox.results[guid].explicits.push arg
     show
 
   render = (ft) -> (go) ->
@@ -625,7 +624,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         template: 'flow-raw'
 
   render: (input, go) ->
-    sandbox.results[guid] = []
+    sandbox.results[guid] = implicits: [], explicits: []
     tasks = [
       safetyWrapCoffeescript guid
       compileCoffeescript
@@ -641,10 +640,9 @@ Flow.Coffeescript = (_, guid, sandbox) ->
       if error
         go error
       else
-        fts = sandbox.results[guid] 
-        tasks = map (if fts.length then fts else [ result ]), render
-        (iterate tasks) (results) ->
-          go null, results
+        { implicits, explicits } = sandbox.results[guid]
+        tasks = map (if explicits.length then explicits else implicits), render
+        (iterate tasks) (results) -> go null, results
 
 Flow.Repl = (_) ->
   _cells = nodes$ []
