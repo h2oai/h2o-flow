@@ -78,6 +78,15 @@ ko.bindingHandlers.autoResize =
             .height element.scrollHeight
     return
 
+ko.bindingHandlers.dom =
+  update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    arg = ko.unwrap valueAccessor()
+    if arg
+      $element = $ element
+      $element.empty()
+      $element.append arg
+    return
+
 # Like _.compose, but async. 
 # Equivalent to caolan/async.waterfall()
 async = (tasks) ->
@@ -102,6 +111,7 @@ deepClone = (obj) ->
 
 Flow.Application = (_) ->
   _view = Flow.Repl _
+  Flow.H2O _
   Flow.DialogManager _
   
   context: _
@@ -110,6 +120,8 @@ Flow.Application = (_) ->
 Flow.ApplicationContext = (_) ->
   context$
     ready: do edges$
+    requestJob: do edge$
+    requestJobs: do edge$
 
 Flow.DialogManager = (_) ->
 
@@ -227,30 +239,30 @@ Flow.H2O = (_) ->
   link$ _.requestJob, requestJob
 
 Flow.Routines = (_) ->
-  _future = (f, args) ->
+  _fork = (f, args) ->
     self = (go) ->
       if self.settled
-        # continue with cached error/result
+        # proceed with cached error/result
         if self.rejected
           go self.error
         else
           go null, self.result
       else
-        apply f, [null]
-          .concat args
-          .concat (error, result) ->
-            if error
-              self.error = error
-              self.fulfilled = no
-              self.rejected = yes
-              go error
-            else
-              self.result = result
-              self.fulfilled = yes
-              self.rejected = no
-              go null, result
-            self.settled = yes
-            self.pending = no
+        _join args, (error, args) ->
+          apply f, null,
+            args.concat (error, result) ->
+              if error
+                self.error = error
+                self.fulfilled = no
+                self.rejected = yes
+                go error
+              else
+                self.result = result
+                self.fulfilled = yes
+                self.rejected = no
+                go null, result
+              self.settled = yes
+              self.pending = no
 
     self.method = f
     self.args = args
@@ -263,7 +275,11 @@ Flow.Routines = (_) ->
 
     self
 
-  collate = (args..., go) ->
+  fork = (f, args...) -> _fork f, args
+
+  _join = (args, go) ->
+    return go null, [] if args.length is 0
+
     _tasks = [] 
     _results = []
 
@@ -291,36 +307,22 @@ Flow.Routines = (_) ->
             _settled = yes
             go null, _results
         return
+    return
 
-  future = (f, args...) -> _future f, args
+  renderable = (f, args..., render) ->
+    ft = _fork f, args
+    ft.render = render
+    ft
 
-  renderJobs = (ft, results) ->
+  renderJobs = (jobs, go) ->
+    go null,
+      output: JSON.stringify jobs
+      template: 'flow-dom'
 
-  renderJob = (ft, result) ->
-
-  lookupRenderer = (method) ->
-    switch method
-      when jobs
-        renderJobs
-      when job
-        renderJob
-    
-#  show = (arg) ->
-#    if arg
-#      if arg.isFuture
-#        arg (error, result) ->
-#          if error
-#            error:
-#              message: "Error evaluating future"
-#              cause: error
-#          else
-#            renderer = lookupRenderer arg.method
-#            if renderer
-#              renderer arg, result
-#            else
-#    else
-#      #XXX print usage
-#      throw new Error "Illegal Argument: '#{arg}'"
+  renderJob = (job, go) ->
+    go null,
+      output: JSON.stringify job
+      template: 'flow-dom'
 
   frames = (arg) ->
 
@@ -331,11 +333,11 @@ Flow.Routines = (_) ->
   model = (arg) ->
 
   jobs = (arg) ->
-    future _.requestJobs
+    renderable _.requestJobs, renderJobs
 
   job = (arg) ->
     if isString arg
-      future _.requestJob, arg
+      renderable _.requestJob, arg, renderJob
     else if isObject arg
       if arg.key?
         job arg.key
@@ -346,6 +348,10 @@ Flow.Routines = (_) ->
       #XXX print usage
       throw new Error "Illegal Argument: '#{arg}'"
 
+  fork: fork
+  join: (args..., go) -> _join args, go
+  call: (go, args...) -> _join args, go
+  apply: (go, args) -> _join args, go
   jobs: jobs
   job: job
 
@@ -421,7 +427,7 @@ traverseJavascript = (parent, key, node, f) ->
         traverseJavascript node, i, child, f
         f node, i, child
   else 
-    for own i, child of node
+    for i, child of node
       if isObject child
         traverseJavascript node, i, child, f
         f node, i, child
@@ -598,9 +604,31 @@ Flow.Coffeescript = (_, sandbox) ->
         go error
       else
         debug sandbox
-        go null,
-          text: sandbox.results[guid]
-          template: 'flow-raw'
+        ft = sandbox.results[guid] 
+        if ft?.isFuture
+          ft (error, result) ->
+            if error
+              go
+                message: 'Error evaluating cell'
+                cause: error
+            else
+              if ft.render
+                ft.render result, (error, result) ->
+                  if error
+                    go
+                      message: 'Error rendering cell output'
+                      cause: error
+                  else
+                    go null, result 
+              else
+                #XXX pick smarter renderers based on content
+                go null,
+                  text: ft
+                  template: 'flow-raw'
+        else
+          go null,
+            text: ft
+            template: 'flow-raw'
 
 Flow.Repl = (_) ->
   _cells = nodes$ []
