@@ -743,7 +743,9 @@ Flow.Repl = (_) ->
 
     execute = (go) ->
       input = _input().trim()
-      return unless input
+      unless input
+        return go() if go
+
       renderer = _renderer()
       _isBusy yes
       renderer.render input, (error, results) ->
@@ -772,9 +774,9 @@ Flow.Repl = (_) ->
           _hasInput renderer.isCode
 
         _isBusy no
+        go() if go
 
       _isActive no
-      go() if go
 
     self =
       guid: _guid
