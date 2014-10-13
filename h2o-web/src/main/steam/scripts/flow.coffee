@@ -109,6 +109,9 @@ async = (tasks) ->
 deepClone = (obj) ->
   JSON.parse JSON.stringify obj
 
+
+exception = (message, cause) -> message: message, cause: cause
+
 Flow.Application = (_) ->
   _view = Flow.Repl _
   Flow.H2O _
@@ -297,9 +300,7 @@ Flow.Routines = (_) ->
         return if _settled
         if error
           _settled = yes
-          go
-            message: "Error evalutating future[#{task.resultIndex}]"
-            cause: error
+          go exception "Error evalutating future[#{task.resultIndex}]", error
         else
           _results[task.resultIndex] = result
           _actual++
@@ -377,17 +378,13 @@ compileCoffeescript = (cs, go) ->
   try
     go null, CoffeeScript.compile cs, bare: yes
   catch error
-    go
-      message: 'Error compiling coffee-script'
-      cause: error
+    go exception 'Error compiling coffee-script', error
 
 parseJavascript = (js, go) ->
   try
     go null, esprima.parse js
   catch error
-    go
-      message: 'Error parsing javascript expression'
-      cause: error
+    go exception 'Error parsing javascript expression', error
 
 
 identifyDeclarations = (node) ->
@@ -493,9 +490,7 @@ createRootScope = (sandbox) ->
       go null, rootScope, program
 
     catch error
-      go
-        message: 'Error parsing root scope'
-        cause: error
+      go exception 'Error parsing root scope', error
 
 #TODO DO NOT call this for raw javascript:
 # Require alternate strategy: 
@@ -516,9 +511,7 @@ removeHoistedDeclarations = (rootScope, program, go) ->
           node.declarations = declarations
     go null, rootScope, program
   catch error
-    go
-      message: 'Error rewriting javascript'
-      cause: error
+    go exception 'Error rewriting javascript', error
 
 
 createGlobalScope = (rootScope, routines) ->
@@ -555,17 +548,13 @@ rewriteJavascript = (sandbox) ->
               name: identifier.name
       go null, program
     catch error
-      go
-        message: 'Error rewriting javascript'
-        cause: error
+      go exception 'Error rewriting javascript', error
 
 generateJavascript = (program, go) ->
   try
     go null, escodegen.generate program
   catch error
-    return go
-      message: 'Error generating javascript'
-      cause: error
+    return go exception 'Error generating javascript', error
 
 compileJavascript = (js, go) ->
   debug js
@@ -573,18 +562,14 @@ compileJavascript = (js, go) ->
     closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', js
     go null, closure
   catch error
-    go
-      message: 'Error compiling javascript'
-      cause: error
+    go exception 'Error compiling javascript', error
 
 executeJavascript = (sandbox) ->
   (closure, go) ->
     try
       go null, closure sandbox.routines, sandbox.context, sandbox.results
     catch error
-      go
-        message: 'Error executing javascript'
-        cause: error
+      go exception 'Error executing javascript', error
 
 Flow.Coffeescript = (_, sandbox) ->
   render: (guid, input, go) ->
@@ -608,18 +593,18 @@ Flow.Coffeescript = (_, sandbox) ->
         if ft?.isFuture
           ft (error, result) ->
             if error
-              go
-                message: 'Error evaluating cell'
-                cause: error
+              go exception 'Error evaluating cell', error
             else
               if ft.render
                 ft.render result, (error, result) ->
                   if error
-                    go
-                      message: 'Error rendering cell output'
-                      cause: error
+                    go exception 'Error rendering cell output', error
                   else
                     go null, result 
+              else if ft.print
+                go null,
+                  text: ft.print result #TODO implement chrome dev tools style JSON inspector
+                  template: 'flow-raw'
               else
                 #XXX pick smarter renderers based on content
                 go null,
