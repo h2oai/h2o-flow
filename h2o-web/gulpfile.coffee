@@ -54,7 +54,7 @@ config =
       'lib/hasher/dist/js/hasher.js'
       'lib/bootstrap/dist/js/bootstrap.js'
       'lib/d3/d3.js'
-      'lib/knockout/knockout.js'
+      'lib/knockout/knockout.debug.js'
     ]
     repljs: [
       'lib/jquery/dist/jquery.js'
@@ -68,7 +68,7 @@ config =
       'lib/bootstrap/dist/js/bootstrap.js'
       'lib/d3/d3.js'
       'lib/marked/lib/marked.js'
-      'lib/knockout/knockout.js'
+      'lib/knockout/knockout.debug.js'
     ]
     css: [
       'lib/fontawesome/css/font-awesome.css'
