@@ -150,30 +150,29 @@ Flow.DialogManager = (_) ->
 Flow.HtmlTag = (_, level) ->
   isCode: no
   render: (input, go) ->
-    go null, [
+    output = 
       text: input.trim() or '(Untitled)'
       template: "flow-#{level}"
-    ]
+    go null, [ [ null , output ] ]
 
 Flow.Markdown = (_) ->
   isCode: no
   render: (input, go) ->
     try
-      html = marked input.trim() or '(No content)'
-      go null, [
-        html: html
+      output =
+        html: marked input.trim() or '(No content)'
         template: 'flow-html'
-      ]
+      go null, [ [ null , output ] ]
     catch error
       go error
 
 Flow.Raw = (_) ->
   isCode: no
   render: (input, go) ->
-    go null, [
+    output =
       text: input
       template: 'flow-raw'
-    ]
+    go null, [ [ null , output ] ]
 
 objectToHtmlTable = (obj) ->
   if obj is undefined
@@ -623,6 +622,21 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         text: ft
         template: 'flow-raw'
 
+
+  pickResults = (results) ->
+    { implicits, explicits } = results
+    if explicits.length
+      return explicits
+    else
+      implicit = head implicits
+      if isFunction implicit
+        for name, routine of sandbox.routines
+          if implicit is routine
+            show routine()
+            return explicits
+      return implicits
+
+  isCode: yes
   render: (input, go) ->
     sandbox.results[guid] = implicits: [], explicits: []
     tasks = [
@@ -640,8 +654,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
       if error
         go error
       else
-        { implicits, explicits } = sandbox.results[guid]
-        tasks = map (if explicits.length then explicits else implicits), render
+        tasks = map (pickResults sandbox.results[guid]), render
         (iterate tasks) (results) -> go null, results
 
 Flow.Repl = (_) ->
@@ -712,7 +725,7 @@ Flow.Repl = (_) ->
       if isActive
         selectCell self
         _hasInput yes
-        _outputs [] if _renderer().isCode is no
+        _outputs [] unless _renderer().isCode
       return
 
     # deactivate when deselected
@@ -753,7 +766,7 @@ Flow.Repl = (_) ->
               result
 
           _outputs outputs
-          _hasInput renderer.isCode isnt no
+          _hasInput renderer.isCode
 
         _isBusy no
 
