@@ -111,20 +111,31 @@ html(lang='en')
           // /ko
 
     script(type="text/html" id="flow-job")
+      h3 Job
+      // ko if:exception
+      div(data-bind="template: { name:'flow-error', data:exception }")
+      // /ko
       // ko with:jobView
-      dl.dl-horizontal
-        dt Key
-        dd(data-bind='text:job.key.name')
-        dt Description
-        dd(data-bind='text:job.description')
-        dt Destination Key
-        dd(data-bind='text:job.dest.name')
-        dt Milliseconds
-        dd(data-bind='text:job.msec')
-        dt Progress
-        dd(data-bind='text:job.progress')
-        dt Exception
-        dd(data-bind='text:job.exception')
+      table.f-table-horizontal
+        tbody
+          tr
+            td.f-narrow Key
+            td.f-wide(data-bind='text:job.key.name')
+          tr
+            td.f-narrow Description
+            td.f-wide(data-bind='text:job.description')
+          tr
+            td.f-narrow Destination Key
+            td.f-wide(data-bind='text:job.dest.name')
+          tr
+            td.f-narrow Milliseconds
+            td.f-wide(data-bind='text:job.msec')
+          tr
+            td.f-narrow Progress
+            td.f-wide(data-bind='text:job.progress')
+          tr
+            td.f-narrow Exception
+            td.f-wide(data-bind='text:job.exception')
       // /ko
 
 

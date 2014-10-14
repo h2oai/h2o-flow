@@ -23,7 +23,7 @@ smallcaps()
   font-weight 300
   text-transform uppercase
   font-size 72%
-  letter-spacing 2px
+  letter-spacing 1px
 
 body
   font-family Roboto, 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif
@@ -54,7 +54,7 @@ input
       th
         border-bottom 1px solid #ccc
 
-th, dt
+th
   smallcaps()
 
 
@@ -144,6 +144,23 @@ th, dt
   pre
     background inherit
 
+table.f-table-horizontal
+  width 100%
+  td
+    padding 0 5px
+    vertical-align top
+  td:first-child
+    smallcaps()
+    padding-left 0
+    text-align right
+  td:last-child
+    padding-right 0
+
+td.f-narrow
+  white-space nowrap
+
+td.f-wide
+  width 99%
 
 .f-button
   border-radius 12px

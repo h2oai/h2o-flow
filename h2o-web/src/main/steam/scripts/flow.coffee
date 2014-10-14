@@ -429,11 +429,14 @@ Flow.Routines = (_) ->
       template: 'flow-jobs'
 
   renderJob = (job, go) ->
+    _exception = node$ null
+
     createJobView = (job) ->
       job: job
 
     go null,
       jobView: createJobView job
+      exception: _exception
       template: 'flow-job'
 
   frames = (arg) ->
