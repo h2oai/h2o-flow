@@ -10,7 +10,7 @@ html(lang='en')
     link(rel='stylesheet', href='css/bootstrap.css', type='text/css')
     link(rel='stylesheet', href='css/flow.css', type='text/css')
     link(rel='stylesheet', href='//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.2/styles/tomorrow.min.css', type='text/css')
-    link(rel='stylesheet', href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600', type='text/css')
+    link(rel='stylesheet', href='http://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600', type='text/css')
 
     //- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries
     //- WARNING: Respond.js doesn't work if you view the page via file://
@@ -76,7 +76,12 @@ html(lang='en')
     script(type="text/html" id="flow-help")
 
     script(type="text/html" id="flow-jobs")
-      table.table.table-hover.table-condensed
+      h3 Jobs
+      // ko if:exception
+      div(data-bind="template: { name:'flow-error', data:exception }")
+      // /ko
+      // ko if:hasJobViews
+      table.table.table-condensed
         thead
           tr
             th Key
@@ -86,14 +91,28 @@ html(lang='en')
           // ko foreach:jobViews
           tr
             td
-              a(data-bind='text:job.key.name, click:inspect')
+              a(href='#' data-bind='text:job.key.name, click:inspect')
             td(data-bind='text:job.description')
             td(data-bind='text:job.status')
+          // /ko
+      // /ko
+      // ko ifnot:hasJobViews
+      bq Your H<sub>2</sub>O cloud has no jobs.
+      // /ko
+      div
+        button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
+          // ko if:isLive
+          i.fa.fa-refresh.fa-spin
+          | Stop
+          // /ko
+          // ko ifnot:isLive
+          i.fa.fa-refresh
+          | Refresh
           // /ko
 
     script(type="text/html" id="flow-job")
       // ko with:jobView
-      dl
+      dl.dl-horizontal
         dt Key
         dd(data-bind='text:job.key.name')
         dt Description
@@ -123,12 +142,23 @@ html(lang='en')
       .f-cell(data-bind="click:select, css:{ 'f-cell-selected':isSelected, 'f-cell-active':isActive, 'f-cell-ready':isReady, 'f-cell-busy':isBusy, 'f-cell-error':hasError }")
         .f-cell-type(data-bind="text:type")
         .f-cell-input(data-bind="visible:hasInput, css:{ 'f-cell-has-output':hasOutput }")
-          textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_cursorPosition, autoResize:true")
-        // ko if:isBusy
-        .progress
-          .progress-bar.progress-bar-striped.progress-bar-warning.active(role='progressbar' style='width:100%')
-            span.sr-only Computing&hellip;
-        // /ko
+          table(style='width:100%')
+            tbody
+              tr
+                td 
+                  textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_cursorPosition, autoResize:true")
+                td(style='width:20px;text-align:right;vertical-align:top')
+                  // ko ifnot:isBusy
+                  // ko if:hasError
+                  i.fa.fa-exclamation-circle(style='color:red' title='Error')
+                  // /ko
+                  // ko ifnot:hasError
+                  i.fa.fa-terminal(title='Waiting for input')
+                  // /ko
+                  // /ko
+                  // ko if:isBusy
+                  i.fa.fa-cog.fa-spin(title='Computing...')
+                  // /ko
         .f-cell-outputs(data-bind='visible:isOutputVisible, template: { name: templateOf, foreach:outputs }')
 
     script(src='//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.2/highlight.min.js')

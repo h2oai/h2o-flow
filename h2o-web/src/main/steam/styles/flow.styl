@@ -19,9 +19,18 @@ f-color-orange = #F5A623
 monospace()
   font-family 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace
 
+smallcaps()
+  font-weight 300
+  text-transform uppercase
+  font-size 72%
+  letter-spacing 2px
+
 body
-  font-family 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif
+  font-family Roboto, 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif
   color #777
+
+h1, h2, h3
+  font-weight 300
 
 code, kbd, pre, samp
   monospace()
@@ -39,6 +48,14 @@ input
   &:focus
     outline none
 
+.table
+  thead
+    tr
+      th
+        border-bottom 1px solid #ccc
+
+th, dt
+  smallcaps()
 
 
 //
@@ -126,4 +143,25 @@ input
 .f-raw-output
   pre
     background inherit
+
+
+.f-button
+  border-radius 12px
+  border 1px solid #ccc
+  padding 2px 12px
+  font-size: 85%
+  background-color: #fff
+  .fa
+    margin-right 5px
+  &:hover
+    background-color #eee
+    border-color #aaa
+  &.f-button-toggle
+    color #fff
+    background-color #777
+    border-color #777
+    &:hover
+      background-color #333
+      border-color #333
+    
 

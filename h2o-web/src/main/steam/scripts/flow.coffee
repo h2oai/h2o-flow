@@ -383,19 +383,52 @@ Flow.Routines = (_) ->
     ft
 
   renderJobs = (jobs, go) ->
+    _jobViews = nodes$ []
+    _hasJobViews = lift$ _jobViews, (jobViews) -> jobViews.length > 0
+    _isLive = node$ no
+    _isBusy = node$ no
+    _exception = node$ null
+
     createJobView = (job) ->
       inspect = ->
         _.insertAndExecuteCell 'cs', "job '#{job.key.name}'" 
 
       job: job
       inspect: inspect
+
+    toggleRefresh = ->
+      _isLive not _isLive()
+
+    refresh = ->
+      _isBusy yes
+      _.requestJobs (error, jobs) ->
+        _isBusy no
+        if error
+          _exception exception 'Error fetching jobs', error
+          _isLive no
+        else
+          _jobViews map jobs, createJobView
+          delay refresh, 2000 if _isLive()
+
+    apply$ _isLive, (isLive) ->
+      refresh() if isLive
+
+    initialize = ->
+      _jobViews map jobs, createJobView
+
+    initialize()
     
     go null,
-      jobViews: map jobs, createJobView
+      jobViews: _jobViews
+      hasJobViews: _hasJobViews
+      isLive: _isLive
+      isBusy: _isBusy
+      toggleRefresh: toggleRefresh
+      refresh: refresh
+      exception: _exception
       template: 'flow-jobs'
 
   renderJob = (job, go) ->
-
     createJobView = (job) ->
       job: job
 
