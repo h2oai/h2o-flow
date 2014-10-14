@@ -74,7 +74,41 @@ html(lang='en')
       .f-dom-output(data-bind="dom:output")
 
     script(type="text/html" id="flow-help")
-      
+
+    script(type="text/html" id="flow-jobs")
+      table.table.table-hover.table-condensed
+        thead
+          tr
+            th Key
+            th Description
+            th Status
+        tbody
+          // ko foreach:jobViews
+          tr
+            td
+              a(data-bind='text:job.key.name, click:inspect')
+            td(data-bind='text:job.description')
+            td(data-bind='text:job.status')
+          // /ko
+
+    script(type="text/html" id="flow-job")
+      // ko with:jobView
+      dl
+        dt Key
+        dd(data-bind='text:job.key.name')
+        dt Description
+        dd(data-bind='text:job.description')
+        dt Destination Key
+        dd(data-bind='text:job.dest.name')
+        dt Milliseconds
+        dd(data-bind='text:job.msec')
+        dt Progress
+        dd(data-bind='text:job.progress')
+        dt Exception
+        dd(data-bind='text:job.exception')
+      // /ko
+
+
     script(type="text/html" id="flow-error")
       .alert.alert-danger(role='alert')
         // ko with:error

@@ -87,6 +87,35 @@ ko.bindingHandlers.dom =
       $element.append arg
     return
 
+typeOf = (a) ->
+  type = Object::toString.call a
+  if a is null
+    return 'null'
+  else if a is undefined
+    return 'undefined'
+  else if a is true or a is false or type is '[object Boolean]'
+    return 'boolean'
+  else
+    switch type
+      when '[object String]'
+        return 'string'
+      when '[object Number]'
+        return 'number'
+      when '[object Function]'
+        return 'function'
+      when '[object Object]'
+        return 'object'
+      when '[object Array]'
+        return 'array'
+      when '[object Arguments]'
+        return 'arguments'
+      when '[object Date]'
+        return 'date'
+      when '[object RegExp]'
+        return 'regexp'
+      else
+        return type
+
 templateOf = (view) -> view.template
 
 # Like _.compose, but async. 
@@ -131,19 +160,30 @@ deepClone = (obj) ->
 
 exception = (message, cause) -> message: message, cause: cause
 
+
+Flow.Sandbox = (_) ->
+  context: {}
+  results: {}
+  routines: Flow.Routines _
+
 Flow.Application = (_) ->
-  _view = Flow.Repl _
+  _sandbox = Flow.Sandbox _
+  _renderers = Flow.Renderers _, _sandbox
+  _repl = Flow.Repl _, _renderers
+
   Flow.H2O _
   Flow.DialogManager _
   
   context: _
-  view: _view
+  view: _repl
 
 Flow.ApplicationContext = (_) ->
   context$
     ready: do edges$
     requestJob: do edge$
     requestJobs: do edge$
+    selectCell: do edge$
+    insertAndExecuteCell: do edge$
 
 Flow.DialogManager = (_) ->
 
@@ -248,16 +288,20 @@ Flow.H2O = (_) ->
     request (composePath path, opts), go
 
   requestJobs = (go) ->
-    request '/Jobs.json', go
+    request '/Jobs.json', (error, result) ->
+      if error
+        go exception 'Error fetching jobs', error
+      else
+        go null, result.jobs 
 
   requestJob = (key, go) ->
     #opts = key: encodeURIComponent key
     #requestWithOpts '/Job.json', opts, go
     request "/Jobs.json/#{encodeURIComponent key}", (error, result) ->
       if error
-        go error, result
+        go exception "Error fetching job '#{key}'", error
       else
-        go error, result.jobs[0]
+        go null, head result.jobs
 
   link$ _.requestJobs, requestJobs
   link$ _.requestJob, requestJob
@@ -313,6 +357,8 @@ Flow.Routines = (_) ->
       else
         _results[i] = arg
 
+    return go null, _results if _tasks.length is 0
+
     _actual = 0
     _settled = no
 
@@ -337,14 +383,25 @@ Flow.Routines = (_) ->
     ft
 
   renderJobs = (jobs, go) ->
+    createJobView = (job) ->
+      inspect = ->
+        _.insertAndExecuteCell 'cs', "job '#{job.key.name}'" 
+
+      job: job
+      inspect: inspect
+    
     go null,
-      output: JSON.stringify jobs
-      template: 'flow-dom'
+      jobViews: map jobs, createJobView
+      template: 'flow-jobs'
 
   renderJob = (job, go) ->
+
+    createJobView = (job) ->
+      job: job
+
     go null,
-      output: JSON.stringify job
-      template: 'flow-dom'
+      jobView: createJobView job
+      template: 'flow-job'
 
   frames = (arg) ->
 
@@ -354,21 +411,56 @@ Flow.Routines = (_) ->
 
   model = (arg) ->
 
-  jobs = (arg) ->
+  jobs = ->
     renderable _.requestJobs, renderJobs
 
   job = (arg) ->
-    if isString arg
-      renderable _.requestJob, arg, renderJob
-    else if isObject arg
-      if arg.key?
-        job arg.key
+    switch typeOf arg
+      when 'string'
+        renderable _.requestJob, arg, renderJob
+      when 'object'
+        if arg.key?
+          job arg.key
+        else
+          #XXX print usage
+          throw new Error 'ni'
       else
         #XXX print usage
-        throw new Error "Illegal Argument: '#{arg}'"
-    else
-      #XXX print usage
-      throw new Error "Illegal Argument: '#{arg}'"
+        throw new Error 'ni'
+
+  ###
+  getUsageForFunction = (f) ->
+    switch f
+      when help
+        name: 'help'
+        examples: []
+        description: 'Display help on a topic or function.'
+        syntax: [
+          'help topic'
+          'help function'
+        ]
+        parameters: [
+          'rgb': 'Number: foo'
+        ]
+        returns: 'HelpTopic: The help topic'
+        related: null
+      when jobs
+
+      when job
+
+      else
+        null
+
+  help = (arg) ->
+    switch typeOf arg
+      when 'undefined'
+
+      when 'string'
+
+      when 'function'
+
+      else
+  ###
 
   fork: fork
   join: (args..., go) -> _join args, go
@@ -657,34 +749,128 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         tasks = map (pickResults sandbox.results[guid]), render
         (iterate tasks) (results) -> go null, results
 
-Flow.Repl = (_) ->
-  _sandbox =
-    context: {}
-    routines: Flow.Routines _
-    results: {}
+Flow.Renderers = (_, _sandbox) ->
+  h1: -> Flow.HtmlTag _, 'h1'
+  h2: -> Flow.HtmlTag _, 'h2'
+  h3: -> Flow.HtmlTag _, 'h3'
+  h4: -> Flow.HtmlTag _, 'h4'
+  h5: -> Flow.HtmlTag _, 'h5'
+  h6: -> Flow.HtmlTag _, 'h6'
+  md: -> Flow.Markdown _
+  cs: (guid) -> Flow.Coffeescript _, guid, _sandbox
+  raw: -> Flow.Raw _
 
+Flow.Cell = (_, _renderers, type='cs', input='') ->
+  _guid = do uniqueId
+  _type = node$ type
+  _renderer = lift$ _type, (type) -> _renderers[type] _guid
+  _isSelected = node$ no
+  _isActive = node$ no
+  _hasError = node$ no
+  _isBusy = node$ no
+  _isReady = lift$ _isBusy, (isBusy) -> not isBusy
+  _hasInput = node$ yes
+  _input = node$ input
+  _outputs = nodes$ []
+  _hasOutput = lift$ _outputs, (outputs) -> outputs.length > 0
+  _isOutputVisible = node$ yes
+  _isOutputHidden = lift$ _isOutputVisible, (visible) -> not visible
+
+  # This is a shim.
+  # The ko 'cursorPosition' custom binding attaches a read() method to this.
+  _cursorPosition = {}
+
+  # select and display input when activated
+  apply$ _isActive, (isActive) ->
+    if isActive
+      _.selectCell self
+      _hasInput yes
+      _outputs [] unless _renderer().isCode
+    return
+
+  # deactivate when deselected
+  apply$ _isSelected, (isSelected) ->
+    _isActive no unless isSelected
+
+  # tied to mouse-clicks on the cell
+  select = -> _.selectCell self
+
+  # tied to mouse-double-clicks on html content
+  activate = -> _isActive yes
+
+  execute = (go) ->
+    input = _input().trim()
+    unless input
+      if go
+        return go null
+      else
+        return
+
+    renderer = _renderer()
+    _isBusy yes
+    renderer.render input, (error, results) ->
+      if error
+        _hasError yes
+        if error.cause?
+          _outputs [
+            error: error
+            template: 'flow-error'
+          ]
+        else
+          _outputs [
+            text: JSON.stringify error, null, 2
+            template: 'flow-raw'
+          ]
+      else
+        _hasError no
+        outputs = for [ error, result ] in results
+          if error
+            _hasError yes
+            error
+          else
+            result
+
+        _outputs outputs
+        _hasInput renderer.isCode
+
+      _isBusy no
+      go _hasError() if go
+
+    _isActive no
+
+  self =
+    guid: _guid
+    type: _type
+    isSelected: _isSelected
+    isActive: _isActive
+    hasError: _hasError
+    isBusy: _isBusy
+    isReady: _isReady
+    input: _input
+    hasInput: _hasInput
+    outputs: _outputs
+    hasOutput: _hasOutput
+    isOutputVisible: _isOutputVisible
+    toggleOutput: -> _isOutputVisible not _isOutputVisible()
+    showOutput: -> _isOutputVisible yes
+    hideOutput: -> _isOutputVisible no
+    select: select
+    activate: activate
+    execute: execute
+    _cursorPosition: _cursorPosition
+    cursorPosition: -> _cursorPosition.read()
+    templateOf: templateOf
+    template: 'flow-cell'
+
+Flow.Repl = (_, _renderers) ->
   _cells = nodes$ []
   _selectedCell = null
   _selectedCellIndex = -1
   _clipboardCell = null
   _lastDeletedCell = null
 
-  _renderers =
-    h1: -> Flow.HtmlTag _, 'h1'
-    h2: -> Flow.HtmlTag _, 'h2'
-    h3: -> Flow.HtmlTag _, 'h3'
-    h4: -> Flow.HtmlTag _, 'h4'
-    h5: -> Flow.HtmlTag _, 'h5'
-    h6: -> Flow.HtmlTag _, 'h6'
-    md: -> Flow.Markdown _
-    cs: (guid) -> Flow.Coffeescript _, guid, _sandbox
-    raw: -> Flow.Raw _
-
-  countLines = (text) ->
-    newlineCount = 1
-    for character in text when character is '\n'
-      newlineCount++
-    newlineCount
+  createCell = (type='cs', input='') ->
+    Flow.Cell _, _renderers, type, input
 
   checkConsistency = ->
     for cell, i in _cells()
@@ -701,107 +887,6 @@ Flow.Repl = (_) ->
     _selectedCellIndex = _cells.indexOf _selectedCell
     checkConsistency()
     return
-
-  createCell = (type='cs', input='') ->
-    _guid = do uniqueId
-    _type = node$ type
-    _renderer = lift$ _type, (type) -> _renderers[type] _guid
-    _isSelected = node$ no
-    _isActive = node$ no
-    _hasError = node$ no
-    _isBusy = node$ no
-    _isReady = lift$ _isBusy, (isBusy) -> not isBusy
-    _hasInput = node$ yes
-    _input = node$ input
-    _outputs = nodes$ []
-    _hasOutput = lift$ _outputs, (outputs) -> outputs.length > 0
-    _isOutputVisible = node$ yes
-    _isOutputHidden = lift$ _isOutputVisible, (visible) -> not visible
-    _lineCount = lift$ _input, countLines
-
-    # This is a shim.
-    # The ko 'cursorPosition' custom binding attaches a read() method to this.
-    _cursorPosition = {}
-
-    # select and display input when activated
-    apply$ _isActive, (isActive) ->
-      if isActive
-        selectCell self
-        _hasInput yes
-        _outputs [] unless _renderer().isCode
-      return
-
-    # deactivate when deselected
-    apply$ _isSelected, (isSelected) ->
-      _isActive no unless isSelected
-
-    # tied to mouse-clicks on the cell
-    select = -> selectCell self
-
-    # tied to mouse-double-clicks on html content
-    activate = -> _isActive yes
-
-    execute = (go) ->
-      input = _input().trim()
-      unless input
-        return go() if go
-
-      renderer = _renderer()
-      _isBusy yes
-      renderer.render input, (error, results) ->
-        if error
-          _hasError yes
-          if error.cause?
-            _outputs [
-              error: error
-              template: 'flow-error'
-            ]
-          else
-            _outputs [
-              text: JSON.stringify error, null, 2
-              template: 'flow-raw'
-            ]
-        else
-          _hasError no
-          outputs = for [ error, result ] in results
-            if error
-              _hasError yes
-              error
-            else
-              result
-
-          _outputs outputs
-          _hasInput renderer.isCode
-
-        _isBusy no
-        go() if go
-
-      _isActive no
-
-    self =
-      guid: _guid
-      type: _type
-      isSelected: _isSelected
-      isActive: _isActive
-      hasError: _hasError
-      isBusy: _isBusy
-      isReady: _isReady
-      input: _input
-      hasInput: _hasInput
-      outputs: _outputs
-      hasOutput: _hasOutput
-      isOutputVisible: _isOutputVisible
-      toggleOutput: -> _isOutputVisible not _isOutputVisible()
-      showOutput: -> _isOutputVisible yes
-      hideOutput: -> _isOutputVisible no
-      lineCount: _lineCount
-      select: select
-      activate: activate
-      execute: execute
-      _cursorPosition: _cursorPosition
-      cursorPosition: -> _cursorPosition.read()
-      templateOf: templateOf
-      template: 'flow-cell'
 
   cloneCell = (cell) ->
     createCell cell.type(), cell.input()
@@ -857,11 +942,21 @@ Flow.Repl = (_) ->
     selectCell cell
     cell
 
-  insertCellAbove = ->
-    insertCell _selectedCellIndex, createCell 'cs'
+  insertCellAbove = (cell) ->
+    insertCell _selectedCellIndex, cell
 
-  insertCellBelow = ->
-    insertCell _selectedCellIndex + 1, createCell 'cs'
+  insertCellBelow = (cell) ->
+    insertCell _selectedCellIndex + 1, cell
+
+  insertNewCellAbove = ->
+    insertCellAbove createCell 'cs'
+
+  insertNewCellBelow = ->
+    insertCellBelow createCell 'cs'
+
+  insertCellBelowAndRun = (type, input) ->
+    cell = insertCellBelow createCell type, input
+    cell.execute()
 
   moveCellDown = ->
     cells = _cells()
@@ -916,7 +1011,7 @@ Flow.Repl = (_) ->
     no
 
   runCellAndInsertBelow = ->
-    _selectedCell.execute -> insertCellBelow()
+    _selectedCell.execute -> insertNewCellBelow()
     no
 
   #TODO ipython has inconsistent behavior here. seems to be doing runCellAndInsertBelow if executed on the lowermost cell.
@@ -970,8 +1065,8 @@ Flow.Repl = (_) ->
     [ 'j', 'select next cell', selectNextCell ]
     [ 'ctrl+k', 'move cell up', moveCellUp ]
     [ 'ctrl+j', 'move cell down', moveCellDown ]
-    [ 'a', 'insert cell above', insertCellAbove ]
-    [ 'b', 'insert cell below', insertCellBelow ]
+    [ 'a', 'insert cell above', insertNewCellAbove ]
+    [ 'b', 'insert cell below', insertNewCellBelow ]
     [ 'x', 'cut cell', cutCell ]
     [ 'c', 'copy cell', copyCell ]
     [ 'shift+v', 'paste cell above', pasteCellAbove ]
@@ -1031,7 +1126,10 @@ Flow.Repl = (_) ->
     push _cells, cell
     selectCell cell
 
-  initialize()
+    link$ _.selectCell, selectCell
+    link$ _.insertAndExecuteCell, insertCellBelowAndRun
+
+  link$ _.ready, initialize
 
   cells: _cells
   templateOf: templateOf
