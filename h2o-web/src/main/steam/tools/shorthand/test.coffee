@@ -242,6 +242,15 @@ foo.canvas.foo = bar
 foo.canvas.foo = bar;
 ===
 
+Does not affect object expressions
+---
+require 'context'
+x = canvas: 'bar'
+---
+var x;
+x = { canvas: 'bar' };
+===
+
 Transforms functions to invocations
 ---
 shift foo

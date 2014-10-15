@@ -66,6 +66,7 @@ rewrite = (ast, namespace) ->
     else if node.type is 'Identifier'
       return if parent.type is 'VariableDeclarator' and i is 'id' # ignore var declarations
       return if i is 'property' # ignore members
+      return if parent.type is 'Property' and i is 'key' # ignore object expressions / json attributes
       if parent.type is 'CallExpression'
         argCount = parent.arguments.length
         if expression = namespace["#{node.name}$#{argCount}"]
