@@ -75,68 +75,231 @@ html(lang='en')
 
     script(type="text/html" id="flow-help")
 
-    script(type="text/html" id="flow-jobs")
-      h3 Jobs
-      // ko if:exception
-      div(data-bind="template: { name:'flow-error', data:exception }")
-      // /ko
-      // ko if:hasJobViews
-      table.table.table-condensed
-        thead
-          tr
-            th Key
-            th Description
-            th Status
-        tbody
-          // ko foreach:jobViews
-          tr
-            td
-              a(href='#' data-bind='text:job.key.name, click:inspect')
-            td(data-bind='text:job.description')
-            td(data-bind='text:job.status')
-          // /ko
-      // /ko
-      // ko ifnot:hasJobViews
-      bq Your H<sub>2</sub>O cloud has no jobs.
-      // /ko
-      div
-        button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
-          // ko if:isLive
-          i.fa.fa-refresh.fa-spin
-          | Stop
-          // /ko
-          // ko ifnot:isLive
-          i.fa.fa-refresh
-          | Refresh
+    script(type="text/html" id="flow-parse-raw-input")
+      .f-widget
+        h3 
+          i.fa.fa-indent.f-icon
+          | Parse Raw Data
+
+        h4 Source Keys
+        .f-well
+          // ko foreach:sourceKeys
+          div
+            i.fa.fa-key.f-icon
+            span(data-bind='text:$data')
           // /ko
 
+        h4 Parse Configuration
+        table.f-table-horizontal.f-table-padded
+          tbody
+            tr
+              td.f-narrow Destination Key
+              td.f-wide
+                input.f-textbox(type='text' data-bind="value:destinationKey")
+            tr
+              td.f-narrow Parser
+              td.f-wide
+                select(data-bind="options:parserTypes, optionsText:'caption', value:parserType")
+            tr
+              td.f-narrow Separator
+              td.f-wide
+                select(data-bind="options:delimiters, optionsText:'caption', value:delimiter")
+            tr
+              td.f-narrow Column Headers
+              td.f-wide
+                div
+                  label
+                    input(type='radio' name='hasHeader' value='auto' data-bind='checked:headerOption')
+                    span Auto
+                div
+                  label
+                    input(type='radio' name='hasHeader' value='header' data-bind='checked:headerOption')
+                    span First row contains column names
+                div
+                  label
+                    input(type='radio' name='hasHeader' value='data' data-bind='checked:headerOption')
+                    span First row contains data
+            tr
+              td.f-narrow Options
+              td.f-wide
+                div
+                  label
+                    input(type='checkbox' data-bind='checked:useSingleQuotes')
+                    span Enable single quotes as a field quotation character
+                div
+                  label
+                    input(type='checkbox' data-bind='checked:deleteOnDone')
+                    span Delete on done
+
+        // ko if:hasColumns
+        h4 Data Preview
+        div(style='max-height:400px;overflow:auto')
+          table.f-monospace
+            thead
+              tr
+                // ko foreach:columns
+                th
+                  input(type='textbox' data-bind="value:name, attr:{'title':name}")
+                // /ko
+
+            tbody
+              // ko foreach:rows
+              tr
+                // ko foreach:$data
+                td(data-bind="text:$data")
+                // /ko
+              // /ko
+        // /ko
+        .f-commands
+          button.f-button(type='button' data-bind='click:parseFiles')
+            i.fa.fa-bolt.f-icon
+            | Parse
+
+    script(type="text/html" id="flow-import-file-output")
+      div.f-well
+        // ko foreach:keys
+        div
+          i.fa.fa-key.f-icon
+          span(data-bind='text:$data')
+        // /ko
+
+    script(type="text/html" id="flow-import-files-output")
+      .f-widget
+        h3
+          i.fa.fa-cloud-upload.f-icon
+          span(data-bind='text:title')
+        div(data-bind="template: { name:templateOf, foreach:importViews }")
+        // ko if:canParse
+        .f-commands
+          button.f-button(type='button' data-bind="click:parse")
+            i.fa.fa-indent.f-icon
+            | Setup Parse
+        // /ko
+
+    script(type="text/html" id="flow-import-files")
+      .f-widget
+        h3
+          i.fa.fa-files-o.f-icon
+          | Import Files
+        table
+          tbody
+            tr
+              td.f-narrow Search:
+              td
+                input.f-textbox(type='text' style='width:600px' data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder='File or directory path')
+              td.f-narrow
+                button.f-button(type='button' data-bind="click:tryImportFiles")
+                  i.fa.fa-search
+        
+        // ko if:hasImportedFiles
+        div.f-well
+          span(data-bind='text:importedFileCount')
+          // ko if:hasUnselectedFiles
+          button.f-button(data-bind='click:selectAllFiles')
+            i.fa.fa-files-o.f-icon
+            | Add these files
+          // /ko
+          // ko foreach:importedFiles
+          // ko ifnot:isSelected
+          div.f-pointer(data-bind='click:select')
+            i.fa.fa-plus.f-icon(title='Select file')
+            span(data-bind="text:path")
+          // /ko
+          // /ko
+        // /ko
+
+        div.f-well
+          div
+            span(data-bind='text:selectedFileCount')
+            // ko if:hasSelectedFiles
+            button.f-button(data-bind='click:deselectAllFiles')
+              i.fa.fa-remove.f-icon 
+              | Clear
+            // /ko
+          // ko if:hasSelectedFiles
+          div
+            // ko foreach:selectedFiles
+            div.f-pointer(data-bind='click:deselect')
+              i.fa.fa-remove.f-icon(title='Deselect file')
+              span(data-bind='text:path')
+            // /ko
+          // /ko
+
+        .f-commands
+          button.f-button(type='button' data-bind='click:importSelectedFiles, enable:hasSelectedFiles')
+            i.fa.fa-cloud-upload.f-icon
+            | Import
+
+      // /ko
+
+    script(type="text/html" id="flow-jobs")
+      .f-widget
+        h3
+          i.fa.fa-bolt.f-icon
+          | Jobs
+        // ko if:exception
+        div(data-bind="template: { name:'flow-error', data:exception }")
+        // /ko
+        // ko if:hasJobViews
+        table.table.table-condensed
+          thead
+            tr
+              th Key
+              th Description
+              th Status
+          tbody
+            // ko foreach:jobViews
+            tr
+              td
+                a(href='#' data-bind='text:job.key.name, click:inspect')
+              td(data-bind='text:job.description')
+              td(data-bind='text:job.status')
+            // /ko
+        // /ko
+        // ko ifnot:hasJobViews
+        bq Your H<sub>2</sub>O cloud has no jobs.
+        // /ko
+        .f-commands
+          button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
+            // ko if:isLive
+            i.fa.fa-refresh.fa-spin.f-icon
+            | Stop
+            // /ko
+            // ko ifnot:isLive
+            i.fa.fa-refresh.f-icon
+            | Refresh
+            // /ko
+
     script(type="text/html" id="flow-job")
-      h3 Job
-      // ko if:exception
-      div(data-bind="template: { name:'flow-error', data:exception }")
-      // /ko
-      // ko with:jobView
-      table.f-table-horizontal
-        tbody
-          tr
-            td.f-narrow Key
-            td.f-wide(data-bind='text:job.key.name')
-          tr
-            td.f-narrow Description
-            td.f-wide(data-bind='text:job.description')
-          tr
-            td.f-narrow Destination Key
-            td.f-wide(data-bind='text:job.dest.name')
-          tr
-            td.f-narrow Milliseconds
-            td.f-wide(data-bind='text:job.msec')
-          tr
-            td.f-narrow Progress
-            td.f-wide(data-bind='text:job.progress')
-          tr
-            td.f-narrow Exception
-            td.f-wide(data-bind='text:job.exception')
-      // /ko
+      .f-widget
+        h3
+          i.fa.fa-bolt.f-icon
+          | Job
+        // ko if:exception
+        div(data-bind="template: { name:'flow-error', data:exception }")
+        // /ko
+        // ko with:jobView
+        table.f-table-horizontal
+          tbody
+            tr
+              td.f-narrow Key
+              td.f-wide(data-bind='text:job.key.name')
+            tr
+              td.f-narrow Description
+              td.f-wide(data-bind='text:job.description')
+            tr
+              td.f-narrow Destination Key
+              td.f-wide(data-bind='text:job.dest.name')
+            tr
+              td.f-narrow Milliseconds
+              td.f-wide(data-bind='text:job.msec')
+            tr
+              td.f-narrow Progress
+              td.f-wide(data-bind='text:job.progress')
+            tr
+              td.f-narrow Exception
+              td.f-wide(data-bind='text:job.exception')
+        // /ko
 
 
     script(type="text/html" id="flow-error")

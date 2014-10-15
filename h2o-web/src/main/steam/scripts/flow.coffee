@@ -31,6 +31,8 @@ Flow = if exports? then exports else @Flow = {}
 # keyboard help dialog
 # menu system
 # tooltips on celltype flags
+# arrow keys cause page to scroll - disable those behaviors
+# scrollTo() behavior
 
 
 # CLI usage:
@@ -60,6 +62,31 @@ marked.setOptions
       (window.hljs.highlightAuto code, [ lang ]).value
     else
       code
+
+ko.bindingHandlers.enterKey =
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    if action = ko.unwrap valueAccessor() 
+      if isFunction action
+        $element = $ element
+        $element.keydown (e) -> 
+          if e.which is 13
+            action viewModel
+          return
+      else
+        throw 'Enter key action is not a function'
+    return
+
+ko.bindingHandlers.typeahead =
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    if action = ko.unwrap valueAccessor() 
+      if isFunction action
+        $element = $ element
+        $element.typeahead null,
+          displayKey: 'value'
+          source: action
+      else
+        throw 'Typeahead action is not a function'
+    return
 
 ko.bindingHandlers.cursorPosition =
   init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
@@ -150,7 +177,8 @@ iterate = (tasks) ->
           _results.push [ null, result ]
         next go
     else
-      go _results
+      #XXX should errors be included in arg #1?
+      go null, _results
 
   (go) ->
     next go
@@ -160,6 +188,21 @@ deepClone = (obj) ->
 
 exception = (message, cause) -> message: message, cause: cause
 
+mapWithKey = (obj, f) ->
+  result = []
+  for key, value of obj
+    result.push f value, key
+  result
+
+describeCount = (count, singular, plural) ->
+  plural = singular + 's' unless plural
+  switch count
+    when 0
+      "No #{plural}"
+    when 1
+      "1 #{singular}"
+    else
+      "#{count} #{plural}"
 
 Flow.Sandbox = (_) ->
   context: {}
@@ -180,8 +223,12 @@ Flow.Application = (_) ->
 Flow.ApplicationContext = (_) ->
   context$
     ready: do edges$
+    requestFileGlob: do edge$
+    requestImportFiles: do edge$
+    requestParseFiles: do edge$
     requestJob: do edge$
     requestJobs: do edge$
+    requestParseSetup: do edge$
     selectCell: do edge$
     insertAndExecuteCell: do edge$
 
@@ -243,6 +290,294 @@ objectToHtmlTable = (obj) ->
   else
     obj
 
+Flow.ImportFilesOutput = (_, importResults) ->
+  _allKeys = flatten compact map importResults, ( [ error, result ] ) ->
+    if error then null else result.keys
+  _canParse = _allKeys.length > 0
+  _title = "#{_allKeys.length} / #{importResults.length} files imported."
+
+  createImportView = (result) ->
+    #TODO dels?
+    #TODO fails?
+
+    keys: result.keys
+    template: 'flow-import-file-output'
+
+  _importViews = map importResults, ( [error, result] ) ->
+    if error
+      #XXX untested
+      error:
+        message: 'Error importing file'
+        cause: error
+      template: 'flow-error'
+    else
+      createImportView result
+
+  parse = ->
+    paths = map _allKeys, javascriptString
+    _.insertAndExecuteCell 'cs', "setupParse [ #{paths.join ','} ]"
+
+  title: _title
+  importViews: _importViews
+  canParse: _canParse
+  parse: parse
+  template: 'flow-import-files-output'
+  templateOf: templateOf
+
+
+Flow.JobsOutput = (_, jobs) ->
+  _jobViews = nodes$ []
+  _hasJobViews = lift$ _jobViews, (jobViews) -> jobViews.length > 0
+  _isLive = node$ no
+  _isBusy = node$ no
+  _exception = node$ null
+
+  createJobView = (job) ->
+    inspect = ->
+      _.insertAndExecuteCell 'cs', "job #{javascriptString job.key.name}" 
+
+    job: job
+    inspect: inspect
+
+  toggleRefresh = ->
+    _isLive not _isLive()
+
+  refresh = ->
+    _isBusy yes
+    _.requestJobs (error, jobs) ->
+      _isBusy no
+      if error
+        _exception exception 'Error fetching jobs', error
+        _isLive no
+      else
+        _jobViews map jobs, createJobView
+        delay refresh, 2000 if _isLive()
+
+  apply$ _isLive, (isLive) ->
+    refresh() if isLive
+
+  initialize = ->
+    _jobViews map jobs, createJobView
+
+  initialize()
+
+  jobViews: _jobViews
+  hasJobViews: _hasJobViews
+  isLive: _isLive
+  isBusy: _isBusy
+  toggleRefresh: toggleRefresh
+  refresh: refresh
+  exception: _exception
+  template: 'flow-jobs'
+
+Flow.JobOutput = (_, job) ->
+  _exception = node$ null
+
+  createJobView = (job) ->
+    job: job
+
+  jobView: createJobView job
+  exception: _exception
+  template: 'flow-job'
+
+parserTypes = map [ 'AUTO', 'XLS', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
+
+parseDelimiters = do ->
+  whitespaceSeparators = [
+    'NULL'
+    'SOH (start of heading)'
+    'STX (start of text)'
+    'ETX (end of text)'
+    'EOT (end of transmission)'
+    'ENQ (enquiry)'
+    'ACK (acknowledge)'
+    "BEL '\\a' (bell)"
+    "BS  '\\b' (backspace)"
+    "HT  '\\t' (horizontal tab)"
+    "LF  '\\n' (new line)"
+    "VT  '\\v' (vertical tab)"
+    "FF  '\\f' (form feed)"
+    "CR  '\\r' (carriage ret)"
+    'SO  (shift out)'
+    'SI  (shift in)'
+    'DLE (data link escape)'
+    'DC1 (device control 1) '
+    'DC2 (device control 2)'
+    'DC3 (device control 3)'
+    'DC4 (device control 4)'
+    'NAK (negative ack.)'
+    'SYN (synchronous idle)'
+    'ETB (end of trans. blk)'
+    'CAN (cancel)'
+    'EM  (end of medium)'
+    'SUB (substitute)'
+    'ESC (escape)'
+    'FS  (file separator)'
+    'GS  (group separator)'
+    'RS  (record separator)'
+    'US  (unit separator)'
+    "' ' SPACE"
+  ]
+
+  createDelimiter = (caption, charCode) ->
+    charCode: charCode
+    caption: "#{caption}: '#{('00' + charCode).slice(-2)}'"
+
+  whitespaceDelimiters = map whitespaceSeparators, createDelimiter
+
+  characterDelimiters = times (126 - whitespaceSeparators.length), (i) ->
+    charCode = i + whitespaceSeparators.length
+    createDelimiter (String.fromCharCode charCode), charCode
+
+  otherDelimiters = [ charCode: -1, caption: 'AUTO' ]
+
+  concat whitespaceDelimiters, characterDelimiters, otherDelimiters
+
+Flow.SetupParseOutput = (_, _result) ->
+  _sourceKeys = map _result.srcs, (src) -> src.name
+  _parserType =  node$ find parserTypes, (parserType) -> parserType.type is _result.pType
+  _delimiter = node$ find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
+  _useSingleQuotes = node$ _result.singleQuotes
+  _columns = map _result.columnNames, (name) -> name: node$ name
+  _rows = _result.data
+  _columnCount = _result.ncols
+  _hasColumns = _columnCount > 0
+  _destinationKey = node$ _result.hexName
+  _headerOptions = auto: 0, header: 1, data: -1
+  _headerOption = node$ if _result.checkHeader is 0 then 'auto' else if _result.checkHeader is -1 then 'data' else 'header'
+  _deleteOnDone = node$ yes
+
+  parseFiles = ->
+    sourceKeys = map _parsedFiles(), (file) -> file.name
+    columnNames = map _columns(), (column) -> column.name()
+    _.requestParseFiles sourceKeys, _destinationKey(), _parserType().type, _delimiter().charCode, _columnCount(), _useSingleQuotes(), columnNames, _deleteOnDone(), _headerOptions[_headerOption()], (error, result) -> 
+      if error
+        #TODO handle this properly
+        _.fail 'Error', error, null, noop
+      else
+        _go 'confirm', result.job
+
+  sourceKeys: _sourceKeys
+  parserTypes: parserTypes
+  delimiters: parseDelimiters
+  parserType: _parserType
+  delimiter: _delimiter
+  useSingleQuotes: _useSingleQuotes
+  columns: _columns
+  rows: _rows
+  columnCount: _columnCount
+  hasColumns: _hasColumns
+  destinationKey: _destinationKey
+  headerOption: _headerOption
+  deleteOnDone: _deleteOnDone
+  parseFiles: parseFiles
+  template: 'flow-parse-raw-input'
+
+Flow.ImportFilesInput = (_) ->
+  #
+  # Search files/dirs
+  #
+  _specifiedPath = node$ ''
+  _exception = node$ ''
+  _hasErrorMessage = lift$ _exception, (exception) -> if exception then yes else no
+
+  tryImportFiles = ->
+    specifiedPath = _specifiedPath()
+    _.requestFileGlob specifiedPath, 0, (error, result) ->
+      if error
+        _exception error.data.errmsg
+      else
+        _exception ''
+        #_go 'confirm', result
+        processImportResult result
+
+  #
+  # File selection 
+  #
+  _importedFiles = nodes$ []
+  _importedFileCount = lift$ _importedFiles, (files) -> "Found #{describeCount files.length, 'file'}."
+  _hasImportedFiles = lift$ _importedFiles, (files) -> files.length > 0
+  _hasUnselectedFiles = lift$ _importedFiles, (files) -> some files, (file) -> not file.isSelected()
+  _selectedFiles = nodes$ []
+  _selectedFilesDictionary = lift$ _selectedFiles, (files) ->
+    dictionary = {}
+    for file in files
+      dictionary[file.path] = yes
+    dictionary
+  _selectedFileCount = lift$ _selectedFiles, (files) -> "#{describeCount files.length, 'file'} selected."
+  _hasSelectedFiles = lift$ _selectedFiles, (files) -> files.length > 0
+
+  importFiles = (files) ->
+    paths = map files, (file) -> javascriptString file.path
+    _.insertAndExecuteCell 'cs', "importFiles [#{ paths.join ',' }]"
+
+  importSelectedFiles = -> importFiles _selectedFiles()
+
+  createSelectedFileItem = (path) ->
+    self =
+      path: path
+      deselect: ->
+        _selectedFiles.remove self
+        for file in _importedFiles() when file.path is path
+          file.isSelected no
+        return
+
+  createFileItem = (path, isSelected) ->
+    self =
+      path: path
+      isSelected: node$ isSelected
+      select: ->
+        _selectedFiles.push createSelectedFileItem self.path
+        self.isSelected yes 
+
+    apply$ self.isSelected, (isSelected) ->
+      _hasUnselectedFiles some _importedFiles(), (file) -> not file.isSelected()
+
+    self
+
+  createFileItems = (result) ->
+    map result.matches, (path) ->
+      createFileItem path, _selectedFilesDictionary()[path]
+
+  listPathHints = (query, process) ->
+    _.requestFileGlob query, 10, (error, result) ->
+      unless error
+        process map result.matches, (value) -> value: value
+
+  selectAllFiles = ->
+    _selectedFiles map _importedFiles(), (file) ->
+      createSelectedFileItem file.path
+    for file in _importedFiles()
+      file.isSelected yes
+    return
+
+  deselectAllFiles = ->
+    _selectedFiles []
+    for file in _importedFiles()
+      file.isSelected no
+    return
+  
+  processImportResult = (result) -> 
+    files = createFileItems result
+    _importedFiles files
+
+  specifiedPath: _specifiedPath
+  hasErrorMessage: _hasErrorMessage #XXX obsolete
+  exception: _exception
+  tryImportFiles: tryImportFiles
+  listPathHints: throttle listPathHints, 100
+  hasImportedFiles: _hasImportedFiles
+  importedFiles: _importedFiles
+  importedFileCount: _importedFileCount
+  selectedFiles: _selectedFiles
+  selectAllFiles: selectAllFiles
+  deselectAllFiles: deselectAllFiles
+  hasUnselectedFiles: _hasUnselectedFiles
+  hasSelectedFiles: _hasSelectedFiles
+  selectedFileCount: _selectedFileCount
+  importSelectedFiles: importSelectedFiles
+  template: 'flow-import-files'
+
 Flow.H2O = (_) ->
   createResponse = (status, data, xhr) ->
     status: status, data: data, xhr: xhr
@@ -303,6 +638,47 @@ Flow.H2O = (_) ->
       else
         go null, head result.jobs
 
+  requestFileGlob = (path, limit, go) ->
+    opts =
+      src: encodeURIComponent path
+      limit: limit
+    requestWithOpts '/Typeahead.json/files', opts, go
+
+  requestImportFile = (path, go) ->
+    opts = path: encodeURIComponent path
+    requestWithOpts '/ImportFiles.json', opts, go
+
+  requestImportFiles = (paths, go) ->
+    tasks = map paths, (path) ->
+      (go) ->
+        requestImportFile path, go
+    (iterate tasks) go
+
+  requestParseSetup = (sources, go) ->
+    encodedPaths = map sources, encodeURIComponent
+    opts =
+      srcs: "[#{join encodedPaths, ','}]"
+    requestWithOpts '/ParseSetup.json', opts, go
+
+  encodeArray = (array) -> "[#{join (map array, encodeURIComponent), ','}]"
+
+  requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, go) ->
+    opts =
+      hex: encodeURIComponent destinationKey
+      srcs: encodeArray sourceKeys
+      pType: parserType
+      sep: separator
+      ncols: columnCount
+      singleQuotes: useSingleQuotes
+      columnNames: encodeArray columnNames
+      checkHeader: checkHeader
+      delete_on_done: deleteOnDone
+    requestWithOpts '/Parse.json', opts, go
+
+  link$ _.requestFileGlob, requestFileGlob
+  link$ _.requestImportFiles, requestImportFiles
+  link$ _.requestParseSetup, requestParseSetup
+  link$ _.requestParseFiles, requestParseFiles
   link$ _.requestJobs, requestJobs
   link$ _.requestJob, requestJob
 
@@ -383,61 +759,16 @@ Flow.Routines = (_) ->
     ft
 
   renderJobs = (jobs, go) ->
-    _jobViews = nodes$ []
-    _hasJobViews = lift$ _jobViews, (jobViews) -> jobViews.length > 0
-    _isLive = node$ no
-    _isBusy = node$ no
-    _exception = node$ null
-
-    createJobView = (job) ->
-      inspect = ->
-        _.insertAndExecuteCell 'cs', "job '#{job.key.name}'" 
-
-      job: job
-      inspect: inspect
-
-    toggleRefresh = ->
-      _isLive not _isLive()
-
-    refresh = ->
-      _isBusy yes
-      _.requestJobs (error, jobs) ->
-        _isBusy no
-        if error
-          _exception exception 'Error fetching jobs', error
-          _isLive no
-        else
-          _jobViews map jobs, createJobView
-          delay refresh, 2000 if _isLive()
-
-    apply$ _isLive, (isLive) ->
-      refresh() if isLive
-
-    initialize = ->
-      _jobViews map jobs, createJobView
-
-    initialize()
-    
-    go null,
-      jobViews: _jobViews
-      hasJobViews: _hasJobViews
-      isLive: _isLive
-      isBusy: _isBusy
-      toggleRefresh: toggleRefresh
-      refresh: refresh
-      exception: _exception
-      template: 'flow-jobs'
+    go null, Flow.JobsOutput _, jobs    
 
   renderJob = (job, go) ->
-    _exception = node$ null
+    go null, Flow.JobOutput _, job
 
-    createJobView = (job) ->
-      job: job
+  renderImportFiles = (importResults, go) ->
+    go null, Flow.ImportFilesOutput _, importResults
 
-    go null,
-      jobView: createJobView job
-      exception: _exception
-      template: 'flow-job'
+  renderSetupParse = (parseSetupResults, go) ->
+    go null, Flow.SetupParseOutput _, parseSetupResults
 
   frames = (arg) ->
 
@@ -463,6 +794,26 @@ Flow.Routines = (_) ->
       else
         #XXX print usage
         throw new Error 'ni'
+
+  importFiles = (paths) ->
+    renderable _.requestImportFiles, paths, renderImportFiles
+
+  setupParse = (sourceKeys) ->
+    renderable _.requestParseSetup, sourceKeys, renderSetupParse
+
+  parseRaw = (opts) -> #XXX review args
+    requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, (error, result) ->
+
+  noopFuture = (go) -> go null
+
+  assist = (what, args...) ->
+    switch what
+      when importFiles
+        renderable noopFuture, (ignore, go) ->
+          go null, Flow.ImportFilesInput _
+      else
+        #XXX
+        renderable noopFuture, (go) -> go message: 'what?', error: new Error()
 
   ###
   getUsageForFunction = (f) ->
@@ -502,8 +853,12 @@ Flow.Routines = (_) ->
   join: (args..., go) -> _join args, go
   call: (go, args...) -> _join args, go
   apply: (go, args) -> _join args, go
+  assist: assist
   jobs: jobs
   job: job
+  importFiles: importFiles
+  setupParse: setupParse
+  parseRaw: parseRaw
 
 safetyWrapCoffeescript = (guid) ->
   (cs, go) ->
@@ -698,6 +1053,8 @@ rewriteJavascript = (sandbox) ->
     catch error
       go exception 'Error rewriting javascript', error
 
+javascriptString = (string) -> JSON.stringify string
+
 generateJavascript = (program, go) ->
   try
     go null, escodegen.generate program
@@ -783,7 +1140,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         go error
       else
         tasks = map (pickResults sandbox.results[guid]), render
-        (iterate tasks) (results) -> go null, results
+        (iterate tasks) go
 
 Flow.Renderers = (_, _sandbox) ->
   h1: -> Flow.HtmlTag _, 'h1'
@@ -829,9 +1186,12 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     _isActive no unless isSelected
 
   # tied to mouse-clicks on the cell
-  select = -> _.selectCell self
+  select = ->
+    _.selectCell self
+    return yes # Explicity return true, otherwise KO will prevent the mouseclick event from bubbling up
 
   # tied to mouse-double-clicks on html content
+  # TODO
   activate = -> _isActive yes
 
   execute = (go) ->
@@ -922,7 +1282,7 @@ Flow.Repl = (_, _renderers) ->
     _selectedCell.isSelected yes
     _selectedCellIndex = _cells.indexOf _selectedCell
     checkConsistency()
-    return
+    _selectedCell
 
   cloneCell = (cell) ->
     createCell cell.type(), cell.input()

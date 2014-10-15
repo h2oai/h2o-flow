@@ -29,7 +29,7 @@ body
   font-family Roboto, 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif
   color #777
 
-h1, h2, h3
+h1, h2, h3, h4
   font-weight 300
 
 code, kbd, pre, samp
@@ -47,6 +47,13 @@ textarea
 input
   &:focus
     outline none
+
+label
+  font-weight normal
+  input[type="radio"]
+    margin-right 6px
+  input[type="checkbox"]
+    margin-right 6px
 
 .table
   thead
@@ -144,17 +151,41 @@ th
   pre
     background inherit
 
-table.f-table-horizontal
-  width 100%
-  td
-    padding 0 5px
-    vertical-align top
-  td:first-child
-    smallcaps()
-    padding-left 0
-    text-align right
-  td:last-child
-    padding-right 0
+.f-widget
+  padding 0 10px
+  margin-bottom 40px
+
+.f-well
+  margin 10px 0
+  padding 10px
+  border 1px dotted #ccc
+
+.f-commands
+  margin-top 20px
+  padding 10px 0
+
+.f-monospace
+  monospace()
+
+.f-pointer
+  cursor pointer
+
+table
+  &.f-table-horizontal
+    width 100%
+    td
+      padding 0 5px
+      vertical-align top
+    td:first-child
+      smallcaps()
+      padding-left 0
+      text-align right
+    td:last-child
+      padding-right 0
+  &.f-table-padded
+    td
+      padding-top 5px
+      padding-bottom 5px
 
 td.f-narrow
   white-space nowrap
@@ -162,14 +193,20 @@ td.f-narrow
 td.f-wide
   width 99%
 
+.f-icon
+  margin-right 5px
+
+.f-icon-r
+  margin-left 5px
+
+
 .f-button
+  cursor pointer
   border-radius 12px
   border 1px solid #ccc
   padding 2px 12px
   font-size: 85%
   background-color: #fff
-  .fa
-    margin-right 5px
   &:hover
     background-color #eee
     border-color #aaa
@@ -180,5 +217,27 @@ td.f-wide
     &:hover
       background-color #333
       border-color #333
-    
+
+.f-textbox
+  width 100%
+  border none
+  border-bottom 1px solid #ccc
+  &:focus
+    border-bottom-color #000
+
+.tt-dropdown-menu
+  background #fff
+  border 1px solid #ccc
+  width 100%
+  box-shadow 0 5px 10px rgba(0,0,0,.2)
+
+.tt-suggestion
+  padding 3px 10px
+  line-height 24px
+  overflow ellipsis
+  &.tt-cursor
+    background-color f-color-yellow
+  p
+    margin 0
+
 
