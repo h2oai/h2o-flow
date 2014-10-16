@@ -509,7 +509,7 @@ Flow.ImportFilesInput = (_) ->
 
   importFiles = (files) ->
     paths = map files, (file) -> javascriptString file.path
-    _.insertAndExecuteCell 'cs', "importFiles [#{ paths.join ',' }]"
+    _.insertAndExecuteCell 'cs', "importFiles [ #{ paths.join ',' } ]"
 
   importSelectedFiles = -> importFiles _selectedFiles()
 
@@ -682,81 +682,84 @@ Flow.H2O = (_) ->
   link$ _.requestJobs, requestJobs
   link$ _.requestJob, requestJob
 
-Flow.Routines = (_) ->
-  _fork = (f, args) ->
-    self = (go) ->
-      if self.settled
-        # proceed with cached error/result
-        if self.rejected
-          go self.error
-        else
-          go null, self.result
+_fork = (f, args) ->
+  self = (go) ->
+    if self.settled
+      # proceed with cached error/result
+      if self.rejected
+        go self.error
       else
-        _join args, (error, args) ->
-          apply f, null,
-            args.concat (error, result) ->
-              if error
-                self.error = error
-                self.fulfilled = no
-                self.rejected = yes
-                go error
-              else
-                self.result = result
-                self.fulfilled = yes
-                self.rejected = no
-                go null, result
-              self.settled = yes
-              self.pending = no
+        go null, self.result
+    else
+      _join args, (error, args) ->
+        apply f, null,
+          args.concat (error, result) ->
+            if error
+              self.error = error
+              self.fulfilled = no
+              self.rejected = yes
+              go error
+            else
+              self.result = result
+              self.fulfilled = yes
+              self.rejected = no
+              go null, result
+            self.settled = yes
+            self.pending = no
 
-    self.method = f
-    self.args = args
-    self.fulfilled = no
-    self.rejected = no
-    self.settled = no
-    self.pending = yes
+  self.method = f
+  self.args = args
+  self.fulfilled = no
+  self.rejected = no
+  self.settled = no
+  self.pending = yes
 
-    self.isFuture = yes
+  self.isFuture = yes
 
-    self
+  self
 
-  fork = (f, args...) -> _fork f, args
+fork = (f, args...) -> _fork f, args
 
-  _join = (args, go) ->
-    return go null, [] if args.length is 0
+_join = (args, go) ->
+  return go null, [] if args.length is 0
 
-    _tasks = [] 
-    _results = []
+  _tasks = [] 
+  _results = []
 
-    for arg, i in args
-      if arg?.isFuture
-        _tasks.push future: arg, resultIndex: i
+  for arg, i in args
+    if arg?.isFuture
+      _tasks.push future: arg, resultIndex: i
+    else
+      _results[i] = arg
+
+  return go null, _results if _tasks.length is 0
+
+  _actual = 0
+  _settled = no
+
+  forEach _tasks, (task) ->
+    call task.future, null, (error, result) ->
+      return if _settled
+      if error
+        _settled = yes
+        go exception "Error evalutating future[#{task.resultIndex}]", error
       else
-        _results[i] = arg
-
-    return go null, _results if _tasks.length is 0
-
-    _actual = 0
-    _settled = no
-
-    forEach _tasks, (task) ->
-      call task.future, null, (error, result) ->
-        return if _settled
-        if error
+        _results[task.resultIndex] = result
+        _actual++
+        if _actual is _tasks.length
           _settled = yes
-          go exception "Error evalutating future[#{task.resultIndex}]", error
-        else
-          _results[task.resultIndex] = result
-          _actual++
-          if _actual is _tasks.length
-            _settled = yes
-            go null, _results
-        return
-    return
+          go null, _results
+      return
+  return
 
-  renderable = (f, args..., render) ->
-    ft = _fork f, args
-    ft.render = render
-    ft
+noopFuture = (go) -> go null
+
+renderable = (f, args..., render) ->
+  ft = _fork f, args
+  ft.render = render
+  ft
+
+Flow.Routines = (_) ->
 
   renderJobs = (jobs, go) ->
     go null, Flow.JobsOutput _, jobs    
@@ -804,16 +807,6 @@ Flow.Routines = (_) ->
   parseRaw = (opts) -> #XXX review args
     requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, (error, result) ->
 
-  noopFuture = (go) -> go null
-
-  assist = (what, args...) ->
-    switch what
-      when importFiles
-        renderable noopFuture, (ignore, go) ->
-          go null, Flow.ImportFilesInput _
-      else
-        #XXX
-        renderable noopFuture, (go) -> go message: 'what?', error: new Error()
 
   ###
   getUsageForFunction = (f) ->
@@ -853,7 +846,6 @@ Flow.Routines = (_) ->
   join: (args..., go) -> _join args, go
   call: (go, args...) -> _join args, go
   apply: (go, args) -> _join args, go
-  assist: assist
   jobs: jobs
   job: job
   importFiles: importFiles
@@ -1075,6 +1067,16 @@ executeJavascript = (sandbox, show) ->
     catch error
       go exception 'Error executing javascript', error
 
+assist = (_, routines, routine) ->
+  switch routine
+    when routines.importFiles
+      renderable noopFuture, (ignore, go) ->
+        go null, Flow.ImportFilesInput _
+    else
+      console.error 'NO ASSIST DEFINED'
+      renderable noopFuture, (go) ->
+        go message: 'what?', error: new Error()
+
 Flow.Coffeescript = (_, guid, sandbox) ->
   show = (arg) ->
     if arg isnt show
@@ -1107,7 +1109,6 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         text: ft
         template: 'flow-raw'
 
-
   pickResults = (results) ->
     { implicits, explicits } = results
     if explicits.length
@@ -1117,7 +1118,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
       if isFunction implicit
         for name, routine of sandbox.routines
           if implicit is routine
-            show routine()
+            show assist _, sandbox.routines, routine
             return explicits
       return implicits
 
