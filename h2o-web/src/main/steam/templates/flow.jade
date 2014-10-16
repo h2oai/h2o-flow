@@ -78,7 +78,7 @@ html(lang='en')
     script(type="text/html" id="flow-parse-raw-input")
       .f-widget
         h3 
-          i.fa.fa-indent.f-icon
+          i.fa.fa-cog.f-icon
           | Setup Parse
 
         h4 Source Keys
@@ -152,7 +152,7 @@ html(lang='en')
         // /ko
         .f-commands
           button.f-button(type='button' data-bind='click:parseFiles')
-            i.fa.fa-bolt.f-icon
+            i.fa.fa-indent.f-icon
             | Parse
 
     script(type="text/html" id="flow-import-file-output")
@@ -163,6 +163,24 @@ html(lang='en')
           span(data-bind='text:$data')
         // /ko
 
+    script(type="text/html" id="flow-parse-output")
+      .f-widget
+        h3
+          i.fa.fa-indent.f-icon
+          | Parse Job Created
+
+        table.f-table-horizontal
+          tbody
+            tr
+              td.f-narrow Job Key
+              td.f-wide
+                a(href='#' data-bind='text:result.job.name, click:inspectJob')
+
+        .f-commands
+          button.f-button(type='button' data-bind='click:inspectJob')
+            i.fa.fa-indent.f-icon
+            | View Job
+
     script(type="text/html" id="flow-import-files-output")
       .f-widget
         h3
@@ -172,14 +190,14 @@ html(lang='en')
         // ko if:canParse
         .f-commands
           button.f-button(type='button' data-bind="click:parse")
-            i.fa.fa-indent.f-icon
+            i.fa.fa-cog.f-icon
             | Parse these files&hellip;
         // /ko
 
     script(type="text/html" id="flow-import-files")
       .f-widget
         h3
-          i.fa.fa-files-o.f-icon
+          i.fa.fa-life-ring.f-icon
           | Import Files
         table
           tbody
@@ -232,7 +250,7 @@ html(lang='en')
 
       // /ko
 
-    script(type="text/html" id="flow-jobs")
+    script(type="text/html" id="flow-jobs-output")
       .f-widget
         h3
           i.fa.fa-bolt.f-icon

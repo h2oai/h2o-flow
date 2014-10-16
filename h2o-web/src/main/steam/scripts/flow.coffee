@@ -290,11 +290,20 @@ objectToHtmlTable = (obj) ->
   else
     obj
 
-Flow.ImportFilesOutput = (_, importResults) ->
-  _allKeys = flatten compact map importResults, ( [ error, result ] ) ->
+Flow.ParseOutput = (_, _parseResult) ->
+  inspectJob = ->
+    _.insertAndExecuteCell 'cs', "job #{csString _parseResult.job.name}"
+
+  result: _parseResult
+  inspectJob: inspectJob
+  template: 'flow-parse-output'
+
+
+Flow.ImportFilesOutput = (_, _importResults) ->
+  _allKeys = flatten compact map _importResults, ( [ error, result ] ) ->
     if error then null else result.keys
   _canParse = _allKeys.length > 0
-  _title = "#{_allKeys.length} / #{importResults.length} files imported."
+  _title = "#{_allKeys.length} / #{_importResults.length} files imported."
 
   createImportView = (result) ->
     #TODO dels?
@@ -303,7 +312,7 @@ Flow.ImportFilesOutput = (_, importResults) ->
     keys: result.keys
     template: 'flow-import-file-output'
 
-  _importViews = map importResults, ( [error, result] ) ->
+  _importViews = map _importResults, ( [error, result] ) ->
     if error
       #XXX untested
       error:
@@ -314,7 +323,7 @@ Flow.ImportFilesOutput = (_, importResults) ->
       createImportView result
 
   parse = ->
-    paths = map _allKeys, javascriptString
+    paths = map _allKeys, csString
     _.insertAndExecuteCell 'cs', "setupParse [ #{paths.join ','} ]"
 
   title: _title
@@ -334,7 +343,7 @@ Flow.JobsOutput = (_, jobs) ->
 
   createJobView = (job) ->
     inspect = ->
-      _.insertAndExecuteCell 'cs', "job #{javascriptString job.key.name}" 
+      _.insertAndExecuteCell 'cs', "job #{csString job.key.name}" 
 
     job: job
     inspect: inspect
@@ -448,14 +457,11 @@ Flow.SetupParseOutput = (_, _result) ->
   _deleteOnDone = node$ yes
 
   parseFiles = ->
-    sourceKeys = map _parsedFiles(), (file) -> file.name
-    columnNames = map _columns(), (column) -> column.name()
-    _.requestParseFiles sourceKeys, _destinationKey(), _parserType().type, _delimiter().charCode, _columnCount(), _useSingleQuotes(), columnNames, _deleteOnDone(), _headerOptions[_headerOption()], (error, result) -> 
-      if error
-        #TODO handle this properly
-        _.fail 'Error', error, null, noop
-      else
-        _go 'confirm', result.job
+    columnNames = map _columns, (column) -> column.name()
+
+    _.insertAndExecuteCell 'cs', "parseRaw\n  sourceKeys: #{csStringArray _sourceKeys}\n  destinationKey: #{csString _destinationKey()}\n  parserType: #{csString _parserType().type}\n  separator: #{_delimiter().charCode}\n  columnCount: #{_columnCount}\n  useSingleQuotes: #{_useSingleQuotes()}\n  columnNames: #{csStringArray columnNames}\n  deleteOnDone: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}"
+
+
 
   sourceKeys: _sourceKeys
   parserTypes: parserTypes
@@ -508,7 +514,7 @@ Flow.ImportFilesInput = (_) ->
   _hasSelectedFiles = lift$ _selectedFiles, (files) -> files.length > 0
 
   importFiles = (files) ->
-    paths = map files, (file) -> javascriptString file.path
+    paths = map files, (file) -> csString file.path
     _.insertAndExecuteCell 'cs', "importFiles [ #{ paths.join ',' } ]"
 
   importSelectedFiles = -> importFiles _selectedFiles()
@@ -773,6 +779,9 @@ Flow.Routines = (_) ->
   renderSetupParse = (parseSetupResults, go) ->
     go null, Flow.SetupParseOutput _, parseSetupResults
 
+  renderParse = (parseResult, go) ->
+    go null, Flow.ParseOutput _, parseResult
+
   frames = (arg) ->
 
   frame = (arg) ->
@@ -785,6 +794,7 @@ Flow.Routines = (_) ->
     renderable _.requestJobs, renderJobs
 
   job = (arg) ->
+    #XXX validation
     switch typeOf arg
       when 'string'
         renderable _.requestJob, arg, renderJob
@@ -799,13 +809,26 @@ Flow.Routines = (_) ->
         throw new Error 'ni'
 
   importFiles = (paths) ->
+    #XXX validation
     renderable _.requestImportFiles, paths, renderImportFiles
 
   setupParse = (sourceKeys) ->
+    #XXX validation
     renderable _.requestParseSetup, sourceKeys, renderSetupParse
 
   parseRaw = (opts) -> #XXX review args
-    requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, (error, result) ->
+    #XXX validation
+    sourceKeys = opts.sourceKeys
+    destinationKey = opts.destinationKey
+    parserType = opts.parserType
+    separator = opts.separator
+    columnCount = opts.columnCount
+    useSingleQuotes = opts.useSingleQuotes
+    columnNames = opts.columnNames
+    deleteOnDone = opts.deleteOnDone
+    checkHeader = opts.checkHeader
+
+    renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, renderParse
 
 
   ###
@@ -1045,7 +1068,8 @@ rewriteJavascript = (sandbox) ->
     catch error
       go exception 'Error rewriting javascript', error
 
-javascriptString = (string) -> JSON.stringify string
+csString = (string) -> JSON.stringify string
+csStringArray = (array) -> "[ #{map array, csString} ]"
 
 generateJavascript = (program, go) ->
   try
