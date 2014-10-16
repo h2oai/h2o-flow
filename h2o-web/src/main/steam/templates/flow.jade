@@ -288,7 +288,107 @@ html(lang='en')
             | Refresh
             // /ko
 
-    script(type="text/html" id="flow-job")
+    script(type="text/html" id="flow-frame-output")
+      .f-widget
+        h3
+          i.fa.fa-database.f-icon
+          span(data-bind="text:key")
+        // ko with:table
+        table.table.table-condensed.f-monospace
+          thead
+            tr
+              th Label
+              // ko foreach:header
+              th(data-bind='text:$data')
+              // /ko
+          tbody
+            tr.f-bg-gray
+              th Type
+              // ko foreach:typeRow
+              td(data-bind='text:$data')
+              // /ko
+
+            tr.f-bg-gray
+              th Min
+              // ko foreach:minRow
+              td(data-bind='text:$data')
+              // /ko
+
+            tr.f-bg-gray
+              th Max
+              // ko foreach:maxRow
+              td(data-bind='text:$data')
+              // /ko
+
+            tr.f-bg-gray
+              th Mean
+              // ko foreach:meanRow
+              td(data-bind='text:$data')
+              // /ko
+
+            tr.f-bg-gray
+              th Sigma
+              // ko foreach:sigmaRow
+              td(data-bind='text:$data')
+              // /ko
+
+            // ko if:hasEnums
+            tr.f-bg-gray
+              th Cardinality
+              // ko foreach:cardinalityRow
+              td(data-bind='text:$data')
+              // /ko
+            // /ko
+
+            // ko if:hasMissings
+            tr.f-bg-gray
+              th Missings
+              // ko foreach:missingsRow
+              td(data-bind='text:$data')
+              // /ko
+            // /ko
+
+            // ko if:hasZeros
+            tr.f-bg-gray
+              th Zeros
+              // ko foreach:zerosRow
+              td(data-bind='text:$data')
+              // /ko
+            // /ko
+
+            // ko if:hasPinfs
+            tr.f-bg-gray
+              th +Inf
+              // ko foreach:pinfsRow
+              td(data-bind='text:$data')
+              // /ko
+            // /ko
+
+            // ko if:hasNinfs
+            tr.f-bg-gray
+              th -Inf
+              // ko foreach:ninfsRow
+              td(data-bind='text:$data')
+              // /ko
+            // /ko
+
+            tr.f-bg-gray
+              th Summary
+              // ko foreach:summaryRow
+              td(data-bind='click:displaySummary') 
+                i.fa.fa-share-square-o
+              // /ko
+
+            // ko foreach:dataRows
+            tr
+              th(data-bind='text:header')
+              // ko foreach:cells
+              td(data-bind='text:$data')
+              // /ko
+            // /ko
+        // /ko
+
+    script(type="text/html" id="flow-job-output")
       .f-widget
         h3
           i.fa.fa-bolt.f-icon
@@ -296,29 +396,53 @@ html(lang='en')
         // ko if:exception
         div(data-bind="template: { name:'flow-error', data:exception }")
         // /ko
-        // ko with:jobView
         table.f-table-horizontal
           tbody
             tr
+              td.f-narrow Status
+              td.f-wide(data-bind='text:status')
+            tr
               td.f-narrow Key
-              td.f-wide(data-bind='text:job.key.name')
+              td.f-wide(data-bind='text:key')
             tr
               td.f-narrow Description
-              td.f-wide(data-bind='text:job.description')
+              td.f-wide(data-bind='text:description')
             tr
               td.f-narrow Destination Key
-              td.f-wide(data-bind='text:job.dest.name')
+              td.f-wide
+                // ko ifnot:kind
+                span(data-bind='text:destinationKey')
+                // /ko
+                // ko if:kind
+                a(href='#' data-bind='text:destinationKey, click:inspect')
+                // /ko
             tr
-              td.f-narrow Milliseconds
-              td.f-wide(data-bind='text:job.msec')
+              td.f-narrow Run Time
+              td.f-wide(data-bind='text:runTime')
             tr
               td.f-narrow Progress
-              td.f-wide(data-bind='text:job.progress')
+              td.f-wide
+                table
+                  tbody
+                    tr
+                      td.f-narrow(data-bind='text:progress')
+                      td.f-wide
+                        .progress(style='max-width:400px;height:8px;margin:5px 0')
+                          .progress-bar(data-bind="style:{background:statusColor,width:progress}")
+
             tr
               td.f-narrow Exception
-              td.f-wide(data-bind='text:job.exception')
-        // /ko
-
+              td.f-wide(data-bind='text:exception')
+        .f-commands
+          button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
+            // ko if:isLive
+            i.fa.fa-refresh.fa-spin.f-icon
+            | Stop
+            // /ko
+            // ko ifnot:isLive
+            i.fa.fa-refresh.f-icon
+            | Refresh
+            // /ko
 
     script(type="text/html" id="flow-error")
       .alert.alert-danger(role='alert')

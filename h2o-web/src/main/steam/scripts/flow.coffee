@@ -226,9 +226,18 @@ Flow.ApplicationContext = (_) ->
     requestFileGlob: do edge$
     requestImportFiles: do edge$
     requestParseFiles: do edge$
-    requestJob: do edge$
-    requestJobs: do edge$
+    requestInspect: do edge$
     requestParseSetup: do edge$
+    requestFrames: do edge$
+    requestFrame: do edge$
+    requestColumnSummary: do edge$
+    requestModelBuilders: do edge$
+    requestModelBuild: do edge$
+    requestModelMetrics: do edge$
+    requestModels: do edge$
+    requestModel: do edge$
+    requestJobs: do edge$
+    requestJob: do edge$
     selectCell: do edge$
     insertAndExecuteCell: do edge$
 
@@ -334,6 +343,28 @@ Flow.ImportFilesOutput = (_, _importResults) ->
   templateOf: templateOf
 
 
+jobOutputStatusColors = 
+  failed: '#d9534f'
+  done: '#ccc' #'#5cb85c'
+  running: '#f0ad4e'
+
+getJobOutputStatusColor = (status) ->
+  # CREATED   Job was created
+  # RUNNING   Job is running
+  # CANCELLED Job was cancelled by user
+  # FAILED    Job crashed, error message/exception is available
+  # DONE      Job was successfully finished
+  switch status
+    when 'DONE'
+      jobOutputStatusColors.done
+    when 'CREATED', 'RUNNING'
+      jobOutputStatusColors.running
+    else # 'CANCELLED', 'FAILED'
+      jobOutputStatusColors.failed
+
+getJobProgressPercent = (progress) ->
+  "#{Math.ceil 100 * progress}%"
+
 Flow.JobsOutput = (_, jobs) ->
   _jobViews = nodes$ []
   _hasJobViews = lift$ _jobViews, (jobViews) -> jobViews.length > 0
@@ -377,17 +408,84 @@ Flow.JobsOutput = (_, jobs) ->
   toggleRefresh: toggleRefresh
   refresh: refresh
   exception: _exception
-  template: 'flow-jobs'
+  template: 'flow-jobs-output'
 
-Flow.JobOutput = (_, job) ->
+Flow.JobOutput = (_, _job) ->
+  _isBusy = node$ no
+  _isLive = node$ no
+
+  _key = _job.key.name
+  _description = _job.description
+  _destinationKey = _job.dest.name
+  _runTime = node$ null
+  _progress = node$ null
+  _status = node$ null
+  _statusColor = node$ null
   _exception = node$ null
+  _kind = node$ null
 
-  createJobView = (job) ->
-    job: job
+  isJobRunning = (job) ->
+    job.status is 'CREATED' or job.status is 'RUNNING'
 
-  jobView: createJobView job
+  updateJob = (job) ->
+    _runTime job.msec
+    _progress getJobProgressPercent job.progress
+    _status job.status
+    _statusColor getJobOutputStatusColor job.status
+    _exception job.exception
+
+  toggleRefresh = ->
+    _isLive not _isLive()
+
+  refresh = ->
+    _isBusy yes
+    _.requestJob _key, (error, job) ->
+      _isBusy no
+      if error
+        _exception exception 'Error fetching jobs', error
+        _isLive no
+      else
+        updateJob job
+        if isJobRunning job
+          delay refresh, 1000 if _isLive()
+        else
+          toggleRefresh()
+
+  apply$ _isLive, (isLive) ->
+    refresh() if isLive
+
+  inspect = ->
+    switch _kind()
+      when 'frame'
+        _.insertAndExecuteCell 'cs', "getFrame #{csString _destinationKey}" 
+      when 'model'
+        _.insertAndExecuteCell 'cs', "getModel #{csString _destinationKey}" 
+
+
+  initialize = (job) ->
+    updateJob job
+    toggleRefresh if isJobRunning job
+
+    _.requestInspect _destinationKey, (error, result) ->
+      unless error
+        _kind result.kind
+      return
+
+  initialize _job
+
+  key: _key
+  description: _description
+  destinationKey: _destinationKey
+  kind: _kind
+  runTime: _runTime
+  progress: _progress
+  status: _status
+  statusColor: _statusColor
   exception: _exception
-  template: 'flow-job'
+  isLive: _isLive
+  toggleRefresh: toggleRefresh
+  inspect: inspect
+  template: 'flow-job-output'
 
 parserTypes = map [ 'AUTO', 'XLS', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
 
@@ -441,6 +539,163 @@ parseDelimiters = do ->
   otherDelimiters = [ charCode: -1, caption: 'AUTO' ]
 
   concat whitespaceDelimiters, characterDelimiters, otherDelimiters
+
+do ->
+  significantDigitsBeforeDecimal = (value) -> 1 + Math.floor Math.log(Math.abs value) / Math.LN10
+
+  formatToSignificantDigits = (digits, value) ->
+    if value is 0
+      0
+    else
+      sd = significantDigitsBeforeDecimal value
+      if sd >= digits
+        value.toFixed 0
+      else
+        magnitude = Math.pow 10, digits - sd
+        Math.round(value * magnitude) / magnitude
+
+  formatTime = d3.time.format '%Y-%m-%d %H:%M:%S' unless exports?
+  formatDateTime = (time) -> if time then formatTime new Date time else '-'
+
+  formatReal = do ->
+    __formatFunctions = {}
+    getFormatFunction = (precision) ->
+      if precision is -1
+        identity
+      else
+        __formatFunctions[precision] or __formatFunctions[precision] = d3.format ".#{precision}f"
+
+    (precision, value) ->
+      (getFormatFunction precision) value
+
+  Flow.FrameOutput = (_, _frame) ->
+    createMinMaxRow = (attribute, columns) ->
+      map columns, (column) ->
+        switch column.type
+          when 'time'
+            formatDateTime head column[attribute]
+          when 'real'
+            formatReal column.precision, head column[attribute]
+          when 'int'
+            formatToSignificantDigits 6, head column[attribute]
+          else
+            '-'
+
+    createMeanRow = (columns) ->
+      map columns, (column) ->
+        switch column.type
+          when 'time'
+            formatDateTime column.mean
+          when 'real'
+            formatReal column.precision, column.mean
+          when 'int'
+            formatToSignificantDigits 6, column.mean
+          else
+            '-'
+
+    createSigmaRow = (columns) ->
+      map columns, (column) ->
+        switch column.type
+          when 'time', 'real', 'int'
+            formatToSignificantDigits 6, column.sigma
+          else
+            '-'
+
+    createCardinalityRow = (columns) ->
+      map columns, (column) ->
+        switch column.type
+          when 'enum'
+            column.domain.length
+          else
+            '-'
+
+    createPlainRow = (attribute, columns) ->
+      map columns, (column) -> column[attribute]
+
+    createMissingsRow = (columns) ->
+      map columns, (column) ->
+        if column.missing is 0 then '-' else column.missing
+
+    createInfRow = (attribute, columns) ->
+      map columns, (column) ->
+        switch column.type
+          when 'real', 'int'
+            if column[attribute] is 0 then '-' else column[attribute]
+          else
+            '-'
+
+    createSummaryRow = (frameKey, columns) ->
+      map columns, (column) ->
+        displaySummary: ->
+          _.requestColumnSummary frameKey, column.label, (error, result) ->
+            if error
+              _.error 'Error requesting column summary', column, error
+            else
+              createSummaryInspection head result.frames
+
+    createDataRow = (offset, index, columns) ->
+      header: "Row #{offset + index + 1}"
+      cells: map columns, (column) ->
+        switch column.type
+          when 'uuid','string'
+            column.str_data[index] or '-'
+          when 'enum'
+            column.domain[column.data[index]]
+          when 'time'
+            formatDateTime column.data[index]
+          else
+            value = column.data[index]
+            if value is 'NaN'
+              '-'
+            else
+              if column.type is 'real'
+                formatReal column.precision, value
+              else
+                value
+
+    createDataRows = (offset, rowCount, columns) ->
+      rows = []
+      for index in [0 ... rowCount]
+        rows.push createDataRow offset, index, columns
+      rows
+
+    createFrameTable = (offset, rowCount, columns) ->
+      hasMissings = hasZeros = hasPinfs = hasNinfs = hasEnums = no
+      for column in columns
+        hasMissings = yes if not hasMissings and column.missing > 0
+        hasZeros = yes if not hasZeros and column.zeros > 0
+        hasPinfs = yes if not hasPinfs and column.pinfs > 0
+        hasNinfs = yes if not hasNinfs and column.ninfs > 0
+        hasEnums = yes if not hasEnums and column.type is 'enum'
+
+      header: createPlainRow 'label', columns
+      typeRow: createPlainRow 'type', columns
+      minRow: createMinMaxRow 'mins', columns
+      maxRow: createMinMaxRow 'maxs', columns
+      meanRow: createMeanRow columns
+      sigmaRow: createSigmaRow columns
+      cardinalityRow: if hasEnums then createCardinalityRow columns else null
+      missingsRow: if hasMissings then createMissingsRow columns else null
+      zerosRow: if hasZeros then createInfRow 'zeros', columns else null
+      pinfsRow: if hasPinfs then createInfRow 'pinfs', columns else null
+      ninfsRow: if hasNinfs then createInfRow 'ninfs', columns else null
+      summaryRow: createSummaryRow _frame.key.name, columns
+      #summaryRows: createSummaryRows columns
+      hasMissings: hasMissings
+      hasZeros: hasZeros
+      hasPinfs: hasPinfs
+      hasNinfs: hasNinfs
+      hasEnums: hasEnums
+      dataRows: createDataRows offset, rowCount, columns
+
+    data: _frame
+    key: _frame.key.name
+    timestamp: _frame.creation_epoch_time_millis
+    title: _frame.key.name
+    columns: _frame.column_names
+    table: createFrameTable _frame.off, _frame.len, _frame.columns
+    dispose: ->
+    template: 'flow-frame-output'
 
 Flow.SetupParseOutput = (_, _result) ->
   _sourceKeys = map _result.srcs, (src) -> src.name
@@ -644,6 +899,10 @@ Flow.H2O = (_) ->
       else
         go null, head result.jobs
 
+  requestInspect = (key, go) ->
+    opts = key: encodeURIComponent key
+    requestWithOpts '/Inspect.json', opts, go
+
   requestFileGlob = (path, limit, go) ->
     opts =
       src: encodeURIComponent path
@@ -666,7 +925,32 @@ Flow.H2O = (_) ->
       srcs: "[#{join encodedPaths, ','}]"
     requestWithOpts '/ParseSetup.json', opts, go
 
+  requestFrames = (go, opts) ->
+    requestWithOpts '/3/Frames.json', opts, go
+
   encodeArray = (array) -> "[#{join (map array, encodeURIComponent), ','}]"
+  requestModelBuilders = (algo, go) ->
+    request "/2/ModelBuilders.json/#{algo}", go
+
+  requestModelBuild = (algo, parameters, go) ->
+    post "/2/ModelBuilders.json/#{algo}", parameters, go
+
+  requestModels = (go, opts) ->
+    requestWithOpts '/3/Models.json', opts, (error, result) ->
+      if error
+        go error, result
+      else
+        go error, result.models
+
+  requestModel = (key, go) ->
+    request "/3/Models.json/#{encodeURIComponent key}", (error, result) ->
+      if error
+        go error, result
+      else
+        go error, head result.models
+
+  requestModelMetrics = (modelKey, frameKey, go) ->
+    post "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, go
 
   requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, go) ->
     opts =
@@ -685,8 +969,23 @@ Flow.H2O = (_) ->
   link$ _.requestImportFiles, requestImportFiles
   link$ _.requestParseSetup, requestParseSetup
   link$ _.requestParseFiles, requestParseFiles
+  link$ _.requestInspect, requestInspect
   link$ _.requestJobs, requestJobs
   link$ _.requestJob, requestJob
+  link$ _.requestFrames, (go) -> requestFrames go
+  link$ _.requestFrame, (key, go) ->
+    request "/3/Frames/#{encodeURIComponent key}", (error, result) ->
+      if error
+        go error
+      else
+        go null, head result.frames
+  link$ _.requestColumnSummary, (key, column, go) ->
+    request "/3/Frames/#{encodeURIComponent key}/columns/#{column}/summary", go
+  link$ _.requestModelBuilders, requestModelBuilders
+  link$ _.requestModelBuild, requestModelBuild
+  link$ _.requestModels, requestModels
+  link$ _.requestModel, requestModel
+  link$ _.requestModelMetrics, requestModelMetrics
 
 _fork = (f, args) ->
   self = (go) ->
@@ -782,13 +1081,21 @@ Flow.Routines = (_) ->
   renderParse = (parseResult, go) ->
     go null, Flow.ParseOutput _, parseResult
 
-  frames = (arg) ->
+  renderFrames = (frames, go) ->
+    go null, Flow.FramesOutput _, frames
 
-  frame = (arg) ->
+  renderFrame = (frame, go) ->
+    go null, Flow.FrameOutput _, frame
 
-  models = (arg) ->
+  getFrames = (arg) ->
+    renderable _.requestFrames, key, renderFrames
 
-  model = (arg) ->
+  getFrame = (key) ->
+    renderable _.requestFrame, key, renderFrame
+
+  getModels = (arg) ->
+
+  getModel = (arg) ->
 
   jobs = ->
     renderable _.requestJobs, renderJobs
@@ -874,6 +1181,10 @@ Flow.Routines = (_) ->
   importFiles: importFiles
   setupParse: setupParse
   parseRaw: parseRaw
+  getFrames: getFrames
+  getFrame: getFrame
+  getModels: getModels
+  getModel: getModel
 
 safetyWrapCoffeescript = (guid) ->
   (cs, go) ->
