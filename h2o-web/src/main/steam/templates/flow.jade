@@ -249,6 +249,99 @@ html(lang='en')
             | Import
 
       // /ko
+    
+    script(type="text/html" id="flow-checkbox-model-parameter")
+      tr(data-bind="css:{'bg-danger':isInvalid}")
+        td.f-narrow
+          label(data-bind="text:label, attr:{ 'for':clientId }")
+        td.f-narrow
+          input(type='checkbox' data-bind="checked:value, attr:{ 'id':clientId }")
+        td.f-wide
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-textbox-model-parameter")
+      tr(data-bind="css:{'bg-danger':isInvalid}")
+        td.f-narrow
+          label(data-bind='text:label')
+        td.f-narrow
+          input.f-textbox(type='text' data-bind='value:value')
+        td.f-wide
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-dropdown-model-parameter")
+      tr(data-bind="css:{'bg-danger':isInvalid}")
+        td.f-narrow
+          label(data-bind='text:label')
+        td.f-narrow
+          select(data-bind="options:values, value:value, optionsCaption: '(None)'")
+        td.f-wide
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-list-model-parameter")
+      tr(data-bind="css:{'bg-danger':isInvalid}")
+        td.f-narrow
+          label(data-bind='text:label')
+        td.f-narrow
+          select(data-bind="options:values, selectedOptions:value", multiple='true', size='5')
+        td.f-wide
+          span(data-bind='text:description')
+          br
+          span(data-bind='text:selection')
+
+    script(type="text/html" id="flow-group-model-parameter")
+      tr
+        td(colspan='3' style='text-align:inherit;text-transform:inherit')
+          h4(data-bind='text:title')
+
+    script(type="text/html" id="flow-frames-output")
+      table.table
+        thead
+          tr
+            td Key
+            td Rows
+            td Size
+        tbody
+          // ko foreach:frameViews
+          tr
+            td
+              a(href='#' data-bind='text:key, click:inspect')
+            td(data-bind='text:rowCount')
+            td(data-bind='text:size')
+          // /ko
+
+
+    script(type="text/html" id="flow-model-input")
+      .f-widget
+        h3
+          i.fa.fa-cube.f-icon
+          | Build a Model
+
+        // ko if:parentException
+        div(data-bind="template: { name:'flow-error', data:parentException }")
+        // /ko
+
+        table.f-table-horizontal.f-table-padded
+          tbody
+            tr
+              td.f-narrow Algorithm
+              td.f-wide
+                select(data-bind="options:algorithms, value:algorithm, optionsCaption: '(Algorithm)'")
+
+
+        // ko with:modelForm
+
+        // ko if:exception
+        div(data-bind="template: { name:'flow-error', data:exception }")
+        // /ko
+
+        table.f-table-horizontal.f-table-padded(data-bind='template: { name: parameterTemplateOf, foreach:form }')
+        // /ko
+
+        .f-commands
+          button.f-button(type='button' data-bind="click:createModel, enable:canCreateModel")
+            i.fa.fa-cube.f-icon
+            | Build Model
+
 
     script(type="text/html" id="flow-jobs-output")
       .f-widget
@@ -372,12 +465,13 @@ html(lang='en')
               // /ko
             // /ko
 
-            tr.f-bg-gray
-              th Summary
-              // ko foreach:summaryRow
-              td(data-bind='click:displaySummary') 
-                i.fa.fa-share-square-o
-              // /ko
+            //-
+              tr.f-bg-gray
+                th Summary
+                // ko foreach:summaryRow
+                td(data-bind='click:displaySummary') 
+                  i.fa.fa-bar-chart
+                // /ko
 
             // ko foreach:dataRows
             tr

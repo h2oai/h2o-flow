@@ -92,7 +92,7 @@ Steam.ModelBuilderForm = (_, _algorithm, _parameters, _go) ->
   _controls = map [ 'critical', 'secondary', 'expert' ], (type) ->
     filter (map _parametersByLevel[type], createControlFromParameter), isTruthy
   [ _criticalControls, _secondaryControls, _expertControls ] = _controls
-  parameterTemplateOf = (control) -> "#{control.kind}-model-parameter"
+  parameterTemplateOf = (control) -> "flow-#{control.kind}-model-parameter"
 
   createModel = ->
     _validationError null

@@ -697,6 +697,240 @@ do ->
     dispose: ->
     template: 'flow-frame-output'
 
+do ->
+  createTextboxControl = (parameter) ->
+    value = node$ parameter.actual_value
+
+    kind: 'textbox'
+    name: parameter.name
+    label: parameter.label
+    description: parameter.help
+    required: parameter.required
+    value: value
+    defaultValue: parameter.default_value
+    help: node$ 'Help goes here.'
+    isInvalid: node$ no
+
+  createDropdownControl = (parameter) ->
+    value = node$ parameter.actual_value
+
+    kind: 'dropdown'
+    name: parameter.name
+    label: parameter.label
+    description: parameter.help
+    required: parameter.required
+    values: parameter.values
+    value: value
+    defaultValue: parameter.default_value
+    help: node$ 'Help goes here.'
+    isInvalid: node$ no
+
+  createListControl = (parameter) ->
+    value = node$ parameter.actual_value or []
+    selection = lift$ value, (items) ->
+      caption = "#{describeCount items.length, 'column'} selected"
+      caption += ": #{items.join ', '}" if items.length > 0
+      "(#{caption})"
+
+    kind: 'list'
+    name: parameter.name
+    label: parameter.label
+    description: parameter.help
+    required: parameter.required
+    values: parameter.values
+    value: value
+    selection: selection
+    defaultValue: parameter.default_value
+    help: node$ 'Help goes here.'
+    isInvalid: node$ no
+
+  createCheckboxControl = (parameter) ->
+    value = node$ parameter.actual_value is 'true' #FIXME
+
+    clientId: do uniqueId
+    kind: 'checkbox'
+    name: parameter.name
+    label: parameter.label
+    description: parameter.help
+    required: parameter.required
+    value: value
+    defaultValue: parameter.default_value is 'true'
+    help: node$ 'Help goes here.'
+    isInvalid: node$ no
+
+  createControlFromParameter = (parameter) ->
+    switch parameter.type
+      when 'enum', 'Frame', 'Vec'
+        createDropdownControl parameter
+      when 'Vec[]'
+        createListControl parameter
+      when 'boolean'
+        createCheckboxControl parameter
+      when 'Key', 'byte', 'short', 'int', 'long', 'float', 'double', 'int[]', 'long[]', 'float[]', 'double[]'
+        createTextboxControl parameter
+      else
+        console.error 'Invalid field', JSON.stringify parameter, null, 2
+        null
+
+  findParameter = (parameters, name) ->
+    find parameters, (parameter) -> parameter.name is name
+
+  Flow.ModelBuilderForm = (_, _algorithm, _parameters) ->
+    _exception = node$ null
+
+    _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
+    _controls = map [ 'critical', 'secondary', 'expert' ], (type) ->
+      filter (map _parametersByLevel[type], createControlFromParameter), (a) -> if a then yes else no
+
+    [ criticalControls, secondaryControls, expertControls ] = _controls
+
+    _form = flatten [ 
+      kind: 'group'
+      title: 'Parameters'
+    ,
+      criticalControls
+    ,
+      kind: 'group'
+      title: 'Advanced'
+    ,
+      secondaryControls
+    ,
+      kind: 'group'
+      title: 'Expert'
+    ,
+      expertControls
+    ]
+
+    parameterTemplateOf = (control) -> "flow-#{control.kind}-model-parameter"
+
+    createModel = ->
+      _exception null
+      parameters = {}
+      for controls in _controls
+        for control in controls
+          if control.defaultValue isnt value = control.value()
+            switch control.kind
+              when 'dropdown'
+                if value
+                  parameters[control.name] = value
+              when 'list'
+                if value.length
+                  parameters[control.name] = "[#{value.join ','}]"
+              else
+                parameters[control.name] = value
+      
+      _.requestModelBuild _algorithm, parameters, (error, result) ->
+        if error
+          _exception
+            message: error.data.errmsg
+            cause: error
+
+    form: _form
+    exception: _exception
+    parameterTemplateOf: parameterTemplateOf
+    createModel: createModel
+
+  Flow.ModelInput = (_, _algo, _frameKey, _sourceModel) ->
+    _exception = node$ null
+    _algorithms = [ 'kmeans', 'deeplearning', 'glm', 'gbm' ]
+    _algorithm = node$ _algorithm
+    _canCreateModel = lift$ _algorithm, (algorithm) -> if algorithm then yes else no
+    _canChangeAlgorithm = node$ yes
+
+    _modelForm = node$ null
+
+    populateFramesAndColumns = (frameKey, algorithm, parameters, go) ->
+      # Fetch frame list; pick column names from training frame
+      _.requestFrames (error, result) ->
+        if error
+          #TODO handle properly
+        else
+          trainingFrameParameter = findParameter parameters, 'training_frame'
+          trainingFrameParameter.values = map result.frames, (frame) -> frame.key.name
+          if frameKey
+            trainingFrameParameter.actual_value = frameKey
+          else
+            frameKey = trainingFrameParameter.actual_value
+
+          if algorithm is 'deeplearning'
+            validationFrameParameter = findParameter parameters, 'validation_frame'
+            responseColumnParameter = findParameter parameters, 'response_column'
+            #TODO HACK hard-coding DL column params for now - rework this when Vec type is supported.
+            responseColumnParameter.type = 'Vec'
+            ignoredColumnsParameter = findParameter parameters, 'ignored_columns'
+            #TODO HACK hard-coding DL column params for now - rework this when Vec type is supported.
+            ignoredColumnsParameter.type = 'Vec[]'
+
+            validationFrameParameter.values = slice trainingFrameParameter.values, 0
+
+            if trainingFrame = (find result.frames, (frame) -> frame.key.name is frameKey)
+              columnLabels = map trainingFrame.columns, (column) -> column.label
+              sort columnLabels
+              responseColumnParameter.values = columnLabels
+              ignoredColumnsParameter.values = columnLabels
+          go()
+
+    # If a source model is specified, we already know the algo, so skip algo selection
+    if _sourceModel
+      _canChangeAlgorithm no
+      parameters = _sourceModel.parameters
+
+      #TODO INSANE SUPERHACK
+      hasRateAnnealing = find _sourceModel.parameters, (parameter) -> parameter.name is 'rate_annealing'
+      algorithm = if hasRateAnnealing
+          find algorithms, (algorithm) -> algorithm is 'deeplearning'
+        else
+          find algorithms, (algorithm) -> algorithm is 'kmeans'
+
+      populateFramesAndColumns _frameKey, algorithm, parameters, ->
+        _modelForm Flow.ModelBuilderForm _, algorithm, parameters
+
+    else
+      _canChangeAlgorithm yes
+      apply$ _algorithm, (algorithm) ->
+        if algorithm
+          _.requestModelBuilders algorithm, (error, result) ->
+            if error
+              _exception
+                message: 'Error fetching model builder'
+                cause: error
+            else
+              parameters = result.model_builders[algorithm].parameters
+              populateFramesAndColumns _frameKey, algorithm, parameters, ->
+                _modelForm Flow.ModelBuilderForm _, algorithm, parameters
+        else
+          _modelForm null
+
+    createModel = -> _modelForm().createModel()
+
+    parentException: _exception #XXX hacky
+    algorithms: _algorithms
+    algorithm: _algorithm
+    modelForm: _modelForm
+    canCreateModel: _canCreateModel
+    canChangeAlgorithm: _canChangeAlgorithm
+    createModel: createModel
+    template: 'flow-model-input'
+
+
+Flow.FramesOutput = (_, _frames) ->
+
+  toSize = (bytes) ->
+    sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+    return '0 Byte' if bytes is 0
+    i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)))
+    Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i]
+
+  createFrameView = (frame) ->
+    key: frame.key.name
+    size: toSize frame.byteSize
+    rowCount: frame.rows
+    inspect: -> _.insertAndExecuteCell 'cs', "getFrame #{csString frame.key.name}"
+
+  frameViews: map _frames, createFrameView
+  template: 'flow-frames-output'
+
+
 Flow.SetupParseOutput = (_, _result) ->
   _sourceKeys = map _result.srcs, (src) -> src.name
   _parserType =  node$ find parserTypes, (parserType) -> parserType.type is _result.pType
@@ -714,7 +948,7 @@ Flow.SetupParseOutput = (_, _result) ->
   parseFiles = ->
     columnNames = map _columns, (column) -> column.name()
 
-    _.insertAndExecuteCell 'cs', "parseRaw\n  sourceKeys: #{csStringArray _sourceKeys}\n  destinationKey: #{csString _destinationKey()}\n  parserType: #{csString _parserType().type}\n  separator: #{_delimiter().charCode}\n  columnCount: #{_columnCount}\n  useSingleQuotes: #{_useSingleQuotes()}\n  columnNames: #{csStringArray columnNames}\n  deleteOnDone: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}"
+    _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{csStringArray _sourceKeys}\n  hex: #{csString _destinationKey()}\n  pType: #{csString _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{csStringArray columnNames}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}"
 
 
 
@@ -926,7 +1160,11 @@ Flow.H2O = (_) ->
     requestWithOpts '/ParseSetup.json', opts, go
 
   requestFrames = (go, opts) ->
-    requestWithOpts '/3/Frames.json', opts, go
+    requestWithOpts '/3/Frames.json', opts, (error, result) ->
+      if error
+        go error
+      else
+        go null, result.frames
 
   encodeArray = (array) -> "[#{join (map array, encodeURIComponent), ','}]"
   requestModelBuilders = (algo, go) ->
@@ -1088,7 +1326,7 @@ Flow.Routines = (_) ->
     go null, Flow.FrameOutput _, frame
 
   getFrames = (arg) ->
-    renderable _.requestFrames, key, renderFrames
+    renderable _.requestFrames, renderFrames
 
   getFrame = (key) ->
     renderable _.requestFrame, key, renderFrame
@@ -1125,18 +1363,23 @@ Flow.Routines = (_) ->
 
   parseRaw = (opts) -> #XXX review args
     #XXX validation
-    sourceKeys = opts.sourceKeys
-    destinationKey = opts.destinationKey
-    parserType = opts.parserType
-    separator = opts.separator
-    columnCount = opts.columnCount
-    useSingleQuotes = opts.useSingleQuotes
+    sourceKeys = opts.srcs
+    destinationKey = opts.hex
+    parserType = opts.pType
+    separator = opts.sep
+    columnCount = opts.ncols
+    useSingleQuotes = opts.singleQuotes
     columnNames = opts.columnNames
-    deleteOnDone = opts.deleteOnDone
+    deleteOnDone = opts.delete_on_done
     checkHeader = opts.checkHeader
 
     renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, renderParse
 
+  setupModel = (algo, frameKey) ->
+    renderable noopFuture, (ignore, go) ->
+      go null, Flow.ModelInput _, algo, frameKey
+
+  buildModel = ->
 
   ###
   getUsageForFunction = (f) ->
@@ -1183,6 +1426,8 @@ Flow.Routines = (_) ->
   parseRaw: parseRaw
   getFrames: getFrames
   getFrame: getFrame
+  setupModel: setupModel
+  buildModel: buildModel
   getModels: getModels
   getModel: getModel
 
@@ -1407,6 +1652,10 @@ assist = (_, routines, routine) ->
     when routines.importFiles
       renderable noopFuture, (ignore, go) ->
         go null, Flow.ImportFilesInput _
+    when routines.buildModel
+      routines.setupModel()
+    when routines.getFrames
+      routines.getFrames()
     else
       console.error 'NO ASSIST DEFINED'
       renderable noopFuture, (go) ->
