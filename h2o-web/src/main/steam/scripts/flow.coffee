@@ -990,7 +990,7 @@ Flow.ImportFilesInput = (_) ->
   # File selection 
   #
   _importedFiles = nodes$ []
-  _importedFileCount = lift$ _importedFiles, (files) -> "Found #{describeCount files.length, 'file'}."
+  _importedFileCount = lift$ _importedFiles, (files) -> if files.length then "Found #{describeCount files.length, 'file'}:" else ''
   _hasImportedFiles = lift$ _importedFiles, (files) -> files.length > 0
   _hasUnselectedFiles = lift$ _importedFiles, (files) -> some files, (file) -> not file.isSelected()
   _selectedFiles = nodes$ []
@@ -999,7 +999,7 @@ Flow.ImportFilesInput = (_) ->
     for file in files
       dictionary[file.path] = yes
     dictionary
-  _selectedFileCount = lift$ _selectedFiles, (files) -> "#{describeCount files.length, 'file'} selected."
+  _selectedFileCount = lift$ _selectedFiles, (files) -> "#{describeCount files.length, 'file'} selected:"
   _hasSelectedFiles = lift$ _selectedFiles, (files) -> files.length > 0
 
   importFiles = (files) ->

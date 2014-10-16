@@ -90,22 +90,22 @@ html(lang='en')
           // /ko
 
         h4 Parse Configuration
-        table.f-table-horizontal.f-table-padded
+        table.f-table-horizontal
           tbody
             tr
-              td.f-narrow Destination Key
+              th.f-narrow Destination Key
               td.f-wide
                 input.f-textbox(type='text' data-bind="value:destinationKey")
             tr
-              td.f-narrow Parser
+              th.f-narrow Parser
               td.f-wide
                 select(data-bind="options:parserTypes, optionsText:'caption', value:parserType")
             tr
-              td.f-narrow Separator
+              th.f-narrow Separator
               td.f-wide
                 select(data-bind="options:delimiters, optionsText:'caption', value:delimiter")
             tr
-              td.f-narrow Column Headers
+              th.f-narrow Column Headers
               td.f-wide
                 div
                   label
@@ -120,7 +120,7 @@ html(lang='en')
                     input(type='radio' name='hasHeader' value='data' data-bind='checked:headerOption')
                     span First row contains data
             tr
-              td.f-narrow Options
+              th.f-narrow Options
               td.f-wide
                 div
                   label
@@ -172,7 +172,7 @@ html(lang='en')
         table.f-table-horizontal
           tbody
             tr
-              td.f-narrow Job Key
+              th.f-narrow Job Key
               td.f-wide
                 a(href='#' data-bind='text:result.job.name, click:inspectJob')
 
@@ -186,7 +186,12 @@ html(lang='en')
         h3
           i.fa.fa-cloud-upload.f-icon
           span(data-bind='text:title')
-        div(data-bind="template: { name:templateOf, foreach:importViews }")
+        table.f-table-horizontal
+          tbody
+            tr
+              th.f-narrow Keys
+              td.f-wide
+                div(data-bind="template: { name:templateOf, foreach:importViews }")
         // ko if:canParse
         .f-commands
           button.f-button(type='button' data-bind="click:parse")
@@ -199,49 +204,51 @@ html(lang='en')
         h3
           i.fa.fa-life-ring.f-icon
           | Import Files
-        table
+        table.f-table-horizontal
           tbody
             tr
-              td.f-narrow Search:
+              th(width='125') Search:
               td
-                input.f-textbox(type='text' style='width:600px' data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder='File or directory path')
-              td.f-narrow
-                button.f-button(type='button' data-bind="click:tryImportFiles")
-                  i.fa.fa-search
-        
-        // ko if:hasImportedFiles
-        div.f-well
-          span(data-bind='text:importedFileCount')
-          // ko if:hasUnselectedFiles
-          button.f-button(data-bind='click:selectAllFiles')
-            i.fa.fa-files-o.f-icon
-            | Add these files
-          // /ko
-          // ko foreach:importedFiles
-          // ko ifnot:isSelected
-          div.f-pointer(data-bind='click:select')
-            i.fa.fa-plus.f-icon(title='Select file')
-            span(data-bind="text:path")
-          // /ko
-          // /ko
-        // /ko
-
-        div.f-well
-          div
-            span(data-bind='text:selectedFileCount')
-            // ko if:hasSelectedFiles
-            button.f-button(data-bind='click:deselectAllFiles')
-              i.fa.fa-remove.f-icon 
-              | Clear
+                input.f-textbox(type='text' style='width:100%' data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder='File or directory path')
+            // ko if:hasImportedFiles
+            tr
+              th Search Results:
+              // ko if:hasUnselectedFiles
+              td
+                div(data-bind='text:importedFileCount')
+                div.f-well
+                  // ko foreach:importedFiles
+                  // ko ifnot:isSelected
+                  div.f-pointer(data-bind='click:select')
+                    i.fa.fa-plus.f-icon(title='Select file')
+                    span(data-bind="text:path")
+                  // /ko
+                  // /ko
+                button.f-button(data-bind='click:selectAllFiles')
+                  i.fa.fa-files-o.f-icon
+                  | Add these files
+              // /ko
+              // ko ifnot:hasUnselectedFiles
+              td (All files added)
+              // /ko
             // /ko
-          // ko if:hasSelectedFiles
-          div
-            // ko foreach:selectedFiles
-            div.f-pointer(data-bind='click:deselect')
-              i.fa.fa-remove.f-icon(title='Deselect file')
-              span(data-bind='text:path')
-            // /ko
-          // /ko
+            tr
+              th Selected Files:
+              td
+                div(data-bind='text:selectedFileCount')
+                // ko if:hasSelectedFiles
+                div.f-well
+                  // ko foreach:selectedFiles
+                  div.f-pointer(data-bind='click:deselect')
+                    i.fa.fa-remove.f-icon(title='Deselect file')
+                    span(data-bind='text:path')
+                  // /ko
+                // /ko
+                // ko if:hasSelectedFiles
+                button.f-button(data-bind='click:deselectAllFiles')
+                  i.fa.fa-remove.f-icon 
+                  | Clear selection
+                // /ko
 
         .f-commands
           button.f-button(type='button' data-bind='click:importSelectedFiles, enable:hasSelectedFiles')
@@ -252,46 +259,46 @@ html(lang='en')
     
     script(type="text/html" id="flow-checkbox-model-parameter")
       tr(data-bind="css:{'bg-danger':isInvalid}")
-        td.f-narrow
+        th
           label(data-bind="text:label, attr:{ 'for':clientId }")
-        td.f-narrow
+        td
           input(type='checkbox' data-bind="checked:value, attr:{ 'id':clientId }")
-        td.f-wide
+        td
           span(data-bind='text:description')
 
     script(type="text/html" id="flow-textbox-model-parameter")
       tr(data-bind="css:{'bg-danger':isInvalid}")
-        td.f-narrow
+        th
           label(data-bind='text:label')
-        td.f-narrow
+        td
           input.f-textbox(type='text' data-bind='value:value')
-        td.f-wide
+        td
           span(data-bind='text:description')
 
     script(type="text/html" id="flow-dropdown-model-parameter")
       tr(data-bind="css:{'bg-danger':isInvalid}")
-        td.f-narrow
+        th
           label(data-bind='text:label')
-        td.f-narrow
+        td
           select(data-bind="options:values, value:value, optionsCaption: '(None)'")
-        td.f-wide
+        td
           span(data-bind='text:description')
 
     script(type="text/html" id="flow-list-model-parameter")
       tr(data-bind="css:{'bg-danger':isInvalid}")
-        td.f-narrow
+        th
           label(data-bind='text:label')
-        td.f-narrow
+        td
           select(data-bind="options:values, selectedOptions:value", multiple='true', size='5')
-        td.f-wide
+        td
           span(data-bind='text:description')
           br
           span(data-bind='text:selection')
 
     script(type="text/html" id="flow-group-model-parameter")
       tr
-        td(colspan='3' style='text-align:inherit;text-transform:inherit')
-          h4(data-bind='text:title')
+        th(colspan='3' style='text-align:left;text-transform:inherit')
+          h4(data-bind='text:title' style='margin-top:20px; border-bottom:1px dotted #ccc')
 
     script(type="text/html" id="flow-frames-output")
       table.table
@@ -320,12 +327,9 @@ html(lang='en')
         div(data-bind="template: { name:'flow-error', data:parentException }")
         // /ko
 
-        table.f-table-horizontal.f-table-padded
-          tbody
-            tr
-              td.f-narrow Algorithm
-              td.f-wide
-                select(data-bind="options:algorithms, value:algorithm, optionsCaption: '(Algorithm)'")
+        div
+          | Select an algorithm:
+          select(data-bind="options:algorithms, value:algorithm, optionsCaption: '(Algorithm)'")
 
 
         // ko with:modelForm
@@ -334,12 +338,12 @@ html(lang='en')
         div(data-bind="template: { name:'flow-error', data:exception }")
         // /ko
 
-        table.f-table-horizontal.f-table-padded(data-bind='template: { name: parameterTemplateOf, foreach:form }')
+        table.f-table-horizontal(data-bind='template: { name: parameterTemplateOf, foreach:form }')
         // /ko
 
         .f-commands
           button.f-button(type='button' data-bind="click:createModel, enable:canCreateModel")
-            i.fa.fa-cube.f-icon
+            i.fa.fa-bolt.f-icon
             | Build Model
 
 
@@ -387,99 +391,100 @@ html(lang='en')
           i.fa.fa-database.f-icon
           span(data-bind="text:key")
         // ko with:table
-        table.table.table-condensed.f-monospace
-          thead
-            tr
-              th Label
-              // ko foreach:header
-              th(data-bind='text:$data')
-              // /ko
-          tbody
-            tr.f-bg-gray
-              th Type
-              // ko foreach:typeRow
-              td(data-bind='text:$data')
-              // /ko
-
-            tr.f-bg-gray
-              th Min
-              // ko foreach:minRow
-              td(data-bind='text:$data')
-              // /ko
-
-            tr.f-bg-gray
-              th Max
-              // ko foreach:maxRow
-              td(data-bind='text:$data')
-              // /ko
-
-            tr.f-bg-gray
-              th Mean
-              // ko foreach:meanRow
-              td(data-bind='text:$data')
-              // /ko
-
-            tr.f-bg-gray
-              th Sigma
-              // ko foreach:sigmaRow
-              td(data-bind='text:$data')
-              // /ko
-
-            // ko if:hasEnums
-            tr.f-bg-gray
-              th Cardinality
-              // ko foreach:cardinalityRow
-              td(data-bind='text:$data')
-              // /ko
-            // /ko
-
-            // ko if:hasMissings
-            tr.f-bg-gray
-              th Missings
-              // ko foreach:missingsRow
-              td(data-bind='text:$data')
-              // /ko
-            // /ko
-
-            // ko if:hasZeros
-            tr.f-bg-gray
-              th Zeros
-              // ko foreach:zerosRow
-              td(data-bind='text:$data')
-              // /ko
-            // /ko
-
-            // ko if:hasPinfs
-            tr.f-bg-gray
-              th +Inf
-              // ko foreach:pinfsRow
-              td(data-bind='text:$data')
-              // /ko
-            // /ko
-
-            // ko if:hasNinfs
-            tr.f-bg-gray
-              th -Inf
-              // ko foreach:ninfsRow
-              td(data-bind='text:$data')
-              // /ko
-            // /ko
-
-            //-
+        div(style='overflow:auto')
+          table.table.table-condensed.f-monospace
+            thead
+              tr
+                th Label
+                // ko foreach:header
+                th(data-bind='text:$data')
+                // /ko
+            tbody
               tr.f-bg-gray
-                th Summary
-                // ko foreach:summaryRow
-                td(data-bind='click:displaySummary') 
-                  i.fa.fa-bar-chart
+                th Type
+                // ko foreach:typeRow
+                td(data-bind='text:$data')
                 // /ko
 
-            // ko foreach:dataRows
-            tr
-              th(data-bind='text:header')
-              // ko foreach:cells
-              td(data-bind='text:$data')
+              tr.f-bg-gray
+                th Min
+                // ko foreach:minRow
+                td(data-bind='text:$data')
+                // /ko
+
+              tr.f-bg-gray
+                th Max
+                // ko foreach:maxRow
+                td(data-bind='text:$data')
+                // /ko
+
+              tr.f-bg-gray
+                th Mean
+                // ko foreach:meanRow
+                td(data-bind='text:$data')
+                // /ko
+
+              tr.f-bg-gray
+                th Sigma
+                // ko foreach:sigmaRow
+                td(data-bind='text:$data')
+                // /ko
+
+              // ko if:hasEnums
+              tr.f-bg-gray
+                th Cardinality
+                // ko foreach:cardinalityRow
+                td(data-bind='text:$data')
+                // /ko
               // /ko
-            // /ko
+
+              // ko if:hasMissings
+              tr.f-bg-gray
+                th Missings
+                // ko foreach:missingsRow
+                td(data-bind='text:$data')
+                // /ko
+              // /ko
+
+              // ko if:hasZeros
+              tr.f-bg-gray
+                th Zeros
+                // ko foreach:zerosRow
+                td(data-bind='text:$data')
+                // /ko
+              // /ko
+
+              // ko if:hasPinfs
+              tr.f-bg-gray
+                th +Inf
+                // ko foreach:pinfsRow
+                td(data-bind='text:$data')
+                // /ko
+              // /ko
+
+              // ko if:hasNinfs
+              tr.f-bg-gray
+                th -Inf
+                // ko foreach:ninfsRow
+                td(data-bind='text:$data')
+                // /ko
+              // /ko
+
+              //-
+                tr.f-bg-gray
+                  th Summary
+                  // ko foreach:summaryRow
+                  td(data-bind='click:displaySummary') 
+                    i.fa.fa-bar-chart
+                  // /ko
+
+              // ko foreach:dataRows
+              tr
+                th(data-bind='text:header')
+                // ko foreach:cells
+                td(data-bind='text:$data')
+                // /ko
+              // /ko
         // /ko
 
     script(type="text/html" id="flow-job-output")
@@ -493,16 +498,16 @@ html(lang='en')
         table.f-table-horizontal
           tbody
             tr
-              td.f-narrow Status
+              th.f-narrow Status
               td.f-wide(data-bind='text:status')
             tr
-              td.f-narrow Key
+              th.f-narrow Key
               td.f-wide(data-bind='text:key')
             tr
-              td.f-narrow Description
+              th.f-narrow Description
               td.f-wide(data-bind='text:description')
             tr
-              td.f-narrow Destination Key
+              th.f-narrow Destination Key
               td.f-wide
                 // ko ifnot:kind
                 span(data-bind='text:destinationKey')
@@ -511,10 +516,10 @@ html(lang='en')
                 a(href='#' data-bind='text:destinationKey, click:inspect')
                 // /ko
             tr
-              td.f-narrow Run Time
+              th.f-narrow Run Time
               td.f-wide(data-bind='text:runTime')
             tr
-              td.f-narrow Progress
+              th.f-narrow Progress
               td.f-wide
                 table
                   tbody
@@ -525,7 +530,7 @@ html(lang='en')
                           .progress-bar(data-bind="style:{background:statusColor,width:progress}")
 
             tr
-              td.f-narrow Exception
+              th.f-narrow Exception
               td.f-wide(data-bind='text:exception')
         .f-commands
           button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
