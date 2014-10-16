@@ -81,17 +81,18 @@ html(lang='en')
           i.fa.fa-cog.f-icon
           | Setup Parse
 
-        h4 Source Keys
-        .f-well
-          // ko foreach:sourceKeys
-          div
-            i.fa.fa-key.f-icon
-            span(data-bind='text:$data')
-          // /ko
-
         h4 Parse Configuration
         table.f-table-horizontal
           tbody
+            tr
+              th.f-narrow Sources
+              td.f-wide
+                // ko foreach:sourceKeys
+                div
+                  i.fa.fa-key.f-icon
+                  span(data-bind='text:$data')
+                // /ko
+
             tr
               th.f-narrow Destination Key
               td.f-wide
@@ -156,12 +157,11 @@ html(lang='en')
             | Parse
 
     script(type="text/html" id="flow-import-file-output")
-      div.f-well
-        // ko foreach:keys
-        div
-          i.fa.fa-key.f-icon
-          span(data-bind='text:$data')
-        // /ko
+      // ko foreach:keys
+      div
+        i.fa.fa-key.f-icon
+        span(data-bind='text:$data')
+      // /ko
 
     script(type="text/html" id="flow-parse-output")
       .f-widget
@@ -175,11 +175,12 @@ html(lang='en')
               th.f-narrow Job Key
               td.f-wide
                 a(href='#' data-bind='text:result.job.name, click:inspectJob')
-
-        .f-commands
-          button.f-button(type='button' data-bind='click:inspectJob')
-            i.fa.fa-indent.f-icon
-            | View Job
+            tr.f-actions
+              th.f-narrow Actions
+              td.f-wide
+                button.f-button(type='button' data-bind='click:inspectJob')
+                  i.fa.fa-indent.f-icon
+                  | View Job
 
     script(type="text/html" id="flow-import-files-output")
       .f-widget
@@ -192,17 +193,19 @@ html(lang='en')
               th.f-narrow Keys
               td.f-wide
                 div(data-bind="template: { name:templateOf, foreach:importViews }")
-        // ko if:canParse
-        .f-commands
-          button.f-button(type='button' data-bind="click:parse")
-            i.fa.fa-cog.f-icon
-            | Parse these files&hellip;
-        // /ko
+            // ko if:canParse
+            tr.f-actions
+              th.f-narrow Actions
+              td.f-wide
+                button.f-button(type='button' data-bind="click:parse")
+                  i.fa.fa-cog.f-icon
+                  | Parse these files&hellip;
+            // /ko
 
     script(type="text/html" id="flow-import-files")
       .f-widget
         h3
-          i.fa.fa-life-ring.f-icon
+          i.fa.fa-files-o.f-icon
           | Import Files
         table.f-table-horizontal
           tbody
@@ -249,11 +252,12 @@ html(lang='en')
                   i.fa.fa-remove.f-icon 
                   | Clear selection
                 // /ko
-
-        .f-commands
-          button.f-button(type='button' data-bind='click:importSelectedFiles, enable:hasSelectedFiles')
-            i.fa.fa-cloud-upload.f-icon
-            | Import
+            tr.f-actions
+              th Actions:
+              td
+                button.f-button(type='button' data-bind='click:importSelectedFiles, enable:hasSelectedFiles')
+                  i.fa.fa-cloud-upload.f-icon
+                  | Import
 
       // /ko
     
@@ -513,6 +517,7 @@ html(lang='en')
                 span(data-bind='text:destinationKey')
                 // /ko
                 // ko if:kind
+                i.fa.fa-key.f-icon
                 a(href='#' data-bind='text:destinationKey, click:inspect')
                 // /ko
             tr
@@ -532,16 +537,22 @@ html(lang='en')
             tr
               th.f-narrow Exception
               td.f-wide(data-bind='text:exception')
-        .f-commands
-          button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
-            // ko if:isLive
-            i.fa.fa-refresh.fa-spin.f-icon
-            | Stop
-            // /ko
-            // ko ifnot:isLive
-            i.fa.fa-refresh.f-icon
-            | Refresh
-            // /ko
+            tr
+              th.f-narrow Actions
+              td.f-wide
+                button.f-button(type='button' data-bind="click:inspect")
+                  i.fa.fa-key.f-icon
+                  | Inspect
+                  
+                button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
+                  // ko if:isLive
+                  i.fa.fa-refresh.fa-spin.f-icon
+                  | Stop
+                  // /ko
+                  // ko ifnot:isLive
+                  i.fa.fa-refresh.f-icon
+                  | Refresh
+                  // /ko
 
     script(type="text/html" id="flow-error")
       .alert.alert-danger(role='alert')
