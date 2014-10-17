@@ -135,7 +135,7 @@ html(lang='en')
         // ko if:hasColumns
         h4 Data Preview
         div(style='overflow:auto')
-          table.f-table-horizontal.f-monospace
+          table.f-table-horizontal.f-mono
             thead
               tr
                 // ko foreach:columns
@@ -333,7 +333,7 @@ html(lang='en')
               td
                 i(data-bind="attr:{'class':icon}")
               td
-                a.f-icon.f-monospace(href='#' data-bind='click:execute, text:name')
+                a.f-icon.f-mono(href='#' data-bind='click:execute, text:name')
               td(data-bind='html:description')
 
             // /ko
@@ -512,7 +512,7 @@ html(lang='en')
 
         // ko with:table
         div(style='overflow:auto')
-          table.table.table-condensed.f-monospace
+          table.table.table-condensed.f-mono
             thead
               tr
                 th Label
