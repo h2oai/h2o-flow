@@ -1402,52 +1402,61 @@ renderable = (f, args..., render) ->
   ft
 
 Flow.Gui = (_) ->
-  # visible
-  # label
-  # value
-  # description
-  # click
-  # disable
+  
+#  gui [
+#    gui.text value: 'some text value', description: 'text desc'
+#    gui.content value: '<i>italic</i>', description: 'content desc'
+#    gui.checkbox label: 'checkbox label', value: yes, description: 'checkbox desc'
+#    gui.dropdown label: 'dropdown label', options: [ 'foo', 'bar' ], value: null, caption: 'select one', description: 'dropdown desc'
+#    gui.dropdown label: 'dropdown label', options: [ 'foo', 'bar' ], value: 'foo', caption: 'select one', description: 'dropdown2 desc'
+#    gui.listbox label: 'listbox label', options: [ 'foo', 'bar' ], values: ['foo'], description: 'listbox desc'
+#    gui.textbox value: 'some textbox value', description: 'textbox desc'
+#    gui.textarea value: 'some textarea value', description: 'textarea desc', rows: 20
+#    gui.button label: 'button label', description: 'button desc'
+#  ]
 
-  nbsp = '&nbsp;'
   control = (type, opts) ->
     opts = {} unless opts
     guid = "gui_#{uniqueId()}"
 
     type: type
     id: opts.id or guid
-    label: node$ opts.label or nbsp
-    description: node$ opts.description or nbsp
+    label: node$ opts.label or ' '
+    description: node$ opts.description or ' '
     visible: node$ if opts.visible is no then no else yes
     disable: node$ if opts.disable is yes then yes else no
     template: "flow-form-#{type}"
+    templateOf: (control) -> control.template
 
-  label = (opts) ->
-    self = control 'label', opts
+  text = (opts) ->
+    self = control 'text', opts
     self.value = node$ opts.value or ''
     self
 
+  #XXX rename
   content = (opts) ->
     self = control 'content', opts
     self.value = node$ opts.value or ''
     self
 
-  hyperlink = (opts) ->
-    #XXX
-
   checkbox = (opts) ->
-    #XXX
+    self = control 'checkbox', opts
+    self.value = node$ if opts.value then yes else no
+    self
+
+  #TODO KO supports array valued args for 'checked' - can provide a checkboxes function
 
   dropdown = (opts) ->
-    #XXX
+    self = control 'dropdown', opts
+    self.options = opts.options or []
+    self.value = node$ opts.value
+    self.caption = opts.caption or 'Choose...'
+    self
 
   listbox = (opts) ->
-    #XXX
-
-  options = (opts) ->
-    self = control 'options', opts
-    self.value = node$ opts.value
-    self.options = opts.options
+    self = control 'listbox', opts
+    self.options = opts.options or []
+    self.values = nodes$ opts.values or []
     self
 
   textbox = (opts) ->
@@ -1456,16 +1465,15 @@ Flow.Gui = (_) ->
     self
 
   textarea = (opts) ->
-    #XXX
+    self = control 'textarea', opts
+    self.value = node$ opts.value or ''
+    self.rows = opts.rows or 5
+    self
 
   button = (opts) ->
     self = control 'button', opts
+    self.click = opts.click or noop
     self
-
-  panel = (opts) ->
-    #XXX
-    type: 'panel'
-    controls: controls
 
   form = (controls, go) ->
     go null, nodes$ controls or []
@@ -1474,17 +1482,14 @@ Flow.Gui = (_) ->
     renderable form, controls, (form, go) ->
       go null, Flow.Form _, form
 
-  gui.label = label
+  gui.text = text
   gui.content = content
-  gui.hyperlink = hyperlink
   gui.checkbox = checkbox
   gui.dropdown = dropdown
   gui.listbox = listbox
-  gui.options = options
   gui.textbox = textbox
   gui.textarea = textarea
   gui.button = button
-  gui.panel = panel
 
   gui
 

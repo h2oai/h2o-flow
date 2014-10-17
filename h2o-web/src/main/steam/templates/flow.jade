@@ -431,12 +431,75 @@ html(lang='en')
         // /ko
 
 
+    script(type="text/html" id="flow-form-text")
+      tr(data-bind="visible:visible")
+        th
+          label(data-bind='text:label')
+        td
+          div(data-bind="text:value, attr:{ id:id }")
+        td
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-form-content")
+      tr(data-bind="visible:visible")
+        th
+          label(data-bind='text:label')
+        td
+          div(data-bind="html:value, attr:{ id:id }")
+        td
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-form-checkbox")
+      tr(data-bind="visible:visible")
+        th
+          label(data-bind='text:label')
+        td
+          input(type='checkbox' data-bind="checked:value, disable:disable, attr:{ 'id':id }")
+        td
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-form-dropdown")
+      tr(data-bind="visible:visible")
+        th
+          label(data-bind='text:label')
+        td
+          select(data-bind="options:options, value:value, optionsCaption:caption, attr:{ id:id }")
+        td
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-form-listbox")
+      tr(data-bind="visible:visible")
+        th
+          label(data-bind='text:label')
+        td
+          select(data-bind="options:options, selectedOptions:values, disable:disable, attr:{ id:id }")
+        td
+          span(data-bind='text:description')
+
     script(type="text/html" id="flow-form-textbox")
       tr(data-bind="visible:visible")
         th
           label(data-bind='text:label')
         td
-          input.f-textbox(type='text' data-bind="value:value, disable:disable, attr{ 'id':id }")
+          input.f-textbox(type='text' data-bind="value:value, disable:disable, attr:{ id:id }")
+        td
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-form-textarea")
+      tr(data-bind="visible:visible")
+        th
+          label(data-bind='text:label')
+        td
+          textarea(data-bind="value:value, disable:disable, attr:{ id:id, rows:rows }")
+        td
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-form-button")
+      tr(data-bind="visible:visible")
+        th &nbsp;
+        td
+          button.f-button(type='button' data-bind="click:click, disable:disable, attr:{ id:id }")
+            span(data-bind='text:label')
         td
           span(data-bind='text:description')
 
