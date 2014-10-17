@@ -481,7 +481,7 @@ html(lang='en')
         th
           label(data-bind='text:label')
         td
-          input.f-textbox(type='text' data-bind="value:value, disable:disable, attr:{ id:id }")
+          input.f-textbox(type='text' data-bind="value:value, valueUpdate:event, disable:disable, attr:{ id:id }")
         td
           span(data-bind='text:description')
 
@@ -490,7 +490,7 @@ html(lang='en')
         th
           label(data-bind='text:label')
         td
-          textarea.f-textarea(data-bind="value:value, disable:disable, attr:{ id:id, rows:rows }")
+          textarea.f-textarea(data-bind="value:value, valueUpdate:event, disable:disable, attr:{ id:id, rows:rows }")
         td
           span(data-bind='text:description')
 

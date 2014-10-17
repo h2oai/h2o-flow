@@ -1360,6 +1360,8 @@ _fork = (f, args) ->
 
   self
 
+isFuture = (a) -> if a?.isFuture then yes else no
+
 fork = (f, args...) -> _fork f, args
 
 _join = (args, go) ->
@@ -1428,20 +1430,39 @@ Flow.Gui = (_) ->
     template: "flow-form-#{type}"
     templateOf: (control) -> control.template
 
+  wrapValue = (value, init) ->
+    if value is undefined
+      node$ init
+    else
+      if isNode$ value
+        value
+      else
+        node$ value
+
+  wrapArray = (elements) ->
+    if elements
+      if isNode$ elements
+        element = elements()
+        if isArray element then elements else node$ [ element ]
+      else
+        nodes$ if isArray elements then elements else [ elements ]
+    else
+      nodes$ []
+
   text = (opts) ->
     self = control 'text', opts
-    self.value = node$ opts.value or ''
+    self.value = wrapValue opts.value, ''
     self
 
   #XXX rename
   content = (opts) ->
     self = control 'content', opts
-    self.value = node$ opts.value or ''
+    self.value = wrapValue opts.value, ''
     self
 
   checkbox = (opts) ->
     self = control 'checkbox', opts
-    self.value = node$ if opts.value then yes else no
+    self.value = wrapValue opts.value, if opts.value then yes else no
     self
 
   #TODO KO supports array valued args for 'checked' - can provide a checkboxes function
@@ -1449,30 +1470,32 @@ Flow.Gui = (_) ->
   dropdown = (opts) ->
     self = control 'dropdown', opts
     self.options = opts.options or []
-    self.value = node$ opts.value
+    self.value = wrapValue opts.value
     self.caption = opts.caption or 'Choose...'
     self
 
   listbox = (opts) ->
     self = control 'listbox', opts
     self.options = opts.options or []
-    self.values = nodes$ opts.values or []
+    self.values = wrapArray opts.values
     self
 
   textbox = (opts) ->
     self = control 'textbox', opts
-    self.value = node$ opts.value or ''
+    self.value = wrapValue opts.value, ''
+    self.event = if isString opts.event then opts.event else null
     self
 
   textarea = (opts) ->
     self = control 'textarea', opts
-    self.value = node$ opts.value or ''
-    self.rows = opts.rows or 5
+    self.value = wrapValue opts.value, ''
+    self.event = if isString opts.event then opts.event else null
+    self.rows = if isNumber opts.rows then opts.rows else 5
     self
 
   button = (opts) ->
     self = control 'button', opts
-    self.click = opts.click or noop
+    self.click = if isFunction opts.click then opts.click else noop
     self
 
   form = (controls, go) ->
@@ -1630,12 +1653,36 @@ Flow.Routines = (_) ->
   _applicate = (go) -> 
     (error, args) ->
       apply go, null, [ error ].concat args if isFunction go
+  
+  _resolve = (nodes) ->
+    map nodes, (node) -> if isNode$ node then node() else node
 
+  _react = (nodes, immediate, go) ->
+    propagate = -> apply go, null, _resolve nodes
+    propagate() if immediate
+    map nodes, (node) -> link$ node, -> propagate()
+
+  react = (nodes..., go) -> _react nodes, no, go
+  #XXX BUG shorthand rewrites this to lodash.invoke
+  _invoke = (nodes..., go) -> _react nodes, yes, go 
+  lift = (nodes..., f) ->
+    evaluate = -> apply f, null, _resolve nodes
+    target = node$ evaluate()
+    forEach nodes, (node) -> link$ node, -> target evaluate()
+    target
+  
 
   fork: fork
   join: (args..., go) -> _join args, _applicate go
   call: (go, args...) -> _join args, _applicate go
   apply: (go, args) -> _join args, go
+  isFuture: isFuture
+  signal: node$
+  signals: nodes$
+  isSignal: isNode$
+  react: react
+  invoke: _invoke
+  lift: lift
   menu: menu
   getJobs: getJobs
   getJob: getJob
