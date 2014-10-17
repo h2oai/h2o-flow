@@ -314,11 +314,11 @@ objectToHtmlTable = (obj) ->
   else
     obj
 
-Flow.ParseOutput = (_, _parseResult) ->
+Flow.ParseOutput = (_, _result) ->
   inspectJob = ->
-    _.insertAndExecuteCell 'cs', "getJob #{stringify _parseResult.job.name}"
+    _.insertAndExecuteCell 'cs', "getJob #{stringify _result.job.name}"
 
-  result: _parseResult
+  result: _result
   inspectJob: inspectJob
   template: 'flow-parse-output'
 
@@ -706,7 +706,7 @@ do ->
       dataRows: createDataRows offset, rowCount, columns
 
     createModel = ->
-      _.insertAndExecuteCell 'cs', 'buildModel'
+      _.insertAndExecuteCell 'cs', "buildModel null, training_frame: #{stringify _frame.key.name}"
 
     data: _frame
     key: _frame.key.name
@@ -1389,6 +1389,9 @@ Flow.Routines = (_) ->
   renderFrame = (frame, go) ->
     go null, Flow.FrameOutput _, frame
 
+  renderBuildModel = (modelBuildResult, go) ->
+    go null, Flow.JobOutput _, head modelBuildResult.jobs
+
   renderModel = (model, go) ->
     go null, Flow.ModelOutput _, model
 
@@ -1400,7 +1403,8 @@ Flow.Routines = (_) ->
 
   getModels = (arg) ->
 
-  getModel = (arg) ->
+  getModel = (key) ->
+    renderable _.requestModel, key, renderModel
 
   getJobs = ->
     renderable _.requestJobs, renderJobs
@@ -1444,7 +1448,7 @@ Flow.Routines = (_) ->
 
   buildModel = (algo, opts) ->
     if algo and opts and keys(opts).length > 1
-      renderable _.requestModelBuild, algo, opts, renderModel
+      renderable _.requestModelBuild, algo, opts, renderBuildModel
     else
       renderable noopFuture, (ignore, go) ->
         go null, Flow.ModelInput _, algo, opts
@@ -1490,7 +1494,7 @@ Flow.Routines = (_) ->
   fork: fork
   join: (args..., go) -> _join args, _applicate go
   call: (go, args...) -> _join args, _applicate go
-  apply: (go, args) -> _join args, _applicate go
+  apply: (go, args) -> _join args, go
   getJobs: getJobs
   getJob: getJob
   importFiles: importFiles
