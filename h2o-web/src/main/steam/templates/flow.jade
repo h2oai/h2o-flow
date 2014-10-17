@@ -431,6 +431,19 @@ html(lang='en')
         // /ko
 
 
+    script(type="text/html" id="flow-form-textbox")
+      tr(data-bind="visible:visible")
+        th
+          label(data-bind='text:label')
+        td
+          input.f-textbox(type='text' data-bind="value:value, disable:disable, attr{ 'id':id }")
+        td
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-form")
+      .f-widget
+        table.f-table-horizontal(data-bind='template: { name: templateOf, foreach:form }')
+        
     script(type="text/html" id="flow-model-input")
       .f-widget
         h3

@@ -969,6 +969,11 @@ Flow.NoAssistView = (_) ->
   showMenu: -> _.insertAndExecuteCell 'cs', "menu"
   template: 'flow-no-assist-view'
 
+Flow.Form = (_, _form) ->
+  form: _form
+  template: 'flow-form'
+  templateOf: (control) -> control.template
+
 Flow.ModelsOutput = (_, _models) ->
   createModelView = (model) ->
     key: model.key
@@ -1396,6 +1401,93 @@ renderable = (f, args..., render) ->
   ft.render = render
   ft
 
+Flow.Gui = (_) ->
+  # visible
+  # label
+  # value
+  # description
+  # click
+  # disable
+
+  nbsp = '&nbsp;'
+  control = (type, opts) ->
+    opts = {} unless opts
+    guid = "gui_#{uniqueId()}"
+
+    type: type
+    id: opts.id or guid
+    label: node$ opts.label or nbsp
+    description: node$ opts.description or nbsp
+    visible: node$ if opts.visible is no then no else yes
+    disable: node$ if opts.disable is yes then yes else no
+    template: "flow-form-#{type}"
+
+  label = (opts) ->
+    self = control 'label', opts
+    self.value = node$ opts.value or ''
+    self
+
+  content = (opts) ->
+    self = control 'content', opts
+    self.value = node$ opts.value or ''
+    self
+
+  hyperlink = (opts) ->
+    #XXX
+
+  checkbox = (opts) ->
+    #XXX
+
+  dropdown = (opts) ->
+    #XXX
+
+  listbox = (opts) ->
+    #XXX
+
+  options = (opts) ->
+    self = control 'options', opts
+    self.value = node$ opts.value
+    self.options = opts.options
+    self
+
+  textbox = (opts) ->
+    self = control 'textbox', opts
+    self.value = node$ opts.value or ''
+    self
+
+  textarea = (opts) ->
+    #XXX
+
+  button = (opts) ->
+    self = control 'button', opts
+    self
+
+  panel = (opts) ->
+    #XXX
+    type: 'panel'
+    controls: controls
+
+  form = (controls, go) ->
+    go null, nodes$ controls or []
+
+  gui = (controls) ->
+    renderable form, controls, (form, go) ->
+      go null, Flow.Form _, form
+
+  gui.label = label
+  gui.content = content
+  gui.hyperlink = hyperlink
+  gui.checkbox = checkbox
+  gui.dropdown = dropdown
+  gui.listbox = listbox
+  gui.options = options
+  gui.textbox = textbox
+  gui.textarea = textarea
+  gui.button = button
+  gui.panel = panel
+
+  gui
+
 Flow.Routines = (_) ->
 
   renderJobs = (jobs, go) ->
@@ -1460,6 +1552,8 @@ Flow.Routines = (_) ->
       else
         #XXX print usage
         throw new Error 'ni'
+
+  gui = Flow.Gui _
   
   menu = ->
     getMenu = (go) -> go null, _flowMenuItems
@@ -1532,6 +1626,7 @@ Flow.Routines = (_) ->
     (error, args) ->
       apply go, null, [ error ].concat args if isFunction go
 
+
   fork: fork
   join: (args..., go) -> _join args, _applicate go
   call: (go, args...) -> _join args, _applicate go
@@ -1547,6 +1642,8 @@ Flow.Routines = (_) ->
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
+  #XXX react and lift
+  gui: gui
 
 safetyWrapCoffeescript = (guid) ->
   (cs, go) ->
