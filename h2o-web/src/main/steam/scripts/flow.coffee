@@ -964,8 +964,8 @@ Flow.FramesOutput = (_, _frames) ->
     Math.round(bytes / Math.pow(1024, i), 2) + sizes[i]
 
   createFrameView = (frame) ->
-    columnLabels = head (map frame.columns, (column) -> column.label), 10
-    description = 'Columns: ' + (columnLabels.join ', ') + if frame.columns.length > columnLabels.length then " (#{frame.columns.length - columnLabels.length} more columns)" else ''
+    columnLabels = head (map frame.columns, (column) -> column.label), 15
+    description = 'Columns: ' + (columnLabels.join ', ') + if frame.columns.length > columnLabels.length then "... (#{frame.columns.length - columnLabels.length} more columns)" else ''
 
     key: frame.key.name
     description: description
@@ -1293,20 +1293,26 @@ _fork = (f, args) ->
         go null, self.result if canGo
     else
       _join args, (error, args) ->
-        apply f, null,
-          args.concat (error, result) ->
-            if error
-              self.error = error
-              self.fulfilled = no
-              self.rejected = yes
-              go error if canGo
-            else
-              self.result = result
-              self.fulfilled = yes
-              self.rejected = no
-              go null, result if canGo
-            self.settled = yes
-            self.pending = no
+        if error
+          self.error = error
+          self.fulfilled = no
+          self.rejected = yes
+          go error if canGo
+        else
+          apply f, null,
+            args.concat (error, result) ->
+              if error
+                self.error = error
+                self.fulfilled = no
+                self.rejected = yes
+                go error if canGo
+              else
+                self.result = result
+                self.fulfilled = yes
+                self.rejected = no
+                go null, result if canGo
+              self.settled = yes
+              self.pending = no
 
   self.method = f
   self.args = args
@@ -1343,7 +1349,7 @@ _join = (args, go) ->
       return if _settled
       if error
         _settled = yes
-        go exception "Error evalutating future[#{task.resultIndex}]", error
+        go exception "Error evaluating future[#{task.resultIndex}]", error
       else
         _results[task.resultIndex] = result
         _actual++
@@ -1477,10 +1483,14 @@ Flow.Routines = (_) ->
       else
   ###
 
+  _applicate = (go) -> 
+    (error, args) ->
+      apply go, null, [ error ].concat args if isFunction go
+
   fork: fork
-  join: (args..., go) -> _join args, go
-  call: (go, args...) -> _join args, go
-  apply: (go, args) -> _join args, go
+  join: (args..., go) -> _join args, _applicate go
+  call: (go, args...) -> _join args, _applicate go
+  apply: (go, args) -> _join args, _applicate go
   getJobs: getJobs
   getJob: getJob
   importFiles: importFiles
