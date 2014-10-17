@@ -440,12 +440,21 @@ html(lang='en')
         td
           span(data-bind='text:description')
 
-    script(type="text/html" id="flow-form-content")
+    script(type="text/html" id="flow-form-html")
       tr(data-bind="visible:visible")
         th
           label(data-bind='text:label')
         td
           div(data-bind="html:value, attr:{ id:id }")
+        td
+          span(data-bind='text:description')
+
+    script(type="text/html" id="flow-form-markdown")
+      tr(data-bind="visible:visible")
+        th
+          label(data-bind='text:label')
+        td
+          div(data-bind="markdown:value, attr:{ id:id }")
         td
           span(data-bind='text:description')
 

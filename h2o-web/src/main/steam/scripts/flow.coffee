@@ -63,6 +63,16 @@ marked.setOptions
     else
       code
 
+ko.bindingHandlers.markdown =
+  update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    data = ko.unwrap valueAccessor()
+    try
+      html = marked data
+    catch error
+      html = error.message or 'Error rendering markdown.'
+
+    $(element).html html
+
 ko.bindingHandlers.stringify =
   update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
     data = ko.unwrap valueAccessor()
@@ -1449,16 +1459,14 @@ Flow.Gui = (_) ->
     else
       nodes$ []
 
-  text = (opts) ->
-    self = control 'text', opts
+  content = (type, opts) ->
+    self = control type, opts
     self.value = wrapValue opts.value, ''
     self
 
-  #XXX rename
-  content = (opts) ->
-    self = control 'content', opts
-    self.value = wrapValue opts.value, ''
-    self
+  text = (opts) -> content 'text', opts
+  html = (opts) -> content 'html', opts
+  markdown = (opts) -> content 'markdown', opts
 
   checkbox = (opts) ->
     self = control 'checkbox', opts
@@ -1506,7 +1514,8 @@ Flow.Gui = (_) ->
       go null, Flow.Form _, form
 
   gui.text = text
-  gui.content = content
+  gui.html = html
+  gui.markdown = markdown
   gui.checkbox = checkbox
   gui.dropdown = dropdown
   gui.listbox = listbox
