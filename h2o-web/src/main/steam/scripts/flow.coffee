@@ -954,6 +954,17 @@ do ->
     createModel: createModel
     template: 'flow-model-input'
 
+
+Flow.Menu = (_, _items) ->
+  createMenuItem = (name, item) ->
+    name: name
+    description: item.description
+    icon: "fa fa-#{item.icon} f-icon"
+    execute: -> _.insertAndExecuteCell 'cs', name
+
+  routines: (createMenuItem name, item for name, item of _items)
+  template: 'flow-menu'
+
 Flow.NoAssistView = (_) ->
   showMenu: -> _.insertAndExecuteCell 'cs', "menu"
   template: 'flow-no-assist-view'
@@ -1417,6 +1428,9 @@ Flow.Routines = (_) ->
   renderModel = (model, go) ->
     go null, Flow.ModelOutput _, model
 
+  renderMenu = (items, go) ->
+    go null, Flow.Menu _, items
+
   getFrames = (arg) ->
     renderable _.requestFrames, renderFrames
 
@@ -1448,6 +1462,8 @@ Flow.Routines = (_) ->
         throw new Error 'ni'
   
   menu = ->
+    getMenu = (go) -> go null, _flowMenuItems
+    renderable getMenu, renderMenu
 
   importFiles = (paths) ->
     #XXX validation
@@ -1746,6 +1762,23 @@ executeJavascript = (sandbox, show) ->
       go null, closure sandbox.routines, sandbox.context, sandbox.results, show
     catch error
       go exception 'Error executing javascript', error
+
+_flowMenuItems =
+  importFiles:
+    description: 'Import file(s) into H<sub>2</sub>O'
+    icon: 'files-o'
+  getFrames:
+    description: 'Get a list of frames in H<sub>2</sub>O'
+    icon: 'database'
+  getModels:
+    description: 'Get a list of models in H<sub>2</sub>O'
+    icon: 'cubes'
+  getJobs:
+    description: 'Get a list of jobs running in H<sub>2</sub>O'
+    icon: 'bolt'
+  buildModel:
+    description: 'Build a model'
+    icon: 'cube'
 
 assist = (_, routines, routine) ->
   switch routine
