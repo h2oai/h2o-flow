@@ -955,6 +955,21 @@ do ->
     template: 'flow-model-input'
 
 
+Flow.ModelsOutput = (_, _models) ->
+
+  createModelView = (model) ->
+    key: model.key
+    inspect: ->
+      _.insertAndExecuteCell 'cs', "getModel #{stringify model.key}"
+
+  buildModel = ->
+    _.insertAndExecuteCell 'cs', 'buildModel'
+
+  modelViews: map _models, createModelView
+  hasModels: _models.length > 0
+  buildModel: buildModel
+  template: 'flow-models-output'
+
 Flow.FramesOutput = (_, _frames) ->
 
   toSize = (bytes) ->
@@ -1392,6 +1407,9 @@ Flow.Routines = (_) ->
   renderBuildModel = (modelBuildResult, go) ->
     go null, Flow.JobOutput _, head modelBuildResult.jobs
 
+  renderModels = (models, go) ->
+    go null, Flow.ModelsOutput _, models
+
   renderModel = (model, go) ->
     go null, Flow.ModelOutput _, model
 
@@ -1402,6 +1420,7 @@ Flow.Routines = (_) ->
     renderable _.requestFrame, key, renderFrame
 
   getModels = (arg) ->
+    renderable _.requestModels, renderModels
 
   getModel = (key) ->
     renderable _.requestModel, key, renderModel
@@ -1730,6 +1749,8 @@ assist = (_, routines, routine) ->
       routines.buildModel()
     when routines.getFrames
       routines.getFrames()
+    when routines.getModels
+      routines.getModels()
     when routines.getJobs
       routines.getJobs()
     else
