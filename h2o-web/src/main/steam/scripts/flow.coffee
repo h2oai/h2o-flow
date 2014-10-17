@@ -954,11 +954,15 @@ do ->
     createModel: createModel
     template: 'flow-model-input'
 
+Flow.NoAssistView = (_) ->
+  showMenu: -> _.insertAndExecuteCell 'cs', "menu"
+  template: 'flow-no-assist-view'
 
 Flow.ModelsOutput = (_, _models) ->
-
   createModelView = (model) ->
     key: model.key
+    clone: ->
+      _.insertAndExecuteCell 'cs', "cloneModel #{stringify model.key}"
     inspect: ->
       _.insertAndExecuteCell 'cs', "getModel #{stringify model.key}"
 
@@ -1442,6 +1446,8 @@ Flow.Routines = (_) ->
       else
         #XXX print usage
         throw new Error 'ni'
+  
+  menu = ->
 
   importFiles = (paths) ->
     #XXX validation
@@ -1514,6 +1520,7 @@ Flow.Routines = (_) ->
   join: (args..., go) -> _join args, _applicate go
   call: (go, args...) -> _join args, _applicate go
   apply: (go, args) -> _join args, go
+  menu: menu
   getJobs: getJobs
   getJob: getJob
   importFiles: importFiles
@@ -1745,18 +1752,12 @@ assist = (_, routines, routine) ->
     when routines.importFiles
       renderable noopFuture, (ignore, go) ->
         go null, Flow.ImportFilesInput _
-    when routines.buildModel
-      routines.buildModel()
-    when routines.getFrames
-      routines.getFrames()
-    when routines.getModels
-      routines.getModels()
-    when routines.getJobs
-      routines.getJobs()
+    when routines.menu, routines.buildModel, routines.getFrames, routines.getModels, routines.getJobs
+      # parameter-less routines
+      routine()
     else
-      console.error 'NO ASSIST DEFINED'
-      renderable noopFuture, (go) ->
-        go message: 'what?', error: new Error()
+      renderable noopFuture, (ignore, go) ->
+        go null, Flow.NoAssistView _
 
 Flow.Coffeescript = (_, guid, sandbox) ->
   show = (arg) ->
