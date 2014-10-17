@@ -7,6 +7,7 @@
     "test": "test"
   },
   "scripts": {
+    "start": "npm run build && npm run watch",
     "build": "gulp",
     "clean": "gulp clean",
     "watch": "gulp watch",

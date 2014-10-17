@@ -63,6 +63,12 @@ marked.setOptions
     else
       code
 
+ko.bindingHandlers.stringify =
+  update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    data = ko.unwrap valueAccessor()
+
+    $(element).text JSON.stringify data, null, 2
+
 ko.bindingHandlers.enterKey =
   init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
     if action = ko.unwrap valueAccessor() 
@@ -186,7 +192,16 @@ iterate = (tasks) ->
 deepClone = (obj) ->
   JSON.parse JSON.stringify obj
 
-exception = (message, cause) -> message: message, cause: cause
+exception = (message, cause) -> 
+  if cause and not cause.stack
+    cause.stack = if stack = printStackTrace()
+      # lop off exception() and printStackTrace() calls from stack
+      (if stack.length > 3 then stack.slice 3 else stack).join '\n'
+    else
+      null
+    cause.stack = stack
+  message: message
+  cause: cause
 
 mapWithKey = (obj, f) ->
   result = []
@@ -301,7 +316,7 @@ objectToHtmlTable = (obj) ->
 
 Flow.ParseOutput = (_, _parseResult) ->
   inspectJob = ->
-    _.insertAndExecuteCell 'cs', "job #{csString _parseResult.job.name}"
+    _.insertAndExecuteCell 'cs', "getJob #{stringify _parseResult.job.name}"
 
   result: _parseResult
   inspectJob: inspectJob
@@ -324,15 +339,13 @@ Flow.ImportFilesOutput = (_, _importResults) ->
   _importViews = map _importResults, ( [error, result] ) ->
     if error
       #XXX untested
-      error:
-        message: 'Error importing file'
-        cause: error
+      error: exception 'Error importing file', error
       template: 'flow-error'
     else
       createImportView result
 
   parse = ->
-    paths = map _allKeys, csString
+    paths = map _allKeys, stringify
     _.insertAndExecuteCell 'cs', "setupParse [ #{paths.join ','} ]"
 
   title: _title
@@ -374,7 +387,7 @@ Flow.JobsOutput = (_, jobs) ->
 
   createJobView = (job) ->
     inspect = ->
-      _.insertAndExecuteCell 'cs', "job #{csString job.key.name}" 
+      _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
 
     job: job
     inspect: inspect
@@ -409,6 +422,10 @@ Flow.JobsOutput = (_, jobs) ->
   refresh: refresh
   exception: _exception
   template: 'flow-jobs-output'
+
+Flow.ModelOutput = (_, _model) ->
+  model: _model
+  template: 'flow-model-output'
 
 Flow.JobOutput = (_, _job) ->
   _isBusy = node$ no
@@ -457,9 +474,9 @@ Flow.JobOutput = (_, _job) ->
   inspect = ->
     switch _kind()
       when 'frame'
-        _.insertAndExecuteCell 'cs', "getFrame #{csString _destinationKey}" 
+        _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
       when 'model'
-        _.insertAndExecuteCell 'cs', "getModel #{csString _destinationKey}" 
+        _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
 
 
   initialize = (job) ->
@@ -688,6 +705,9 @@ do ->
       hasEnums: hasEnums
       dataRows: createDataRows offset, rowCount, columns
 
+    createModel = ->
+      _.insertAndExecuteCell 'cs', 'buildModel'
+
     data: _frame
     key: _frame.key.name
     timestamp: _frame.creation_epoch_time_millis
@@ -695,6 +715,7 @@ do ->
     columns: _frame.column_names
     table: createFrameTable _frame.off, _frame.len, _frame.columns
     dispose: ->
+    createModel: createModel
     template: 'flow-frame-output'
 
 do ->
@@ -719,7 +740,7 @@ do ->
     label: parameter.label
     description: parameter.help
     required: parameter.required
-    values: parameter.values
+    values: nodes$ parameter.values
     value: value
     defaultValue: parameter.default_value
     help: node$ 'Help goes here.'
@@ -737,7 +758,7 @@ do ->
     label: parameter.label
     description: parameter.help
     required: parameter.required
-    values: parameter.values
+    values: nodes$ parameter.values
     value: value
     selection: selection
     defaultValue: parameter.default_value
@@ -760,9 +781,9 @@ do ->
 
   createControlFromParameter = (parameter) ->
     switch parameter.type
-      when 'enum', 'Frame', 'Vec'
+      when 'enum', 'Frame', 'string'
         createDropdownControl parameter
-      when 'Vec[]'
+      when 'string[]'
         createListControl parameter
       when 'boolean'
         createCheckboxControl parameter
@@ -803,6 +824,23 @@ do ->
 
     parameterTemplateOf = (control) -> "flow-#{control.kind}-model-parameter"
 
+    do ->
+      findFormField = (name) -> find _form, (field) -> field.name is name
+      [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter ] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns' ], findFormField
+
+      if trainingFrameParameter
+        if responseColumnParameter or ignoredColumnsParameter
+          apply$ trainingFrameParameter.value, (frameKey) ->
+            if frameKey
+              _.requestFrame frameKey, (error, frame) ->
+                unless error
+                  columnLabels = map frame.columns, (column) -> column.label
+                  if responseColumnParameter
+                    responseColumnParameter.values columnLabels
+                  if ignoredColumnsParameter
+                    ignoredColumnsParameter.values columnLabels
+            return
+
     createModel = ->
       _exception null
       parameters = {}
@@ -819,39 +857,44 @@ do ->
               else
                 parameters[control.name] = value
       
+      _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
+      return
       _.requestModelBuild _algorithm, parameters, (error, result) ->
         if error
-          _exception
-            message: error.data.errmsg
-            cause: error
+          _exception exception error.data.errmsg, error
 
     form: _form
     exception: _exception
     parameterTemplateOf: parameterTemplateOf
     createModel: createModel
 
-  Flow.ModelInput = (_, _algo, _frameKey, _sourceModel) ->
+  Flow.ModelInput = (_, _algo, _opts) ->
     _exception = node$ null
     _algorithms = [ 'kmeans', 'deeplearning', 'glm', 'gbm' ]
-    _algorithm = node$ _algorithm
+    _algorithm = node$ _algo
     _canCreateModel = lift$ _algorithm, (algorithm) -> if algorithm then yes else no
-    _canChangeAlgorithm = node$ yes
 
     _modelForm = node$ null
 
     populateFramesAndColumns = (frameKey, algorithm, parameters, go) ->
       # Fetch frame list; pick column names from training frame
-      _.requestFrames (error, result) ->
+      _.requestFrames (error, frames) ->
         if error
           #TODO handle properly
         else
           trainingFrameParameter = findParameter parameters, 'training_frame'
-          trainingFrameParameter.values = map result.frames, (frame) -> frame.key.name
-          if frameKey
-            trainingFrameParameter.actual_value = frameKey
-          else
-            frameKey = trainingFrameParameter.actual_value
+          if trainingFrameParameter
 
+            # Show only parsed frames
+            trainingFrameParameter.values = (frame.key.name for frame in frames when not frame.isText)
+
+            if frameKey
+              trainingFrameParameter.actual_value = frameKey
+            else
+              frameKey = trainingFrameParameter.actual_value
+
+          return go()
+          #XXX unused
           if algorithm is 'deeplearning'
             validationFrameParameter = findParameter parameters, 'validation_frame'
             responseColumnParameter = findParameter parameters, 'response_column'
@@ -871,32 +914,32 @@ do ->
           go()
 
     # If a source model is specified, we already know the algo, so skip algo selection
-    if _sourceModel
-      _canChangeAlgorithm no
-      parameters = _sourceModel.parameters
+#     if _sourceModel
+#       parameters = _sourceModel.parameters
+#       trainingFrameParameter = findParameter parameters, 'training_frame'
+# 
+#       #TODO INSANE SUPERHACK
+#       hasRateAnnealing = find _sourceModel.parameters, (parameter) -> parameter.name is 'rate_annealing'
+#       algorithm = if hasRateAnnealing
+#           find algorithms, (algorithm) -> algorithm is 'deeplearning'
+#         else
+#           find algorithms, (algorithm) -> algorithm is 'kmeans'
+# 
+#       populateFramesAndColumns _frameKey, algorithm, parameters, ->
+#         _modelForm Flow.ModelBuilderForm _, algorithm, parameters
+# 
+#     else
 
-      #TODO INSANE SUPERHACK
-      hasRateAnnealing = find _sourceModel.parameters, (parameter) -> parameter.name is 'rate_annealing'
-      algorithm = if hasRateAnnealing
-          find algorithms, (algorithm) -> algorithm is 'deeplearning'
-        else
-          find algorithms, (algorithm) -> algorithm is 'kmeans'
-
-      populateFramesAndColumns _frameKey, algorithm, parameters, ->
-        _modelForm Flow.ModelBuilderForm _, algorithm, parameters
-
-    else
-      _canChangeAlgorithm yes
+    do ->
+      frameKey = _opts?.training_frame
       apply$ _algorithm, (algorithm) ->
         if algorithm
           _.requestModelBuilders algorithm, (error, result) ->
             if error
-              _exception
-                message: 'Error fetching model builder'
-                cause: error
+              _exception exception 'Error fetching model builder', error
             else
               parameters = result.model_builders[algorithm].parameters
-              populateFramesAndColumns _frameKey, algorithm, parameters, ->
+              populateFramesAndColumns frameKey, algorithm, parameters, ->
                 _modelForm Flow.ModelBuilderForm _, algorithm, parameters
         else
           _modelForm null
@@ -908,7 +951,6 @@ do ->
     algorithm: _algorithm
     modelForm: _modelForm
     canCreateModel: _canCreateModel
-    canChangeAlgorithm: _canChangeAlgorithm
     createModel: createModel
     template: 'flow-model-input'
 
@@ -919,15 +961,30 @@ Flow.FramesOutput = (_, _frames) ->
     sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
     return '0 Byte' if bytes is 0
     i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)))
-    Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i]
+    Math.round(bytes / Math.pow(1024, i), 2) + sizes[i]
 
   createFrameView = (frame) ->
+    columnLabels = head (map frame.columns, (column) -> column.label), 10
+    description = 'Columns: ' + (columnLabels.join ', ') + if frame.columns.length > columnLabels.length then " (#{frame.columns.length - columnLabels.length} more columns)" else ''
+
     key: frame.key.name
+    description: description
     size: toSize frame.byteSize
     rowCount: frame.rows
-    inspect: -> _.insertAndExecuteCell 'cs', "getFrame #{csString frame.key.name}"
+    columnCount: frame.columns.length
+    isText: frame.isText
+    inspect: -> 
+      if frame.isText
+        _.insertAndExecuteCell 'cs', "setupParse [ #{stringify frame.key.name } ]"
+      else
+        _.insertAndExecuteCell 'cs', "getFrame #{stringify frame.key.name}"
+
+  importFiles = ->
+    _.insertAndExecuteCell 'cs', 'importFiles'
 
   frameViews: map _frames, createFrameView
+  hasFrames: _frames.length > 0
+  importFiles: importFiles
   template: 'flow-frames-output'
 
 
@@ -948,7 +1005,7 @@ Flow.SetupParseOutput = (_, _result) ->
   parseFiles = ->
     columnNames = map _columns, (column) -> column.name()
 
-    _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{csStringArray _sourceKeys}\n  hex: #{csString _destinationKey()}\n  pType: #{csString _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{csStringArray columnNames}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}"
+    _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{stringify _sourceKeys}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}"
 
 
 
@@ -1003,7 +1060,7 @@ Flow.ImportFilesInput = (_) ->
   _hasSelectedFiles = lift$ _selectedFiles, (files) -> files.length > 0
 
   importFiles = (files) ->
-    paths = map files, (file) -> csString file.path
+    paths = map files, (file) -> stringify file.path
     _.insertAndExecuteCell 'cs', "importFiles [ #{ paths.join ',' } ]"
 
   importSelectedFiles = -> importFiles _selectedFiles()
@@ -1227,12 +1284,13 @@ Flow.H2O = (_) ->
 
 _fork = (f, args) ->
   self = (go) ->
+    canGo = isFunction go
     if self.settled
       # proceed with cached error/result
       if self.rejected
-        go self.error
+        go self.error if canGo
       else
-        go null, self.result
+        go null, self.result if canGo
     else
       _join args, (error, args) ->
         apply f, null,
@@ -1241,12 +1299,12 @@ _fork = (f, args) ->
               self.error = error
               self.fulfilled = no
               self.rejected = yes
-              go error
+              go error if canGo
             else
               self.result = result
               self.fulfilled = yes
               self.rejected = no
-              go null, result
+              go null, result if canGo
             self.settled = yes
             self.pending = no
 
@@ -1325,6 +1383,9 @@ Flow.Routines = (_) ->
   renderFrame = (frame, go) ->
     go null, Flow.FrameOutput _, frame
 
+  renderModel = (model, go) ->
+    go null, Flow.ModelOutput _, model
+
   getFrames = (arg) ->
     renderable _.requestFrames, renderFrames
 
@@ -1335,10 +1396,10 @@ Flow.Routines = (_) ->
 
   getModel = (arg) ->
 
-  jobs = ->
+  getJobs = ->
     renderable _.requestJobs, renderJobs
 
-  job = (arg) ->
+  getJob = (arg) ->
     #XXX validation
     switch typeOf arg
       when 'string'
@@ -1375,11 +1436,12 @@ Flow.Routines = (_) ->
 
     renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, renderParse
 
-  setupModel = (algo, frameKey) ->
-    renderable noopFuture, (ignore, go) ->
-      go null, Flow.ModelInput _, algo, frameKey
-
-  buildModel = ->
+  buildModel = (algo, opts) ->
+    if algo and opts and keys(opts).length > 1
+      renderable _.requestModelBuild, algo, opts, renderModel
+    else
+      renderable noopFuture, (ignore, go) ->
+        go null, Flow.ModelInput _, algo, opts
 
   ###
   getUsageForFunction = (f) ->
@@ -1419,14 +1481,13 @@ Flow.Routines = (_) ->
   join: (args..., go) -> _join args, go
   call: (go, args...) -> _join args, go
   apply: (go, args) -> _join args, go
-  jobs: jobs
-  job: job
+  getJobs: getJobs
+  getJob: getJob
   importFiles: importFiles
   setupParse: setupParse
   parseRaw: parseRaw
   getFrames: getFrames
   getFrame: getFrame
-  setupModel: setupModel
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
@@ -1624,8 +1685,7 @@ rewriteJavascript = (sandbox) ->
     catch error
       go exception 'Error rewriting javascript', error
 
-csString = (string) -> JSON.stringify string
-csStringArray = (array) -> "[ #{map array, csString} ]"
+stringify = (a) -> JSON.stringify a
 
 generateJavascript = (program, go) ->
   try
@@ -1653,9 +1713,11 @@ assist = (_, routines, routine) ->
       renderable noopFuture, (ignore, go) ->
         go null, Flow.ImportFilesInput _
     when routines.buildModel
-      routines.setupModel()
+      routines.buildModel()
     when routines.getFrames
       routines.getFrames()
+    when routines.getJobs
+      routines.getJobs()
     else
       console.error 'NO ASSIST DEFINED'
       renderable noopFuture, (go) ->
@@ -1792,6 +1854,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     renderer.render input, (error, results) ->
       if error
         _hasError yes
+        #XXX review
         if error.cause?
           _outputs [
             error: error
@@ -1807,7 +1870,8 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
         outputs = for [ error, result ] in results
           if error
             _hasError yes
-            error
+            error: error
+            template: 'flow-error'
           else
             result
 
@@ -2011,13 +2075,13 @@ Flow.Repl = (_, _renderers) ->
     cells = _cells()
     unless _selectedCellIndex is cells.length - 1
       selectCell cells[_selectedCellIndex + 1]
-    return
+    return no # prevent arrow keys from scrolling the page
 
   selectPreviousCell = ->
     unless _selectedCellIndex is 0
       cells = _cells()
       selectCell cells[_selectedCellIndex - 1]
-    return
+    return no # prevent arrow keys from scrolling the page
 
   displayHelp = -> debug 'displayHelp'
 

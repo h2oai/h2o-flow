@@ -44,7 +44,7 @@ config =
     deploy: 'src/main/resources/www/steam/'
   lib:
     js: [
-      'lib/stacktrace/stacktrace.js'
+      'lib/stacktrace-js/stacktrace.js'
       'lib/jquery/dist/jquery.js'
       'lib/lodash/dist/lodash.js'
       'lib/momentjs/min/moment.min.js'
@@ -57,6 +57,7 @@ config =
       'lib/knockout/knockout.debug.js'
     ]
     repljs: [
+      'lib/stacktrace-js/stacktrace.js'
       'lib/jquery/dist/jquery.js'
       'lib/jquery-textrange/jquery-textrange.js'
       'lib/mousetrap/mousetrap.js'

@@ -134,13 +134,13 @@ html(lang='en')
 
         // ko if:hasColumns
         h4 Data Preview
-        div(style='max-height:400px;overflow:auto')
-          table.f-monospace
+        div(style='overflow:auto')
+          table.f-table-horizontal.f-monospace
             thead
               tr
                 // ko foreach:columns
-                th
-                  input(type='textbox' data-bind="value:name, attr:{'title':name}")
+                td(style='min-width:100px')
+                  input.f-textbox(type='textbox' data-bind="value:name, attr:{'title':name}")
                 // /ko
 
             tbody
@@ -162,6 +162,14 @@ html(lang='en')
         i.fa.fa-key.f-icon
         span(data-bind='text:$data')
       // /ko
+
+    script(type="text/html" id="flow-model-output")
+      .f-widget
+        h3
+          i.fa.fa-cube.f-icon
+          | Model
+        
+        pre(data-bind="stringify:model")
 
     script(type="text/html" id="flow-parse-output")
       .f-widget
@@ -218,7 +226,12 @@ html(lang='en')
               th Search Results:
               // ko if:hasUnselectedFiles
               td
-                div(data-bind='text:importedFileCount')
+                div
+                  span(data-bind='text:importedFileCount')
+                  |   
+                  // ko if:hasUnselectedFiles
+                  a(href='#' data-bind='click:selectAllFiles') Add all
+                  // /ko
                 div.f-well
                   // ko foreach:importedFiles
                   // ko ifnot:isSelected
@@ -227,9 +240,6 @@ html(lang='en')
                     span(data-bind="text:path")
                   // /ko
                   // /ko
-                button.f-button(data-bind='click:selectAllFiles')
-                  i.fa.fa-files-o.f-icon
-                  | Add these files
               // /ko
               // ko ifnot:hasUnselectedFiles
               td (All files added)
@@ -238,7 +248,13 @@ html(lang='en')
             tr
               th Selected Files:
               td
-                div(data-bind='text:selectedFileCount')
+                div
+                  span(data-bind='text:selectedFileCount')
+                  |    
+                  // ko if:hasSelectedFiles
+                  a(href='#' data-bind='click:deselectAllFiles') Clear All
+                  // /ko
+
                 // ko if:hasSelectedFiles
                 div.f-well
                   // ko foreach:selectedFiles
@@ -246,11 +262,6 @@ html(lang='en')
                     i.fa.fa-remove.f-icon(title='Deselect file')
                     span(data-bind='text:path')
                   // /ko
-                // /ko
-                // ko if:hasSelectedFiles
-                button.f-button(data-bind='click:deselectAllFiles')
-                  i.fa.fa-remove.f-icon 
-                  | Clear selection
                 // /ko
             tr.f-actions
               th Actions:
@@ -293,7 +304,7 @@ html(lang='en')
         th
           label(data-bind='text:label')
         td
-          select(data-bind="options:values, selectedOptions:value", multiple='true', size='5')
+          select(data-bind="options:values, selectedOptions:value", multiple='true', size='5', style='min-width:150px')
         td
           span(data-bind='text:description')
           br
@@ -305,20 +316,48 @@ html(lang='en')
           h4(data-bind='text:title' style='margin-top:20px; border-bottom:1px dotted #ccc')
 
     script(type="text/html" id="flow-frames-output")
-      table.table
-        thead
-          tr
-            td Key
-            td Rows
-            td Size
-        tbody
-          // ko foreach:frameViews
-          tr
-            td
-              a(href='#' data-bind='text:key, click:inspect')
-            td(data-bind='text:rowCount')
-            td(data-bind='text:size')
-          // /ko
+      .f-widget
+        h3
+          i.fa.fa-database.f-icon
+          | Frames
+
+        // ko ifnot:hasFrames
+        blockquote Your H<sub>2</sub>O cloud has no frames.
+        .f-commands
+          button.f-button(type='button' data-bind='click:importFiles')
+            i.fa.fa-files-o.f-icon
+            | Import files...
+          
+        // /ko
+
+        // ko if:hasFrames
+        table.table
+          thead
+            tr
+              th Type
+              th Key
+              th.f-align-right Rows
+              th.f-align-right Columns
+              th.f-align-right Size
+          tbody
+            // ko foreach:frameViews
+            tr
+              td
+                // ko if:isText
+                i.fa.fa-file-o.f-icon
+                // /ko
+                // ko ifnot:isText
+                i.fa.fa-database.f-icon
+                // /ko
+              td
+                div
+                  a(href='#' data-bind='text:key, click:inspect')
+                .f-small(data-bind='text:description')
+              td.f-align-right(data-bind='text:rowCount')
+              td.f-align-right(data-bind='text:columnCount')
+              td.f-align-right(data-bind='text:size')
+            // /ko
+        // /ko
 
 
     script(type="text/html" id="flow-model-input")
@@ -376,7 +415,7 @@ html(lang='en')
             // /ko
         // /ko
         // ko ifnot:hasJobViews
-        bq Your H<sub>2</sub>O cloud has no jobs.
+        blockquote Your H<sub>2</sub>O cloud has no jobs.
         // /ko
         .f-commands
           button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
@@ -394,6 +433,12 @@ html(lang='en')
         h3
           i.fa.fa-database.f-icon
           span(data-bind="text:key")
+
+        .f-commands
+          button.f-button(type='button' data-bind='click:createModel')
+            i.fa.fa-cube.f-icon
+            | Create Model
+
         // ko with:table
         div(style='overflow:auto')
           table.table.table-condensed.f-monospace
@@ -559,9 +604,14 @@ html(lang='en')
         // ko with:error
         h4(data-bind='text:message')
         // ko with:cause
-        p(data-bind='text:message') 
-        pre(data-bind='text:stack' style='border-radius:0;background:none;')
+        pre(data-bind='stringify:$data' style='border-radius:0;background:none;') 
+
+        // ko if:stack
+        pre(data-bind='text:stack')
         // /ko
+
+        // /ko
+
         // /ko
 
     script(type="text/html" id="flow-cell")
