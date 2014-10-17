@@ -1671,6 +1671,10 @@ Flow.Routines = (_) ->
     forEach nodes, (node) -> link$ node, -> target evaluate()
     target
   
+  merge = (sources..., target, f) ->
+    propagate = -> target apply f, null, _resolve sources
+    propagate()
+    map sources, (source) -> link$ source, propagate
 
   fork: fork
   join: (args..., go) -> _join args, _applicate go
@@ -1682,6 +1686,7 @@ Flow.Routines = (_) ->
   isSignal: isNode$
   react: react
   invoke: _invoke
+  merge: merge
   lift: lift
   menu: menu
   getJobs: getJobs
