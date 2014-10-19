@@ -30,12 +30,43 @@ html(lang='en')
     //- include repl
 
     // ko with:view
-    .container
-      .f-header
-        img.f-logo(src="img/flow.png")
+    nav.navbar.navbar-default(role='navigation')
+      .container-fluid
+        .f-navbar(data-bind="template: { name:'flow-navbar', data:$data}")
+
+    .container-fluid
       .f-repl(data-bind='template:{ name:templateOf, foreach:cells }')
     // /ko
-    
+
+    script(type="text/html" id="flow-navbar")
+      .navbar-header
+        button.navbar-toggle.collapsed(type='button', data-toggle='collapse', data-target='#flow-compass')
+          span.sr-only Toggle navigation
+          span.icon-bar
+          span.icon-bar
+          span.icon-bar
+        span.navbar-brand
+
+      #flow-compass.collapse.navbar-collapse
+        ul.nav.navbar-nav
+          // ko foreach:menus
+          li.dropdown
+            a.dropdown-toggle(href='#', data-toggle='dropdown')
+              span(data-bind='text:label')
+              span.caret
+            ul.dropdown-menu(role='menu')
+              // ko foreach:items
+              // ko if:isAction
+              li(data-bind="css:{ 'disabled':isDisabled }")
+                a(href='#' data-bind='click:action') 
+                  span(data-bind='text:label')
+              // /ko
+              // ko ifnot:isAction
+              li.divider
+              // /ko
+              // /ko
+          // /ko
+
     script(type="text/html" id="flow-h1")
       .f-html-output
         h1(data-bind="text:text")

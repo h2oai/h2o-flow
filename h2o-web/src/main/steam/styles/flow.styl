@@ -16,6 +16,25 @@ f-color-yellow-lt = #FBF3B5
 f-color-orange = #F5A623
 
 
+.container-fluid
+  padding-left 50px
+  padding-right 50px
+
+.navbar-default
+  background none
+  border none
+  .navbar-nav
+    > .active
+      > a, > a:hover, > a:focus
+        background-color f-color-yellow
+    > .open
+      > a, > a:hover, > a:focus
+        background-color f-color-yellow
+
+.navbar-brand
+  background url(../img/flow.png) 15px center no-repeat
+  width 160px
+
 monospace()
   font-family 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace
 
@@ -79,6 +98,9 @@ th
 //
 //
 //
+
+.f-navbar
+  border-top 5px solid f-color-yellow
 
 .f-header
   border-top 5px solid f-color-yellow

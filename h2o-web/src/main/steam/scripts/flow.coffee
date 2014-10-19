@@ -67,7 +67,7 @@ ko.bindingHandlers.markdown =
   update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
     data = ko.unwrap valueAccessor()
     try
-      html = marked data
+      html = marked data or ''
     catch error
       html = error.message or 'Error rendering markdown.'
 
@@ -2315,7 +2315,120 @@ Flow.Repl = (_, _renderers) ->
       selectCell cells[_selectedCellIndex - 1]
     return no # prevent arrow keys from scrolling the page
 
-  displayHelp = -> debug 'displayHelp'
+  notImplemented = -> # noop
+  createNewFile = notImplemented
+  openFile = notImplemented
+  copyFile = notImplemented
+  renameFile = notImplemented
+  saveAndCheckpoint = notImplemented
+  revertToCheckpoint = notImplemented
+  printPreview = notImplemented
+  pasteCellandReplace = notImplemented
+  mergeCellAbove = notImplemented
+  toggleInput = notImplemented
+  toggleAllInputs = notImplemented
+  toggleAllOutputs = notImplemented
+  switchToPresentationMode = notImplemented 
+  runAllCells = notImplemented
+  clearCell = notImplemented
+  clearAllCells = notImplemented
+  startTour = notImplemented
+  displayKeyboardShortcuts = notImplemented
+  goToWebsite = (url) -> notImplemented
+
+  #
+  # Top menu bar
+  #
+
+  createMenu = (label, items) ->
+    label: label
+    items: items
+
+  createMenuItem = (label, action, isDisabled=no) ->
+    label: label
+    action: action
+    isAction: yes
+    isDisabled: isDisabled
+
+  menuDivider = isAction: no
+
+  menus = [
+    createMenu 'File', [
+      createMenuItem 'New', createNewFile, yes
+      createMenuItem 'Open...', openFile, yes
+      menuDivider
+      createMenuItem 'Make a Copy', copyFile, yes
+      createMenuItem 'Rename...', renameFile, yes
+      createMenuItem 'Save and Checkpoint...', saveAndCheckpoint, yes
+      menuDivider
+      createMenuItem 'Revert to Checkpoint...', revertToCheckpoint, yes
+      menuDivider
+      createMenuItem 'Print Preview', printPreview, yes
+    ]
+  ,
+    createMenu 'Edit', [
+      createMenuItem 'Cut Cell', cutCell
+      createMenuItem 'Copy Cell', copyCell
+      createMenuItem 'Paste Cell Above', pasteCellAbove
+      createMenuItem 'Paste Cell Below', pasteCellBelow
+      createMenuItem 'Paste Cell and Replace', pasteCellandReplace, yes
+      createMenuItem 'Delete Cell', deleteCell
+      createMenuItem 'Undo Delete Cell', undoLastDelete
+      menuDivider
+      createMenuItem 'Insert Cell Above', insertNewCellAbove
+      createMenuItem 'Insert Cell Below', insertNewCellBelow
+      menuDivider
+      createMenuItem 'Split Cell', splitCell
+      createMenuItem 'Merge Cell Above', mergeCellAbove, yes
+      createMenuItem 'Merge Cell Below', mergeCellBelow
+      menuDivider
+      createMenuItem 'Move Cell Up', moveCellUp
+      createMenuItem 'Move Cell Down', moveCellDown
+    ]
+  ,
+    createMenu 'View', [
+      createMenuItem 'Toggle Input', toggleInput, yes
+      createMenuItem 'Toggle Output', toggleOutput
+      menuDivider
+      createMenuItem 'Toggle All Inputs', toggleAllInputs, yes
+      createMenuItem 'Toggle All Outputs', toggleAllOutputs, yes
+      menuDivider
+      createMenuItem 'Presentation Mode', switchToPresentationMode, yes
+    ]
+  ,
+    createMenu 'Format', [
+      createMenuItem 'Code', convertCellToCode
+      menuDivider
+      createMenuItem 'Heading 1', (convertCellToHeading 1)
+      createMenuItem 'Heading 2', (convertCellToHeading 2)
+      createMenuItem 'Heading 3', (convertCellToHeading 3)
+      createMenuItem 'Heading 4', (convertCellToHeading 4)
+      createMenuItem 'Heading 5', (convertCellToHeading 5)
+      createMenuItem 'Heading 6', (convertCellToHeading 6)
+      createMenuItem 'Markdown', convertCellToMarkdown
+      createMenuItem 'Raw', convertCellToRaw
+    ]
+  ,
+    createMenu 'Run', [
+      createMenuItem 'Run', runCell
+      createMenuItem 'Run and Select Below', runCellAndSelectBelow
+      createMenuItem 'Run and Insert Below', runCellAndInsertBelow
+      menuDivider
+      createMenuItem 'Run All', runAllCells, yes
+      menuDivider
+      createMenuItem 'Clear Cell', clearCell, yes
+      menuDivider
+      createMenuItem 'Clear All', clearAllCells, yes
+    ]
+  ,
+    createMenu 'Help', [
+      createMenuItem 'Tour', startTour, yes
+      createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts, yes
+      menuDivider
+      createMenuItem 'H2O Documentation', (goToWebsite 'http://docs.0xdata.com/'), yes
+      createMenuItem '0xdata.com', (goToWebsite 'http://0xdata.com/'), yes
+    ]
+  ]
 
   # (From IPython Notebook keyboard shortcuts dialog)
   # The IPython Notebook has two different keyboard input modes. Edit mode allows you to type code/text into a cell and is indicated by a green cell border. Command mode binds the keyboard to notebook level actions and is indicated by a grey cell border.
@@ -2357,7 +2470,7 @@ Flow.Repl = (_, _renderers) ->
     [ 'o', 'toggle output', toggleOutput ]
     # [ 'shift+o', 'toggle output scrolling' ]
     # [ 'q', 'close pager' ]
-    [ 'h', 'keyboard shortcuts', displayHelp ]
+    [ 'h', 'keyboard shortcuts', displayKeyboardShortcuts ]
     # [ 'i', 'interrupt kernel (press twice)' ]
     # [ '0', 'restart kernel (press twice)' ]
   ] 
@@ -2408,6 +2521,7 @@ Flow.Repl = (_, _renderers) ->
 
   link$ _.ready, initialize
 
+  menus: menus
   cells: _cells
   templateOf: templateOf
 
