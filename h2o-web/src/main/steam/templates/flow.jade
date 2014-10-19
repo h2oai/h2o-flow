@@ -32,11 +32,22 @@ html(lang='en')
     // ko with:view
     nav.navbar.navbar-default(role='navigation')
       .container-fluid
-        .f-navbar(data-bind="template: { name:'flow-navbar', data:$data}")
-
+        .f-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
+    .container-fluid
+      .f-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:20px")
     .container-fluid
       .f-repl(data-bind='template:{ name:templateOf, foreach:cells }')
     // /ko
+
+    script(type="text/html" id="flow-toolbar")
+      .btn-toolbar(role='toolbar')
+        // ko foreach:$data
+        .btn-group
+          // ko foreach:$data
+          button.btn.btn-default.f-tool(type='button')
+            i(data-bind="attr{ title:label, 'class':icon }, click:action")
+          // /ko
+        // /ko
 
     script(type="text/html" id="flow-navbar")
       .navbar-header

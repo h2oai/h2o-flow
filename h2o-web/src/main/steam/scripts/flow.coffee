@@ -2352,7 +2352,8 @@ Flow.Repl = (_, _renderers) ->
 
   menuDivider = isAction: no
 
-  menus = [
+
+  _menus = [
     createMenu 'File', [
       createMenuItem 'New', createNewFile, yes
       createMenuItem 'Open...', openFile, yes
@@ -2427,6 +2428,34 @@ Flow.Repl = (_, _renderers) ->
       menuDivider
       createMenuItem 'H2O Documentation', (goToWebsite 'http://docs.0xdata.com/'), yes
       createMenuItem '0xdata.com', (goToWebsite 'http://0xdata.com/'), yes
+    ]
+  ]
+
+  createTool = (icon, label, action, isDisabled=no) ->
+    label: label
+    action: action
+    isDisabled: isDisabled
+    icon: "fa fa-#{icon}"
+
+  _toolbar = [
+    [
+      createTool 'save', 'Save', saveAndCheckpoint, yes
+    ]
+  ,
+    [
+      createTool 'plus', 'Insert Cell Below', insertNewCellBelow
+      createTool 'arrow-up', 'Move Cell Up', moveCellUp
+      createTool 'arrow-down', 'Move Cell Down', moveCellDown
+    ]
+  ,
+    [
+      createTool 'cut', 'Cut Cell', cutCell
+      createTool 'copy', 'Copy Cell', copyCell
+      createTool 'paste', 'Paste Cell Below', pasteCellBelow
+    ]
+  ,
+    [
+      createTool 'play', 'Run', runCell
     ]
   ]
 
@@ -2521,7 +2550,8 @@ Flow.Repl = (_, _renderers) ->
 
   link$ _.ready, initialize
 
-  menus: menus
+  menus: _menus
+  toolbar: _toolbar
   cells: _cells
   templateOf: templateOf
 
