@@ -37,7 +37,43 @@ html(lang='en')
       .f-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:20px")
     .container-fluid
       .f-repl(data-bind='template:{ name:templateOf, foreach:cells }')
+
+    
+    // ko with:shortcutsHelp
+    #keyboardShortcutsDialog.modal.fade(tabindex='-1', role='dialog', aria-labelledby='keyboardShortcutsDialogLabel', aria-hidden='true')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            button.close(type='button', data-dismiss='modal')
+              span(aria-hidden='true') ×
+              span.sr-only Close
+            h4#keyboardShortcutsDialogLabel.modal-title Keyboard Shortcuts
+          .modal-body
+            table.f-table-horizontal
+              tbody
+                tr
+                  td(width='50%')
+                    h5 Normal Mode
+                    div(data-bind="template:{ name:'flow-keyboard-shortcut-table', data:normalMode}")
+                    
+                  td(width='50%')
+                    h5 Edit Mode
+                    div(data-bind="template:{ name:'flow-keyboard-shortcut-table', data:editMode}")
+          .modal-footer
+            button.btn.btn-default(type='button', data-dismiss='modal') Close
     // /ko
+
+
+    // /ko
+
+    script(type="text/html" id="flow-keyboard-shortcut-table")
+      table
+        tbody
+          // ko foreach:$data
+          tr
+            td(data-bind='html:keystrokes' style='text-align:right')
+            td(data-bind='text:caption')
+          // /ko
 
     script(type="text/html" id="flow-toolbar")
       .btn-toolbar(role='toolbar')

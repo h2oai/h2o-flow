@@ -2315,6 +2315,9 @@ Flow.Repl = (_, _renderers) ->
       selectCell cells[_selectedCellIndex - 1]
     return no # prevent arrow keys from scrolling the page
 
+  displayKeyboardShortcuts = ->
+    $('#keyboardShortcutsDialog').modal()
+
   notImplemented = -> # noop
   createNewFile = notImplemented
   openFile = notImplemented
@@ -2333,7 +2336,6 @@ Flow.Repl = (_, _renderers) ->
   clearCell = notImplemented
   clearAllCells = notImplemented
   startTour = notImplemented
-  displayKeyboardShortcuts = notImplemented
   goToWebsite = (url) -> notImplemented
 
   #
@@ -2351,7 +2353,6 @@ Flow.Repl = (_, _renderers) ->
     isDisabled: isDisabled
 
   menuDivider = isAction: no
-
 
   _menus = [
     createMenu 'File', [
@@ -2424,7 +2425,7 @@ Flow.Repl = (_, _renderers) ->
   ,
     createMenu 'Help', [
       createMenuItem 'Tour', startTour, yes
-      createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts, yes
+      createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
       menuDivider
       createMenuItem 'H2O Documentation', (goToWebsite 'http://docs.0xdata.com/'), yes
       createMenuItem '0xdata.com', (goToWebsite 'http://0xdata.com/'), yes
@@ -2530,6 +2531,16 @@ Flow.Repl = (_, _renderers) ->
     [ 'ctrl+shift+-', 'split cell', splitCell ]
     [ 'mod+s', 'save notebook', saveFlow ]
   ]
+  
+  toKeyboardHelp = (shortcut) ->
+    [ sequence, caption ] = shortcut
+    keystrokes = join (map (split sequence, /\+/g), (key) -> "<kbd>#{key}</kbd>"), ' '
+    keystrokes: keystrokes
+    caption: caption
+
+  normalModeKeyboardShortcutsHelp = map normalModeKeyboardShortcuts, toKeyboardHelp
+  editModeKeyboardShortcutsHelp = map editModeKeyboardShortcuts, toKeyboardHelp
+
 
   setupKeyboardHandling = (mode) ->
     for [ shortcut, caption, f ] in normalModeKeyboardShortcuts
@@ -2553,6 +2564,9 @@ Flow.Repl = (_, _renderers) ->
   menus: _menus
   toolbar: _toolbar
   cells: _cells
+  shortcutsHelp:
+    normalMode: normalModeKeyboardShortcutsHelp
+    editMode: editModeKeyboardShortcutsHelp
   templateOf: templateOf
 
 $ ->
