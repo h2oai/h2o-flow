@@ -1,30 +1,5 @@
 Flow = if exports? then exports else @Flow = {}
 
-# XXX add following contents to startup cells.
-
-#   # Welcome to H<sub>2</sub>O Flow!
-#   
-#   **Flow** is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like [IPython Notebooks](http://ipython.org/notebook.html).
-#   
-#   A Flow is composed of a series of executable *cells*. Each *cell* has an input and an output. To provide input to a cell.
-#   
-#   Flow is a modal editor, which means that when you are not editing the contents.
-#   
-#   - To edit a cell, hit `Enter`.
-#   - When you're done editing, hit `Esc`.
-#   
-#   Hitting `Esc` after editing a cell puts you in *Command Mode*. You can do a variety of actions in Command Mode:
-#   - `a` adds a new cell **a**bove the current cell.
-#   - `b` adds a new cell __b__elow the current cell.
-#   - `d` `d` __d__eletes the current cell. Yes, you need to press `d` twice.
-#   
-#   To view a list of commands, enter help in the cell below, followed by Ctrl+Enter.
-#   
-#   [________________________]
-#   
-#   To view a list of keyboard shortcuts, type h.
-
-
 # 
 # TODO
 #
@@ -1591,6 +1566,10 @@ Flow.Routines = (_) ->
         throw new Error 'ni'
 
   gui = Flow.Gui _
+
+  help = ->
+    renderable noopFuture, (ignore, go) ->
+      go null, template: 'flow-help-intro'
   
   menu = ->
     getMenu = (go) -> go null, _flowMenuItems
@@ -1708,8 +1687,8 @@ Flow.Routines = (_) ->
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
-  #XXX react and lift
   gui: gui
+  help: help
 
 safetyWrapCoffeescript = (guid) ->
   (cs, go) ->
@@ -1948,7 +1927,7 @@ assist = (_, routines, routine) ->
     when routines.importFiles
       renderable noopFuture, (ignore, go) ->
         go null, Flow.ImportFilesInput _
-    when routines.menu, routines.buildModel, routines.getFrames, routines.getModels, routines.getJobs
+    when routines.help, routines.menu, routines.buildModel, routines.getFrames, routines.getModels, routines.getJobs
       # parameter-less routines
       routine()
     else
@@ -2230,6 +2209,10 @@ Flow.Repl = (_, _renderers) ->
 
   insertNewCellBelow = ->
     insertCellBelow createCell 'cs'
+
+  insertCellAboveAndRun = (type, input) ->
+    cell = insertCellAbove createCell type, input
+    cell.execute()
 
   insertCellBelowAndRun = (type, input) ->
     cell = insertCellBelow createCell type, input
@@ -2552,9 +2535,8 @@ Flow.Repl = (_, _renderers) ->
 
   initialize = ->
     setupKeyboardHandling 'normal'
-    cell = createCell 'cs'
-    push _cells, cell
-    selectCell cell
+   
+    insertNewCellBelow()
 
     link$ _.selectCell, selectCell
     link$ _.insertAndExecuteCell, insertCellBelowAndRun
