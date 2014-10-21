@@ -2152,9 +2152,14 @@ Flow.Repl = (_, _renderers) ->
     Flow.Cell _, _renderers, type, input
 
   checkConsistency = ->
+    selectionCount = 0
     for cell, i in _cells()
       unless cell
         error "index #{i} is empty"
+      else
+        if cell.isSelected()
+          selectionCount++
+    error "selected cell count = #{selectionCount}" if selectionCount isnt 1
     return
 
   selectCell = (target) ->
