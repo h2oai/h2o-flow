@@ -30,6 +30,164 @@ Flow = if exports? then exports else @Flow = {}
 #   ? parameter / threshold plots
 # ? predictions
 
+Flow.Dataflow = do ->
+  _applicate = (go) -> 
+    (error, args) ->
+      apply go, null, [ error ].concat args if isFunction go
+  
+  _resolve = (nodes) ->
+    map nodes, (node) -> if isNode$ node then node() else node
+
+  _react = (nodes, immediate, go) ->
+    propagate = -> apply go, null, _resolve nodes
+    propagate() if immediate
+    map nodes, (node) -> link$ node, -> propagate()
+
+  react = (nodes..., go) -> _react nodes, no, go
+
+  #XXX BUG shorthand rewrites this to lodash.invoke
+  _invoke = (nodes..., go) -> _react nodes, yes, go 
+
+  _lift = (nodes..., f) ->
+    evaluate = -> apply f, null, _resolve nodes
+    target = node$ evaluate()
+    forEach nodes, (node) -> link$ node, -> target evaluate()
+    target
+  
+  _merge = (sources..., target, f) ->
+    propagate = -> target apply f, null, _resolve sources
+    propagate()
+    map sources, (source) -> link$ source, propagate
+
+  signal: node$
+  signals: nodes$
+  isSignal: isNode$
+  applicate: _applicate
+  resolve: _resolve
+  react: _react
+  invoke: _invoke
+  lift: _lift
+  merge: _merge
+
+noopFuture = (go) -> go null
+
+renderable = (f, args..., render) ->
+  ft = _fork f, args
+  ft.render = render
+  ft
+
+stringify = (a) -> JSON.stringify a
+
+_fork = (f, args) ->
+  self = (go) ->
+    canGo = isFunction go
+    if self.settled
+      # proceed with cached error/result
+      if self.rejected
+        go self.error if canGo
+      else
+        go null, self.result if canGo
+    else
+      _join args, (error, args) ->
+        if error
+          self.error = error
+          self.fulfilled = no
+          self.rejected = yes
+          go error if canGo
+        else
+          apply f, null,
+            args.concat (error, result) ->
+              if error
+                self.error = error
+                self.fulfilled = no
+                self.rejected = yes
+                go error if canGo
+              else
+                self.result = result
+                self.fulfilled = yes
+                self.rejected = no
+                go null, result if canGo
+              self.settled = yes
+              self.pending = no
+
+  self.method = f
+  self.args = args
+  self.fulfilled = no
+  self.rejected = no
+  self.settled = no
+  self.pending = yes
+
+  self.isFuture = yes
+
+  self
+
+isFuture = (a) -> if a?.isFuture then yes else no
+
+fork = (f, args...) -> _fork f, args
+
+_join = (args, go) ->
+  return go null, [] if args.length is 0
+
+  _tasks = [] 
+  _results = []
+
+  for arg, i in args
+    if arg?.isFuture
+      _tasks.push future: arg, resultIndex: i
+    else
+      _results[i] = arg
+
+  return go null, _results if _tasks.length is 0
+
+  _actual = 0
+  _settled = no
+
+  forEach _tasks, (task) ->
+    call task.future, null, (error, result) ->
+      return if _settled
+      if error
+        _settled = yes
+        go exception "Error evaluating future[#{task.resultIndex}]", error
+      else
+        _results[task.resultIndex] = result
+        _actual++
+        if _actual is _tasks.length
+          _settled = yes
+          go null, _results
+      return
+  return
+
+_flowMenuItems =
+  importFiles:
+    description: 'Import file(s) into H<sub>2</sub>O'
+    icon: 'files-o'
+  getFrames:
+    description: 'Get a list of frames in H<sub>2</sub>O'
+    icon: 'database'
+  getModels:
+    description: 'Get a list of models in H<sub>2</sub>O'
+    icon: 'cubes'
+  getJobs:
+    description: 'Get a list of jobs running in H<sub>2</sub>O'
+    icon: 'bolt'
+  buildModel:
+    description: 'Build a model'
+    icon: 'cube'
+
+
+assist = (_, routines, routine) ->
+  switch routine
+    when routines.importFiles
+      renderable noopFuture, (ignore, go) ->
+        go null, Flow.ImportFilesInput _
+    when routines.help, routines.menu, routines.buildModel, routines.getFrames, routines.getModels, routines.getJobs
+      # parameter-less routines
+      routine()
+    else
+      renderable noopFuture, (ignore, go) ->
+        go null, Flow.NoAssistView _
+
+
 marked.setOptions
   smartypants: yes
   highlight: (code, lang) ->
@@ -341,28 +499,6 @@ Flow.ImportFilesOutput = (_, _importResults) ->
   templateOf: templateOf
 
 
-jobOutputStatusColors = 
-  failed: '#d9534f'
-  done: '#ccc' #'#5cb85c'
-  running: '#f0ad4e'
-
-getJobOutputStatusColor = (status) ->
-  # CREATED   Job was created
-  # RUNNING   Job is running
-  # CANCELLED Job was cancelled by user
-  # FAILED    Job crashed, error message/exception is available
-  # DONE      Job was successfully finished
-  switch status
-    when 'DONE'
-      jobOutputStatusColors.done
-    when 'CREATED', 'RUNNING'
-      jobOutputStatusColors.running
-    else # 'CANCELLED', 'FAILED'
-      jobOutputStatusColors.failed
-
-getJobProgressPercent = (progress) ->
-  "#{Math.ceil 100 * progress}%"
-
 Flow.JobsOutput = (_, jobs) ->
   _jobViews = nodes$ []
   _hasJobViews = lift$ _jobViews, (jobViews) -> jobViews.length > 0
@@ -412,135 +548,106 @@ Flow.ModelOutput = (_, _model) ->
   model: _model
   template: 'flow-model-output'
 
-Flow.JobOutput = (_, _job) ->
-  _isBusy = node$ no
-  _isLive = node$ no
+do ->
+  jobOutputStatusColors = 
+    failed: '#d9534f'
+    done: '#ccc' #'#5cb85c'
+    running: '#f0ad4e'
 
-  _key = _job.key.name
-  _description = _job.description
-  _destinationKey = _job.dest.name
-  _runTime = node$ null
-  _progress = node$ null
-  _status = node$ null
-  _statusColor = node$ null
-  _exception = node$ null
-  _kind = node$ null
+  getJobOutputStatusColor = (status) ->
+    # CREATED   Job was created
+    # RUNNING   Job is running
+    # CANCELLED Job was cancelled by user
+    # FAILED    Job crashed, error message/exception is available
+    # DONE      Job was successfully finished
+    switch status
+      when 'DONE'
+        jobOutputStatusColors.done
+      when 'CREATED', 'RUNNING'
+        jobOutputStatusColors.running
+      else # 'CANCELLED', 'FAILED'
+        jobOutputStatusColors.failed
 
-  isJobRunning = (job) ->
-    job.status is 'CREATED' or job.status is 'RUNNING'
+  getJobProgressPercent = (progress) ->
+    "#{Math.ceil 100 * progress}%"
 
-  updateJob = (job) ->
-    _runTime job.msec
-    _progress getJobProgressPercent job.progress
-    _status job.status
-    _statusColor getJobOutputStatusColor job.status
-    _exception job.exception
+  Flow.JobOutput = (_, _job) ->
+    _isBusy = node$ no
+    _isLive = node$ no
 
-  toggleRefresh = ->
-    _isLive not _isLive()
+    _key = _job.key.name
+    _description = _job.description
+    _destinationKey = _job.dest.name
+    _runTime = node$ null
+    _progress = node$ null
+    _status = node$ null
+    _statusColor = node$ null
+    _exception = node$ null
+    _kind = node$ null
 
-  refresh = ->
-    _isBusy yes
-    _.requestJob _key, (error, job) ->
-      _isBusy no
-      if error
-        _exception exception 'Error fetching jobs', error
-        _isLive no
-      else
-        updateJob job
-        if isJobRunning job
-          delay refresh, 1000 if _isLive()
+    isJobRunning = (job) ->
+      job.status is 'CREATED' or job.status is 'RUNNING'
+
+    updateJob = (job) ->
+      _runTime job.msec
+      _progress getJobProgressPercent job.progress
+      _status job.status
+      _statusColor getJobOutputStatusColor job.status
+      _exception job.exception
+
+    toggleRefresh = ->
+      _isLive not _isLive()
+
+    refresh = ->
+      _isBusy yes
+      _.requestJob _key, (error, job) ->
+        _isBusy no
+        if error
+          _exception exception 'Error fetching jobs', error
+          _isLive no
         else
-          toggleRefresh()
+          updateJob job
+          if isJobRunning job
+            delay refresh, 1000 if _isLive()
+          else
+            toggleRefresh()
 
-  apply$ _isLive, (isLive) ->
-    refresh() if isLive
+    apply$ _isLive, (isLive) ->
+      refresh() if isLive
 
-  inspect = ->
-    switch _kind()
-      when 'frame'
-        _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
-      when 'model'
-        _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
+    inspect = ->
+      switch _kind()
+        when 'frame'
+          _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
+        when 'model'
+          _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
 
 
-  initialize = (job) ->
-    updateJob job
-    toggleRefresh if isJobRunning job
+    initialize = (job) ->
+      updateJob job
+      toggleRefresh if isJobRunning job
 
-    _.requestInspect _destinationKey, (error, result) ->
-      unless error
-        _kind result.kind
-      return
+      _.requestInspect _destinationKey, (error, result) ->
+        unless error
+          _kind result.kind
+        return
 
-  initialize _job
+    initialize _job
 
-  key: _key
-  description: _description
-  destinationKey: _destinationKey
-  kind: _kind
-  runTime: _runTime
-  progress: _progress
-  status: _status
-  statusColor: _statusColor
-  exception: _exception
-  isLive: _isLive
-  toggleRefresh: toggleRefresh
-  inspect: inspect
-  template: 'flow-job-output'
+    key: _key
+    description: _description
+    destinationKey: _destinationKey
+    kind: _kind
+    runTime: _runTime
+    progress: _progress
+    status: _status
+    statusColor: _statusColor
+    exception: _exception
+    isLive: _isLive
+    toggleRefresh: toggleRefresh
+    inspect: inspect
+    template: 'flow-job-output'
 
-parserTypes = map [ 'AUTO', 'XLS', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
-
-parseDelimiters = do ->
-  whitespaceSeparators = [
-    'NULL'
-    'SOH (start of heading)'
-    'STX (start of text)'
-    'ETX (end of text)'
-    'EOT (end of transmission)'
-    'ENQ (enquiry)'
-    'ACK (acknowledge)'
-    "BEL '\\a' (bell)"
-    "BS  '\\b' (backspace)"
-    "HT  '\\t' (horizontal tab)"
-    "LF  '\\n' (new line)"
-    "VT  '\\v' (vertical tab)"
-    "FF  '\\f' (form feed)"
-    "CR  '\\r' (carriage ret)"
-    'SO  (shift out)'
-    'SI  (shift in)'
-    'DLE (data link escape)'
-    'DC1 (device control 1) '
-    'DC2 (device control 2)'
-    'DC3 (device control 3)'
-    'DC4 (device control 4)'
-    'NAK (negative ack.)'
-    'SYN (synchronous idle)'
-    'ETB (end of trans. blk)'
-    'CAN (cancel)'
-    'EM  (end of medium)'
-    'SUB (substitute)'
-    'ESC (escape)'
-    'FS  (file separator)'
-    'GS  (group separator)'
-    'RS  (record separator)'
-    'US  (unit separator)'
-    "' ' SPACE"
-  ]
-
-  createDelimiter = (caption, charCode) ->
-    charCode: charCode
-    caption: "#{caption}: '#{('00' + charCode).slice(-2)}'"
-
-  whitespaceDelimiters = map whitespaceSeparators, createDelimiter
-
-  characterDelimiters = times (126 - whitespaceSeparators.length), (i) ->
-    charCode = i + whitespaceSeparators.length
-    createDelimiter (String.fromCharCode charCode), charCode
-
-  otherDelimiters = [ charCode: -1, caption: 'AUTO' ]
-
-  concat whitespaceDelimiters, characterDelimiters, otherDelimiters
 
 do ->
   significantDigitsBeforeDecimal = (value) -> 1 + Math.floor Math.log(Math.abs value) / Math.LN10
@@ -1007,43 +1114,94 @@ Flow.FramesOutput = (_, _frames) ->
   importFiles: importFiles
   template: 'flow-frames-output'
 
+do ->
+  parserTypes = map [ 'AUTO', 'XLS', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
 
-Flow.SetupParseOutput = (_, _result) ->
-  _sourceKeys = map _result.srcs, (src) -> src.name
-  _parserType =  node$ find parserTypes, (parserType) -> parserType.type is _result.pType
-  _delimiter = node$ find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
-  _useSingleQuotes = node$ _result.singleQuotes
-  _columns = map _result.columnNames, (name) -> name: node$ name
-  _rows = _result.data
-  _columnCount = _result.ncols
-  _hasColumns = _columnCount > 0
-  _destinationKey = node$ _result.hexName
-  _headerOptions = auto: 0, header: 1, data: -1
-  _headerOption = node$ if _result.checkHeader is 0 then 'auto' else if _result.checkHeader is -1 then 'data' else 'header'
-  _deleteOnDone = node$ yes
+  parseDelimiters = do ->
+    whitespaceSeparators = [
+      'NULL'
+      'SOH (start of heading)'
+      'STX (start of text)'
+      'ETX (end of text)'
+      'EOT (end of transmission)'
+      'ENQ (enquiry)'
+      'ACK (acknowledge)'
+      "BEL '\\a' (bell)"
+      "BS  '\\b' (backspace)"
+      "HT  '\\t' (horizontal tab)"
+      "LF  '\\n' (new line)"
+      "VT  '\\v' (vertical tab)"
+      "FF  '\\f' (form feed)"
+      "CR  '\\r' (carriage ret)"
+      'SO  (shift out)'
+      'SI  (shift in)'
+      'DLE (data link escape)'
+      'DC1 (device control 1) '
+      'DC2 (device control 2)'
+      'DC3 (device control 3)'
+      'DC4 (device control 4)'
+      'NAK (negative ack.)'
+      'SYN (synchronous idle)'
+      'ETB (end of trans. blk)'
+      'CAN (cancel)'
+      'EM  (end of medium)'
+      'SUB (substitute)'
+      'ESC (escape)'
+      'FS  (file separator)'
+      'GS  (group separator)'
+      'RS  (record separator)'
+      'US  (unit separator)'
+      "' ' SPACE"
+    ]
 
-  parseFiles = ->
-    columnNames = map _columns, (column) -> column.name()
+    createDelimiter = (caption, charCode) ->
+      charCode: charCode
+      caption: "#{caption}: '#{('00' + charCode).slice(-2)}'"
 
-    _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{stringify _sourceKeys}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}"
+    whitespaceDelimiters = map whitespaceSeparators, createDelimiter
 
+    characterDelimiters = times (126 - whitespaceSeparators.length), (i) ->
+      charCode = i + whitespaceSeparators.length
+      createDelimiter (String.fromCharCode charCode), charCode
 
+    otherDelimiters = [ charCode: -1, caption: 'AUTO' ]
 
-  sourceKeys: _sourceKeys
-  parserTypes: parserTypes
-  delimiters: parseDelimiters
-  parserType: _parserType
-  delimiter: _delimiter
-  useSingleQuotes: _useSingleQuotes
-  columns: _columns
-  rows: _rows
-  columnCount: _columnCount
-  hasColumns: _hasColumns
-  destinationKey: _destinationKey
-  headerOption: _headerOption
-  deleteOnDone: _deleteOnDone
-  parseFiles: parseFiles
-  template: 'flow-parse-raw-input'
+    concat whitespaceDelimiters, characterDelimiters, otherDelimiters
+
+  Flow.SetupParseOutput = (_, _result) ->
+    _sourceKeys = map _result.srcs, (src) -> src.name
+    _parserType =  node$ find parserTypes, (parserType) -> parserType.type is _result.pType
+    _delimiter = node$ find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
+    _useSingleQuotes = node$ _result.singleQuotes
+    _columns = map _result.columnNames, (name) -> name: node$ name
+    _rows = _result.data
+    _columnCount = _result.ncols
+    _hasColumns = _columnCount > 0
+    _destinationKey = node$ _result.hexName
+    _headerOptions = auto: 0, header: 1, data: -1
+    _headerOption = node$ if _result.checkHeader is 0 then 'auto' else if _result.checkHeader is -1 then 'data' else 'header'
+    _deleteOnDone = node$ yes
+
+    parseFiles = ->
+      columnNames = map _columns, (column) -> column.name()
+
+      _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{stringify _sourceKeys}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}"
+
+    sourceKeys: _sourceKeys
+    parserTypes: parserTypes
+    delimiters: parseDelimiters
+    parserType: _parserType
+    delimiter: _delimiter
+    useSingleQuotes: _useSingleQuotes
+    columns: _columns
+    rows: _rows
+    columnCount: _columnCount
+    hasColumns: _hasColumns
+    destinationKey: _destinationKey
+    headerOption: _headerOption
+    deleteOnDone: _deleteOnDone
+    parseFiles: parseFiles
+    template: 'flow-parse-raw-input'
 
 Flow.ImportFilesInput = (_) ->
   #
@@ -1302,92 +1460,6 @@ Flow.H2O = (_) ->
   link$ _.requestModel, requestModel
   link$ _.requestModelMetrics, requestModelMetrics
 
-_fork = (f, args) ->
-  self = (go) ->
-    canGo = isFunction go
-    if self.settled
-      # proceed with cached error/result
-      if self.rejected
-        go self.error if canGo
-      else
-        go null, self.result if canGo
-    else
-      _join args, (error, args) ->
-        if error
-          self.error = error
-          self.fulfilled = no
-          self.rejected = yes
-          go error if canGo
-        else
-          apply f, null,
-            args.concat (error, result) ->
-              if error
-                self.error = error
-                self.fulfilled = no
-                self.rejected = yes
-                go error if canGo
-              else
-                self.result = result
-                self.fulfilled = yes
-                self.rejected = no
-                go null, result if canGo
-              self.settled = yes
-              self.pending = no
-
-  self.method = f
-  self.args = args
-  self.fulfilled = no
-  self.rejected = no
-  self.settled = no
-  self.pending = yes
-
-  self.isFuture = yes
-
-  self
-
-isFuture = (a) -> if a?.isFuture then yes else no
-
-fork = (f, args...) -> _fork f, args
-
-_join = (args, go) ->
-  return go null, [] if args.length is 0
-
-  _tasks = [] 
-  _results = []
-
-  for arg, i in args
-    if arg?.isFuture
-      _tasks.push future: arg, resultIndex: i
-    else
-      _results[i] = arg
-
-  return go null, _results if _tasks.length is 0
-
-  _actual = 0
-  _settled = no
-
-  forEach _tasks, (task) ->
-    call task.future, null, (error, result) ->
-      return if _settled
-      if error
-        _settled = yes
-        go exception "Error evaluating future[#{task.resultIndex}]", error
-      else
-        _results[task.resultIndex] = result
-        _actual++
-        if _actual is _tasks.length
-          _settled = yes
-          go null, _results
-      return
-  return
-
-noopFuture = (go) -> go null
-
-renderable = (f, args..., render) ->
-  ft = _fork f, args
-  ft.render = render
-  ft
-
 Flow.Gui = (_) ->
   
 #  gui [
@@ -1569,7 +1641,10 @@ Flow.Routines = (_) ->
 
   help = ->
     renderable noopFuture, (ignore, go) ->
-      go null, template: 'flow-help-intro'
+      go null, 
+        executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
+        executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
+        template: 'flow-help-intro'
   
   menu = ->
     getMenu = (go) -> go null, _flowMenuItems
@@ -1585,6 +1660,7 @@ Flow.Routines = (_) ->
 
   parseRaw = (opts) -> #XXX review args
     #XXX validation
+
     sourceKeys = opts.srcs
     destinationKey = opts.hex
     parserType = opts.pType
@@ -1638,44 +1714,20 @@ Flow.Routines = (_) ->
       else
   ###
 
-  _applicate = (go) -> 
-    (error, args) ->
-      apply go, null, [ error ].concat args if isFunction go
-  
-  _resolve = (nodes) ->
-    map nodes, (node) -> if isNode$ node then node() else node
-
-  _react = (nodes, immediate, go) ->
-    propagate = -> apply go, null, _resolve nodes
-    propagate() if immediate
-    map nodes, (node) -> link$ node, -> propagate()
-
-  react = (nodes..., go) -> _react nodes, no, go
-  #XXX BUG shorthand rewrites this to lodash.invoke
-  _invoke = (nodes..., go) -> _react nodes, yes, go 
-  lift = (nodes..., f) ->
-    evaluate = -> apply f, null, _resolve nodes
-    target = node$ evaluate()
-    forEach nodes, (node) -> link$ node, -> target evaluate()
-    target
-  
-  merge = (sources..., target, f) ->
-    propagate = -> target apply f, null, _resolve sources
-    propagate()
-    map sources, (source) -> link$ source, propagate
+  dataflow = Flow.Dataflow
 
   fork: fork
-  join: (args..., go) -> _join args, _applicate go
-  call: (go, args...) -> _join args, _applicate go
+  join: (args..., go) -> _join args, dataflow.applicate go
+  call: (go, args...) -> _join args, dataflow.applicate go
   apply: (go, args) -> _join args, go
   isFuture: isFuture
-  signal: node$
-  signals: nodes$
-  isSignal: isNode$
-  react: react
-  invoke: _invoke
-  merge: merge
-  lift: lift
+  signal: dataflow.signal
+  signals: dataflow.signals
+  isSignal: dataflow.isSignal
+  react: dataflow.react
+  invoke: dataflow.invoke
+  merge: dataflow.merge
+  lift: dataflow.lift
   menu: menu
   getJobs: getJobs
   getJob: getJob
@@ -1690,315 +1742,286 @@ Flow.Routines = (_) ->
   gui: gui
   help: help
 
-safetyWrapCoffeescript = (guid) ->
-  (cs, go) ->
-    lines = cs
-      # normalize CR/LF
-      .replace /[\n\r]/g, '\n'
-      # split into lines
-      .split '\n'
+do ->
+  safetyWrapCoffeescript = (guid) ->
+    (cs, go) ->
+      lines = cs
+        # normalize CR/LF
+        .replace /[\n\r]/g, '\n'
+        # split into lines
+        .split '\n'
 
-    # indent once
-    block = map lines, (line) -> '  ' + line
+      # indent once
+      block = map lines, (line) -> '  ' + line
 
-    # enclose in execute-immediate closure
-    block.unshift "_h2o_results_['#{guid}'].implicits.push do ->"
+      # enclose in execute-immediate closure
+      block.unshift "_h2o_results_['#{guid}'].implicits.push do ->"
 
-    # join and proceed
-    go null, join block, '\n'
+      # join and proceed
+      go null, join block, '\n'
 
-compileCoffeescript = (cs, go) ->
-  try
-    go null, CoffeeScript.compile cs, bare: yes
-  catch error
-    go exception 'Error compiling coffee-script', error
-
-parseJavascript = (js, go) ->
-  try
-    go null, esprima.parse js
-  catch error
-    go exception 'Error parsing javascript expression', error
-
-
-identifyDeclarations = (node) ->
-  return null unless node
-
-  switch node.type
-    when 'VariableDeclaration'
-      return (name: declaration.id.name, object:'_h2o_context_' for declaration in node.declarations when declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier')
-        
-    when 'FunctionDeclaration'
-      #
-      # XXX Not sure about the semantics here.
-      #
-      if node.id.type is 'Identifier'
-        return [ name: node.id.name, object: '_h2o_context_' ]
-    when 'ForStatement'
-      return identifyDeclarations node.init
-    when 'ForInStatement', 'ForOfStatement'
-      return identifyDeclarations node.left
-  return null
-
-parseDeclarations = (block) ->
-  identifiers = []
-  for node in block.body
-    if declarations = identifyDeclarations node
-      for declaration in declarations
-        identifiers.push declaration
-  indexBy identifiers, (identifier) -> identifier.name
-
-traverseJavascript = (parent, key, node, f) ->
-  if isArray node
-    i = node.length
-    # walk backwards to allow callers to delete nodes
-    while i--
-      child = node[i]
-      if isObject child
-        traverseJavascript node, i, child, f
-        f node, i, child
-  else 
-    for i, child of node
-      if isObject child
-        traverseJavascript node, i, child, f
-        f node, i, child
-  return
-
-deleteAstNode = (parent, i) ->
-  if _.isArray parent
-    parent.splice i, 1
-  else if isObject parent
-    delete parent[i]
-
-createLocalScope = (node) ->
-  # parse all declarations in this scope
-  localScope = parseDeclarations node.body
-
-  # include formal parameters
-  for param in node.params when param.type is 'Identifier'
-    localScope[param.name] = name: param.name, object: 'local'
-
-  localScope
-
-# redefine scope by coalescing down to non-local identifiers
-coalesceScopes = (scopes) ->
-  currentScope = {}
-  for scope, i in scopes
-    if i is 0
-      for name, identifier of scope
-        currentScope[name] = identifier
-    else
-      for name, identifier of scope
-        currentScope[name] = null
-  currentScope
-
-traverseJavascriptScoped = (scopes, parentScope, parent, key, node, f) ->
-  isNewScope = node.type is 'FunctionExpression' or node.type is 'FunctionDeclaration'
-  if isNewScope
-    # create and push a new local scope onto scope stack
-    push scopes, createLocalScope node
-    currentScope = coalesceScopes scopes
-  else
-    currentScope = parentScope
-
-  for key, child of node
-    if isObject child
-      traverseJavascriptScoped scopes, currentScope, node, key, child, f
-      f currentScope, node, key, child 
-
-  if isNewScope
-    # discard local scope
-    pop scopes
-
-  return
-
-createRootScope = (sandbox) ->
-  (program, go) ->
+  compileCoffeescript = (cs, go) ->
     try
-      rootScope = parseDeclarations program.body[0].expression.arguments[0].callee.body
-
-      for name of sandbox.context
-        rootScope[name] =
-          name: name
-          object: '_h2o_context_'
-      go null, rootScope, program
-
+      go null, CoffeeScript.compile cs, bare: yes
     catch error
-      go exception 'Error parsing root scope', error
+      go exception 'Error compiling coffee-script', error
 
-#TODO DO NOT call this for raw javascript:
-# Require alternate strategy: 
-#   Declarations with 'var' need to be local to the cell.
-#   Undeclared identifiers are assumed to be global.
-#   'use strict' should be unsupported.
-removeHoistedDeclarations = (rootScope, program, go) ->
-  try
-    traverseJavascript null, null, program, (parent, key, node) ->
-      if node.type is 'VariableDeclaration'		
-        declarations = node.declarations.filter (declaration) ->		
-          declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not rootScope[declaration.id.name]		
-        if declarations.length is 0
-          # purge this node so that escodegen doesn't fail		
-          deleteAstNode parent, key		
-        else		
-          # replace with cleaned-up declarations
-          node.declarations = declarations
-    go null, rootScope, program
-  catch error
-    go exception 'Error rewriting javascript', error
-
-
-createGlobalScope = (rootScope, routines) ->
-  globalScope = {}
-
-  for name, identifier of rootScope
-    globalScope[name] = identifier
-
-  for name of routines
-    globalScope[name] = name: name, object: 'h2o'
-
-  globalScope
-
-rewriteJavascript = (sandbox) ->
-  (rootScope, program, go) ->
-    globalScope = createGlobalScope rootScope, sandbox.routines 
-
+  parseJavascript = (js, go) ->
     try
-      traverseJavascriptScoped [ globalScope ], globalScope, null, null, program, (globalScope, parent, key, node) ->
-        if node.type is 'Identifier'
-          return if parent.type is 'VariableDeclarator' and key is 'id' # ignore var declarations
-          return if key is 'property' # ignore members
-          return unless identifier = globalScope[node.name]
+      go null, esprima.parse js
+    catch error
+      go exception 'Error parsing javascript expression', error
 
-          # qualify identifier with '_h2o_context_'
-          parent[key] =
-            type: 'MemberExpression'
-            computed: no
-            object:
-              type: 'Identifier'
-              name: identifier.object
-            property:
-              type: 'Identifier'
-              name: identifier.name
-      go null, program
+
+  identifyDeclarations = (node) ->
+    return null unless node
+
+    switch node.type
+      when 'VariableDeclaration'
+        return (name: declaration.id.name, object:'_h2o_context_' for declaration in node.declarations when declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier')
+          
+      when 'FunctionDeclaration'
+        #
+        # XXX Not sure about the semantics here.
+        #
+        if node.id.type is 'Identifier'
+          return [ name: node.id.name, object: '_h2o_context_' ]
+      when 'ForStatement'
+        return identifyDeclarations node.init
+      when 'ForInStatement', 'ForOfStatement'
+        return identifyDeclarations node.left
+    return null
+
+  parseDeclarations = (block) ->
+    identifiers = []
+    for node in block.body
+      if declarations = identifyDeclarations node
+        for declaration in declarations
+          identifiers.push declaration
+    indexBy identifiers, (identifier) -> identifier.name
+
+  traverseJavascript = (parent, key, node, f) ->
+    if isArray node
+      i = node.length
+      # walk backwards to allow callers to delete nodes
+      while i--
+        child = node[i]
+        if isObject child
+          traverseJavascript node, i, child, f
+          f node, i, child
+    else 
+      for i, child of node
+        if isObject child
+          traverseJavascript node, i, child, f
+          f node, i, child
+    return
+
+  deleteAstNode = (parent, i) ->
+    if _.isArray parent
+      parent.splice i, 1
+    else if isObject parent
+      delete parent[i]
+
+  createLocalScope = (node) ->
+    # parse all declarations in this scope
+    localScope = parseDeclarations node.body
+
+    # include formal parameters
+    for param in node.params when param.type is 'Identifier'
+      localScope[param.name] = name: param.name, object: 'local'
+
+    localScope
+
+  # redefine scope by coalescing down to non-local identifiers
+  coalesceScopes = (scopes) ->
+    currentScope = {}
+    for scope, i in scopes
+      if i is 0
+        for name, identifier of scope
+          currentScope[name] = identifier
+      else
+        for name, identifier of scope
+          currentScope[name] = null
+    currentScope
+
+  traverseJavascriptScoped = (scopes, parentScope, parent, key, node, f) ->
+    isNewScope = node.type is 'FunctionExpression' or node.type is 'FunctionDeclaration'
+    if isNewScope
+      # create and push a new local scope onto scope stack
+      push scopes, createLocalScope node
+      currentScope = coalesceScopes scopes
+    else
+      currentScope = parentScope
+
+    for key, child of node
+      if isObject child
+        traverseJavascriptScoped scopes, currentScope, node, key, child, f
+        f currentScope, node, key, child 
+
+    if isNewScope
+      # discard local scope
+      pop scopes
+
+    return
+
+  createRootScope = (sandbox) ->
+    (program, go) ->
+      try
+        rootScope = parseDeclarations program.body[0].expression.arguments[0].callee.body
+
+        for name of sandbox.context
+          rootScope[name] =
+            name: name
+            object: '_h2o_context_'
+        go null, rootScope, program
+
+      catch error
+        go exception 'Error parsing root scope', error
+
+  #TODO DO NOT call this for raw javascript:
+  # Require alternate strategy: 
+  #   Declarations with 'var' need to be local to the cell.
+  #   Undeclared identifiers are assumed to be global.
+  #   'use strict' should be unsupported.
+  removeHoistedDeclarations = (rootScope, program, go) ->
+    try
+      traverseJavascript null, null, program, (parent, key, node) ->
+        if node.type is 'VariableDeclaration'		
+          declarations = node.declarations.filter (declaration) ->		
+            declaration.type is 'VariableDeclarator' and declaration.id.type is 'Identifier' and not rootScope[declaration.id.name]		
+          if declarations.length is 0
+            # purge this node so that escodegen doesn't fail		
+            deleteAstNode parent, key		
+          else		
+            # replace with cleaned-up declarations
+            node.declarations = declarations
+      go null, rootScope, program
     catch error
       go exception 'Error rewriting javascript', error
 
-stringify = (a) -> JSON.stringify a
 
-generateJavascript = (program, go) ->
-  try
-    go null, escodegen.generate program
-  catch error
-    return go exception 'Error generating javascript', error
+  createGlobalScope = (rootScope, routines) ->
+    globalScope = {}
 
-compileJavascript = (js, go) ->
-  try
-    closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', 'show', js
-    go null, closure
-  catch error
-    go exception 'Error compiling javascript', error
+    for name, identifier of rootScope
+      globalScope[name] = identifier
 
-executeJavascript = (sandbox, show) ->
-  (closure, go) ->
+    for name of routines
+      globalScope[name] = name: name, object: 'h2o'
+
+    globalScope
+
+  rewriteJavascript = (sandbox) ->
+    (rootScope, program, go) ->
+      globalScope = createGlobalScope rootScope, sandbox.routines 
+
+      try
+        traverseJavascriptScoped [ globalScope ], globalScope, null, null, program, (globalScope, parent, key, node) ->
+          if node.type is 'Identifier'
+            return if parent.type is 'VariableDeclarator' and key is 'id' # ignore var declarations
+            return if key is 'property' # ignore members
+            return unless identifier = globalScope[node.name]
+
+            # qualify identifier with '_h2o_context_'
+            parent[key] =
+              type: 'MemberExpression'
+              computed: no
+              object:
+                type: 'Identifier'
+                name: identifier.object
+              property:
+                type: 'Identifier'
+                name: identifier.name
+        go null, program
+      catch error
+        go exception 'Error rewriting javascript', error
+
+
+  generateJavascript = (program, go) ->
     try
-      go null, closure sandbox.routines, sandbox.context, sandbox.results, show
+      go null, escodegen.generate program
     catch error
-      go exception 'Error executing javascript', error
+      return go exception 'Error generating javascript', error
 
-_flowMenuItems =
-  importFiles:
-    description: 'Import file(s) into H<sub>2</sub>O'
-    icon: 'files-o'
-  getFrames:
-    description: 'Get a list of frames in H<sub>2</sub>O'
-    icon: 'database'
-  getModels:
-    description: 'Get a list of models in H<sub>2</sub>O'
-    icon: 'cubes'
-  getJobs:
-    description: 'Get a list of jobs running in H<sub>2</sub>O'
-    icon: 'bolt'
-  buildModel:
-    description: 'Build a model'
-    icon: 'cube'
+  compileJavascript = (js, go) ->
+    try
+      closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', 'show', js
+      go null, closure
+    catch error
+      go exception 'Error compiling javascript', error
 
-assist = (_, routines, routine) ->
-  switch routine
-    when routines.importFiles
-      renderable noopFuture, (ignore, go) ->
-        go null, Flow.ImportFilesInput _
-    when routines.help, routines.menu, routines.buildModel, routines.getFrames, routines.getModels, routines.getJobs
-      # parameter-less routines
-      routine()
-    else
-      renderable noopFuture, (ignore, go) ->
-        go null, Flow.NoAssistView _
+  executeJavascript = (sandbox, show) ->
+    (closure, go) ->
+      try
+        go null, closure sandbox.routines, sandbox.context, sandbox.results, show
+      catch error
+        go exception 'Error executing javascript', error
 
-Flow.Coffeescript = (_, guid, sandbox) ->
-  show = (arg) ->
-    if arg isnt show
-      sandbox.results[guid].explicits.push arg
-    show
+  Flow.Coffeescript = (_, guid, sandbox) ->
+    show = (arg) ->
+      if arg isnt show
+        sandbox.results[guid].explicits.push arg
+      show
 
-  render = (ft) -> (go) ->
-    if ft?.isFuture
-      ft (error, result) ->
-        if error
-          go exception 'Error evaluating cell', error
-        else
-          if ft.render
-            ft.render result, (error, result) ->
-              if error
-                go exception 'Error rendering cell output', error
-              else
-                go null, result 
-          else if ft.print
-            go null,
-              text: ft.print result #TODO implement chrome dev tools style JSON inspector
-              template: 'flow-raw'
+    render = (ft) -> (go) ->
+      if ft?.isFuture
+        ft (error, result) ->
+          if error
+            go exception 'Error evaluating cell', error
           else
-            #XXX pick smarter renderers based on content
-            go null,
-              text: ft
-              template: 'flow-raw'
-    else
-      go null,
-        text: ft
-        template: 'flow-raw'
-
-  pickResults = (results) ->
-    { implicits, explicits } = results
-    if explicits.length
-      return explicits
-    else
-      implicit = head implicits
-      if isFunction implicit
-        for name, routine of sandbox.routines
-          if implicit is routine
-            show assist _, sandbox.routines, routine
-            return explicits
-      return implicits
-
-  isCode: yes
-  render: (input, go) ->
-    sandbox.results[guid] = implicits: [], explicits: []
-    tasks = [
-      safetyWrapCoffeescript guid
-      compileCoffeescript
-      parseJavascript
-      createRootScope sandbox
-      removeHoistedDeclarations
-      rewriteJavascript sandbox
-      generateJavascript
-      compileJavascript
-      executeJavascript sandbox, show
-    ]
-    (pipe tasks) input, (error, result) ->
-      if error
-        go error
+            if ft.render
+              ft.render result, (error, result) ->
+                if error
+                  go exception 'Error rendering cell output', error
+                else
+                  go null, result 
+            else if ft.print
+              go null,
+                text: ft.print result #TODO implement chrome dev tools style JSON inspector
+                template: 'flow-raw'
+            else
+              #XXX pick smarter renderers based on content
+              go null,
+                text: ft
+                template: 'flow-raw'
       else
-        tasks = map (pickResults sandbox.results[guid]), render
-        (iterate tasks) go
+        go null,
+          text: ft
+          template: 'flow-raw'
+
+    pickResults = (results) ->
+      { implicits, explicits } = results
+      if explicits.length
+        return explicits
+      else
+        implicit = head implicits
+        if isFunction implicit
+          for name, routine of sandbox.routines
+            if implicit is routine
+              show assist _, sandbox.routines, routine
+              return explicits
+        return implicits
+
+    isCode: yes
+    render: (input, go) ->
+      sandbox.results[guid] = implicits: [], explicits: []
+      tasks = [
+        safetyWrapCoffeescript guid
+        compileCoffeescript
+        parseJavascript
+        createRootScope sandbox
+        removeHoistedDeclarations
+        rewriteJavascript sandbox
+        generateJavascript
+        compileJavascript
+        executeJavascript sandbox, show
+      ]
+      (pipe tasks) input, (error, result) ->
+        if error
+          go error
+        else
+          tasks = map (pickResults sandbox.results[guid]), render
+          (iterate tasks) go
 
 Flow.Renderers = (_, _sandbox) ->
   h1: -> Flow.HtmlTag _, 'h1'
@@ -2543,6 +2566,8 @@ Flow.Repl = (_, _renderers) ->
 
   link$ _.ready, initialize
 
+  executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
+  executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
   menus: _menus
   toolbar: _toolbar
   cells: _cells

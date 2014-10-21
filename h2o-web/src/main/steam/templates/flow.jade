@@ -30,14 +30,15 @@ html(lang='en')
     //- include repl
 
     // ko with:view
-    nav.navbar.navbar-default(role='navigation')
+    .f-navigation
+      nav.navbar.navbar-default(role='navigation')
+        .container-fluid
+          .f-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
       .container-fluid
-        .f-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
-    .container-fluid
-      .f-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px")
-      div(style='padding:5px 0;margin-bottom:10px')
-        i.fa.fa-lightbulb-o.f-icon
-        | Type <code>help</code> <kbd>ctrl</kbd> <kbd>enter</kbd> for help. Type <code>menu</code> <kbd>ctrl</kbd> <kbd>enter</kbd> to dive into H<sub>2</sub>O. Press <kbd>h</kbd> for keyboard shortcuts. 
+        .f-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px")
+        div(style='padding:5px 0;margin-bottom:10px')
+          i.fa.fa-lightbulb-o.f-icon
+          | Type <code><a href='#' data-bind='click:executeHelp'>help</a></code> <kbd>ctrl</kbd> <kbd>enter</kbd> for help. Type <code><a href='#' data-bind='click:executeMenu'>menu</a></code> <kbd>ctrl</kbd> <kbd>enter</kbd> to dive into H<sub>2</sub>O. Press <kbd>h</kbd> for keyboard shortcuts. 
 
     .container-fluid
       .f-repl(data-bind='template:{ name:templateOf, foreach:cells }')
@@ -90,7 +91,7 @@ html(lang='en')
           li <kbd>b</kbd> adds a new cell <u>b</u>elow the current cell.
           li <kbd>d</kbd><kbd>d</kbd> <u>d</u>eletes the current cell. Yes, you need to press <kbd>d</kbd> twice.
 
-        p Finally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code>menu</code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!
+        p Finally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code><a href='#' data-bind='click:executeMenu'>menu</a></code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!
 
     script(type="text/html" id="flow-keyboard-shortcut-table")
       table
@@ -694,10 +695,14 @@ html(lang='en')
           i.fa.fa-database.f-icon
           span(data-bind="text:key")
 
-        .f-commands
-          button.f-button(type='button' data-bind='click:createModel')
-            i.fa.fa-cube.f-icon
-            | Create Model
+        table.f-table-horizontal
+          tbody
+            tr 
+              th(width='1') Actions
+              td
+                button.f-button(type='button' data-bind='click:createModel')
+                  i.fa.fa-cube.f-icon
+                  | Create Model
 
         // ko with:table
         div(style='overflow:auto')
