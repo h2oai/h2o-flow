@@ -2193,10 +2193,10 @@ Flow.Repl = (_, _renderers) ->
     _selectedCell.execute()
 
   copyCell = ->
-    _clipboardCell = cloneCell _selectedCell
+    _clipboardCell = _selectedCell
 
   cutCell = ->
-    _clipboardCell = _selectedCell
+    copyCell()
     removeCell()
 
   deleteCell = ->
@@ -2280,10 +2280,10 @@ Flow.Repl = (_, _renderers) ->
     return
 
   pasteCellAbove = ->
-    insertCell _selectedCellIndex, _clipboardCell if _clipboardCell
+    insertCell _selectedCellIndex, cloneCell _clipboardCell if _clipboardCell
 
   pasteCellBelow = ->
-    insertCell _selectedCellIndex + 1, _clipboardCell if _clipboardCell
+    insertCell _selectedCellIndex + 1, cloneCell _clipboardCell if _clipboardCell
 
   undoLastDelete = ->
     insertCell _selectedCellIndex + 1, _lastDeletedCell if _lastDeletedCell
