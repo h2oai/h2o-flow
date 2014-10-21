@@ -1716,6 +1716,14 @@ Flow.Routines = (_) ->
 
   dataflow = Flow.Dataflow
 
+  loadScript = (path, go) ->
+    onDone = (script, status) -> go null, script:script, status:status
+    onFail = (jqxhr, settings, error) -> go error #TODO use framework error
+
+    $.getScript path
+      .done onDone
+      .fail onFail
+
   fork: fork
   join: (args..., go) -> _join args, dataflow.applicate go
   call: (go, args...) -> _join args, dataflow.applicate go
@@ -1740,6 +1748,7 @@ Flow.Routines = (_) ->
   getModels: getModels
   getModel: getModel
   gui: gui
+  loadScript: loadScript
   help: help
 
 do ->
