@@ -263,6 +263,78 @@ ko.bindingHandlers.dom =
       $element.append arg
     return
 
+previewArray = (array) ->
+  ellipsis = if array.length > 5 then ', ...' else ''
+  preview = for element in head array, 5
+    if isPrimitive type = typeOf element then element else type
+  "[#{preview.join ', '}#{ellipsis}]"
+
+previewObject = (object) ->
+  count = 0
+  previews = []
+  ellipsis = ''
+  for key, value of object
+    valueType = typeOf value
+    previews.push "#{key}: #{if isPrimitive valueType then value else valueType}"
+    if ++count is 5
+      ellipsis = ', ...'
+      break 
+  "{#{previews.join ', '}#{ellipsis}}" 
+
+preview = (element) ->
+  type = typeOf element
+  if isPrimitive type
+    element
+  else
+    switch type
+      when 'Array'
+        previewArray element
+      when 'Function', 'Arguments'
+        type
+      else
+        previewObject element
+      
+
+#TODO slice large arrays
+dumpObject = (key, object) ->
+  _expansions = node$ null
+  _isExpanded = node$ no
+  _type = typeOf object
+  _canExpand = isExpandable _type
+  toggle = ->
+    return unless _canExpand
+    if _expansions() is null
+      expansions = []
+      for key, value of object
+        expansions.push dumpObject key, value
+      _expansions expansions
+    _isExpanded not _isExpanded()
+
+  key: key
+  preview: preview object
+  toggle: toggle
+  expansions: _expansions
+  isExpanded: _isExpanded
+  canExpand: _canExpand
+
+ko.bindingHandlers.dump =
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    object = ko.unwrap valueAccessor()
+
+isExpandable = (type) ->
+  switch type
+    when 'null', 'undefined', 'Boolean', 'String', 'Number', 'Date', 'RegExp', 'Arguments', 'Function'
+      no
+    else
+      yes
+  
+isPrimitive = (type) ->
+  switch type
+    when 'null', 'undefined', 'Boolean', 'String', 'Number', 'Date', 'RegExp'
+      yes
+    else
+      no
+
 typeOf = (a) ->
   type = Object::toString.call a
   if a is null
@@ -270,25 +342,27 @@ typeOf = (a) ->
   else if a is undefined
     return 'undefined'
   else if a is true or a is false or type is '[object Boolean]'
-    return 'boolean'
+    return 'Boolean'
   else
     switch type
       when '[object String]'
-        return 'string'
+        return 'String'
       when '[object Number]'
-        return 'number'
+        return 'Number'
       when '[object Function]'
-        return 'function'
+        return 'Function'
       when '[object Object]'
-        return 'object'
+        return 'Object'
       when '[object Array]'
-        return 'array'
+        return 'Array'
       when '[object Arguments]'
-        return 'arguments'
+        return 'Arguments'
       when '[object Date]'
-        return 'date'
+        return 'Date'
       when '[object RegExp]'
-        return 'regexp'
+        return 'RegExp'
+      when '[object Error]'
+        return 'Error'
       else
         return type
 
@@ -990,24 +1064,6 @@ do ->
               frameKey = trainingFrameParameter.actual_value
 
           return go()
-          #XXX unused
-          if algorithm is 'deeplearning'
-            validationFrameParameter = findParameter parameters, 'validation_frame'
-            responseColumnParameter = findParameter parameters, 'response_column'
-            #TODO HACK hard-coding DL column params for now - rework this when Vec type is supported.
-            responseColumnParameter.type = 'Vec'
-            ignoredColumnsParameter = findParameter parameters, 'ignored_columns'
-            #TODO HACK hard-coding DL column params for now - rework this when Vec type is supported.
-            ignoredColumnsParameter.type = 'Vec[]'
-
-            validationFrameParameter.values = slice trainingFrameParameter.values, 0
-
-            if trainingFrame = (find result.frames, (frame) -> frame.key.name is frameKey)
-              columnLabels = map trainingFrame.columns, (column) -> column.label
-              sort columnLabels
-              responseColumnParameter.values = columnLabels
-              ignoredColumnsParameter.values = columnLabels
-          go()
 
     # If a source model is specified, we already know the algo, so skip algo selection
 #     if _sourceModel
@@ -2053,8 +2109,8 @@ do ->
               evaluate cellResult
           else
             output.close
-              text: cellResult
-              template: 'flow-raw'
+              object: dumpObject 'result', cellResult
+              template: 'flow-dump'
 
     render.isCode = yes
     render
@@ -2120,6 +2176,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     render = _render()
     _isBusy yes
     # Clear any existing outputs
+    _result null
     _outputs []
     _hasError no
     render input,

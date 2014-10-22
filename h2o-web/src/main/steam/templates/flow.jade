@@ -168,6 +168,25 @@ html(lang='en')
     script(type="text/html" id="flow-html")
       .f-html-output(data-bind="html:html")
 
+    script(type="text/html" id="flow-dump")
+      .f-dump-output(data-bind="template:{ name:'flow-dump-part', data:object}")
+    script(type="text/html" id="flow-dump-part")
+      .f-dump
+        // ko if:canExpand
+        .f-pointer(data-bind='click:toggle')
+          i.fa.fa-caret-right.f-icon
+          strong(data-bind='text:key')
+          | : 
+          em(data-bind='text:preview')
+        .f-indent(data-bind="visible:isExpanded, template:{ name:'flow-dump-part', foreach:expansions}")
+        // /ko
+        // ko ifnot:canExpand
+        i.fa.fa-caret-right.f-icon.f-invisible
+        strong(data-bind='text:key')
+        | : 
+        em(data-bind='text:preview')
+        // /ko
+
     script(type="text/html" id="flow-raw")
       .f-raw-output
         pre(data-bind="text:text")
