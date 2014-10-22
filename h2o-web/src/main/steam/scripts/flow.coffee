@@ -3,32 +3,29 @@ Flow = if exports? then exports else @Flow = {}
 # 
 # TODO
 #
-# keyboard help dialog
-# menu system
+# XXX how does cell output behave when a widget throws an exception?
+# XXX GLM case is failing badly. Investigate. Should catch/handle gracefully.
+#
+# integrate with groc
 # tooltips on celltype flags
 # arrow keys cause page to scroll - disable those behaviors
 # scrollTo() behavior
 
 
-# CLI usage:
-# help
-# list frames
-# list models, list models with compatible frames
-# list jobs
-# list scores
-# list nodes
-# ? import dataset
-# ? browse files
-# ? parse
-# ? inspect dataset
-# ? column summary
-# ? histogram / box plot / top n / characteristics plots
-# ? create model
-# ? score model
-# ? compare scorings
-#   ? input / output comparison
-#   ? parameter / threshold plots
-# ? predictions
+#XXX move to ns
+bufferNode = (array) ->
+  _array = array or []
+  buffer = (element) ->
+    if element is undefined
+      _array
+    else
+      _array.push element
+      _go element if _go
+      element
+  buffer.subscribe = (go) -> _go = go
+  buffer.buffer = _array
+  buffer.isBuffer = yes
+  buffer
 
 Flow.Dataflow = do ->
   _applicate = (go) -> 
@@ -2012,6 +2009,15 @@ do ->
         return implicits
 
     isCode: yes
+    #XXX rename results -> outputs
+    #XXX rename explicits -> buffer
+    #XXX rename implicits -> result
+    #XXX go should take an error and result
+    # downstream should always push to _output node, not set it like []
+    # XXX refactor all h/md/raw cells to use go as an EFC
+    # XXX should be no difference between input and ouput
+    # XXX special-case functions so that bodies are not printed with the raw renderer.
+    # XXX render() should be a function. renderer.render is ugly as hell
     render: (input, go) ->
       sandbox.results[guid] = implicits: [], explicits: []
       tasks = [
