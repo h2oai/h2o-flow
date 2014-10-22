@@ -1998,8 +1998,8 @@ do ->
       #     _.delay process, 1000
       # process()
       #
-
-      outputBuffer.subscribe (ft) ->
+      
+      evaluate = (ft) ->
         if ft?.isFuture
           ft (error, result) ->
             if error
@@ -2025,6 +2025,7 @@ do ->
             text: ft
             template: 'flow-raw'
 
+      outputBuffer.subscribe evaluate
 
       tasks = [
         safetyWrapCoffeescript guid
@@ -2047,9 +2048,7 @@ do ->
             if isRoutine cellResult
               show assist _, sandbox.routines, cellResult
             else
-              output.close
-                text: cellResult
-                template: 'flow-raw'
+              evaluate cellResult
           else
             output.close
               text: cellResult
@@ -2596,7 +2595,8 @@ Flow.Repl = (_, _renderers) ->
     insertNewCellBelow()
 
     link$ _.selectCell, selectCell
-    link$ _.insertAndExecuteCell, insertCellBelowAndRun
+    link$ _.insertAndExecuteCell, (type, input) ->
+      defer insertCellBelowAndRun, type, input
 
   link$ _.ready, initialize
 
