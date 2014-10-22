@@ -1766,7 +1766,7 @@ do ->
       block = map lines, (line) -> '  ' + line
 
       # enclose in execute-immediate closure
-      block.unshift "_h2o_results_['#{guid}'] do ->"
+      block.unshift "_h2o_results_['#{guid}'].result do ->"
 
       # join and proceed
       go null, join block, '\n'
@@ -1971,13 +1971,19 @@ do ->
   Flow.Coffeescript = (_, guid, sandbox) ->
     show = (arg) ->
       if arg isnt show
-        sandbox.results[guid] arg
+        sandbox.results[guid].outputs arg
       show
+
+    isRoutine = (f) ->
+      for name, routine of sandbox.routines when f is routine
+        return yes
+      return no
 
     # XXX special-case functions so that bodies are not printed with the raw renderer.
     render = (input, output) ->
-      outputBuffer = createBuffer []
-      sandbox.results[guid] = outputBuffer
+      sandbox.results[guid] = sandboxResult =
+        result: node$ null
+        outputs: outputBuffer = createBuffer []
 
       #
       # XXX need separate implicit buffer
@@ -1994,10 +2000,6 @@ do ->
       #
 
       outputBuffer.subscribe (ft) ->
-        if isFunction ft
-          for name, routine of sandbox.routines when ft is routine
-            return show assist _, sandbox.routines, ft
-
         if ft?.isFuture
           ft (error, result) ->
             if error
@@ -2039,6 +2041,20 @@ do ->
         output.error error if error
         output.end()
 
+        cellResult = sandboxResult.result()
+        if cellResult
+          if isFunction cellResult
+            if isRoutine cellResult
+              show assist _, sandbox.routines, cellResult
+            else
+              output.close
+                text: cellResult
+                template: 'flow-raw'
+          else
+            output.close
+              text: cellResult
+              template: 'flow-raw'
+
     render.isCode = yes
     render
 
@@ -2065,6 +2081,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   _hasInput = node$ yes
   _input = node$ input
   _outputs = nodes$ []
+  _result = node$ null
   _hasOutput = lift$ _outputs, (outputs) -> outputs.length > 0
   _isOutputVisible = node$ yes
   _isOutputHidden = lift$ _isOutputVisible, (visible) -> not visible
@@ -2107,6 +2124,9 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     render input,
       data: (result) ->
         _outputs.push result
+      close: (result) ->
+        #XXX push to cell output
+        _result result
       error: (error) ->
         _hasError yes
         #XXX review
@@ -2136,6 +2156,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     input: _input
     hasInput: _hasInput
     outputs: _outputs
+    result: _result
     hasOutput: _hasOutput
     isOutputVisible: _isOutputVisible
     toggleOutput: -> _isOutputVisible not _isOutputVisible()

@@ -900,7 +900,11 @@ html(lang='en')
                   // ko if:isBusy
                   i.fa.fa-cog.fa-spin(title='Computing...')
                   // /ko
-        .f-cell-outputs(data-bind='visible:isOutputVisible, template: { name: templateOf, foreach:outputs }')
+        .f-cell-output(data-bind='visible:isOutputVisible')
+          // ko if:result
+          .f-cell-result(data-bind='template:{ name: templateOf, data:result }')
+          // /ko
+          .f-cell-outputs(data-bind='template: { name: templateOf, foreach:outputs }')
 
     script(src='//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.2/highlight.min.js')
     script(src='js/lib-flow.js')
