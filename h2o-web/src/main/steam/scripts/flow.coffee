@@ -1685,9 +1685,9 @@ Flow.Routines = (_) ->
   getJob = (arg) ->
     #XXX validation
     switch typeOf arg
-      when 'string'
+      when 'String'
         renderable _.requestJob, arg, renderJob
-      when 'object'
+      when 'Object'
         if arg.key?
           job arg.key
         else
@@ -1767,9 +1767,9 @@ Flow.Routines = (_) ->
     switch typeOf arg
       when 'undefined'
 
-      when 'string'
+      when 'String'
 
-      when 'function'
+      when 'Function'
 
       else
   ###
