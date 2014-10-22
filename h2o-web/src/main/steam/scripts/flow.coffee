@@ -450,6 +450,7 @@ Flow.Application = (_) ->
   Flow.DialogManager _
   
   context: _
+  sandbox: _sandbox
   view: _repl
 
 Flow.ApplicationContext = (_) ->
