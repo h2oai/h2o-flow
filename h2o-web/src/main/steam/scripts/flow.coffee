@@ -2069,19 +2069,15 @@ do ->
                     output.error exception 'Error rendering output', error
                   else
                     output.data result 
-              else if ft.print
-                output.data
-                  text: ft.print result #TODO implement chrome dev tools style JSON inspector
-                  template: 'flow-raw'
               else
                 #XXX pick smarter renderers based on content
                 output.data
-                  text: ft
-                  template: 'flow-raw'
+                  object: dumpObject 'output', ft
+                  template: 'flow-dump'
         else
           output.data
-            text: ft
-            template: 'flow-raw'
+            object: dumpObject 'output', ft
+            template: 'flow-dump'
 
       outputBuffer.subscribe evaluate
 
