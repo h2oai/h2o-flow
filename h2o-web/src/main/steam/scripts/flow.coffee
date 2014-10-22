@@ -13,8 +13,9 @@ Flow = if exports? then exports else @Flow = {}
 
 
 #XXX move to ns
-bufferNode = (array) ->
+createBuffer = (array) ->
   _array = array or []
+  _go = null
   buffer = (element) ->
     if element is undefined
       _array
@@ -399,31 +400,35 @@ Flow.ApplicationContext = (_) ->
 Flow.DialogManager = (_) ->
 
 Flow.HtmlTag = (_, level) ->
-  isCode: no
-  render: (input, go) ->
-    output = 
+  render = (input, output) ->
+    output.data
       text: input.trim() or '(Untitled)'
       template: "flow-#{level}"
-    go null, [ [ null , output ] ]
+    output.end()
+  render.isCode = no
+  render
 
 Flow.Markdown = (_) ->
-  isCode: no
-  render: (input, go) ->
+  render = (input, output) ->
     try
-      output =
+      output.data
         html: marked input.trim() or '(No content)'
         template: 'flow-html'
-      go null, [ [ null , output ] ]
     catch error
-      go error
+      output.error error
+    finally
+      output.end()
+  render.isCode = no
+  render
 
 Flow.Raw = (_) ->
-  isCode: no
-  render: (input, go) ->
-    output =
+  render = (input, output) ->
+    output.data
       text: input
       template: 'flow-raw'
-    go null, [ [ null , output ] ]
+    output.end()
+  render.isCode = no
+  render
 
 objectToHtmlTable = (obj) ->
   if obj is undefined
@@ -1761,7 +1766,7 @@ do ->
       block = map lines, (line) -> '  ' + line
 
       # enclose in execute-immediate closure
-      block.unshift "_h2o_results_['#{guid}'].implicits.push do ->"
+      block.unshift "_h2o_results_['#{guid}'] do ->"
 
       # join and proceed
       go null, join block, '\n'
@@ -1966,60 +1971,59 @@ do ->
   Flow.Coffeescript = (_, guid, sandbox) ->
     show = (arg) ->
       if arg isnt show
-        sandbox.results[guid].explicits.push arg
+        sandbox.results[guid] arg
       show
 
-    render = (ft) -> (go) ->
-      if ft?.isFuture
-        ft (error, result) ->
-          if error
-            go exception 'Error evaluating cell', error
-          else
-            if ft.render
-              ft.render result, (error, result) ->
-                if error
-                  go exception 'Error rendering cell output', error
-                else
-                  go null, result 
-            else if ft.print
-              go null,
-                text: ft.print result #TODO implement chrome dev tools style JSON inspector
-                template: 'flow-raw'
-            else
-              #XXX pick smarter renderers based on content
-              go null,
-                text: ft
-                template: 'flow-raw'
-      else
-        go null,
-          text: ft
-          template: 'flow-raw'
-
-    pickResults = (results) ->
-      { implicits, explicits } = results
-      if explicits.length
-        return explicits
-      else
-        implicit = head implicits
-        if isFunction implicit
-          for name, routine of sandbox.routines
-            if implicit is routine
-              show assist _, sandbox.routines, routine
-              return explicits
-        return implicits
-
-    isCode: yes
-    #XXX rename results -> outputs
-    #XXX rename explicits -> buffer
-    #XXX rename implicits -> result
-    #XXX go should take an error and result
-    # downstream should always push to _output node, not set it like []
-    # XXX refactor all h/md/raw cells to use go as an EFC
-    # XXX should be no difference between input and ouput
     # XXX special-case functions so that bodies are not printed with the raw renderer.
-    # XXX render() should be a function. renderer.render is ugly as hell
-    render: (input, go) ->
-      sandbox.results[guid] = implicits: [], explicits: []
+    render = (input, output) ->
+      outputBuffer = createBuffer []
+      sandbox.results[guid] = outputBuffer
+
+      #
+      # XXX need separate implicit buffer
+      #
+      # Following case produces 1, timeout_id, 2, 3, 4...
+      #
+      # values = [1 .. 10]
+      # process = ->
+      #   value = values.shift()
+      #   if value
+      #     show value
+      #     _.delay process, 1000
+      # process()
+      #
+
+      outputBuffer.subscribe (ft) ->
+        if isFunction ft
+          for name, routine of sandbox.routines when ft is routine
+            return show assist _, sandbox.routines, ft
+
+        if ft?.isFuture
+          ft (error, result) ->
+            if error
+              output.error exception 'Error evaluating cell', error
+            else
+              if ft.render
+                ft.render result, (error, result) ->
+                  if error
+                    output.error exception 'Error rendering output', error
+                  else
+                    output.data result 
+              else if ft.print
+                output.data
+                  text: ft.print result #TODO implement chrome dev tools style JSON inspector
+                  template: 'flow-raw'
+              else
+                #XXX pick smarter renderers based on content
+                output.data
+                  text: ft
+                  template: 'flow-raw'
+        else
+          output.data
+            text: ft
+            template: 'flow-raw'
+
+
       tasks = [
         safetyWrapCoffeescript guid
         compileCoffeescript
@@ -2031,12 +2035,12 @@ do ->
         compileJavascript
         executeJavascript sandbox, show
       ]
-      (pipe tasks) input, (error, result) ->
-        if error
-          go error
-        else
-          tasks = map (pickResults sandbox.results[guid]), render
-          (iterate tasks) go
+      (pipe tasks) input, (error) ->
+        output.error error if error
+        output.end()
+
+    render.isCode = yes
+    render
 
 Flow.Renderers = (_, _sandbox) ->
   h1: -> Flow.HtmlTag _, 'h1'
@@ -2052,7 +2056,7 @@ Flow.Renderers = (_, _sandbox) ->
 Flow.Cell = (_, _renderers, type='cs', input='') ->
   _guid = do uniqueId
   _type = node$ type
-  _renderer = lift$ _type, (type) -> _renderers[type] _guid
+  _render = lift$ _type, (type) -> _renderers[type] _guid
   _isSelected = node$ no
   _isActive = node$ no
   _hasError = node$ no
@@ -2074,7 +2078,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     if isActive
       _.selectCell self
       _hasInput yes
-      _outputs [] unless _renderer().isCode
+      _outputs [] unless _render().isCode
     return
 
   # deactivate when deselected
@@ -2093,42 +2097,31 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   execute = (go) ->
     input = _input().trim()
     unless input
-      if go
-        return go null
-      else
-        return
+      return if go then go() else undefined 
 
-    renderer = _renderer()
+    render = _render()
     _isBusy yes
-    renderer.render input, (error, results) ->
-      if error
+    # Clear any existing outputs
+    _outputs []
+    _hasError no
+    render input,
+      data: (result) ->
+        _outputs.push result
+      error: (error) ->
         _hasError yes
         #XXX review
         if error.cause?
-          _outputs [
+          _outputs.push
             error: error
             template: 'flow-error'
-          ]
         else
-          _outputs [
+          _outputs.push
             text: JSON.stringify error, null, 2
             template: 'flow-raw'
-          ]
-      else
-        _hasError no
-        outputs = for [ error, result ] in results
-          if error
-            _hasError yes
-            error: error
-            template: 'flow-error'
-          else
-            result
-
-        _outputs outputs
-        _hasInput renderer.isCode
-
-      _isBusy no
-      go _hasError() if go
+      end: ->
+        _hasInput render.isCode
+        _isBusy no
+        go() if go
 
     _isActive no
 
