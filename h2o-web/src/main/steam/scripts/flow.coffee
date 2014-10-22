@@ -243,13 +243,15 @@ ko.bindingHandlers.cursorPosition =
     return
 
 ko.bindingHandlers.autoResize =
-  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-    $el = $ element
-      .on 'input', ->
-        defer ->
-          $el
-            .css 'height', 'auto'
-            .height element.scrollHeight
+  update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    resize = -> defer ->
+      $el
+        .css 'height', 'auto'
+        .height element.scrollHeight
+
+    $el = $(element).on 'input', resize
+
+    resize()
     return
 
 ko.bindingHandlers.dom =
