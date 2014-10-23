@@ -9,7 +9,7 @@ Install Node.js, dependencies, and build everything.
     brew install node
     cd path/to/h2o-flow
     npm install
-    npm start
+    npm start --output=/path/to/h2o-dev/h2o-web/src/main/resources/www/flow
 
 ## Linux
 
@@ -17,7 +17,7 @@ Install Node.js by following the instructions on the [Node.js wiki](https://gith
 
     cd path/to/h2o-flow
     npm install
-    npm start
+    npm start --output=/path/to/h2o-dev/h2o-web/src/main/resources/www/flow
 
 ## Windows
 
@@ -25,5 +25,5 @@ Install Node.js [using the official installer](http://nodejs.org/download/). Whe
 
     cd path\to\h2o-flow
     npm install
-    npm start
+    npm start --output=\path\to\h2o-dev\h2o-web\src\main\resources\www\flow
 
