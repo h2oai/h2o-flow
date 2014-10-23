@@ -69,7 +69,7 @@ config =
       'lib/bootstrap/dist/js/bootstrap.js'
       'lib/d3/d3.js'
       'lib/marked/lib/marked.js'
-      'lib/knockout/knockout.debug.js'
+      'lib/knockoutjs/dist/knockout.debug.js'
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
     ]
     css: [
