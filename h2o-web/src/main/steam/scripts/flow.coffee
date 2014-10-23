@@ -507,35 +507,6 @@ Flow.Raw = (_) ->
   render.isCode = no
   render
 
-objectToHtmlTable = (obj) ->
-  if obj is undefined
-    '(undefined)'
-  else if obj is null
-    '(null)'
-  else if isString obj
-    if obj
-      obj
-    else
-      '(Empty string)'
-  else if isArray obj
-    html = ''
-    for value, i in obj
-      html += "<tr><td>#{i + 1}</td><td>#{objectToHtmlTable value}</td></tr>"
-    if html
-      "<table class='table table-striped table-condensed'>#{html}</table>"
-    else
-      '(Empty array)'
-  else if isObject obj
-    html = ''
-    for key, value of obj
-      html += "<tr><td>#{key}</td><td>#{objectToHtmlTable value}</td></tr>"
-    if html
-      "<table class='table table-striped table-condensed'>#{html}</table>"
-    else
-      '(Empty object)'
-  else
-    obj
-
 Flow.ParseOutput = (_, _result) ->
   inspectJob = ->
     _.insertAndExecuteCell 'cs', "getJob #{stringify _result.job.name}"
