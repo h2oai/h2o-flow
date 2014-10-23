@@ -82,7 +82,7 @@ gulp.task 'build-scripts', ->
     .pipe order [ 'global.prelude.js', 'global.*.js', '*.js' ]
     .pipe concat 'flow.js'
     .pipe expand 'src/tools/shorthand/config.yml'
-    .pipe header '"use strict";(function(){ var lodash = window._; window.Steam={};'
+    .pipe header '"use strict";(function(){ var lodash = window._; window.flow={};'
     .pipe footer '}).call(this);'
     .pipe gulp.dest config.dir.deploy + 'js/'
 
@@ -91,14 +91,14 @@ gulp.task 'build-tests', ->
     .pipe ignore.exclude /flow.coffee/
     .pipe iff /global\..+\.coffee$/, (coffee bare: yes), (coffee bare: no)
     .pipe order [ 'global.tests.js', 'global.prelude.js', 'global.*.js', '*.js' ]
-    .pipe concat 'steam-tests.js'
+    .pipe concat 'flow-tests.js'
     .pipe header '"use strict";(function(){'
     .pipe footer '}).call(this);'
     .pipe gulp.dest config.dir.deploy + 'js/'
 
 gulp.task 'build-templates', ->
   gulp.src 'src/templates/*.jade'
-    .pipe ignore.include /flow.jade$/
+    .pipe ignore.include /index.jade$/
     .pipe jade pretty: yes
     .pipe gulp.dest config.dir.deploy
 
@@ -136,7 +136,7 @@ gulp.task 'clean', ->
     .pipe clean()
 
 gulp.task 'test', [ 'build-tests' ], ->
-  require path.resolve config.dir.deploy + 'js/steam-tests.js'
+  require path.resolve config.dir.deploy + 'js/flow-tests.js'
 
 gulp.task 'build', [ 
   'build-libs'
