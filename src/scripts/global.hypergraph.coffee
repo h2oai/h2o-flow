@@ -2,7 +2,7 @@
 # Reactive programming / Dataflow programming wrapper over KO
 #
 
-Steam.Hypergraph = do ->
+Flow.Hypergraph = do ->
 
   createEdge = ->
     arrow = null
@@ -219,7 +219,7 @@ Steam.Hypergraph = do ->
 # Destructure into application scope with shorter names.
 #
 
-{ createEdge: edge$, createHyperedge: edges$, createNode: node$, isNode: isNode$, createPolynode: nodes$, createContext: context$, link: link$, unlink: unlink$, callOnChange: call$, applyOnChange: apply$, joinNodes: join$, zipNodes: zip$, liftNodes: lift$, filterNode: filter$, switchNodes: switch$, debounceNode: debounce$, throttleNode: throttle$ } = Steam.Hypergraph
+{ createEdge: edge$, createHyperedge: edges$, createNode: node$, isNode: isNode$, createPolynode: nodes$, createContext: context$, link: link$, unlink: unlink$, callOnChange: call$, applyOnChange: apply$, joinNodes: join$, zipNodes: zip$, liftNodes: lift$, filterNode: filter$, switchNodes: switch$, debounceNode: debounce$, throttleNode: throttle$ } = Flow.Hypergraph
 
 
 #

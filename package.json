@@ -9,7 +9,7 @@
   "scripts": {
     "start": "bower install && gulp",
     "clean": "gulp clean",
-    "watch": "gulp watch",
+    "watch": "gulp && gulp watch",
     "unit-test": "gulp build-test-script && node build/steam-tests.js -u | faucet",
     "test-raw": "gulp build-test-script && node build/steam-tests.js -s",
     "test": "gulp build-test-script && node build/steam-tests.js -s | faucet",

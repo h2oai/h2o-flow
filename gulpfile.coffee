@@ -41,7 +41,7 @@ expand = (yml) ->
 
 config =
   dir:
-    deploy: './build/'
+    deploy: process.env.npm_config_output or './build'
   lib:
     js: [
       'lib/stacktrace-js/stacktrace.js'
@@ -56,7 +56,7 @@ config =
       'lib/bootstrap/dist/js/bootstrap.js'
       'lib/d3/d3.js'
       'lib/marked/lib/marked.js'
-      'lib/knockout/knockout.debug.js'
+      'lib/knockoutjs/dist/knockout.debug.js'
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
     ]
     css: [
@@ -82,9 +82,9 @@ gulp.task 'build-scripts', ->
     .pipe order [ 'global.prelude.js', 'global.*.js', '*.js' ]
     .pipe concat 'flow.js'
     .pipe expand 'src/tools/shorthand/config.yml'
-    .pipe header '"use strict";(function(){ var lodash = window._; window.flow={};'
+    .pipe header '"use strict";(function(){ var lodash = window._; window.Flow={};'
     .pipe footer '}).call(this);'
-    .pipe gulp.dest config.dir.deploy + 'js/'
+    .pipe gulp.dest config.dir.deploy + '/js/'
 
 gulp.task 'build-tests', ->
   gulp.src 'src/scripts/*.coffee'
@@ -94,7 +94,7 @@ gulp.task 'build-tests', ->
     .pipe concat 'flow-tests.js'
     .pipe header '"use strict";(function(){'
     .pipe footer '}).call(this);'
-    .pipe gulp.dest config.dir.deploy + 'js/'
+    .pipe gulp.dest config.dir.deploy + '/js/'
 
 gulp.task 'build-templates', ->
   gulp.src 'src/templates/*.jade'
@@ -106,25 +106,25 @@ gulp.task 'build-styles', ->
   gulp.src 'src/styles/*.styl'
     .pipe ignore.include /flow.styl$/
     .pipe stylus use: [ nib() ]
-    .pipe gulp.dest config.dir.deploy + 'css/'
+    .pipe gulp.dest config.dir.deploy + '/css/'
 
 gulp.task 'build-libs', ->
   gulp.src config.lib.js
     .pipe concat 'lib.js'
-    .pipe gulp.dest config.dir.deploy + 'js/'
+    .pipe gulp.dest config.dir.deploy + '/js/'
 
   gulp.src config.lib.img
-    .pipe gulp.dest config.dir.deploy + 'img/'
+    .pipe gulp.dest config.dir.deploy + '/img/'
 
   gulp.src config.lib.fonts
-    .pipe gulp.dest config.dir.deploy + 'fonts/'
+    .pipe gulp.dest config.dir.deploy + '/fonts/'
 
   gulp.src config.lib.css
     .pipe concat 'lib.css'
-    .pipe gulp.dest config.dir.deploy + 'css/'
+    .pipe gulp.dest config.dir.deploy + '/css/'
 
   gulp.src config.lib.cssmap
-    .pipe gulp.dest config.dir.deploy + 'css/'
+    .pipe gulp.dest config.dir.deploy + '/css/'
 
 gulp.task 'watch', ->
   gulp.watch 'src/scripts/*.coffee', [ 'build-scripts' ]
@@ -136,7 +136,7 @@ gulp.task 'clean', ->
     .pipe clean()
 
 gulp.task 'test', [ 'build-tests' ], ->
-  require path.resolve config.dir.deploy + 'js/flow-tests.js'
+  require path.resolve config.dir.deploy + '/js/flow-tests.js'
 
 gulp.task 'build', [ 
   'build-libs'
