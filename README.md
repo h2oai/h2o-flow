@@ -4,12 +4,17 @@
 
 ## OSX
 
-Install Node.js, dependencies, and build everything.
+Install Node.js using `brew install node`, and then:
 
-    brew install node
     cd path/to/h2o-flow
     npm install
     npm start --output=/path/to/h2o-dev/h2o-web/src/main/resources/www/flow
+    # You can now build+run h2o-dev in IDEA/Eclipse and go to http://localhost:54321/flow/index.html
+    #
+    # Optionally, build the fat jar:
+    cd path/to/h2o-dev && gradle build -x test
+    java -Xmx4g -jar build/h2o.jar
+    # ...and then navigate to http://localhost:54321/flow/index.html
 
 ## Linux
 
@@ -18,6 +23,12 @@ Install Node.js by following the instructions on the [Node.js wiki](https://gith
     cd path/to/h2o-flow
     npm install
     npm start --output=/path/to/h2o-dev/h2o-web/src/main/resources/www/flow
+    # You can now build+run h2o-dev in IDEA/Eclipse and go to http://localhost:54321/flow/index.html
+    #
+    # Optionally, build the fat jar:
+    cd path/to/h2o-dev && gradle build -x test
+    java -Xmx4g -jar build/h2o.jar
+    # ...and then navigate to http://localhost:54321/flow/index.html
 
 ## Windows
 
@@ -26,4 +37,11 @@ Install Node.js [using the official installer](http://nodejs.org/download/). Whe
     cd path\to\h2o-flow
     npm install
     npm start --output=\path\to\h2o-dev\h2o-web\src\main\resources\www\flow
+    # You can now build+run h2o-dev in IDEA/Eclipse and go to http://localhost:54321/flow/index.html
+    #
+    # Optionally, build the fat jar:
+    cd path\to\h2o-dev
+    gradle build -x test
+    java -Xmx4g -jar build/h2o.jar
+    # ...and then navigate to http://localhost:54321/flow/index.html
 
