@@ -32,7 +32,7 @@ expand = (yml) ->
       return
 
     symbols = yaml.safeLoad fs.readFileSync yml, encoding: 'utf8'
-    implicits = [ 'console', 'Math', 'lodash', 'Flow.Signal' ]
+    implicits = [ 'console', 'Math', 'lodash', 'Flow.Prelude', 'Flow.Dataflow' ]
     try
       file.contents = new Buffer shorthand symbols, file.contents.toString(), implicits: implicits
       cb null, file
@@ -85,6 +85,15 @@ gulp.task 'build-scripts', ->
     .pipe footer '}).call(this);'
     .pipe gulp.dest config.dir.deploy + '/js/'
 
+gulp.task 'build-tests', ->
+  gulp.src [ 'src/**/*.coffee' ]
+    .pipe coffee bare: no
+    .pipe concat 'flow-tests.js'
+    .pipe expand 'shorthand.yml'
+    .pipe header '"use strict";(function(){ var lodash = require(\'lodash\'); var test = require(\'tape\'); var Flow={};'
+    .pipe footer '}).call(this);'
+    .pipe gulp.dest './build/js/'
+
 gulp.task 'build-templates', ->
   gulp.src 'src/index.jade'
     .pipe jade pretty: yes
@@ -121,9 +130,6 @@ gulp.task 'watch', ->
 gulp.task 'clean', ->
   gulp.src config.dir.deploy, read: no
     .pipe clean()
-
-gulp.task 'test', [ 'build-tests' ], ->
-  require path.resolve config.dir.deploy + '/js/flow-tests.js'
 
 gulp.task 'build', [ 
   'build-libs'

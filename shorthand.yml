@@ -441,39 +441,67 @@ now:
   object: lodash
 slot:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 slots:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 signal:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 signals:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 isSignal:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 board:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 link:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 unlink:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 act:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 react:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 lift:
   type: qualify
-  object: Flow.Signal
+  object: Flow.Dataflow
 merge:
   type: qualify
-  object: Flow.Signal
-
-
+  object: Flow.Dataflow
+isDefined:
+  type: qualify
+  object: Flow.Prelude
+isTruthy:
+  type: qualify
+  object: Flow.Prelude
+isFalsy:
+  type: qualify
+  object: Flow.Prelude
+negative:
+  type: qualify
+  object: Flow.Prelude
+always:
+  type: qualify
+  object: Flow.Prelude
+never:
+  type: qualify
+  object: Flow.Prelude
+copy:
+  type: qualify
+  object: Flow.Prelude
+remove:
+  type: qualify
+  object: Flow.Prelude
+words:
+  type: qualify
+  object: Flow.Prelude
+repeat:
+  type: qualify
+  object: Flow.Prelude

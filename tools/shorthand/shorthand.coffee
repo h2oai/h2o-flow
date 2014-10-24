@@ -60,7 +60,7 @@ rewrite = (ast, namespace) ->
     # bail out if imported identifiers are used as function params
     else if node.type is 'FunctionExpression' or node.type is 'FunctionDeclaration'
       for param in node.params when param.type is 'MemberExpression'
-        throw new Error "Function has a formal parameter name-clash with '#{param.object.name}.#{param.property.name}'. Correct this and try again." 
+        throw new Error "Function has a formal parameter name-clash with '#{param.object.name}.#{param.property.name}'. Correct this and try again. #{JSON.stringify node, null, 2}" 
 
     # replace identifier with qualified name
     else if node.type is 'Identifier'

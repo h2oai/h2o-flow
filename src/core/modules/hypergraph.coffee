@@ -2,7 +2,7 @@
 # Reactive programming / Dataflow programming wrapper over KO
 #
 
-Flow.Signal = do ->
+Flow.Dataflow = do ->
   createSlot = ->
     arrow = null
 
@@ -159,9 +159,9 @@ Flow.Signal = do ->
 
   _merge = (sources..., target, func) ->
     evaluate = -> _apply sources, func
+    target evaluate()
     map sources, (source) ->
       _link source, -> target evaluate()
-    target
 
   slot: createSlot
   slots: createSlots
