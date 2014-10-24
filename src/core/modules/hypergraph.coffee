@@ -157,6 +157,12 @@ Flow.Signal = do ->
       _link source, -> target evaluate()
     target
 
+  _merge = (sources..., target, func) ->
+    evaluate = -> _apply sources, func
+    map sources, (source) ->
+      _link source, -> target evaluate()
+    target
+
   slot: createSlot
   slots: createSlots
   signal: createSignal
@@ -168,3 +174,4 @@ Flow.Signal = do ->
   act: _act
   react: _react
   lift: _lift
+  merge: _merge

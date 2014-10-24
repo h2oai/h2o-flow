@@ -472,4 +472,8 @@ react:
 lift:
   type: qualify
   object: Flow.Signal
+merge:
+  type: qualify
+  object: Flow.Signal
+
 

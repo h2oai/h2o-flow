@@ -26,43 +26,12 @@ createBuffer = (array) ->
   buffer.isBuffer = yes
   buffer
 
-Flow.Dataflow = do ->
-  _applicate = (go) -> 
-    (error, args) ->
-      apply go, null, [ error ].concat args if isFunction go
-  
-  _resolve = (nodes) ->
-    map nodes, (node) -> if isSignal node then node() else node
-
-  _apply = (nodes, immediate, go) ->
-    propagate = -> apply go, null, _resolve nodes
-    propagate() if immediate
-    map nodes, (node) -> link node, -> propagate()
-
-  _react = (nodes..., go) -> _apply nodes, no, go
-
-  #XXX BUG shorthand rewrites this to lodash.invoke
-  _invoke = (nodes..., go) -> _apply nodes, yes, go 
-
-  _lift = (nodes..., f) ->
-    evaluate = -> apply f, null, _resolve nodes
-    target = signal evaluate()
-    forEach nodes, (node) -> link node, -> target evaluate()
-    target
-  
-  _merge = (sources..., target, f) ->
-    propagate = -> target apply f, null, _resolve sources
-    propagate()
-    map sources, (source) -> link source, propagate
-
-  applicate: _applicate
-  resolve: _resolve
-  react: _react
-  invoke: _invoke
-  lift: _lift
-  merge: _merge
-
 noopFuture = (go) -> go null
+
+_applicate = (go) -> 
+  (error, args) ->
+    apply go, null, [ error ].concat args if isFunction go
+  
 
 renderable = (f, args..., render) ->
   ft = _fork f, args
@@ -1741,8 +1710,6 @@ Flow.Routines = (_) ->
       else
   ###
 
-  dataflow = Flow.Dataflow
-
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status
     onFail = (jqxhr, settings, error) -> go error #TODO use framework error
@@ -1752,17 +1719,17 @@ Flow.Routines = (_) ->
       .fail onFail
 
   fork: fork
-  join: (args..., go) -> _join args, dataflow.applicate go
-  call: (go, args...) -> _join args, dataflow.applicate go
+  join: (args..., go) -> _join args, _applicate go
+  call: (go, args...) -> _join args, _applicate go
   apply: (go, args) -> _join args, go
   isFuture: isFuture
   signal: signal
   signals: signals
   isSignal: isSignal
-  react: dataflow.react
-  invoke: dataflow.invoke
-  merge: dataflow.merge
-  lift: dataflow.lift
+  act: act
+  react: react
+  lift: lift
+  merge: merge
   menu: menu
   getJobs: getJobs
   getJob: getJob
