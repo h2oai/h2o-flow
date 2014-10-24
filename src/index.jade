@@ -6,7 +6,7 @@ html(lang='en')
     meta(name='viewport', content='width=device-width, initial-scale=1')
     title H2O Flow
     meta(name='description', content='H2O Flow')
-    link(rel='stylesheet', href='css/lib.css', type='text/css')
+    link(rel='stylesheet', href='css/flow-lib.css', type='text/css')
     link(rel='stylesheet', href='css/flow.css', type='text/css')
     link(rel='stylesheet', href='http://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600', type='text/css')
 
@@ -28,51 +28,27 @@ html(lang='en')
     //- include repl
 
     // ko with:view
-    .f-navigation
+    .flow-navigation
       nav.navbar.navbar-default(role='navigation')
         .container-fluid
-          .f-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
+          .flow-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
       .container-fluid
-        .f-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px")
-        div(style='padding:5px 0;margin-bottom:10px')
-          i.fa.fa-lightbulb-o.f-icon
+        .flow-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px")
+        .flow-hint(style='padding:5px 0;margin-bottom:10px')
+          i.fa.fa-lightbulb-o
           | Type <code><a href='#' data-bind='click:executeHelp'>help</a></code> <kbd>ctrl</kbd> <kbd>enter</kbd> for help. Type <code><a href='#' data-bind='click:executeMenu'>menu</a></code> <kbd>ctrl</kbd> <kbd>enter</kbd> to dive into H<sub>2</sub>O. Press <kbd>h</kbd> for keyboard shortcuts. 
 
     .container-fluid
-      .f-repl(data-bind='template:{ name:templateOf, foreach:cells }')
+      .flow-repl(data-bind='template:{ name:templateOf, foreach:cells }')
 
-    
-    // ko with:shortcutsHelp
-    #keyboardShortcutsDialog.modal.fade(tabindex='-1', role='dialog', aria-labelledby='keyboardShortcutsDialogLabel', aria-hidden='true')
-      .modal-dialog
-        .modal-content
-          .modal-header
-            button.close(type='button', data-dismiss='modal')
-              span(aria-hidden='true') ×
-              span.sr-only Close
-            h4#keyboardShortcutsDialogLabel.modal-title Keyboard Shortcuts
-          .modal-body
-            table.f-table-horizontal
-              tbody
-                tr
-                  td(width='50%')
-                    h5 Command Mode
-                    div(data-bind="template:{ name:'flow-keyboard-shortcut-table', data:normalMode}")
-                    
-                  td(width='50%')
-                    h5 Edit Mode
-                    div(data-bind="template:{ name:'flow-keyboard-shortcut-table', data:editMode}")
-          .modal-footer
-            button.btn.btn-default(type='button', data-dismiss='modal') Close
-    // /ko
-
+    include core/components/keyboard-help-dialog.jade    
 
     // /ko
 
     script(type="text/html" id="flow-help-intro")
-      .f-widget
-        h3
-          i.fa.fa-lightbulb-o.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-lightbulb-o
           | Help
 
         p <em>H<sub>2</sub>O Flow</em> is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like <a href="http://ipython.org/notebook.html" target="_blank">IPython Notebooks</a>.
@@ -105,7 +81,7 @@ html(lang='en')
         // ko foreach:$data
         .btn-group
           // ko foreach:$data
-          button.btn.btn-default.f-tool(type='button' data-bind='attr:{ title:label }')
+          button.btn.btn-default.flow-toolbar-button(type='button' data-bind='attr:{ title:label }')
             i(data-bind="attr:{ 'class':icon }, click:action")
           // /ko
         // /ko
@@ -140,96 +116,98 @@ html(lang='en')
           // /ko
 
     script(type="text/html" id="flow-h1")
-      .f-html-output
+      .flow-html-output
         h1(data-bind="text:text")
 
     script(type="text/html" id="flow-h2")
-      .f-html-output
+      .flow-html-output
         h2(data-bind="text:text")
 
     script(type="text/html" id="flow-h3")
-      .f-html-output
+      .flow-html-output
         h3(data-bind="text:text")
 
     script(type="text/html" id="flow-h4")
-      .f-html-output
+      .flow-html-output
         h4(data-bind="text:text")
 
     script(type="text/html" id="flow-h5")
-      .f-html-output
+      .flow-html-output
         h5(data-bind="text:text")
 
     script(type="text/html" id="flow-h6")
-      .f-html-output
+      .flow-html-output
         h6(data-bind="text:text")
 
     script(type="text/html" id="flow-html")
-      .f-html-output(data-bind="html:html")
+      .flow-html-output(data-bind="html:html")
 
-    script(type="text/html" id="flow-dump")
-      .f-dump-output(data-bind="template:{ name:'flow-dump-part', data:object}")
-    script(type="text/html" id="flow-dump-part")
-      .f-dump
+    script(type="text/html" id="flow-object")
+      .flow-object-output(data-bind="template:{ name:'flow-object-part', data:object}")
+
+    script(type="text/html" id="flow-object-part")
+      .flow-object
         // ko if:canExpand
-        .f-pointer(data-bind='click:toggle')
-          i.fa.fa-caret-right.f-icon
+        .flow-hint.flow-pointer(data-bind='click:toggle')
+          i.fa.fa-caret-right
           strong(data-bind='text:key')
           | : 
           em(data-bind='text:preview')
-        .f-indent(data-bind="visible:isExpanded, template:{ name:'flow-dump-part', foreach:expansions}")
+        div(data-bind="visible:isExpanded, template:{ name:'flow-object-part', foreach:expansions}")
         // /ko
         // ko ifnot:canExpand
-        i.fa.fa-caret-right.f-icon.f-invisible
-        strong(data-bind='text:key')
-        | : 
-        em(data-bind='text:preview')
+        .flow-hint
+          i.fa.fa-caret-right.flow-invisible
+          strong(data-bind='text:key')
+          | : 
+          em(data-bind='text:preview')
         // /ko
 
     script(type="text/html" id="flow-raw")
-      .f-raw-output
+      .flow-raw-output
         pre(data-bind="text:text")
 
     script(type="text/html" id="flow-json")
-      .f-json-output(data-bind="html:html")
+      .flow-json-output(data-bind="html:html")
 
     script(type="text/html" id="flow-dom")
-      .f-dom-output(data-bind="dom:output")
+      .flow-dom-output(data-bind="dom:output")
 
     script(type="text/html" id="flow-help")
 
     script(type="text/html" id="flow-parse-raw-input")
-      .f-widget
-        h3 
-          i.fa.fa-cog.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-cog
           | Setup Parse
 
         h4 Parse Configuration
-        table.f-table-horizontal
+        table.flow-form
           tbody
             tr
-              th.f-narrow Sources
-              td.f-wide
+              th.flow-narrow Sources
+              td.flow-wide
                 // ko foreach:sourceKeys
-                div
-                  i.fa.fa-key.f-icon
+                .flow-hint
+                  i.fa.fa-key
                   span(data-bind='text:$data')
                 // /ko
 
             tr
-              th.f-narrow Destination Key
-              td.f-wide
-                input.f-textbox(type='text' data-bind="value:destinationKey")
+              th.flow-narrow Destination Key
+              td.flow-wide
+                input.flow-textbox(type='text' data-bind="value:destinationKey")
             tr
-              th.f-narrow Parser
-              td.f-wide
+              th.flow-narrow Parser
+              td.flow-wide
                 select(data-bind="options:parserTypes, optionsText:'caption', value:parserType")
             tr
-              th.f-narrow Separator
-              td.f-wide
+              th.flow-narrow Separator
+              td.flow-wide
                 select(data-bind="options:delimiters, optionsText:'caption', value:delimiter")
             tr
-              th.f-narrow Column Headers
-              td.f-wide
+              th.flow-narrow Column Headers
+              td.flow-wide
                 div
                   label
                     input(type='radio' name='hasHeader' value='auto' data-bind='checked:headerOption')
@@ -243,8 +221,8 @@ html(lang='en')
                     input(type='radio' name='hasHeader' value='data' data-bind='checked:headerOption')
                     span First row contains data
             tr
-              th.f-narrow Options
-              td.f-wide
+              th.flow-narrow Options
+              td.flow-wide
                 div
                   label
                     input(type='checkbox' data-bind='checked:useSingleQuotes')
@@ -257,12 +235,12 @@ html(lang='en')
         // ko if:hasColumns
         h4 Data Preview
         div(style='overflow:auto')
-          table.f-table-horizontal.f-mono
+          table.flow-form.flow-monospace
             thead
               tr
                 // ko foreach:columns
                 td(style='min-width:100px')
-                  input.f-textbox(type='textbox' data-bind="value:name, attr:{'title':name}")
+                  input.flow-textbox(type='textbox' data-bind="value:name, attr:{'title':name}")
                 // /ko
 
             tbody
@@ -273,76 +251,76 @@ html(lang='en')
                 // /ko
               // /ko
         // /ko
-        .f-commands
-          button.f-button(type='button' data-bind='click:parseFiles')
-            i.fa.fa-indent.f-icon
+        .flow-panel
+          button.flow-button(type='button' data-bind='click:parseFiles')
+            i.fa.fa-indent
             | Parse
 
     script(type="text/html" id="flow-import-file-output")
       // ko foreach:keys
-      div
-        i.fa.fa-key.f-icon
+      .flow-hint
+        i.fa.fa-key
         span(data-bind='text:$data')
       // /ko
 
     script(type="text/html" id="flow-model-output")
-      .f-widget
-        h3
-          i.fa.fa-cube.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-cube
           | Model
         
         pre(data-bind="stringify:model")
 
     script(type="text/html" id="flow-parse-output")
-      .f-widget
-        h3
-          i.fa.fa-indent.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-indent
           | Parse Job Created
 
-        table.f-table-horizontal
+        table.flow-form
           tbody
             tr
-              th.f-narrow Job Key
-              td.f-wide
+              th.flow-narrow Job Key
+              td.flow-wide
                 a(href='#' data-bind='text:result.job.name, click:inspectJob')
-            tr.f-actions
-              th.f-narrow Actions
-              td.f-wide
-                button.f-button(type='button' data-bind='click:inspectJob')
-                  i.fa.fa-indent.f-icon
+            tr.flow-actions
+              th.flow-narrow Actions
+              td.flow-wide
+                button.flow-button(type='button' data-bind='click:inspectJob')
+                  i.fa.fa-indent
                   | View Job
 
     script(type="text/html" id="flow-import-files-output")
-      .f-widget
-        h3
-          i.fa.fa-cloud-upload.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-cloud-upload
           span(data-bind='text:title')
-        table.f-table-horizontal
+        table.flow-form
           tbody
             tr
-              th.f-narrow Keys
-              td.f-wide
+              th.flow-narrow Keys
+              td.flow-wide
                 div(data-bind="template: { name:templateOf, foreach:importViews }")
             // ko if:canParse
-            tr.f-actions
-              th.f-narrow Actions
-              td.f-wide
-                button.f-button(type='button' data-bind="click:parse")
-                  i.fa.fa-cog.f-icon
+            tr.flow-actions
+              th.flow-narrow Actions
+              td.flow-wide
+                button.flow-button(type='button' data-bind="click:parse")
+                  i.fa.fa-cog
                   | Parse these files&hellip;
             // /ko
 
     script(type="text/html" id="flow-import-files")
-      .f-widget
-        h3
-          i.fa.fa-files-o.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-files-o
           | Import Files
-        table.f-table-horizontal
+        table.flow-form
           tbody
             tr
               th(width='125') Search:
               td
-                input.f-textbox(type='text' style='width:100%' data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder='File or directory path')
+                input.flow-textbox(type='text' style='width:100%' data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder='File or directory path')
             // ko if:hasImportedFiles
             tr
               th Search Results:
@@ -354,11 +332,11 @@ html(lang='en')
                   // ko if:hasUnselectedFiles
                   a(href='#' data-bind='click:selectAllFiles') Add all
                   // /ko
-                div.f-well
+                div.flow-well
                   // ko foreach:importedFiles
                   // ko ifnot:isSelected
-                  div.f-pointer(data-bind='click:select')
-                    i.fa.fa-plus.f-icon(title='Select file')
+                  .flow-hint.flow-pointer(data-bind='click:select')
+                    i.fa.fa-plus(title='Select file')
                     span(data-bind="text:path")
                   // /ko
                   // /ko
@@ -378,18 +356,18 @@ html(lang='en')
                   // /ko
 
                 // ko if:hasSelectedFiles
-                div.f-well
+                div.flow-well
                   // ko foreach:selectedFiles
-                  div.f-pointer(data-bind='click:deselect')
-                    i.fa.fa-remove.f-icon(title='Deselect file')
+                  .flow-hint.flow-pointer(data-bind='click:deselect')
+                    i.fa.fa-remove(title='Deselect file')
                     span(data-bind='text:path')
                   // /ko
                 // /ko
-            tr.f-actions
+            tr.flow-actions
               th Actions:
               td
-                button.f-button(type='button' data-bind='click:importSelectedFiles, enable:hasSelectedFiles')
-                  i.fa.fa-cloud-upload.f-icon
+                button.flow-button(type='button' data-bind='click:importSelectedFiles, enable:hasSelectedFiles')
+                  i.fa.fa-cloud-upload
                   | Import
 
       // /ko
@@ -408,7 +386,7 @@ html(lang='en')
         th
           label(data-bind='text:label')
         td
-          input.f-textbox(type='text' data-bind='value:value')
+          input.flow-textbox(type='text' data-bind='value:value')
         td
           span(data-bind='text:description')
 
@@ -438,12 +416,12 @@ html(lang='en')
           h4(data-bind='text:title' style='margin-top:20px; border-bottom:1px dotted #ccc')
 
     script(type="text/html" id="flow-menu")
-      .f-widget
-        h3
-          i.fa.fa-support.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-support
           | Menu
 
-        table.table
+        table.flow-form
           thead
             tr
               th(width='1') &nbsp;
@@ -455,83 +433,83 @@ html(lang='en')
               td
                 i(data-bind="attr:{'class':icon}")
               td
-                a.f-icon.f-mono(href='#' data-bind='click:execute, text:name')
+                a.flow-monospace(href='#' data-bind='click:execute, text:name')
               td(data-bind='html:description')
 
             // /ko
 
     script(type="text/html" id="flow-no-assist-view")
-      .f-widget
-        h3
-          i.fa.fa-meh.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-meh
           | Uh-oh
 
         blockquote Sorry, I cannot assist you with that routine.
         
-        .f-commands
-          button.f-button(type='button' data-bind='click:showMenu')
-            i.fa.fa-support.f-icon
+        .flow-panel
+          button.flow-button(type='button' data-bind='click:showMenu')
+            i.fa.fa-support
             | Try the H<sub>2</sub>O Flow Menu&hellip;
 
     script(type="text/html" id="flow-models-output")
-      .f-widget
-        h3
-          i.fa.fa-cubes.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-cubes
           | Models
         
         // ko ifnot:hasModels
         blockquote Your H<sub>2</sub>O cloud has no models.
-        .f-commands
-          button.f-button(type='button' data-bind='click:buildModel')
-            i.fa.fa-cube.f-icon
+        .flow-panel
+          button.flow-button(type='button' data-bind='click:buildModel')
+            i.fa.fa-cube
             | Build a model&hellip;
           
         // /ko
 
         // ko if:hasModels
-        table.table
+        table.flow-form
           thead
             tr
               th Key
-              th.f-align-right  Actions
+              th.flow-right  Actions
           tbody
             // ko foreach:modelViews
             tr
-              td
-                i.fa.fa-cube.f-icon
+              td.flow-hint
+                i.fa.fa-cube
                 a(href='#' data-bind='text:key, click:inspect')
-              td.f-align-right 
-                button.f-button(type='button' data-bind='click:clone')
-                  i.fa.fa-cube.f-icon
+              td.flow-right 
+                button.flow-button(type='button' data-bind='click:clone')
+                  i.fa.fa-cube
                   | Clone&hellip;
             // /ko
         // /ko
 
 
     script(type="text/html" id="flow-frames-output")
-      .f-widget
-        h3
-          i.fa.fa-database.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-database
           | Frames
 
         // ko ifnot:hasFrames
         blockquote Your H<sub>2</sub>O cloud has no frames.
-        .f-commands
-          button.f-button(type='button' data-bind='click:importFiles')
-            i.fa.fa-files-o.f-icon
+        .flow-panel
+          button.flow-button(type='button' data-bind='click:importFiles')
+            i.fa.fa-files-o
             | Import files&hellip;
           
         // /ko
 
         // ko if:hasFrames
-        table.table
+        table.flow-form
           thead
             tr
               th(width='1') Type
               th Key
-              th.f-align-right(width='1') Rows
-              th.f-align-right(width='1') Columns
-              th.f-align-right(width='1') Size
+              th.flow-right(width='1') Rows
+              th.flow-right(width='1') Columns
+              th.flow-right(width='1') Size
           tbody
             // ko foreach:frameViews
             tr
@@ -545,10 +523,10 @@ html(lang='en')
               td
                 div
                   a(href='#' data-bind='text:key, click:inspect')
-                .f-small(data-bind='text:description')
-              td.f-align-right(data-bind='text:rowCount')
-              td.f-align-right(data-bind='text:columnCount')
-              td.f-align-right(data-bind='text:size')
+                .flow-small(data-bind='text:description')
+              td.flow-right(data-bind='text:rowCount')
+              td.flow-right(data-bind='text:columnCount')
+              td.flow-right(data-bind='text:size')
             // /ko
         // /ko
 
@@ -612,7 +590,7 @@ html(lang='en')
         th
           label(data-bind='text:label')
         td
-          input.f-textbox(type='text' data-bind="value:value, valueUpdate:event, disable:disable, attr:{ id:id }")
+          input.flow-textbox(type='text' data-bind="value:value, valueUpdate:event, disable:disable, attr:{ id:id }")
         td
           span(data-bind='text:description')
 
@@ -621,7 +599,7 @@ html(lang='en')
         th
           label(data-bind='text:label')
         td
-          textarea.f-textarea(data-bind="value:value, valueUpdate:event, disable:disable, attr:{ id:id, rows:rows }")
+          textarea.flow-textarea(data-bind="value:value, valueUpdate:event, disable:disable, attr:{ id:id, rows:rows }")
         td
           span(data-bind='text:description')
 
@@ -629,19 +607,19 @@ html(lang='en')
       tr(data-bind="visible:visible")
         th &nbsp;
         td
-          button.f-button(type='button' data-bind="click:click, disable:disable, attr:{ id:id }")
+          button.flow-button(type='button' data-bind="click:click, disable:disable, attr:{ id:id }")
             span(data-bind='text:label')
         td
           span(data-bind='text:description')
 
     script(type="text/html" id="flow-form")
-      .f-widget
-        table.f-table-horizontal(data-bind='template: { name: templateOf, foreach:form }')
+      .flow-widget
+        table.flow-form(data-bind='template: { name: templateOf, foreach:form }')
         
     script(type="text/html" id="flow-model-input")
-      .f-widget
-        h3
-          i.fa.fa-cube.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-cube
           | Build a Model
 
         // ko if:parentException
@@ -659,25 +637,25 @@ html(lang='en')
         div(data-bind="template: { name:'flow-error', data:exception }")
         // /ko
 
-        table.f-table-horizontal(data-bind='template: { name: parameterTemplateOf, foreach:form }')
+        table.flow-form(data-bind='template: { name: parameterTemplateOf, foreach:form }')
         // /ko
 
-        .f-commands
-          button.f-button(type='button' data-bind="click:createModel, enable:canCreateModel")
-            i.fa.fa-bolt.f-icon
+        .flow-panel
+          button.flow-button(type='button' data-bind="click:createModel, enable:canCreateModel")
+            i.fa.fa-bolt
             | Build Model
 
 
     script(type="text/html" id="flow-jobs-output")
-      .f-widget
-        h3
-          i.fa.fa-bolt.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-bolt
           | Jobs
         // ko if:exception
         div(data-bind="template: { name:'flow-error', data:exception }")
         // /ko
         // ko if:hasJobViews
-        table.table.table-condensed
+        table.flow-form
           thead
             tr
               th Key
@@ -695,35 +673,35 @@ html(lang='en')
         // ko ifnot:hasJobViews
         blockquote Your H<sub>2</sub>O cloud has no jobs.
         // /ko
-        .f-commands
-          button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
+        .flow-panel
+          button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
             // ko if:isLive
-            i.fa.fa-refresh.fa-spin.f-icon
+            i.fa.fa-refresh.fa-spin
             | Stop
             // /ko
             // ko ifnot:isLive
-            i.fa.fa-refresh.f-icon
+            i.fa.fa-refresh
             | Refresh
             // /ko
 
     script(type="text/html" id="flow-frame-output")
-      .f-widget
-        h3
-          i.fa.fa-database.f-icon
+      .flow-widget.flow-frame-output
+        h3.flow-hint
+          i.fa.fa-database
           span(data-bind="text:key")
 
-        table.f-table-horizontal
+        table.flow-form
           tbody
             tr 
               th(width='1') Actions
               td
-                button.f-button(type='button' data-bind='click:createModel')
-                  i.fa.fa-cube.f-icon
+                button.flow-button(type='button' data-bind='click:createModel')
+                  i.fa.fa-cube
                   | Create Model
 
         // ko with:table
         div(style='overflow:auto')
-          table.table.table-condensed.f-mono
+          table.table.table-condensed.flow-monospace
             thead
               tr
                 th Label
@@ -731,38 +709,38 @@ html(lang='en')
                 th(data-bind='text:$data')
                 // /ko
             tbody
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th Type
                 // ko foreach:typeRow
                 td(data-bind='text:$data')
                 // /ko
 
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th Min
                 // ko foreach:minRow
                 td(data-bind='text:$data')
                 // /ko
 
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th Max
                 // ko foreach:maxRow
                 td(data-bind='text:$data')
                 // /ko
 
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th Mean
                 // ko foreach:meanRow
                 td(data-bind='text:$data')
                 // /ko
 
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th Sigma
                 // ko foreach:sigmaRow
                 td(data-bind='text:$data')
                 // /ko
 
               // ko if:hasEnums
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th Cardinality
                 // ko foreach:cardinalityRow
                 td(data-bind='text:$data')
@@ -770,7 +748,7 @@ html(lang='en')
               // /ko
 
               // ko if:hasMissings
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th Missings
                 // ko foreach:missingsRow
                 td(data-bind='text:$data')
@@ -778,7 +756,7 @@ html(lang='en')
               // /ko
 
               // ko if:hasZeros
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th Zeros
                 // ko foreach:zerosRow
                 td(data-bind='text:$data')
@@ -786,7 +764,7 @@ html(lang='en')
               // /ko
 
               // ko if:hasPinfs
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th +Inf
                 // ko foreach:pinfsRow
                 td(data-bind='text:$data')
@@ -794,7 +772,7 @@ html(lang='en')
               // /ko
 
               // ko if:hasNinfs
-              tr.f-bg-gray
+              tr.flow-bg-gray
                 th -Inf
                 // ko foreach:ninfsRow
                 td(data-bind='text:$data')
@@ -802,7 +780,7 @@ html(lang='en')
               // /ko
 
               //-
-                tr.f-bg-gray
+                tr.flow-bg-gray
                   th Summary
                   // ko foreach:summaryRow
                   td(data-bind='click:displaySummary') 
@@ -819,65 +797,66 @@ html(lang='en')
         // /ko
 
     script(type="text/html" id="flow-job-output")
-      .f-widget
-        h3
-          i.fa.fa-bolt.f-icon
+      .flow-widget
+        h3.flow-hint
+          i.fa.fa-bolt
           | Job
         // ko if:exception
         div(data-bind="template: { name:'flow-error', data:exception }")
         // /ko
-        table.f-table-horizontal
+        table.flow-form
           tbody
             tr
-              th.f-narrow Status
-              td.f-wide(data-bind='text:status')
+              th.flow-narrow Status
+              td.flow-wide(data-bind='text:status')
             tr
-              th.f-narrow Key
-              td.f-wide(data-bind='text:key')
+              th.flow-narrow Key
+              td.flow-wide(data-bind='text:key')
             tr
-              th.f-narrow Description
-              td.f-wide(data-bind='text:description')
+              th.flow-narrow Description
+              td.flow-wide(data-bind='text:description')
             tr
-              th.f-narrow Destination Key
-              td.f-wide
+              th.flow-narrow Destination Key
+              td.flow-wide
                 // ko ifnot:kind
                 span(data-bind='text:destinationKey')
                 // /ko
                 // ko if:kind
-                i.fa.fa-key.f-icon
-                a(href='#' data-bind='text:destinationKey, click:inspect')
+                .flow-hint
+                  i.fa.fa-key
+                  a(href='#' data-bind='text:destinationKey, click:inspect')
                 // /ko
             tr
-              th.f-narrow Run Time
-              td.f-wide(data-bind='text:runTime')
+              th.flow-narrow Run Time
+              td.flow-wide(data-bind='text:runTime')
             tr
-              th.f-narrow Progress
-              td.f-wide
+              th.flow-narrow Progress
+              td.flow-wide
                 table
                   tbody
                     tr
-                      td.f-narrow(data-bind='text:progress')
-                      td.f-wide
+                      td.flow-narrow(data-bind='text:progress')
+                      td.flow-wide
                         .progress(style='max-width:400px;height:8px;margin:5px 0')
                           .progress-bar(data-bind="style:{background:statusColor,width:progress}")
 
             tr
-              th.f-narrow Exception
-              td.f-wide(data-bind='text:exception')
+              th.flow-narrow Exception
+              td.flow-wide(data-bind='text:exception')
             tr
-              th.f-narrow Actions
-              td.f-wide
-                button.f-button(type='button' data-bind="click:inspect")
-                  i.fa.fa-key.f-icon
+              th.flow-narrow Actions
+              td.flow-wide
+                button.flow-button(type='button' data-bind="click:inspect")
+                  i.fa.fa-key
                   | Inspect
                   
-                button.f-button(type='button' data-bind="click:toggleRefresh, css:{ 'f-button-toggle':isLive }")
+                button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
                   // ko if:isLive
-                  i.fa.fa-refresh.fa-spin.f-icon
+                  i.fa.fa-refresh.fa-spin
                   | Stop
                   // /ko
                   // ko ifnot:isLive
-                  i.fa.fa-refresh.f-icon
+                  i.fa.fa-refresh
                   | Refresh
                   // /ko
 
@@ -897,9 +876,9 @@ html(lang='en')
         // /ko
 
     script(type="text/html" id="flow-cell")
-      .f-cell(data-bind="click:select, css:{ 'f-cell-selected':isSelected, 'f-cell-active':isActive, 'f-cell-ready':isReady, 'f-cell-busy':isBusy, 'f-cell-error':hasError }")
-        .f-cell-type(data-bind="text:type")
-        .f-cell-input(data-bind="visible:hasInput, css:{ 'f-cell-has-output':hasOutput }")
+      .flow-cell(data-bind="click:select, css:{ 'flow-cell-selected':isSelected, 'flow-cell-active':isActive, 'flow-cell-ready':isReady, 'flow-cell-busy':isBusy, 'flow-cell-error':hasError }")
+        .flow-cell-type(data-bind="text:type")
+        .flow-cell-input(data-bind="visible:hasInput, css:{ 'flow-cell-has-output':hasOutput }")
           table(style='width:100%')
             tbody
               tr
@@ -917,13 +896,13 @@ html(lang='en')
                   // ko if:isBusy
                   i.fa.fa-cog.fa-spin(title='Computing...')
                   // /ko
-        .f-cell-output(data-bind='visible:isOutputVisible')
+        .flow-cell-output(data-bind='visible:isOutputVisible')
           // ko if:result
-          .f-cell-result(data-bind='template:{ name: templateOf, data:result }')
+          .flow-cell-result(data-bind='template:{ name: templateOf, data:result }')
           // /ko
-          .f-cell-outputs(data-bind='template: { name: templateOf, foreach:outputs }')
+          .flow-cell-outputs(data-bind='template: { name: templateOf, foreach:outputs }')
 
-    script(src='js/lib.js')
+    script(src='js/flow-lib.js')
     script(src='js/flow.js')
 
     script.

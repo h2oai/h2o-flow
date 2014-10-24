@@ -1,0 +1,306 @@
+@import 'nib'
+// @require 'variables'
+tomorrow-current-line = #efefef
+tomorrow-selection = #d6d6d6
+tomorrow-foreground = #4d4d4c
+tomorrow-comment = #8e908c
+tomorrow-red = #c82829
+tomorrow-orange = #f5871f
+tomorrow-yellow = #eab700
+tomorrow-green = #718c00
+tomorrow-aqua = #3e999f
+tomorrow-blue = #4271ae
+tomorrow-purple = #8959a8
+flow-color-yellow = #FAF185
+flow-color-yellow-dk = #F6E76A
+flow-color-yellow-lt = #FBF3B5
+flow-color-orange = #F5A623
+
+monospace()
+  font-family 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace
+
+smallcaps()
+  font-weight 300
+  text-transform uppercase
+  font-size 10px
+  letter-spacing 1px
+
+//TODO table.table is used in frame output
+//TODO alert is used in flow-error
+
+// 
+// Bootstrap overrides
+// 
+
+body
+  font-family Roboto, 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif
+  color #777
+
+h1, h2, h3, h4
+  font-weight 300
+
+code, kbd, pre, samp
+  monospace()
+
+kbd
+  color #333
+  -webkit-box-shadow none
+  box-shadow none
+  background-color #fff
+  border 1px solid #ccc
+  padding 1px 4px
+
+blockquote
+  font-weight 300
+
+pre
+  background url(unquote('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAKElEQVQImWN89+4dAwODoKAgAwMDE5z1/v17xv///0NYUBkIS1BQEAB7Uw7Oc/qzUwAAAABJRU5ErkJggg=='))
+  border none
+  border-radius 0
+
+textarea
+  &:focus
+    outline none
+
+input
+  &:focus
+    outline none
+
+label
+  font-weight normal
+  input[type="radio"]
+    margin-right 6px
+  input[type="checkbox"]
+    margin-right 6px
+
+.container-fluid
+  padding-left 50px
+  padding-right 50px
+
+.navbar-default
+  background none
+  border none
+  margin-bottom 0
+  .navbar-nav
+    > .active
+      > a, > a:hover, > a:focus
+        background-color flow-color-yellow
+    > .open
+      > a, > a:hover, > a:focus
+        background-color flow-color-yellow
+
+.navbar-brand
+  background url(unquote('data:image/png;base64,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')) 15px center no-repeat
+
+  width 160px
+  margin-left -15px
+
+.table
+  thead
+    tr
+      th
+        border-bottom 1px solid #ccc
+
+th
+  smallcaps()
+
+.alert
+  border-radius 0
+
+//
+//
+//
+
+.flow-navbar
+  border-top 5px solid flow-color-yellow
+
+.flow-header
+  border-top 5px solid flow-color-yellow
+  padding 20px 0  
+  .flow-logo
+    margin-left 5px
+
+.flow-cell
+  position relative
+  padding-left 5px
+  border-left 3px solid transparent
+  .flow-cell-type
+    display none
+    position absolute
+    width 25px
+    left -28px
+    top 0
+    text-transform uppercase
+    font-size 10px
+    background flow-color-yellow
+    padding 1px 3px
+    text-align center
+  .flow-cell-input
+    textarea
+      color #333
+      width 100%
+      max-height 500px
+      border none
+      border-left 2px solid tomorrow-orange
+      monospace()
+      background url(unquote('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAKElEQVQImWN89+4dAwODoKAgAwMDE5z1/v17xv///0NYUBkIS1BQEAB7Uw7Oc/qzUwAAAABJRU5ErkJggg=='))
+      padding 5px 10px
+    &.flow-cell-has-output
+      textarea
+        border-left 2px solid tomorrow-blue
+  &.flow-cell-selected
+    border-color flow-color-yellow
+    .flow-cell-type
+      display block
+  &.flow-cell-active
+    border-color flow-color-orange
+    .flow-cell-type
+      background flow-color-orange
+      color #fff
+    .flow-cell-input
+      textarea
+        background flow-color-yellow-lt
+  &.flow-cell-busy
+    border-color tomorrow-aqua
+    .flow-cell-type
+      background tomorrow-aqua
+      color #fff
+  &.flow-cell-error
+    border-color red
+    .flow-cell-type
+      background red
+      color #fff
+  
+// 
+// Styles that apply only to html cells 
+// 
+
+.flow-html-output
+  h1, h2, h3, blockquote
+    font-weight 300
+
+.flow-raw-output
+  pre
+    background inherit
+
+.flow-object
+  margin-left 20px
+  strong
+    font-weight normal
+    color tomorrow-orange
+
+.flow-invisible
+  visibility hidden
+
+.flow-widget
+  padding 0 10px
+  margin-bottom 40px
+
+.flow-well
+  margin 10px 0
+  padding 10px
+  border 1px dotted #ccc
+
+.flow-panel
+  margin-top 20px
+  padding 10px 0
+
+.flow-monospace
+  monospace()
+
+.flow-pointer
+  cursor pointer
+
+table
+  &.flow-form
+    width 100%
+    th, td
+      padding 2px 5px
+      vertical-align top
+    th:first-child
+      text-align right
+      line-height 20px
+    tr.flow-actions
+      th, td
+        padding-top 5px
+        border-top 1px dotted #ccc
+
+.flow-narrow
+  white-space nowrap
+
+.flow-wide
+  width 99%
+
+.flow-hint
+  > .fa:first-child
+    margin-right 5px
+  > .fa:last-child
+    margin-left 5px
+
+.flow-frame-output
+  .flow-bg-gray
+    background-color #f5f5f5
+
+.flow-small
+  font-size 85%
+
+.flow-small-caps
+  smallcaps()
+
+.flow-right
+  text-align right
+
+.flow-button
+  cursor pointer
+  border-radius 12px
+  border 1px solid #ccc
+  padding 2px 12px
+  font-size: 85%
+  background-color: #fff
+  &:hover
+    background-color #eee
+    border-color #aaa
+  &.flow-button-toggle
+    color #fff
+    background-color #777
+    border-color #777
+    &:hover
+      background-color #333
+      border-color #333
+  > .fa:first-child
+    margin-right 5px
+  > .fa:last-child
+    margin-left 5px
+
+.flow-textbox
+  width 100%
+  border none
+  border-bottom 1px solid #ccc
+  &:focus
+    border-bottom-color #000
+
+.flow-textarea
+  width 100%
+  border 1px solid #ccc
+
+.flow-toolbar-button
+  padding 2px 7px
+  border-radius 2px
+
+.twitter-typeahead
+  width 97%
+
+.tt-dropdown-menu
+  background #fff
+  border 1px solid #ccc
+  width 100%
+  box-shadow 0 5px 10px rgba(0,0,0,.2)
+
+.tt-suggestion
+  padding 3px 10px
+  line-height 24px
+  overflow ellipsis
+  &.tt-cursor
+    background-color flow-color-yellow
+  p
+    margin 0

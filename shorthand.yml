@@ -151,147 +151,6 @@ sqrt:
 tan:
   type: qualify
   object: Math
-globalAlpha:
-  type: qualify
-  object: context
-globalCompositeOperation:
-  type: qualify
-  object: context
-lineWidth:
-  type: qualify
-  object: context
-lineCap:
-  type: qualify
-  object: context
-lineJoin:
-  type: qualify
-  object: context
-miterLimit:
-  type: qualify
-  object: context
-strokeStyle:
-  type: qualify
-  object: context
-fillStyle:
-  type: qualify
-  object: context
-shadowOffsetX:
-  type: qualify
-  object: context
-shadowOffsetY:
-  type: qualify
-  object: context
-shadowBlur:
-  type: qualify
-  object: context
-shadowColor:
-  type: qualify
-  object: context
-font:
-  type: qualify
-  object: context
-textAlign:
-  type: qualify
-  object: context
-textBaseline:
-  type: qualify
-  object: context
-save:
-  type: qualify
-  object: context
-restore:
-  type: qualify
-  object: context
-scale:
-  type: qualify
-  object: context
-rotate:
-  type: qualify
-  object: context
-translate:
-  type: qualify
-  object: context
-transform:
-  type: qualify
-  object: context
-setTransform:
-  type: qualify
-  object: context
-drawImage:
-  type: qualify
-  object: context
-createLinearGradient:
-  type: qualify
-  object: context
-createRadialGradient:
-  type: qualify
-  object: context
-createPattern:
-  type: qualify
-  object: context
-beginPath:
-  type: qualify
-  object: context
-closePath:
-  type: qualify
-  object: context
-fill:
-  type: qualify
-  object: context
-stroke:
-  type: qualify
-  object: context
-clip:
-  type: qualify
-  object: context
-moveTo:
-  type: qualify
-  object: context
-lineTo:
-  type: qualify
-  object: context
-quadraticCurveTo:
-  type: qualify
-  object: context
-bezierCurveTo:
-  type: qualify
-  object: context
-arcTo:
-  type: qualify
-  object: context
-arc:
-  type: qualify
-  object: context
-rect:
-  type: qualify
-  object: context
-isPointInPath:
-  type: qualify
-  object: context
-fillText:
-  type: qualify
-  object: context
-strokeText:
-  type: qualify
-  object: context
-clearRect:
-  type: qualify
-  object: context
-fillRect:
-  type: qualify
-  object: context
-strokeRect:
-  type: qualify
-  object: context
-createImageData:
-  type: qualify
-  object: context
-getImageData:
-  type: qualify
-  object: context
-putImageData:
-  type: qualify
-  object: context
 forEach:
   type: qualify
   object: lodash
@@ -580,3 +439,37 @@ unescape:
 now:
   type: qualify
   object: lodash
+slot:
+  type: qualify
+  object: Flow.Signal
+slots:
+  type: qualify
+  object: Flow.Signal
+signal:
+  type: qualify
+  object: Flow.Signal
+signals:
+  type: qualify
+  object: Flow.Signal
+isSignal:
+  type: qualify
+  object: Flow.Signal
+board:
+  type: qualify
+  object: Flow.Signal
+link:
+  type: qualify
+  object: Flow.Signal
+unlink:
+  type: qualify
+  object: Flow.Signal
+act:
+  type: qualify
+  object: Flow.Signal
+react:
+  type: qualify
+  object: Flow.Signal
+lift:
+  type: qualify
+  object: Flow.Signal
+

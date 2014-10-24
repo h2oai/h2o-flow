@@ -32,7 +32,7 @@ expand = (yml) ->
       return
 
     symbols = yaml.safeLoad fs.readFileSync yml, encoding: 'utf8'
-    implicits = [ 'console', 'Math', 'context', 'lodash' ]
+    implicits = [ 'console', 'Math', 'lodash', 'Flow.Signal' ]
     try
       file.contents = new Buffer shorthand symbols, file.contents.toString(), implicits: implicits
       cb null, file
@@ -76,60 +76,47 @@ config =
     ]
 
 gulp.task 'build-scripts', ->
-  gulp.src [ 'src/scripts/global.hypergraph.coffee', 'src/scripts/flow*.coffee' ]
+  gulp.src [ 'src/**/*.coffee' ]
     .pipe ignore.exclude /tests.coffee$/
-    .pipe iff /global\..+\.coffee$/, (coffee bare: yes), (coffee bare: no)
-    .pipe order [ 'global.prelude.js', 'global.*.js', '*.js' ]
+    .pipe coffee bare: no
     .pipe concat 'flow.js'
     .pipe expand 'shorthand.yml'
     .pipe header '"use strict";(function(){ var lodash = window._; window.Flow={};'
     .pipe footer '}).call(this);'
     .pipe gulp.dest config.dir.deploy + '/js/'
 
-gulp.task 'build-tests', ->
-  gulp.src 'src/scripts/*.coffee'
-    .pipe ignore.exclude /flow.coffee/
-    .pipe iff /global\..+\.coffee$/, (coffee bare: yes), (coffee bare: no)
-    .pipe order [ 'global.tests.js', 'global.prelude.js', 'global.*.js', '*.js' ]
-    .pipe concat 'flow-tests.js'
-    .pipe header '"use strict";(function(){'
-    .pipe footer '}).call(this);'
-    .pipe gulp.dest config.dir.deploy + '/js/'
-
 gulp.task 'build-templates', ->
-  gulp.src 'src/templates/*.jade'
-    .pipe ignore.include /index.jade$/
+  gulp.src 'src/index.jade'
     .pipe jade pretty: yes
     .pipe gulp.dest config.dir.deploy
 
 gulp.task 'build-styles', ->
-  gulp.src 'src/styles/*.styl'
-    .pipe ignore.include /flow.styl$/
+  gulp.src 'src/flow.styl'
     .pipe stylus use: [ nib() ]
     .pipe gulp.dest config.dir.deploy + '/css/'
 
 gulp.task 'build-libs', ->
   gulp.src config.lib.js
-    .pipe concat 'lib.js'
+    .pipe concat 'flow-lib.js'
     .pipe gulp.dest config.dir.deploy + '/js/'
 
-  gulp.src config.lib.img
-    .pipe gulp.dest config.dir.deploy + '/img/'
+  #gulp.src config.lib.img
+  #  .pipe gulp.dest config.dir.deploy + '/img/'
 
   gulp.src config.lib.fonts
     .pipe gulp.dest config.dir.deploy + '/fonts/'
 
   gulp.src config.lib.css
-    .pipe concat 'lib.css'
+    .pipe concat 'flow-lib.css'
     .pipe gulp.dest config.dir.deploy + '/css/'
 
   gulp.src config.lib.cssmap
     .pipe gulp.dest config.dir.deploy + '/css/'
 
 gulp.task 'watch', ->
-  gulp.watch 'src/scripts/*.coffee', [ 'build-scripts' ]
-  gulp.watch 'src/templates/*.jade', [ 'build-templates' ]
-  gulp.watch 'src/styles/*.styl', [ 'build-styles' ]
+  gulp.watch 'src/**/*.coffee', [ 'build-scripts' ]
+  gulp.watch 'src/**/*.jade', [ 'build-templates' ]
+  gulp.watch 'src/**/*.styl', [ 'build-styles' ]
 
 gulp.task 'clean', ->
   gulp.src config.dir.deploy, read: no

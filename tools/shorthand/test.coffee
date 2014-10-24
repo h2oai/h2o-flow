@@ -16,6 +16,7 @@ symbols =
   rect$2: type: 'qualify', object: 'routines', property: 'drawBox'
   rect$4: type: 'qualify', object: 'routines', property: 'drawRect'
   rect: type: 'qualify', object: 'routines', property: 'drawPolygon'
+  latLng: type: 'qualify', object: 'google.maps', property: 'LatLng'
   # invocation
   push: type: 'invoke'
   shift: type: 'invoke'
@@ -157,6 +158,15 @@ require 'context'
 rotate canvas.angle
 ---
 context.rotate(context.domElement.angle);
+===
+
+Qualifies member chains
+---
+require 'google.maps'
+x = latLng 10, 20
+---
+var x;
+x = google.maps.LatLng(10, 20);
 ===
 
 Aliases functions

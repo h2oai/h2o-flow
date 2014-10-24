@@ -1,5 +1,3 @@
-Flow = if exports? then exports else @Flow = {}
-
 # 
 # TODO
 #
@@ -34,32 +32,29 @@ Flow.Dataflow = do ->
       apply go, null, [ error ].concat args if isFunction go
   
   _resolve = (nodes) ->
-    map nodes, (node) -> if isNode$ node then node() else node
+    map nodes, (node) -> if isSignal node then node() else node
 
-  _react = (nodes, immediate, go) ->
+  _apply = (nodes, immediate, go) ->
     propagate = -> apply go, null, _resolve nodes
     propagate() if immediate
-    map nodes, (node) -> link$ node, -> propagate()
+    map nodes, (node) -> link node, -> propagate()
 
-  react = (nodes..., go) -> _react nodes, no, go
+  _react = (nodes..., go) -> _apply nodes, no, go
 
   #XXX BUG shorthand rewrites this to lodash.invoke
-  _invoke = (nodes..., go) -> _react nodes, yes, go 
+  _invoke = (nodes..., go) -> _apply nodes, yes, go 
 
   _lift = (nodes..., f) ->
     evaluate = -> apply f, null, _resolve nodes
-    target = node$ evaluate()
-    forEach nodes, (node) -> link$ node, -> target evaluate()
+    target = signal evaluate()
+    forEach nodes, (node) -> link node, -> target evaluate()
     target
   
   _merge = (sources..., target, f) ->
     propagate = -> target apply f, null, _resolve sources
     propagate()
-    map sources, (source) -> link$ source, propagate
+    map sources, (source) -> link source, propagate
 
-  signal: node$
-  signals: nodes$
-  isSignal: isNode$
   applicate: _applicate
   resolve: _resolve
   react: _react
@@ -297,8 +292,8 @@ preview = (element) ->
 
 #TODO slice large arrays
 dumpObject = (key, object) ->
-  _expansions = node$ null
-  _isExpanded = node$ no
+  _expansions = signal null
+  _isExpanded = signal no
   _type = typeOf object
   _canExpand = isExpandable _type
   toggle = ->
@@ -454,25 +449,25 @@ Flow.Application = (_) ->
   view: _repl
 
 Flow.ApplicationContext = (_) ->
-  context$
-    ready: do edges$
-    requestFileGlob: do edge$
-    requestImportFiles: do edge$
-    requestParseFiles: do edge$
-    requestInspect: do edge$
-    requestParseSetup: do edge$
-    requestFrames: do edge$
-    requestFrame: do edge$
-    requestColumnSummary: do edge$
-    requestModelBuilders: do edge$
-    requestModelBuild: do edge$
-    requestModelMetrics: do edge$
-    requestModels: do edge$
-    requestModel: do edge$
-    requestJobs: do edge$
-    requestJob: do edge$
-    selectCell: do edge$
-    insertAndExecuteCell: do edge$
+  board
+    ready: do slots
+    requestFileGlob: do slot
+    requestImportFiles: do slot
+    requestParseFiles: do slot
+    requestInspect: do slot
+    requestParseSetup: do slot
+    requestFrames: do slot
+    requestFrame: do slot
+    requestColumnSummary: do slot
+    requestModelBuilders: do slot
+    requestModelBuild: do slot
+    requestModelMetrics: do slot
+    requestModels: do slot
+    requestModel: do slot
+    requestJobs: do slot
+    requestJob: do slot
+    selectCell: do slot
+    insertAndExecuteCell: do slot
 
 Flow.DialogManager = (_) ->
 
@@ -550,11 +545,11 @@ Flow.ImportFilesOutput = (_, _importResults) ->
 
 
 Flow.JobsOutput = (_, jobs) ->
-  _jobViews = nodes$ []
-  _hasJobViews = lift$ _jobViews, (jobViews) -> jobViews.length > 0
-  _isLive = node$ no
-  _isBusy = node$ no
-  _exception = node$ null
+  _jobViews = signals []
+  _hasJobViews = lift _jobViews, (jobViews) -> jobViews.length > 0
+  _isLive = signal no
+  _isBusy = signal no
+  _exception = signal null
 
   createJobView = (job) ->
     inspect = ->
@@ -577,7 +572,7 @@ Flow.JobsOutput = (_, jobs) ->
         _jobViews map jobs, createJobView
         delay refresh, 2000 if _isLive()
 
-  apply$ _isLive, (isLive) ->
+  act _isLive, (isLive) ->
     refresh() if isLive
 
   initialize = ->
@@ -622,18 +617,18 @@ do ->
     "#{Math.ceil 100 * progress}%"
 
   Flow.JobOutput = (_, _job) ->
-    _isBusy = node$ no
-    _isLive = node$ no
+    _isBusy = signal no
+    _isLive = signal no
 
     _key = _job.key.name
     _description = _job.description
     _destinationKey = _job.dest.name
-    _runTime = node$ null
-    _progress = node$ null
-    _status = node$ null
-    _statusColor = node$ null
-    _exception = node$ null
-    _kind = node$ null
+    _runTime = signal null
+    _progress = signal null
+    _status = signal null
+    _statusColor = signal null
+    _exception = signal null
+    _kind = signal null
 
     isJobRunning = (job) ->
       job.status is 'CREATED' or job.status is 'RUNNING'
@@ -662,7 +657,7 @@ do ->
           else
             toggleRefresh()
 
-    apply$ _isLive, (isLive) ->
+    act _isLive, (isLive) ->
       refresh() if isLive
 
     inspect = ->
@@ -862,7 +857,7 @@ do ->
 
 do ->
   createTextboxControl = (parameter) ->
-    value = node$ parameter.actual_value
+    value = signal parameter.actual_value
 
     kind: 'textbox'
     name: parameter.name
@@ -871,26 +866,26 @@ do ->
     required: parameter.required
     value: value
     defaultValue: parameter.default_value
-    help: node$ 'Help goes here.'
-    isInvalid: node$ no
+    help: signal 'Help goes here.'
+    isInvalid: signal no
 
   createDropdownControl = (parameter) ->
-    value = node$ parameter.actual_value
+    value = signal parameter.actual_value
 
     kind: 'dropdown'
     name: parameter.name
     label: parameter.label
     description: parameter.help
     required: parameter.required
-    values: nodes$ parameter.values
+    values: signals parameter.values
     value: value
     defaultValue: parameter.default_value
-    help: node$ 'Help goes here.'
-    isInvalid: node$ no
+    help: signal 'Help goes here.'
+    isInvalid: signal no
 
   createListControl = (parameter) ->
-    value = node$ parameter.actual_value or []
-    selection = lift$ value, (items) ->
+    value = signal parameter.actual_value or []
+    selection = lift value, (items) ->
       caption = "#{describeCount items.length, 'column'} selected"
       caption += ": #{items.join ', '}" if items.length > 0
       "(#{caption})"
@@ -900,15 +895,15 @@ do ->
     label: parameter.label
     description: parameter.help
     required: parameter.required
-    values: nodes$ parameter.values
+    values: signals parameter.values
     value: value
     selection: selection
     defaultValue: parameter.default_value
-    help: node$ 'Help goes here.'
-    isInvalid: node$ no
+    help: signal 'Help goes here.'
+    isInvalid: signal no
 
   createCheckboxControl = (parameter) ->
-    value = node$ parameter.actual_value is 'true' #FIXME
+    value = signal parameter.actual_value is 'true' #FIXME
 
     clientId: do uniqueId
     kind: 'checkbox'
@@ -918,8 +913,8 @@ do ->
     required: parameter.required
     value: value
     defaultValue: parameter.default_value is 'true'
-    help: node$ 'Help goes here.'
-    isInvalid: node$ no
+    help: signal 'Help goes here.'
+    isInvalid: signal no
 
   createControlFromParameter = (parameter) ->
     switch parameter.type
@@ -939,7 +934,7 @@ do ->
     find parameters, (parameter) -> parameter.name is name
 
   Flow.ModelBuilderForm = (_, _algorithm, _parameters) ->
-    _exception = node$ null
+    _exception = signal null
 
     _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
     _controls = map [ 'critical', 'secondary', 'expert' ], (type) ->
@@ -972,7 +967,7 @@ do ->
 
       if trainingFrameParameter
         if responseColumnParameter or ignoredColumnsParameter
-          apply$ trainingFrameParameter.value, (frameKey) ->
+          act trainingFrameParameter.value, (frameKey) ->
             if frameKey
               _.requestFrame frameKey, (error, frame) ->
                 unless error
@@ -1011,12 +1006,12 @@ do ->
     createModel: createModel
 
   Flow.ModelInput = (_, _algo, _opts) ->
-    _exception = node$ null
+    _exception = signal null
     _algorithms = [ 'kmeans', 'deeplearning', 'glm', 'gbm' ]
-    _algorithm = node$ _algo
-    _canCreateModel = lift$ _algorithm, (algorithm) -> if algorithm then yes else no
+    _algorithm = signal _algo
+    _canCreateModel = lift _algorithm, (algorithm) -> if algorithm then yes else no
 
-    _modelForm = node$ null
+    _modelForm = signal null
 
     populateFramesAndColumns = (frameKey, algorithm, parameters, go) ->
       # Fetch frame list; pick column names from training frame
@@ -1056,7 +1051,7 @@ do ->
 
     do ->
       frameKey = _opts?.training_frame
-      apply$ _algorithm, (algorithm) ->
+      act _algorithm, (algorithm) ->
         if algorithm
           _.requestModelBuilders algorithm, (error, result) ->
             if error
@@ -1083,7 +1078,7 @@ Flow.Menu = (_, _items) ->
   createMenuItem = (name, item) ->
     name: name
     description: item.description
-    icon: "fa fa-#{item.icon} f-icon"
+    icon: "fa fa-#{item.icon} flow-icon"
     execute: -> _.insertAndExecuteCell 'cs', name
 
   routines: (createMenuItem name, item for name, item of _items)
@@ -1202,17 +1197,17 @@ do ->
 
   Flow.SetupParseOutput = (_, _result) ->
     _sourceKeys = map _result.srcs, (src) -> src.name
-    _parserType =  node$ find parserTypes, (parserType) -> parserType.type is _result.pType
-    _delimiter = node$ find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
-    _useSingleQuotes = node$ _result.singleQuotes
-    _columns = map _result.columnNames, (name) -> name: node$ name
+    _parserType =  signal find parserTypes, (parserType) -> parserType.type is _result.pType
+    _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
+    _useSingleQuotes = signal _result.singleQuotes
+    _columns = map _result.columnNames, (name) -> name: signal name
     _rows = _result.data
     _columnCount = _result.ncols
     _hasColumns = _columnCount > 0
-    _destinationKey = node$ _result.hexName
+    _destinationKey = signal _result.hexName
     _headerOptions = auto: 0, header: 1, data: -1
-    _headerOption = node$ if _result.checkHeader is 0 then 'auto' else if _result.checkHeader is -1 then 'data' else 'header'
-    _deleteOnDone = node$ yes
+    _headerOption = signal if _result.checkHeader is 0 then 'auto' else if _result.checkHeader is -1 then 'data' else 'header'
+    _deleteOnDone = signal yes
 
     parseFiles = ->
       columnNames = map _columns, (column) -> column.name()
@@ -1239,9 +1234,9 @@ Flow.ImportFilesInput = (_) ->
   #
   # Search files/dirs
   #
-  _specifiedPath = node$ ''
-  _exception = node$ ''
-  _hasErrorMessage = lift$ _exception, (exception) -> if exception then yes else no
+  _specifiedPath = signal ''
+  _exception = signal ''
+  _hasErrorMessage = lift _exception, (exception) -> if exception then yes else no
 
   tryImportFiles = ->
     specifiedPath = _specifiedPath()
@@ -1256,18 +1251,18 @@ Flow.ImportFilesInput = (_) ->
   #
   # File selection 
   #
-  _importedFiles = nodes$ []
-  _importedFileCount = lift$ _importedFiles, (files) -> if files.length then "Found #{describeCount files.length, 'file'}:" else ''
-  _hasImportedFiles = lift$ _importedFiles, (files) -> files.length > 0
-  _hasUnselectedFiles = lift$ _importedFiles, (files) -> some files, (file) -> not file.isSelected()
-  _selectedFiles = nodes$ []
-  _selectedFilesDictionary = lift$ _selectedFiles, (files) ->
+  _importedFiles = signals []
+  _importedFileCount = lift _importedFiles, (files) -> if files.length then "Found #{describeCount files.length, 'file'}:" else ''
+  _hasImportedFiles = lift _importedFiles, (files) -> files.length > 0
+  _hasUnselectedFiles = lift _importedFiles, (files) -> some files, (file) -> not file.isSelected()
+  _selectedFiles = signals []
+  _selectedFilesDictionary = lift _selectedFiles, (files) ->
     dictionary = {}
     for file in files
       dictionary[file.path] = yes
     dictionary
-  _selectedFileCount = lift$ _selectedFiles, (files) -> "#{describeCount files.length, 'file'} selected:"
-  _hasSelectedFiles = lift$ _selectedFiles, (files) -> files.length > 0
+  _selectedFileCount = lift _selectedFiles, (files) -> "#{describeCount files.length, 'file'} selected:"
+  _hasSelectedFiles = lift _selectedFiles, (files) -> files.length > 0
 
   importFiles = (files) ->
     paths = map files, (file) -> stringify file.path
@@ -1287,12 +1282,12 @@ Flow.ImportFilesInput = (_) ->
   createFileItem = (path, isSelected) ->
     self =
       path: path
-      isSelected: node$ isSelected
+      isSelected: signal isSelected
       select: ->
         _selectedFiles.push createSelectedFileItem self.path
         self.isSelected yes 
 
-    apply$ self.isSelected, (isSelected) ->
+    act self.isSelected, (isSelected) ->
       _hasUnselectedFiles some _importedFiles(), (file) -> not file.isSelected()
 
     self
@@ -1470,27 +1465,27 @@ Flow.H2O = (_) ->
       delete_on_done: deleteOnDone
     requestWithOpts '/Parse.json', opts, go
 
-  link$ _.requestFileGlob, requestFileGlob
-  link$ _.requestImportFiles, requestImportFiles
-  link$ _.requestParseSetup, requestParseSetup
-  link$ _.requestParseFiles, requestParseFiles
-  link$ _.requestInspect, requestInspect
-  link$ _.requestJobs, requestJobs
-  link$ _.requestJob, requestJob
-  link$ _.requestFrames, (go) -> requestFrames go
-  link$ _.requestFrame, (key, go) ->
+  link _.requestFileGlob, requestFileGlob
+  link _.requestImportFiles, requestImportFiles
+  link _.requestParseSetup, requestParseSetup
+  link _.requestParseFiles, requestParseFiles
+  link _.requestInspect, requestInspect
+  link _.requestJobs, requestJobs
+  link _.requestJob, requestJob
+  link _.requestFrames, (go) -> requestFrames go
+  link _.requestFrame, (key, go) ->
     request "/3/Frames/#{encodeURIComponent key}", (error, result) ->
       if error
         go error
       else
         go null, head result.frames
-  link$ _.requestColumnSummary, (key, column, go) ->
+  link _.requestColumnSummary, (key, column, go) ->
     request "/3/Frames/#{encodeURIComponent key}/columns/#{column}/summary", go
-  link$ _.requestModelBuilders, requestModelBuilders
-  link$ _.requestModelBuild, requestModelBuild
-  link$ _.requestModels, requestModels
-  link$ _.requestModel, requestModel
-  link$ _.requestModelMetrics, requestModelMetrics
+  link _.requestModelBuilders, requestModelBuilders
+  link _.requestModelBuild, requestModelBuild
+  link _.requestModels, requestModels
+  link _.requestModel, requestModel
+  link _.requestModelMetrics, requestModelMetrics
 
 Flow.Gui = (_) ->
   
@@ -1512,31 +1507,31 @@ Flow.Gui = (_) ->
 
     type: type
     id: opts.id or guid
-    label: node$ opts.label or ' '
-    description: node$ opts.description or ' '
-    visible: node$ if opts.visible is no then no else yes
-    disable: node$ if opts.disable is yes then yes else no
+    label: signal opts.label or ' '
+    description: signal opts.description or ' '
+    visible: signal if opts.visible is no then no else yes
+    disable: signal if opts.disable is yes then yes else no
     template: "flow-form-#{type}"
     templateOf: (control) -> control.template
 
   wrapValue = (value, init) ->
     if value is undefined
-      node$ init
+      signal init
     else
-      if isNode$ value
+      if isSignal value
         value
       else
-        node$ value
+        signal value
 
   wrapArray = (elements) ->
     if elements
-      if isNode$ elements
+      if isSignal elements
         element = elements()
-        if isArray element then elements else node$ [ element ]
+        if isArray element then elements else signal [ element ]
       else
-        nodes$ if isArray elements then elements else [ elements ]
+        signals if isArray elements then elements else [ elements ]
     else
-      nodes$ []
+      signals []
 
   content = (type, opts) ->
     self = control type, opts
@@ -1586,7 +1581,7 @@ Flow.Gui = (_) ->
     self
 
   form = (controls, go) ->
-    go null, nodes$ controls or []
+    go null, signals controls or []
 
   gui = (controls) ->
     renderable form, controls, (form, go) ->
@@ -1761,9 +1756,9 @@ Flow.Routines = (_) ->
   call: (go, args...) -> _join args, dataflow.applicate go
   apply: (go, args) -> _join args, go
   isFuture: isFuture
-  signal: dataflow.signal
-  signals: dataflow.signals
-  isSignal: dataflow.isSignal
+  signal: signal
+  signals: signals
+  isSignal: isSignal
   react: dataflow.react
   invoke: dataflow.invoke
   merge: dataflow.merge
@@ -2012,7 +2007,7 @@ do ->
     # XXX special-case functions so that bodies are not printed with the raw renderer.
     render = (input, output) ->
       sandbox.results[guid] = sandboxResult =
-        result: node$ null
+        result: signal null
         outputs: outputBuffer = createBuffer []
 
       #
@@ -2045,11 +2040,11 @@ do ->
                 #XXX pick smarter renderers based on content
                 output.data
                   object: dumpObject 'output', ft
-                  template: 'flow-dump'
+                  template: 'flow-object'
         else
           output.data
             object: dumpObject 'output', ft
-            template: 'flow-dump'
+            template: 'flow-object'
 
       outputBuffer.subscribe evaluate
 
@@ -2078,7 +2073,7 @@ do ->
           else
             output.close
               object: dumpObject 'result', cellResult
-              template: 'flow-dump'
+              template: 'flow-object'
 
     render.isCode = yes
     render
@@ -2096,27 +2091,27 @@ Flow.Renderers = (_, _sandbox) ->
 
 Flow.Cell = (_, _renderers, type='cs', input='') ->
   _guid = do uniqueId
-  _type = node$ type
-  _render = lift$ _type, (type) -> _renderers[type] _guid
-  _isSelected = node$ no
-  _isActive = node$ no
-  _hasError = node$ no
-  _isBusy = node$ no
-  _isReady = lift$ _isBusy, (isBusy) -> not isBusy
-  _hasInput = node$ yes
-  _input = node$ input
-  _outputs = nodes$ []
-  _result = node$ null
-  _hasOutput = lift$ _outputs, (outputs) -> outputs.length > 0
-  _isOutputVisible = node$ yes
-  _isOutputHidden = lift$ _isOutputVisible, (visible) -> not visible
+  _type = signal type
+  _render = lift _type, (type) -> _renderers[type] _guid
+  _isSelected = signal no
+  _isActive = signal no
+  _hasError = signal no
+  _isBusy = signal no
+  _isReady = lift _isBusy, (isBusy) -> not isBusy
+  _hasInput = signal yes
+  _input = signal input
+  _outputs = signals []
+  _result = signal null
+  _hasOutput = lift _outputs, (outputs) -> outputs.length > 0
+  _isOutputVisible = signal yes
+  _isOutputHidden = lift _isOutputVisible, (visible) -> not visible
 
   # This is a shim.
   # The ko 'cursorPosition' custom binding attaches a read() method to this.
   _cursorPosition = {}
 
   # select and display input when activated
-  apply$ _isActive, (isActive) ->
+  act _isActive, (isActive) ->
     if isActive
       _.selectCell self
       _hasInput yes
@@ -2124,7 +2119,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     return
 
   # deactivate when deselected
-  apply$ _isSelected, (isSelected) ->
+  act _isSelected, (isSelected) ->
     _isActive no unless isSelected
 
   # tied to mouse-clicks on the cell
@@ -2197,7 +2192,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     template: 'flow-cell'
 
 Flow.Repl = (_, _renderers) ->
-  _cells = nodes$ []
+  _cells = signals []
   _selectedCell = null
   _selectedCellIndex = -1
   _clipboardCell = null
@@ -2621,11 +2616,11 @@ Flow.Repl = (_, _renderers) ->
    
     insertNewCellBelow()
 
-    link$ _.selectCell, selectCell
-    link$ _.insertAndExecuteCell, (type, input) ->
+    link _.selectCell, selectCell
+    link _.insertAndExecuteCell, (type, input) ->
       defer insertCellBelowAndRun, type, input
 
-  link$ _.ready, initialize
+  link _.ready, initialize
 
   executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
   executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
