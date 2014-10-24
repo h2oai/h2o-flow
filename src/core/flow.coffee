@@ -149,189 +149,6 @@ assist = (_, routines, routine) ->
       renderable noopFuture, (ignore, go) ->
         go null, Flow.NoAssistView _
 
-
-if window?.marked?
-  marked.setOptions
-    smartypants: yes
-    highlight: (code, lang) ->
-      if window.hljs
-        (window.hljs.highlightAuto code, [ lang ]).value
-      else
-        code
-
-if window?.ko?
-  ko.bindingHandlers.markdown =
-    update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-      data = ko.unwrap valueAccessor()
-      try
-        html = marked data or ''
-      catch error
-        html = error.message or 'Error rendering markdown.'
-
-      $(element).html html
-
-  ko.bindingHandlers.stringify =
-    update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-      data = ko.unwrap valueAccessor()
-
-      $(element).text JSON.stringify data, null, 2
-
-  ko.bindingHandlers.enterKey =
-    init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-      if action = ko.unwrap valueAccessor() 
-        if isFunction action
-          $element = $ element
-          $element.keydown (e) -> 
-            if e.which is 13
-              action viewModel
-            return
-        else
-          throw 'Enter key action is not a function'
-      return
-
-  ko.bindingHandlers.typeahead =
-    init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-      if action = ko.unwrap valueAccessor() 
-        if isFunction action
-          $element = $ element
-          $element.typeahead null,
-            displayKey: 'value'
-            source: action
-        else
-          throw 'Typeahead action is not a function'
-      return
-
-  ko.bindingHandlers.cursorPosition =
-    init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-      if arg = ko.unwrap valueAccessor()
-        # Bit of a hack. Attaches a method to the bound object that returns the cursor position. Uses dwieeb/jquery-textrange.
-        arg.read = -> $(element).textrange 'get', 'position'
-      return
-
-  ko.bindingHandlers.autoResize =
-    update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-      resize = -> defer ->
-        $el
-          .css 'height', 'auto'
-          .height element.scrollHeight
-
-      $el = $(element).on 'input', resize
-
-      resize()
-      return
-
-  ko.bindingHandlers.dom =
-    update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-      arg = ko.unwrap valueAccessor()
-      if arg
-        $element = $ element
-        $element.empty()
-        $element.append arg
-      return
-
-  previewArray = (array) ->
-    ellipsis = if array.length > 5 then ', ...' else ''
-    preview = for element in head array, 5
-      if isPrimitive type = typeOf element then element else type
-    "[#{preview.join ', '}#{ellipsis}]"
-
-  previewObject = (object) ->
-    count = 0
-    previews = []
-    ellipsis = ''
-    for key, value of object
-      valueType = typeOf value
-      previews.push "#{key}: #{if isPrimitive valueType then value else valueType}"
-      if ++count is 5
-        ellipsis = ', ...'
-        break 
-    "{#{previews.join ', '}#{ellipsis}}" 
-
-  preview = (element) ->
-    type = typeOf element
-    if isPrimitive type
-      element
-    else
-      switch type
-        when 'Array'
-          previewArray element
-        when 'Function', 'Arguments'
-          type
-        else
-          previewObject element
-        
-
-  #TODO slice large arrays
-  dumpObject = (key, object) ->
-    _expansions = signal null
-    _isExpanded = signal no
-    _type = typeOf object
-    _canExpand = isExpandable _type
-    toggle = ->
-      return unless _canExpand
-      if _expansions() is null
-        expansions = []
-        for key, value of object
-          expansions.push dumpObject key, value
-        _expansions expansions
-      _isExpanded not _isExpanded()
-
-    key: key
-    preview: preview object
-    toggle: toggle
-    expansions: _expansions
-    isExpanded: _isExpanded
-    canExpand: _canExpand
-
-  ko.bindingHandlers.dump =
-    init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-      object = ko.unwrap valueAccessor()
-
-  isExpandable = (type) ->
-    switch type
-      when 'null', 'undefined', 'Boolean', 'String', 'Number', 'Date', 'RegExp', 'Arguments', 'Function'
-        no
-      else
-        yes
-    
-  isPrimitive = (type) ->
-    switch type
-      when 'null', 'undefined', 'Boolean', 'String', 'Number', 'Date', 'RegExp'
-        yes
-      else
-        no
-
-typeOf = (a) ->
-  type = Object::toString.call a
-  if a is null
-    return 'null'
-  else if a is undefined
-    return 'undefined'
-  else if a is true or a is false or type is '[object Boolean]'
-    return 'Boolean'
-  else
-    switch type
-      when '[object String]'
-        return 'String'
-      when '[object Number]'
-        return 'Number'
-      when '[object Function]'
-        return 'Function'
-      when '[object Object]'
-        return 'Object'
-      when '[object Array]'
-        return 'Array'
-      when '[object Arguments]'
-        return 'Arguments'
-      when '[object Date]'
-        return 'Date'
-      when '[object RegExp]'
-        return 'RegExp'
-      when '[object Error]'
-        return 'Error'
-      else
-        return type
-
 templateOf = (view) -> view.template
 
 # Like _.compose, but async. 
@@ -2007,13 +1824,9 @@ do ->
                     output.data result 
               else
                 #XXX pick smarter renderers based on content
-                output.data
-                  object: dumpObject 'output', ft
-                  template: 'flow-object'
+                output.data Flow.ObjectBrowser 'output', ft
         else
-          output.data
-            object: dumpObject 'output', ft
-            template: 'flow-object'
+          output.data Flow.ObjectBrowser 'output', ft
 
       outputBuffer.subscribe evaluate
 
@@ -2040,9 +1853,7 @@ do ->
             else
               evaluate cellResult
           else
-            output.close
-              object: dumpObject 'result', cellResult
-              template: 'flow-object'
+            output.close Flow.ObjectBrowser 'result', cellResult
 
     render.isCode = yes
     render

@@ -505,3 +505,6 @@ words:
 repeat:
   type: qualify
   object: Flow.Prelude
+typeOf:
+  type: qualify
+  object: Flow.Prelude
