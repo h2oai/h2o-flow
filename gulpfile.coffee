@@ -16,7 +16,7 @@ jade = require 'gulp-jade'
 stylus = require 'gulp-stylus'
 nib = require 'nib'
 yaml = require 'js-yaml'
-shorthand = require './src/tools/shorthand/shorthand.coffee'
+shorthand = require './tools/shorthand/shorthand.coffee'
 
 clog = through.obj (file, enc, cb) ->
   console.log file.path
@@ -81,7 +81,7 @@ gulp.task 'build-scripts', ->
     .pipe iff /global\..+\.coffee$/, (coffee bare: yes), (coffee bare: no)
     .pipe order [ 'global.prelude.js', 'global.*.js', '*.js' ]
     .pipe concat 'flow.js'
-    .pipe expand 'src/tools/shorthand/config.yml'
+    .pipe expand 'shorthand.yml'
     .pipe header '"use strict";(function(){ var lodash = window._; window.Flow={};'
     .pipe footer '}).call(this);'
     .pipe gulp.dest config.dir.deploy + '/js/'
