@@ -28,15 +28,7 @@ html(lang='en')
     //- include repl
 
     // ko with:view
-    .flow-navigation
-      nav.navbar.navbar-default(role='navigation')
-        .container-fluid
-          .flow-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
-      .container-fluid
-        .flow-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px")
-        .flow-hint(style='padding:5px 0;margin-bottom:10px')
-          i.fa.fa-lightbulb-o
-          | Type <code><a href='#' data-bind='click:executeHelp'>help</a></code> <kbd>ctrl</kbd> <kbd>enter</kbd> for help. Type <code><a href='#' data-bind='click:executeMenu'>menu</a></code> <kbd>ctrl</kbd> <kbd>enter</kbd> to dive into H<sub>2</sub>O. Press <kbd>h</kbd> for keyboard shortcuts. 
+    include core/components/navigation.jade
 
     .container-fluid
       .flow-repl(data-bind='template:{ name:templateOf, foreach:cells }')
@@ -45,862 +37,158 @@ html(lang='en')
 
     // /ko
 
-    script(type="text/html" id="flow-help-intro")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-lightbulb-o
-          | Help
-
-        p <em>H<sub>2</sub>O Flow</em> is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like <a href="http://ipython.org/notebook.html" target="_blank">IPython Notebooks</a>.
-
-        p Flow is a <em>modal</em> editor, which means that you are either in <em>edit mode</em> or <em>command mode</em>.  A <em>Flow</em> is composed of a series of executable <em>cells</em>. Each <em>cell</em> has an input and one or more outputs.
-          
-        p To get started, just memorize these six simple keyboard shortcuts: <kbd>enter</kbd>, <kbd>esc</kbd>, <kbd>ctrl</kbd><kbd>enter</kbd>, <kbd>a</kbd>, <kbd>b</kbd> and <kbd>d</kbd><kbd>d</kbd>
-        
-        ul
-          li To edit a cell, press <kbd>enter</kbd> to get into <em>edit mode</em>.
-          li When you're done editing, press <kbd>esc</kbd> to get back into <em>command mode</em>. 
-          li To execute a cell, press <kbd>ctrl</kbd> <kbd>enter</kbd>
-          li <kbd>a</kbd> adds a new cell <u>a</u>bove the current cell.
-          li <kbd>b</kbd> adds a new cell <u>b</u>elow the current cell.
-          li <kbd>d</kbd><kbd>d</kbd> <u>d</u>eletes the current cell. Yes, you need to press <kbd>d</kbd> twice.
-
-        p Finally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code><a href='#' data-bind='click:executeMenu'>menu</a></code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!
-
-    script(type="text/html" id="flow-keyboard-shortcut-table")
-      table
-        tbody
-          // ko foreach:$data
-          tr
-            td(data-bind='html:keystrokes' style='text-align:right')
-            td(data-bind='text:caption')
-          // /ko
-
-    script(type="text/html" id="flow-toolbar")
-      .btn-toolbar(role='toolbar')
-        // ko foreach:$data
-        .btn-group
-          // ko foreach:$data
-          button.btn.btn-default.flow-toolbar-button(type='button' data-bind='attr:{ title:label }')
-            i(data-bind="attr:{ 'class':icon }, click:action")
-          // /ko
-        // /ko
-
-    script(type="text/html" id="flow-navbar")
-      .navbar-header
-        button.navbar-toggle.collapsed(type='button', data-toggle='collapse', data-target='#flow-compass')
-          span.sr-only Toggle navigation
-          span.icon-bar
-          span.icon-bar
-          span.icon-bar
-        span.navbar-brand
-
-      #flow-compass.collapse.navbar-collapse
-        ul.nav.navbar-nav
-          // ko foreach:menus
-          li.dropdown
-            a.dropdown-toggle(href='#', data-toggle='dropdown')
-              span(data-bind='text:label')
-              span.caret
-            ul.dropdown-menu(role='menu')
-              // ko foreach:items
-              // ko if:isAction
-              li(data-bind="css:{ 'disabled':isDisabled }")
-                a(href='#' data-bind='click:action') 
-                  span(data-bind='text:label')
-              // /ko
-              // ko ifnot:isAction
-              li.divider
-              // /ko
-              // /ko
-          // /ko
-
-    script(type="text/html" id="flow-h1")
-      .flow-html-output
-        h1(data-bind="text:text")
-
-    script(type="text/html" id="flow-h2")
-      .flow-html-output
-        h2(data-bind="text:text")
-
-    script(type="text/html" id="flow-h3")
-      .flow-html-output
-        h3(data-bind="text:text")
-
-    script(type="text/html" id="flow-h4")
-      .flow-html-output
-        h4(data-bind="text:text")
-
-    script(type="text/html" id="flow-h5")
-      .flow-html-output
-        h5(data-bind="text:text")
-
-    script(type="text/html" id="flow-h6")
-      .flow-html-output
-        h6(data-bind="text:text")
-
-    script(type="text/html" id="flow-html")
-      .flow-html-output(data-bind="html:html")
-
-    script(type="text/html" id="flow-object")
-      .flow-object-output(data-bind="template:{ name:'flow-object-part', data:object}")
-
-    script(type="text/html" id="flow-object-part")
-      .flow-object
-        // ko if:canExpand
-        .flow-hint.flow-pointer(data-bind='click:toggle')
-          i.fa.fa-caret-right
-          strong(data-bind='text:key')
-          | : 
-          em(data-bind='text:preview')
-        div(data-bind="visible:isExpanded, template:{ name:'flow-object-part', foreach:expansions}")
-        // /ko
-        // ko ifnot:canExpand
-        .flow-hint
-          i.fa.fa-caret-right.flow-invisible
-          strong(data-bind='text:key')
-          | : 
-          em(data-bind='text:preview')
-        // /ko
-
-    script(type="text/html" id="flow-raw")
-      .flow-raw-output
-        pre(data-bind="text:text")
-
-    script(type="text/html" id="flow-json")
-      .flow-json-output(data-bind="html:html")
-
-    script(type="text/html" id="flow-dom")
-      .flow-dom-output(data-bind="dom:output")
+    //- 
+    //- Core Templates
+    //-
 
     script(type="text/html" id="flow-help")
+      include core/components/help.jade
 
-    script(type="text/html" id="flow-parse-raw-input")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-cog
-          | Setup Parse
+    script(type="text/html" id="flow-keyboard-shortcut-table")
+      include core/components/keyboard-help-table.jade
 
-        h4 Parse Configuration
-        table.flow-form
-          tbody
-            tr
-              th.flow-narrow Sources
-              td.flow-wide
-                // ko foreach:sourceKeys
-                .flow-hint
-                  i.fa.fa-key
-                  span(data-bind='text:$data')
-                // /ko
+    script(type="text/html" id="flow-toolbar")
+      include core/components/toolbar.jade
 
-            tr
-              th.flow-narrow Destination Key
-              td.flow-wide
-                input.flow-textbox(type='text' data-bind="value:destinationKey")
-            tr
-              th.flow-narrow Parser
-              td.flow-wide
-                select(data-bind="options:parserTypes, optionsText:'caption', value:parserType")
-            tr
-              th.flow-narrow Separator
-              td.flow-wide
-                select(data-bind="options:delimiters, optionsText:'caption', value:delimiter")
-            tr
-              th.flow-narrow Column Headers
-              td.flow-wide
-                div
-                  label
-                    input(type='radio' name='hasHeader' value='auto' data-bind='checked:headerOption')
-                    span Auto
-                div
-                  label
-                    input(type='radio' name='hasHeader' value='header' data-bind='checked:headerOption')
-                    span First row contains column names
-                div
-                  label
-                    input(type='radio' name='hasHeader' value='data' data-bind='checked:headerOption')
-                    span First row contains data
-            tr
-              th.flow-narrow Options
-              td.flow-wide
-                div
-                  label
-                    input(type='checkbox' data-bind='checked:useSingleQuotes')
-                    span Enable single quotes as a field quotation character
-                div
-                  label
-                    input(type='checkbox' data-bind='checked:deleteOnDone')
-                    span Delete on done
+    script(type="text/html" id="flow-navbar")
+      include core/components/navbar.jade
 
-        // ko if:hasColumns
-        h4 Data Preview
-        div(style='overflow:auto')
-          table.flow-form.flow-monospace
-            thead
-              tr
-                // ko foreach:columns
-                td(style='min-width:100px')
-                  input.flow-textbox(type='textbox' data-bind="value:name, attr:{'title':name}")
-                // /ko
+    script(type="text/html" id="flow-h1")
+      include core/components/h1.jade
 
-            tbody
-              // ko foreach:rows
-              tr
-                // ko foreach:$data
-                td(data-bind="text:$data")
-                // /ko
-              // /ko
-        // /ko
-        .flow-panel
-          button.flow-button(type='button' data-bind='click:parseFiles')
-            i.fa.fa-indent
-            | Parse
+    script(type="text/html" id="flow-h2")
+      include core/components/h2.jade
 
-    script(type="text/html" id="flow-import-file-output")
-      // ko foreach:keys
-      .flow-hint
-        i.fa.fa-key
-        span(data-bind='text:$data')
-      // /ko
+    script(type="text/html" id="flow-h3")
+      include core/components/h3.jade
 
-    script(type="text/html" id="flow-model-output")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-cube
-          | Model
-        
-        pre(data-bind="stringify:model")
+    script(type="text/html" id="flow-h4")
+      include core/components/h4.jade
 
-    script(type="text/html" id="flow-parse-output")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-indent
-          | Parse Job Created
+    script(type="text/html" id="flow-h5")
+      include core/components/h5.jade
 
-        table.flow-form
-          tbody
-            tr
-              th.flow-narrow Job Key
-              td.flow-wide
-                a(href='#' data-bind='text:result.job.name, click:inspectJob')
-            tr.flow-actions
-              th.flow-narrow Actions
-              td.flow-wide
-                button.flow-button(type='button' data-bind='click:inspectJob')
-                  i.fa.fa-indent
-                  | View Job
+    script(type="text/html" id="flow-h6")
+      include core/components/h6.jade
 
-    script(type="text/html" id="flow-import-files-output")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-cloud-upload
-          span(data-bind='text:title')
-        table.flow-form
-          tbody
-            tr
-              th.flow-narrow Keys
-              td.flow-wide
-                div(data-bind="template: { name:templateOf, foreach:importViews }")
-            // ko if:canParse
-            tr.flow-actions
-              th.flow-narrow Actions
-              td.flow-wide
-                button.flow-button(type='button' data-bind="click:parse")
-                  i.fa.fa-cog
-                  | Parse these files&hellip;
-            // /ko
+    script(type="text/html" id="flow-html")
+      include core/components/html.jade
 
-    script(type="text/html" id="flow-import-files")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-files-o
-          | Import Files
-        table.flow-form
-          tbody
-            tr
-              th(width='125') Search:
-              td
-                input.flow-textbox(type='text' style='width:100%' data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder='File or directory path')
-            // ko if:hasImportedFiles
-            tr
-              th Search Results:
-              // ko if:hasUnselectedFiles
-              td
-                div
-                  span(data-bind='text:importedFileCount')
-                  |   
-                  // ko if:hasUnselectedFiles
-                  a(href='#' data-bind='click:selectAllFiles') Add all
-                  // /ko
-                div.flow-well
-                  // ko foreach:importedFiles
-                  // ko ifnot:isSelected
-                  .flow-hint.flow-pointer(data-bind='click:select')
-                    i.fa.fa-plus(title='Select file')
-                    span(data-bind="text:path")
-                  // /ko
-                  // /ko
-              // /ko
-              // ko ifnot:hasUnselectedFiles
-              td (All files added)
-              // /ko
-            // /ko
-            tr
-              th Selected Files:
-              td
-                div
-                  span(data-bind='text:selectedFileCount')
-                  |    
-                  // ko if:hasSelectedFiles
-                  a(href='#' data-bind='click:deselectAllFiles') Clear All
-                  // /ko
+    script(type="text/html" id="flow-object")
+      include core/components/object.jade
 
-                // ko if:hasSelectedFiles
-                div.flow-well
-                  // ko foreach:selectedFiles
-                  .flow-hint.flow-pointer(data-bind='click:deselect')
-                    i.fa.fa-remove(title='Deselect file')
-                    span(data-bind='text:path')
-                  // /ko
-                // /ko
-            tr.flow-actions
-              th Actions:
-              td
-                button.flow-button(type='button' data-bind='click:importSelectedFiles, enable:hasSelectedFiles')
-                  i.fa.fa-cloud-upload
-                  | Import
+    script(type="text/html" id="flow-object-part")
+      include core/components/object-part.jade
 
-      // /ko
-    
-    script(type="text/html" id="flow-checkbox-model-parameter")
-      tr(data-bind="css:{'bg-danger':isInvalid}")
-        th
-          label(data-bind="text:label, attr:{ 'for':clientId }")
-        td
-          input(type='checkbox' data-bind="checked:value, attr:{ 'id':clientId }")
-        td
-          span(data-bind='text:description')
+    script(type="text/html" id="flow-raw")
+      include core/components/raw.jade
 
-    script(type="text/html" id="flow-textbox-model-parameter")
-      tr(data-bind="css:{'bg-danger':isInvalid}")
-        th
-          label(data-bind='text:label')
-        td
-          input.flow-textbox(type='text' data-bind='value:value')
-        td
-          span(data-bind='text:description')
+    script(type="text/html" id="flow-json")
+      include core/components/json.jade
 
-    script(type="text/html" id="flow-dropdown-model-parameter")
-      tr(data-bind="css:{'bg-danger':isInvalid}")
-        th
-          label(data-bind='text:label')
-        td
-          select(data-bind="options:values, value:value, optionsCaption: '(None)'")
-        td
-          span(data-bind='text:description')
-
-    script(type="text/html" id="flow-list-model-parameter")
-      tr(data-bind="css:{'bg-danger':isInvalid}")
-        th
-          label(data-bind='text:label')
-        td
-          select(data-bind="options:values, selectedOptions:value", multiple='true', size='5', style='min-width:150px')
-        td
-          span(data-bind='text:description')
-          br
-          span(data-bind='text:selection')
-
-    script(type="text/html" id="flow-group-model-parameter")
-      tr
-        th(colspan='3' style='text-align:left;text-transform:inherit')
-          h4(data-bind='text:title' style='margin-top:20px; border-bottom:1px dotted #ccc')
+    script(type="text/html" id="flow-dom")
+      include core/components/dom.jade
 
     script(type="text/html" id="flow-menu")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-support
-          | Menu
-
-        table.flow-form
-          thead
-            tr
-              th(width='1') &nbsp;
-              th(width='1') Routine
-              th Description
-          tbody
-            // ko foreach:routines  
-            tr
-              td
-                i(data-bind="attr:{'class':icon}")
-              td
-                a.flow-monospace(href='#' data-bind='click:execute, text:name')
-              td(data-bind='html:description')
-
-            // /ko
+      include core/components/menu.jade
 
     script(type="text/html" id="flow-no-assist-view")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-meh
-          | Uh-oh
-
-        blockquote Sorry, I cannot assist you with that routine.
-        
-        .flow-panel
-          button.flow-button(type='button' data-bind='click:showMenu')
-            i.fa.fa-support
-            | Try the H<sub>2</sub>O Flow Menu&hellip;
-
-    script(type="text/html" id="flow-models-output")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-cubes
-          | Models
-        
-        // ko ifnot:hasModels
-        blockquote Your H<sub>2</sub>O cloud has no models.
-        .flow-panel
-          button.flow-button(type='button' data-bind='click:buildModel')
-            i.fa.fa-cube
-            | Build a model&hellip;
-          
-        // /ko
-
-        // ko if:hasModels
-        table.flow-form
-          thead
-            tr
-              th Key
-              th.flow-right  Actions
-          tbody
-            // ko foreach:modelViews
-            tr
-              td.flow-hint
-                i.fa.fa-cube
-                a(href='#' data-bind='text:key, click:inspect')
-              td.flow-right 
-                button.flow-button(type='button' data-bind='click:clone')
-                  i.fa.fa-cube
-                  | Clone&hellip;
-            // /ko
-        // /ko
-
-
-    script(type="text/html" id="flow-frames-output")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-database
-          | Frames
-
-        // ko ifnot:hasFrames
-        blockquote Your H<sub>2</sub>O cloud has no frames.
-        .flow-panel
-          button.flow-button(type='button' data-bind='click:importFiles')
-            i.fa.fa-files-o
-            | Import files&hellip;
-          
-        // /ko
-
-        // ko if:hasFrames
-        table.flow-form
-          thead
-            tr
-              th(width='1') Type
-              th Key
-              th.flow-right(width='1') Rows
-              th.flow-right(width='1') Columns
-              th.flow-right(width='1') Size
-          tbody
-            // ko foreach:frameViews
-            tr
-              td
-                // ko if:isText
-                i.fa.fa-file-o
-                // /ko
-                // ko ifnot:isText
-                i.fa.fa-database
-                // /ko
-              td
-                div
-                  a(href='#' data-bind='text:key, click:inspect')
-                .flow-small(data-bind='text:description')
-              td.flow-right(data-bind='text:rowCount')
-              td.flow-right(data-bind='text:columnCount')
-              td.flow-right(data-bind='text:size')
-            // /ko
-        // /ko
-
+      include core/components/no-assist.jade
 
     script(type="text/html" id="flow-form-text")
-      tr(data-bind="visible:visible")
-        th
-          label(data-bind='text:label')
-        td
-          div(data-bind="text:value, attr:{ id:id }")
-        td
-          span(data-bind='text:description')
+      include core/components/form-text.jade
 
     script(type="text/html" id="flow-form-html")
-      tr(data-bind="visible:visible")
-        th
-          label(data-bind='text:label')
-        td
-          div(data-bind="html:value, attr:{ id:id }")
-        td
-          span(data-bind='text:description')
+      include core/components/form-html.jade
 
     script(type="text/html" id="flow-form-markdown")
-      tr(data-bind="visible:visible")
-        th
-          label(data-bind='text:label')
-        td
-          div(data-bind="markdown:value, attr:{ id:id }")
-        td
-          span(data-bind='text:description')
+      include core/components/form-markdown.jade
 
     script(type="text/html" id="flow-form-checkbox")
-      tr(data-bind="visible:visible")
-        th
-          label(data-bind='text:label')
-        td
-          input(type='checkbox' data-bind="checked:value, disable:disable, attr:{ 'id':id }")
-        td
-          span(data-bind='text:description')
+      include core/components/form-checkbox.jade
 
     script(type="text/html" id="flow-form-dropdown")
-      tr(data-bind="visible:visible")
-        th
-          label(data-bind='text:label')
-        td
-          select(data-bind="options:options, value:value, optionsCaption:caption, attr:{ id:id }")
-        td
-          span(data-bind='text:description')
+      include core/components/form-dropdown.jade
 
     script(type="text/html" id="flow-form-listbox")
-      tr(data-bind="visible:visible")
-        th
-          label(data-bind='text:label')
-        td
-          select(data-bind="options:options, selectedOptions:values, disable:disable, attr:{ id:id }")
-        td
-          span(data-bind='text:description')
+      include core/components/form-listbox.jade
 
     script(type="text/html" id="flow-form-textbox")
-      tr(data-bind="visible:visible")
-        th
-          label(data-bind='text:label')
-        td
-          input.flow-textbox(type='text' data-bind="value:value, valueUpdate:event, disable:disable, attr:{ id:id }")
-        td
-          span(data-bind='text:description')
+      include core/components/form-textbox.jade
 
     script(type="text/html" id="flow-form-textarea")
-      tr(data-bind="visible:visible")
-        th
-          label(data-bind='text:label')
-        td
-          textarea.flow-textarea(data-bind="value:value, valueUpdate:event, disable:disable, attr:{ id:id, rows:rows }")
-        td
-          span(data-bind='text:description')
+      include core/components/form-textarea.jade
 
     script(type="text/html" id="flow-form-button")
-      tr(data-bind="visible:visible")
-        th &nbsp;
-        td
-          button.flow-button(type='button' data-bind="click:click, disable:disable, attr:{ id:id }")
-            span(data-bind='text:label')
-        td
-          span(data-bind='text:description')
+      include core/components/form-button.jade
 
     script(type="text/html" id="flow-form")
-      .flow-widget
-        table.flow-form(data-bind='template: { name: templateOf, foreach:form }')
-        
-    script(type="text/html" id="flow-model-input")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-cube
-          | Build a Model
-
-        // ko if:parentException
-        div(data-bind="template: { name:'flow-error', data:parentException }")
-        // /ko
-
-        div
-          | Select an algorithm:
-          select(data-bind="options:algorithms, value:algorithm, optionsCaption: '(Algorithm)'")
-
-
-        // ko with:modelForm
-
-        // ko if:exception
-        div(data-bind="template: { name:'flow-error', data:exception }")
-        // /ko
-
-        table.flow-form(data-bind='template: { name: parameterTemplateOf, foreach:form }')
-        // /ko
-
-        .flow-panel
-          button.flow-button(type='button' data-bind="click:createModel, enable:canCreateModel")
-            i.fa.fa-bolt
-            | Build Model
-
-
-    script(type="text/html" id="flow-jobs-output")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-bolt
-          | Jobs
-        // ko if:exception
-        div(data-bind="template: { name:'flow-error', data:exception }")
-        // /ko
-        // ko if:hasJobViews
-        table.flow-form
-          thead
-            tr
-              th Key
-              th Description
-              th Status
-          tbody
-            // ko foreach:jobViews
-            tr
-              td
-                a(href='#' data-bind='text:job.key.name, click:inspect')
-              td(data-bind='text:job.description')
-              td(data-bind='text:job.status')
-            // /ko
-        // /ko
-        // ko ifnot:hasJobViews
-        blockquote Your H<sub>2</sub>O cloud has no jobs.
-        // /ko
-        .flow-panel
-          button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
-            // ko if:isLive
-            i.fa.fa-refresh.fa-spin
-            | Stop
-            // /ko
-            // ko ifnot:isLive
-            i.fa.fa-refresh
-            | Refresh
-            // /ko
-
-    script(type="text/html" id="flow-frame-output")
-      .flow-widget.flow-frame-output
-        h3.flow-hint
-          i.fa.fa-database
-          span(data-bind="text:key")
-
-        table.flow-form
-          tbody
-            tr 
-              th(width='1') Actions
-              td
-                button.flow-button(type='button' data-bind='click:createModel')
-                  i.fa.fa-cube
-                  | Create Model
-
-        // ko with:table
-        div(style='overflow:auto')
-          table.table.table-condensed.flow-monospace
-            thead
-              tr
-                th Label
-                // ko foreach:header
-                th(data-bind='text:$data')
-                // /ko
-            tbody
-              tr.flow-bg-gray
-                th Type
-                // ko foreach:typeRow
-                td(data-bind='text:$data')
-                // /ko
-
-              tr.flow-bg-gray
-                th Min
-                // ko foreach:minRow
-                td(data-bind='text:$data')
-                // /ko
-
-              tr.flow-bg-gray
-                th Max
-                // ko foreach:maxRow
-                td(data-bind='text:$data')
-                // /ko
-
-              tr.flow-bg-gray
-                th Mean
-                // ko foreach:meanRow
-                td(data-bind='text:$data')
-                // /ko
-
-              tr.flow-bg-gray
-                th Sigma
-                // ko foreach:sigmaRow
-                td(data-bind='text:$data')
-                // /ko
-
-              // ko if:hasEnums
-              tr.flow-bg-gray
-                th Cardinality
-                // ko foreach:cardinalityRow
-                td(data-bind='text:$data')
-                // /ko
-              // /ko
-
-              // ko if:hasMissings
-              tr.flow-bg-gray
-                th Missings
-                // ko foreach:missingsRow
-                td(data-bind='text:$data')
-                // /ko
-              // /ko
-
-              // ko if:hasZeros
-              tr.flow-bg-gray
-                th Zeros
-                // ko foreach:zerosRow
-                td(data-bind='text:$data')
-                // /ko
-              // /ko
-
-              // ko if:hasPinfs
-              tr.flow-bg-gray
-                th +Inf
-                // ko foreach:pinfsRow
-                td(data-bind='text:$data')
-                // /ko
-              // /ko
-
-              // ko if:hasNinfs
-              tr.flow-bg-gray
-                th -Inf
-                // ko foreach:ninfsRow
-                td(data-bind='text:$data')
-                // /ko
-              // /ko
-
-              //-
-                tr.flow-bg-gray
-                  th Summary
-                  // ko foreach:summaryRow
-                  td(data-bind='click:displaySummary') 
-                    i.fa.fa-bar-chart
-                  // /ko
-
-              // ko foreach:dataRows
-              tr
-                th(data-bind='text:header')
-                // ko foreach:cells
-                td(data-bind='text:$data')
-                // /ko
-              // /ko
-        // /ko
-
-    script(type="text/html" id="flow-job-output")
-      .flow-widget
-        h3.flow-hint
-          i.fa.fa-bolt
-          | Job
-        // ko if:exception
-        div(data-bind="template: { name:'flow-error', data:exception }")
-        // /ko
-        table.flow-form
-          tbody
-            tr
-              th.flow-narrow Status
-              td.flow-wide(data-bind='text:status')
-            tr
-              th.flow-narrow Key
-              td.flow-wide(data-bind='text:key')
-            tr
-              th.flow-narrow Description
-              td.flow-wide(data-bind='text:description')
-            tr
-              th.flow-narrow Destination Key
-              td.flow-wide
-                // ko ifnot:kind
-                span(data-bind='text:destinationKey')
-                // /ko
-                // ko if:kind
-                .flow-hint
-                  i.fa.fa-key
-                  a(href='#' data-bind='text:destinationKey, click:inspect')
-                // /ko
-            tr
-              th.flow-narrow Run Time
-              td.flow-wide(data-bind='text:runTime')
-            tr
-              th.flow-narrow Progress
-              td.flow-wide
-                table
-                  tbody
-                    tr
-                      td.flow-narrow(data-bind='text:progress')
-                      td.flow-wide
-                        .progress(style='max-width:400px;height:8px;margin:5px 0')
-                          .progress-bar(data-bind="style:{background:statusColor,width:progress}")
-
-            tr
-              th.flow-narrow Exception
-              td.flow-wide(data-bind='text:exception')
-            tr
-              th.flow-narrow Actions
-              td.flow-wide
-                button.flow-button(type='button' data-bind="click:inspect")
-                  i.fa.fa-key
-                  | Inspect
-                  
-                button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
-                  // ko if:isLive
-                  i.fa.fa-refresh.fa-spin
-                  | Stop
-                  // /ko
-                  // ko ifnot:isLive
-                  i.fa.fa-refresh
-                  | Refresh
-                  // /ko
+      include core/components/form.jade
 
     script(type="text/html" id="flow-error")
-      .alert.alert-danger(role='alert')
-        // ko with:error
-        h4(data-bind='text:message')
-        // ko with:cause
-        pre(data-bind='stringify:$data' style='border-radius:0;background:none;') 
-
-        // ko if:stack
-        pre(data-bind='text:stack')
-        // /ko
-
-        // /ko
-
-        // /ko
+      include core/components/error.jade
 
     script(type="text/html" id="flow-cell")
-      .flow-cell(data-bind="click:select, css:{ 'flow-cell-selected':isSelected, 'flow-cell-active':isActive, 'flow-cell-ready':isReady, 'flow-cell-busy':isBusy, 'flow-cell-error':hasError }")
-        .flow-cell-type(data-bind="text:type")
-        .flow-cell-input(data-bind="visible:hasInput, css:{ 'flow-cell-has-output':hasOutput }")
-          table(style='width:100%')
-            tbody
-              tr
-                td 
-                  textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_cursorPosition, autoResize:input")
-                td(style='width:20px;text-align:right;vertical-align:top')
-                  // ko ifnot:isBusy
-                  // ko if:hasError
-                  i.fa.fa-exclamation-circle(style='color:red' title='Error')
-                  // /ko
-                  // ko ifnot:hasError
-                  i.fa.fa-terminal(title='Waiting for input')
-                  // /ko
-                  // /ko
-                  // ko if:isBusy
-                  i.fa.fa-cog.fa-spin(title='Computing...')
-                  // /ko
-        .flow-cell-output(data-bind='visible:isOutputVisible')
-          // ko if:result
-          .flow-cell-result(data-bind='template:{ name: templateOf, data:result }')
-          // /ko
-          .flow-cell-outputs(data-bind='template: { name: templateOf, foreach:outputs }')
+      include core/components/cell.jade
+
+    //- 
+    //- H2O Extension Templates
+    //-
+        
+    script(type="text/html" id="flow-parse-raw-input")
+      include ext/components/parse-input.jade
+
+    script(type="text/html" id="flow-import-file-output")
+      include ext/components/import-file-output.jade
+
+    script(type="text/html" id="flow-model-output")
+      include ext/components/model-output.jade
+
+    script(type="text/html" id="flow-parse-output")
+      include ext/components/parse-output.jade
+
+    script(type="text/html" id="flow-import-files-output")
+      include ext/components/import-files-output.jade
+
+    script(type="text/html" id="flow-import-files")
+      include ext/components/import-files.jade
+    
+    script(type="text/html" id="flow-checkbox-model-parameter")
+      include ext/components/model-parameter-checkbox.jade
+
+    script(type="text/html" id="flow-textbox-model-parameter")
+      include ext/components/model-parameter-textbox.jade
+
+    script(type="text/html" id="flow-dropdown-model-parameter")
+      include ext/components/model-parameter-dropdown.jade
+
+    script(type="text/html" id="flow-list-model-parameter")
+      include ext/components/model-parameter-list.jade
+
+    script(type="text/html" id="flow-group-model-parameter")
+      include ext/components/model-parameter-group.jade
+
+    script(type="text/html" id="flow-models-output")
+      include ext/components/models-output.jade
+
+    script(type="text/html" id="flow-frames-output")
+      include ext/components/frames-output.jade
+
+    script(type="text/html" id="flow-model-input")
+      include ext/components/model-input.jade
+
+    script(type="text/html" id="flow-jobs-output")
+      include ext/components/jobs-output.jade
+
+    script(type="text/html" id="flow-frame-output")
+      include ext/components/frame-output.jade
+
+    script(type="text/html" id="flow-job-output")
+      include ext/components/job-output.jade
+
+    //- 
+    //- Scripts
+    //-
 
     script(src='js/flow-lib.js')
     script(src='js/flow.js')

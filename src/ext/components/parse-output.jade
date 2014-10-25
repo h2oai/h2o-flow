@@ -1,0 +1,18 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-indent
+    | Parse Job Created
+
+  table.flow-form
+    tbody
+      tr
+        th.flow-narrow Job Key
+        td.flow-wide
+          a(href='#' data-bind='text:result.job.name, click:inspectJob')
+      tr.flow-actions
+        th.flow-narrow Actions
+        td.flow-wide
+          button.flow-button(type='button' data-bind='click:inspectJob')
+            i.fa.fa-indent
+            | View Job
+

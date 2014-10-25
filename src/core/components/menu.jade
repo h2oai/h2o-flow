@@ -1,0 +1,22 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-support
+    | Menu
+
+  table.flow-form
+    thead
+      tr
+        th(width='1') &nbsp;
+        th(width='1') Routine
+        th Description
+    tbody
+      // ko foreach:routines  
+      tr
+        td
+          i(data-bind="attr:{'class':icon}")
+        td
+          a.flow-monospace(href='#' data-bind='click:execute, text:name')
+        td(data-bind='html:description')
+
+      // /ko
+

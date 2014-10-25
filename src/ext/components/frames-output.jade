@@ -1,0 +1,43 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-database
+    | Frames
+
+  // ko ifnot:hasFrames
+  blockquote Your H<sub>2</sub>O cloud has no frames.
+  .flow-panel
+    button.flow-button(type='button' data-bind='click:importFiles')
+      i.fa.fa-files-o
+      | Import files&hellip;
+    
+  // /ko
+
+  // ko if:hasFrames
+  table.flow-form
+    thead
+      tr
+        th(width='1') Type
+        th Key
+        th.flow-right(width='1') Rows
+        th.flow-right(width='1') Columns
+        th.flow-right(width='1') Size
+    tbody
+      // ko foreach:frameViews
+      tr
+        td
+          // ko if:isText
+          i.fa.fa-file-o
+          // /ko
+          // ko ifnot:isText
+          i.fa.fa-database
+          // /ko
+        td
+          div
+            a(href='#' data-bind='text:key, click:inspect')
+          .flow-small(data-bind='text:description')
+        td.flow-right(data-bind='text:rowCount')
+        td.flow-right(data-bind='text:columnCount')
+        td.flow-right(data-bind='text:size')
+      // /ko
+  // /ko
+

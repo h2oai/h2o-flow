@@ -1,0 +1,8 @@
+tr(data-bind="visible:visible")
+  th
+    label(data-bind='text:label')
+  td
+    select(data-bind="options:options, selectedOptions:values, disable:disable, attr:{ id:id }")
+  td
+    span(data-bind='text:description')
+

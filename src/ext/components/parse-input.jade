@@ -1,0 +1,80 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-cog
+    | Setup Parse
+
+  h4 Parse Configuration
+  table.flow-form
+    tbody
+      tr
+        th.flow-narrow Sources
+        td.flow-wide
+          // ko foreach:sourceKeys
+          .flow-hint
+            i.fa.fa-key
+            span(data-bind='text:$data')
+          // /ko
+
+      tr
+        th.flow-narrow Destination Key
+        td.flow-wide
+          input.flow-textbox(type='text' data-bind="value:destinationKey")
+      tr
+        th.flow-narrow Parser
+        td.flow-wide
+          select(data-bind="options:parserTypes, optionsText:'caption', value:parserType")
+      tr
+        th.flow-narrow Separator
+        td.flow-wide
+          select(data-bind="options:delimiters, optionsText:'caption', value:delimiter")
+      tr
+        th.flow-narrow Column Headers
+        td.flow-wide
+          div
+            label
+              input(type='radio' name='hasHeader' value='auto' data-bind='checked:headerOption')
+              span Auto
+          div
+            label
+              input(type='radio' name='hasHeader' value='header' data-bind='checked:headerOption')
+              span First row contains column names
+          div
+            label
+              input(type='radio' name='hasHeader' value='data' data-bind='checked:headerOption')
+              span First row contains data
+      tr
+        th.flow-narrow Options
+        td.flow-wide
+          div
+            label
+              input(type='checkbox' data-bind='checked:useSingleQuotes')
+              span Enable single quotes as a field quotation character
+          div
+            label
+              input(type='checkbox' data-bind='checked:deleteOnDone')
+              span Delete on done
+
+  // ko if:hasColumns
+  h4 Data Preview
+  div(style='overflow:auto')
+    table.flow-form.flow-monospace
+      thead
+        tr
+          // ko foreach:columns
+          td(style='min-width:100px')
+            input.flow-textbox(type='textbox' data-bind="value:name, attr:{'title':name}")
+          // /ko
+
+      tbody
+        // ko foreach:rows
+        tr
+          // ko foreach:$data
+          td(data-bind="text:$data")
+          // /ko
+        // /ko
+  // /ko
+  .flow-panel
+    button.flow-button(type='button' data-bind='click:parseFiles')
+      i.fa.fa-indent
+      | Parse
+

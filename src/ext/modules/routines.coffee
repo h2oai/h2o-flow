@@ -70,7 +70,7 @@ Flow.Routines = (_) ->
       go null, 
         executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
         executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
-        template: 'flow-help-intro'
+        template: 'flow-help'
   
   _flowMenuItems =
     importFiles:
