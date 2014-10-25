@@ -48,6 +48,9 @@ Flow.Prelude = do ->
           return 'Error'
         else
           return type
+
+  _deepClone = (obj) ->
+    JSON.parse JSON.stringify obj
   
   isDefined: _isDefined
   isTruthy: _isTruthy
@@ -60,5 +63,6 @@ Flow.Prelude = do ->
   words: _words
   repeat: _repeat
   typeOf: _typeOf
-
+  deepClone: _deepClone
+  stringify: JSON.stringify
 

@@ -508,3 +508,9 @@ repeat:
 typeOf:
   type: qualify
   object: Flow.Prelude
+deepClone:
+  type: qualify
+  object: Flow.Prelude
+stringify:
+  type: qualify
+  object: Flow.Prelude
