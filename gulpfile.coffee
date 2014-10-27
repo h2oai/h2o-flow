@@ -41,7 +41,7 @@ expand = (yml) ->
 
 config =
   dir:
-    deploy: process.env.npm_config_output or './build'
+    deploy: process.env.FLOW_DEPLOY_DIR or process.env.npm_config_output or './build'
   lib:
     js: [
       'lib/stacktrace-js/stacktrace.js'
