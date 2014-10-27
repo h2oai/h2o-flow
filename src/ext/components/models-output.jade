@@ -1,0 +1,33 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-cubes
+    | Models
+  
+  // ko ifnot:hasModels
+  blockquote Your H<sub>2</sub>O cloud has no models.
+  .flow-panel
+    button.flow-button(type='button' data-bind='click:buildModel')
+      i.fa.fa-cube
+      | Build a model&hellip;
+    
+  // /ko
+
+  // ko if:hasModels
+  table.flow-form
+    thead
+      tr
+        th Key
+        th.flow-right  Actions
+    tbody
+      // ko foreach:modelViews
+      tr
+        td.flow-hint
+          i.fa.fa-cube
+          a(href='#' data-bind='text:key, click:inspect')
+        td.flow-right 
+          button.flow-button(type='button' data-bind='click:clone')
+            i.fa.fa-cube
+            | Clone&hellip;
+      // /ko
+  // /ko
+

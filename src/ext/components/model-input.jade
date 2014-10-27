@@ -1,0 +1,28 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-cube
+    | Build a Model
+
+  // ko if:parentException
+  div(data-bind="template: { name:'flow-error', data:parentException }")
+  // /ko
+
+  div
+    | Select an algorithm:
+    select(data-bind="options:algorithms, value:algorithm, optionsCaption: '(Algorithm)'")
+
+
+  // ko with:modelForm
+
+  // ko if:exception
+  div(data-bind="template: { name:'flow-error', data:exception }")
+  // /ko
+
+  table.flow-form(data-bind='template: { name: parameterTemplateOf, foreach:form }')
+  // /ko
+
+  .flow-panel
+    button.flow-button(type='button' data-bind="click:createModel, enable:canCreateModel")
+      i.fa.fa-bolt
+      | Build Model
+

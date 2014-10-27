@@ -1,0 +1,28 @@
+.navbar-header
+  button.navbar-toggle.collapsed(type='button', data-toggle='collapse', data-target='#flow-compass')
+    span.sr-only Toggle navigation
+    span.icon-bar
+    span.icon-bar
+    span.icon-bar
+  span.navbar-brand
+
+#flow-compass.collapse.navbar-collapse
+  ul.nav.navbar-nav
+    // ko foreach:menus
+    li.dropdown
+      a.dropdown-toggle(href='#', data-toggle='dropdown')
+        span(data-bind='text:label')
+        span.caret
+      ul.dropdown-menu(role='menu')
+        // ko foreach:items
+        // ko if:isAction
+        li(data-bind="css:{ 'disabled':isDisabled }")
+          a(href='#' data-bind='click:action') 
+            span(data-bind='text:label')
+        // /ko
+        // ko ifnot:isAction
+        li.divider
+        // /ko
+        // /ko
+    // /ko
+

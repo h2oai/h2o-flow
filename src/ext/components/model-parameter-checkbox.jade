@@ -1,0 +1,8 @@
+tr(data-bind="css:{'bg-danger':isInvalid}")
+  th
+    label(data-bind="text:label, attr:{ 'for':clientId }")
+  td
+    input(type='checkbox' data-bind="checked:value, attr:{ 'id':clientId }")
+  td
+    span(data-bind='text:description')
+

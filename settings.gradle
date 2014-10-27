@@ -1,8 +1,0 @@
-rootProject.name = 'h2o-dev'
-
-include 'h2o-core'
-include 'h2o-algos'
-include 'h2o-web'
-include 'h2o-app'
-include 'h2o-scala'
-include 'h2o-r'

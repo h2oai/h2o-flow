@@ -1,0 +1,17 @@
+.flow-object
+  // ko if:canExpand
+  .flow-hint.flow-pointer(data-bind='click:toggle')
+    i.fa.fa-caret-right
+    strong(data-bind='text:key')
+    | : 
+    em(data-bind='text:preview')
+  div(data-bind="visible:isExpanded, template:{ name:'flow-object-part', foreach:expansions}")
+  // /ko
+  // ko ifnot:canExpand
+  .flow-hint
+    i.fa.fa-caret-right.flow-invisible
+    strong(data-bind='text:key')
+    | : 
+    em(data-bind='text:preview')
+  // /ko
+

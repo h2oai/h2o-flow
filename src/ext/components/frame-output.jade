@@ -1,0 +1,112 @@
+.flow-widget.flow-frame-output
+  h3.flow-hint
+    i.fa.fa-database
+    span(data-bind="text:key")
+
+  table.flow-form
+    tbody
+      tr 
+        th(width='1') Actions
+        td
+          button.flow-button(type='button' data-bind='click:createModel')
+            i.fa.fa-cube
+            | Create Model
+
+  // ko with:table
+  div(style='overflow:auto')
+    table.table.table-condensed.flow-monospace
+      thead
+        tr
+          th Label
+          // ko foreach:header
+          th(data-bind='text:$data')
+          // /ko
+      tbody
+        tr.flow-bg-gray
+          th Type
+          // ko foreach:typeRow
+          td(data-bind='text:$data')
+          // /ko
+
+        tr.flow-bg-gray
+          th Min
+          // ko foreach:minRow
+          td(data-bind='text:$data')
+          // /ko
+
+        tr.flow-bg-gray
+          th Max
+          // ko foreach:maxRow
+          td(data-bind='text:$data')
+          // /ko
+
+        tr.flow-bg-gray
+          th Mean
+          // ko foreach:meanRow
+          td(data-bind='text:$data')
+          // /ko
+
+        tr.flow-bg-gray
+          th Sigma
+          // ko foreach:sigmaRow
+          td(data-bind='text:$data')
+          // /ko
+
+        // ko if:hasEnums
+        tr.flow-bg-gray
+          th Cardinality
+          // ko foreach:cardinalityRow
+          td(data-bind='text:$data')
+          // /ko
+        // /ko
+
+        // ko if:hasMissings
+        tr.flow-bg-gray
+          th Missings
+          // ko foreach:missingsRow
+          td(data-bind='text:$data')
+          // /ko
+        // /ko
+
+        // ko if:hasZeros
+        tr.flow-bg-gray
+          th Zeros
+          // ko foreach:zerosRow
+          td(data-bind='text:$data')
+          // /ko
+        // /ko
+
+        // ko if:hasPinfs
+        tr.flow-bg-gray
+          th +Inf
+          // ko foreach:pinfsRow
+          td(data-bind='text:$data')
+          // /ko
+        // /ko
+
+        // ko if:hasNinfs
+        tr.flow-bg-gray
+          th -Inf
+          // ko foreach:ninfsRow
+          td(data-bind='text:$data')
+          // /ko
+        // /ko
+
+        //-
+          tr.flow-bg-gray
+            th Summary
+            // ko foreach:summaryRow
+            td(data-bind='click:displaySummary') 
+              i.fa.fa-bar-chart
+            // /ko
+
+        // ko foreach:dataRows
+        tr
+          th(data-bind='text:header')
+          // ko foreach:cells
+          td(data-bind='text:$data')
+          // /ko
+        // /ko
+  // /ko
+
+

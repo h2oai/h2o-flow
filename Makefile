@@ -1,83 +1,32 @@
+B=node_modules/.bin
+O=src/main/resources/www/steam
 
-PROJECT_VERSION = 999999
+default: 
+	$B/gulp
 
-# All the subdirs we might recursively make, in no particular order
-SUBDIRS = h2o-core h2o-algos h2o-app h2o-web h2o-scala #h2o-r h2o-hadoop h2o-docs assembly
-
-# subdirs is a (phony) target we can make
-.PHONY: subdirs $(SUBDIRS)
-subdirs: $(SUBDIRS)
-
-# Each subdir is its own (phony) target, using a recursive-make
-$(SUBDIRS):
-	$(MAKE) -C $@
-
-# By default, make all subdirs
-default: subdirs
-
-# Build, then run simple tests
-check: subdirs
-	@-for d in $(SUBDIRS); do ($(MAKE) -C $$d check ); done
-
-# h2o-core wants build info to get backed into the jar
-h2o-core: build/BuildVersion.java
-
-# h2o-algos needs h2o-core
-h2o-algos: h2o-core
-
-h2o-scala: h2o-core
-
-h2o-app: h2o-core h2o-algos h2o-web
-
-# R-integration requires H2O to be built first
-#h2o-r: h2o-core
-
-# Scala-integration requires H2O to be built first
-#h2o-scala: h2o-core
-
-# Hadoop/Yarn-integration requires H2O to be built first
-#h2o-hadoop: h2o-core
-
-# pkg needs other stuff built first
-pkg: h2o-core h2o-r h2o-scala h2o-hadoop docs
-
-# Recursive clean
-.PHONY: clean
 clean:
-	rm -rf build
-	-for d in $(SUBDIRS); do ($(MAKE) -C $$d clean ); done
+	$B/gulp clean
 
-# Recursive tool discovery.
-# Called "config" here, after auto-conf, but really just asks each sub-make to list tools
-.PHONY: conf
-conf:
-	@which git
-	@which cut
-	@which date
-	@which grep
-	@which set
-	@which whoami
-	@-for d in $(SUBDIRS); do ($(MAKE) -C $$d conf ); done
+watch:
+	$B/gulp watch
 
+check:
 
-# Build a Java Version file.  Note that these next lines are all *text* to
-# Makefile, the actual execution is delayed until the dependent file is built
-# and the recipe runs.
-BUILD_BRANCH=  git branch | grep '*' | sed 's/* //'
-BUILD_HASH=    git log -1 --format="%H"
-BUILD_DESCRIBE=git describe --always --dirty
-BUILD_ON=      date
-BUILD_BY=      (whoami | cut -d\\ -f2-)
+launch:
+	java -Dwebdev=1 -Xmx4g -jar ../h2o-app/build/libs/h2o-app.jar
 
-FORCE:
-build/BuildVersion.java: FORCE
-	@mkdir -p $(dir $@)
-	@echo "package water.init;"                                                           >  $@
-	@echo "public class BuildVersion extends AbstractBuildVersion {"                      >> $@
-	@echo "    public String branchName()     { return \"$(shell $(BUILD_BRANCH))\"; }"   >> $@
-	@echo "    public String lastCommitHash() { return \"$(shell $(BUILD_HASH))\"; }"     >> $@
-	@echo "    public String describe()       { return \"$(shell $(BUILD_DESCRIBE))\"; }" >> $@
-	@echo "    public String projectVersion() { return \"$(PROJECT_VERSION)\"; }"         >> $@
-	@echo "    public String compiledOn()     { return \"$(shell $(BUILD_ON))\"; }"       >> $@
-	@echo "    public String compiledBy()     { return \"$(shell $(BUILD_BY))\"; }"       >> $@
-	@echo "}"                                                                             >> $@
+unit-test:
+	$B/gulp build-test-script && node $O/js/steam-tests.js -u | $B/faucet 
+
+test-raw:
+	$B/gulp build-test-script && node $O/js/steam-tests.js -s
+
+test:
+	$B/gulp build-test-script && node $O/js/steam-tests.js -s | $B/faucet
+
+coverage:
+	@mkdir -p $O/coverage
+	$B/gulp build-test-script && $B/istanbul cover --dir $O/coverage -x "**/lib/**" $O/js/steam-tests.js && $B/istanbul report --dir $O/coverage cobertura
+
+.PHONY: default watch clean unit-test test-raw test coverage launch 
+

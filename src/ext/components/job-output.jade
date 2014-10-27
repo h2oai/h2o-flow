@@ -1,0 +1,63 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-bolt
+    | Job
+  // ko if:exception
+  div(data-bind="template: { name:'flow-error', data:exception }")
+  // /ko
+  table.flow-form
+    tbody
+      tr
+        th.flow-narrow Status
+        td.flow-wide(data-bind='text:status')
+      tr
+        th.flow-narrow Key
+        td.flow-wide(data-bind='text:key')
+      tr
+        th.flow-narrow Description
+        td.flow-wide(data-bind='text:description')
+      tr
+        th.flow-narrow Destination Key
+        td.flow-wide
+          // ko ifnot:kind
+          span(data-bind='text:destinationKey')
+          // /ko
+          // ko if:kind
+          .flow-hint
+            i.fa.fa-key
+            a(href='#' data-bind='text:destinationKey, click:inspect')
+          // /ko
+      tr
+        th.flow-narrow Run Time
+        td.flow-wide(data-bind='text:runTime')
+      tr
+        th.flow-narrow Progress
+        td.flow-wide
+          table
+            tbody
+              tr
+                td.flow-narrow(data-bind='text:progress')
+                td.flow-wide
+                  .progress(style='max-width:400px;height:8px;margin:5px 0')
+                    .progress-bar(data-bind="style:{background:statusColor,width:progress}")
+
+      tr
+        th.flow-narrow Exception
+        td.flow-wide(data-bind='text:exception')
+      tr
+        th.flow-narrow Actions
+        td.flow-wide
+          button.flow-button(type='button' data-bind="click:inspect")
+            i.fa.fa-key
+            | Inspect
+            
+          button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
+            // ko if:isLive
+            i.fa.fa-refresh.fa-spin
+            | Stop
+            // /ko
+            // ko ifnot:isLive
+            i.fa.fa-refresh
+            | Refresh
+            // /ko
+

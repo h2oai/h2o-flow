@@ -1,0 +1,8 @@
+tr(data-bind="visible:visible")
+  th &nbsp;
+  td
+    button.flow-button(type='button' data-bind="click:click, disable:disable, attr:{ id:id }")
+      span(data-bind='text:label')
+  td
+    span(data-bind='text:description')
+

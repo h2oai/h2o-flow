@@ -1,0 +1,37 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-bolt
+    | Jobs
+  // ko if:exception
+  div(data-bind="template: { name:'flow-error', data:exception }")
+  // /ko
+  // ko if:hasJobViews
+  table.flow-form
+    thead
+      tr
+        th Key
+        th Description
+        th Status
+    tbody
+      // ko foreach:jobViews
+      tr
+        td
+          a(href='#' data-bind='text:job.key.name, click:inspect')
+        td(data-bind='text:job.description')
+        td(data-bind='text:job.status')
+      // /ko
+  // /ko
+  // ko ifnot:hasJobViews
+  blockquote Your H<sub>2</sub>O cloud has no jobs.
+  // /ko
+  .flow-panel
+    button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
+      // ko if:isLive
+      i.fa.fa-refresh.fa-spin
+      | Stop
+      // /ko
+      // ko ifnot:isLive
+      i.fa.fa-refresh
+      | Refresh
+      // /ko
+

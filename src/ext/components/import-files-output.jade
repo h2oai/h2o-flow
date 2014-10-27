@@ -1,0 +1,20 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-cloud-upload
+    span(data-bind='text:title')
+  table.flow-form
+    tbody
+      tr
+        th.flow-narrow Keys
+        td.flow-wide
+          div(data-bind="template: { name:templateOf, foreach:importViews }")
+      // ko if:canParse
+      tr.flow-actions
+        th.flow-narrow Actions
+        td.flow-wide
+          button.flow-button(type='button' data-bind="click:parse")
+            i.fa.fa-cog
+            | Parse these files&hellip;
+      // /ko
+
+
