@@ -11,7 +11,7 @@ assist = (_, routines, routine) ->
         go null, Flow.NoAssistView _
 
 Flow.Coffeescript = (_, guid, sandbox) ->
-  kernel = Flow.CoffeescriptKernel
+  _kernel = Flow.CoffeescriptKernel
 
   show = (arg) ->
     if arg isnt show
@@ -28,20 +28,6 @@ Flow.Coffeescript = (_, guid, sandbox) ->
     sandbox.results[guid] = sandboxResult =
       result: signal null
       outputs: outputBuffer = Flow.Async.createBuffer []
-
-    #
-    # XXX need separate implicit buffer
-    #
-    # Following case produces 1, timeout_id, 2, 3, 4...
-    #
-    # values = [1 .. 10]
-    # process = ->
-    #   value = values.shift()
-    #   if value
-    #     show value
-    #     _.delay process, 1000
-    # process()
-    #
     
     evaluate = (ft) ->
       if ft?.isFuture
@@ -64,15 +50,15 @@ Flow.Coffeescript = (_, guid, sandbox) ->
     outputBuffer.subscribe evaluate
 
     tasks = [
-      kernel.safetyWrapCoffeescript guid
-      kernel.compileCoffeescript
-      kernel.parseJavascript
-      kernel.createRootScope sandbox
-      kernel.removeHoistedDeclarations
-      kernel.rewriteJavascript sandbox
-      kernel.generateJavascript
-      kernel.compileJavascript
-      kernel.executeJavascript sandbox, show
+      _kernel.safetyWrapCoffeescript guid
+      _kernel.compileCoffeescript
+      _kernel.parseJavascript
+      _kernel.createRootScope sandbox
+      _kernel.removeHoistedDeclarations
+      _kernel.rewriteJavascript sandbox
+      _kernel.generateJavascript
+      _kernel.compileJavascript
+      _kernel.executeJavascript sandbox, show
     ]
     (Flow.Async.pipe tasks) input, (error) ->
       output.error error if error
