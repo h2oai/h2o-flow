@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "start": "bower install && gulp",
+    "start": "npm install && bower install && gulp",
     "clean": "gulp clean",
     "watch": "gulp && gulp watch",
     "unit-test": "gulp build-tests && node build/js/flow-tests.js -u | faucet",
