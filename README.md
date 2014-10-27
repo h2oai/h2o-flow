@@ -6,18 +6,21 @@ To build and integrate H2O Flow with H2O Dev, intall Node.js on your operating s
 
     cd path/to/h2o-flow
     npm start --output=/path/to/h2o-dev/h2o-web/src/main/resources/www/flow
-    # You can now build and run h2o-dev in IDEA/Eclipse and go to http://localhost:54321/flow/index.html
+    
+You can now build and run `h2o-dev` in IDEA/Eclipse and access *Flow* at http://localhost:54321/flow/index.html
 
+Alternatively, you can set the environment variable `FLOW_DEPLOY_DIR` and then run:
 
-    # Alternatively, you can set the environment variable FLOW_DEPLOY_DIR and then run:
+    export FLOW_DEPLOY_DIR=/path/to/h2o-dev/h2o-web/src/main/resources/www/flow
     cd path/to/h2o-flow
     npm start
 
+Optionally, build the fat jar:
 
-    # Optionally, build the fat jar:
     cd path/to/h2o-dev && gradle build -x test
     java -Xmx4g -jar build/h2o.jar
-    # ...and then navigate to http://localhost:54321/flow/index.html
+
+...and then navigate to http://localhost:54321/flow/index.html
 
 
 ## Installing Node.js
