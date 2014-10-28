@@ -1,10 +1,10 @@
 Flow.Coffeescript = (_, guid, sandbox) ->
   _kernel = Flow.CoffeescriptKernel
 
-  show = (arg) ->
-    if arg isnt show
+  print = (arg) ->
+    if arg isnt print
       sandbox.results[guid].outputs arg
-    show
+    print
 
   isRoutine = (f) ->
     for name, routine of sandbox.routines when f is routine
@@ -46,7 +46,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
       _kernel.rewriteJavascript sandbox
       _kernel.generateJavascript
       _kernel.compileJavascript
-      _kernel.executeJavascript sandbox, show
+      _kernel.executeJavascript sandbox, print
     ]
     (Flow.Async.pipe tasks) input, (error) ->
       output.error error if error
@@ -56,7 +56,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
       if cellResult
         if isFunction cellResult
           if isRoutine cellResult
-            show cellResult()
+            print cellResult()
           else
             evaluate cellResult
         else

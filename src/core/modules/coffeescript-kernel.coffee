@@ -201,15 +201,15 @@ Flow.CoffeescriptKernel = do ->
 
   compileJavascript = (js, go) ->
     try
-      closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', 'show', js
+      closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', 'print', js
       go null, closure
     catch error
       go Flow.Exception 'Error compiling javascript', error
 
-  executeJavascript = (sandbox, show) ->
+  executeJavascript = (sandbox, print) ->
     (closure, go) ->
       try
-        go null, closure sandbox.routines, sandbox.context, sandbox.results, show
+        go null, closure sandbox.routines, sandbox.context, sandbox.results, print
       catch error
         go Flow.Exception 'Error executing javascript', error
 
