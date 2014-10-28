@@ -13,7 +13,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
 
   # XXX special-case functions so that bodies are not printed with the raw renderer.
   render = (input, output) ->
-    sandbox.results[guid] = sandboxResult =
+    sandbox.results[guid] = cellResult =
       result: signal null
       outputs: outputBuffer = Flow.Async.createBuffer []
     
@@ -52,15 +52,14 @@ Flow.Coffeescript = (_, guid, sandbox) ->
       output.error error if error
       output.end()
 
-      cellResult = sandboxResult.result()
-      if cellResult
-        if isFunction cellResult
-          if isRoutine cellResult
-            print cellResult()
-          else
-            evaluate cellResult
+      result = cellResult.result()
+      if isFunction result
+        if isRoutine result
+          print result()
         else
-          output.close Flow.ObjectBrowser 'result', cellResult
+          evaluate result
+      else
+        output.close Flow.ObjectBrowser 'result', result
 
   render.isCode = yes
   render
