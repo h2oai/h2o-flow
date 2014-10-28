@@ -1,15 +1,3 @@
-assist = (_, routines, routine) ->
-  switch routine
-    when routines.importFiles
-      Flow.Async.renderable Flow.Async.noop, (ignore, go) ->
-        go null, Flow.ImportFilesInput _
-    when routines.help, routines.menu, routines.buildModel, routines.getFrames, routines.getModels, routines.getJobs
-      # parameter-less routines
-      routine()
-    else
-      Flow.Async.renderable Flow.Async.noop, (ignore, go) ->
-        go null, Flow.NoAssistView _
-
 Flow.Coffeescript = (_, guid, sandbox) ->
   _kernel = Flow.CoffeescriptKernel
 
@@ -68,7 +56,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
       if cellResult
         if isFunction cellResult
           if isRoutine cellResult
-            show assist _, sandbox.routines, cellResult
+            show cellResult()
           else
             evaluate cellResult
         else

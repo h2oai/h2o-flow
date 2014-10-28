@@ -1,77 +1,12 @@
+renderable = Flow.Async.renderable
+
 Flow.Routines = (_) ->
-
-  renderJobs = (jobs, go) ->
-    go null, Flow.JobsOutput _, jobs    
-
-  renderJob = (job, go) ->
-    go null, Flow.JobOutput _, job
-
-  renderImportFiles = (importResults, go) ->
-    go null, Flow.ImportFilesOutput _, importResults
-
-  renderSetupParse = (parseSetupResults, go) ->
-    go null, Flow.SetupParseOutput _, parseSetupResults
-
-  renderParse = (parseResult, go) ->
-    go null, Flow.ParseOutput _, parseResult
-
-  renderFrames = (frames, go) ->
-    go null, Flow.FramesOutput _, frames
-
-  renderFrame = (frame, go) ->
-    go null, Flow.FrameOutput _, frame
-
-  renderBuildModel = (modelBuildResult, go) ->
-    go null, Flow.JobOutput _, head modelBuildResult.jobs
-
-  renderModels = (models, go) ->
-    go null, Flow.ModelsOutput _, models
-
-  renderModel = (model, go) ->
-    go null, Flow.ModelOutput _, model
-
-  renderMenu = (items, go) ->
-    go null, Flow.Menu _, items
-
-  getFrames = (arg) ->
-    Flow.Async.renderable _.requestFrames, renderFrames
-
-  getFrame = (key) ->
-    Flow.Async.renderable _.requestFrame, key, renderFrame
-
-  getModels = (arg) ->
-    Flow.Async.renderable _.requestModels, renderModels
-
-  getModel = (key) ->
-    Flow.Async.renderable _.requestModel, key, renderModel
-
-  getJobs = ->
-    Flow.Async.renderable _.requestJobs, renderJobs
-
-  getJob = (arg) ->
-    #XXX validation
-    switch typeOf arg
-      when 'String'
-        Flow.Async.renderable _.requestJob, arg, renderJob
-      when 'Object'
-        if arg.key?
-          job arg.key
-        else
-          #XXX print usage
-          throw new Error 'ni'
-      else
-        #XXX print usage
-        throw new Error 'ni'
+  bailout = ->
+    renderable Flow.Async.noop, (ignore, go) ->
+      go null, Flow.NoAssistView _
 
   gui = Flow.Gui _
 
-  help = ->
-    Flow.Async.renderable Flow.Async.noop, (ignore, go) ->
-      go null, 
-        executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
-        executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
-        template: 'flow-help'
-  
   _flowMenuItems =
     importFiles:
       description: 'Import file(s) into H<sub>2</sub>O'
@@ -88,17 +23,77 @@ Flow.Routines = (_) ->
     buildModel:
       description: 'Build a model'
       icon: 'cube'
+
   menu = ->
     getMenu = (go) -> go null, _flowMenuItems
-    Flow.Async.renderable getMenu, renderMenu
+    renderable getMenu, (items, go) ->
+      go null, Flow.Menu _, items
+
+  help = ->
+    renderable Flow.Async.noop, (ignore, go) ->
+      go null, 
+        executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
+        executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
+        template: 'flow-help'
+  
+
+  getFrames = ->
+    renderable _.requestFrames, (frames, go) ->
+      go null, Flow.FramesOutput _, frames
+
+  getFrame = (key) ->
+    switch typeOf key
+      when 'String'
+        renderable _.requestFrame, key, (frame, go) ->
+          go null, Flow.FrameOutput _, frame
+      else
+        bailout()
+
+  getModels = ->
+    renderable _.requestModels, (models, go) ->
+      go null, Flow.ModelsOutput _, models
+
+  getModel = (key) ->
+    switch typeOf key
+      when 'String'
+        renderable _.requestModel, key, (model, go) ->
+          go null, Flow.ModelOutput _, model
+      else
+        bailout()
+
+  getJobs = ->
+    renderable _.requestJobs, (jobs, go) ->
+      go null, Flow.JobsOutput _, jobs    
+
+  getJob = (arg) ->
+    switch typeOf arg
+      when 'String'
+        renderable _.requestJob, arg, (job, go) ->
+          go null, Flow.JobOutput _, job
+      when 'Object'
+        if arg.key?
+          getJob arg.key
+        else
+          bailout()
+      else
+        bailout()
 
   importFiles = (paths) ->
-    #XXX validation
-    Flow.Async.renderable _.requestImportFiles, paths, renderImportFiles
+    switch typeOf paths
+      when 'Array'
+        renderable _.requestImportFiles, paths, (importResults, go) ->
+          go null, Flow.ImportFilesOutput _, importResults
+      else
+        renderable Flow.Async.noop, (ignore, go) ->
+          go null, Flow.ImportFilesInput _
 
   setupParse = (sourceKeys) ->
-    #XXX validation
-    Flow.Async.renderable _.requestParseSetup, sourceKeys, renderSetupParse
+    switch typeOf paths
+      when 'Array'
+        renderable _.requestParseSetup, sourceKeys, (parseSetupResults, go) ->
+          go null, Flow.SetupParseOutput _, parseSetupResults
+      else
+        bailout()
 
   parseRaw = (opts) -> #XXX review args
     #XXX validation
@@ -113,48 +108,16 @@ Flow.Routines = (_) ->
     deleteOnDone = opts.delete_on_done
     checkHeader = opts.checkHeader
 
-    Flow.Async.renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, renderParse
+    renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, (parseResult, go) ->
+      go null, Flow.ParseOutput _, parseResult
 
   buildModel = (algo, opts) ->
     if algo and opts and keys(opts).length > 1
-      Flow.Async.renderable _.requestModelBuild, algo, opts, renderBuildModel
+      renderable _.requestModelBuild, algo, opts, (modelBuildResult, go) ->
+        go null, Flow.JobOutput _, head modelBuildResult.jobs
     else
-      Flow.Async.renderable Flow.Async.noop, (ignore, go) ->
+      renderable Flow.Async.noop, (ignore, go) ->
         go null, Flow.ModelInput _, algo, opts
-
-  ###
-  getUsageForFunction = (f) ->
-    switch f
-      when help
-        name: 'help'
-        examples: []
-        description: 'Display help on a topic or function.'
-        syntax: [
-          'help topic'
-          'help function'
-        ]
-        parameters: [
-          'rgb': 'Number: foo'
-        ]
-        returns: 'HelpTopic: The help topic'
-        related: null
-      when jobs
-
-      when job
-
-      else
-        null
-
-  help = (arg) ->
-    switch typeOf arg
-      when 'undefined'
-
-      when 'String'
-
-      when 'Function'
-
-      else
-  ###
 
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status

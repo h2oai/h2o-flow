@@ -18,13 +18,11 @@ _noop = (go) -> go null
 _applicate = (go) -> 
   (error, args) ->
     apply go, null, [ error ].concat args if isFunction go
-  
 
 renderable = (f, args..., render) ->
   ft = _fork f, args
   ft.render = render
   ft
-
 
 _fork = (f, args) ->
   self = (go) ->
