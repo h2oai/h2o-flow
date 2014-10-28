@@ -2,5 +2,25 @@
   h3.flow-hint
     i.fa.fa-cube
     | Model
-  
-  pre(data-bind="stringify:model")
+
+  div(data-bind="css:{ 'flow-unhide':isExpanded }")
+    .flow-right.flow-margin-after 
+      // ko ifnot:isExpanded
+      button.flow-button(type='button' data-bind='click:toggle') Show all parameters
+      // /ko
+      // ko if:isExpanded
+      button.flow-button(type='button' data-bind='click:toggle') Hide unmodified parameters
+      // /ko
+    table.flow-form.flow-form-ruled
+      thead
+        tr
+          th Parameter
+          th Value
+          th Description
+      tbody
+        // ko foreach:inputParameters
+        tr(data-bind="css:{ 'flow-hide':isModified }")
+          th(data-bind='text:label')
+          td(data-bind='text:value')
+          td(data-bind='text:help')
+        // /ko

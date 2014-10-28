@@ -189,6 +189,13 @@ th
     font-weight normal
     color tomorrow-orange
 
+.flow-hide
+  display none
+
+.flow-unhide
+  tr.flow-hide
+    display table-row
+
 .flow-invisible
   visibility hidden
 
@@ -205,6 +212,9 @@ th
   margin-top 20px
   padding 10px 0
 
+.flow-margin-after
+  margin-bottom 10px
+
 .flow-monospace
   monospace()
 
@@ -217,13 +227,20 @@ table
     th, td
       padding 2px 5px
       vertical-align top
-    th:first-child
-      text-align right
+    th
       line-height 20px
+      &:first-child
+        text-align right
     tr.flow-actions
       th, td
         padding-top 5px
         border-top 1px dotted #ccc
+  &.flow-form-ruled
+    th, td
+      border-bottom 1px solid #eee
+    tr:first-child
+      border-top 1px solid #eee
+      
 
 .flow-narrow
   white-space nowrap
