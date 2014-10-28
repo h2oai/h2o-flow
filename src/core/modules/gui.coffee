@@ -1,16 +1,3 @@
-control = (type, opts) ->
-  opts = {} unless opts
-  guid = "gui_#{uniqueId()}"
-
-  type: type
-  id: opts.id or guid
-  label: signal opts.label or ' '
-  description: signal opts.description or ' '
-  visible: signal if opts.visible is no then no else yes
-  disable: signal if opts.disable is yes then yes else no
-  template: "flow-form-#{type}"
-  templateOf: (control) -> control.template
-
 wrapValue = (value, init) ->
   if value is undefined
     signal init
@@ -30,13 +17,28 @@ wrapArray = (elements) ->
   else
     signals []
 
+control = (type, opts) ->
+  opts = {} unless opts
+  guid = "gui_#{uniqueId()}"
+
+  type: type
+  id: opts.id or guid
+  label: signal opts.label or ' '
+  description: signal opts.description or ' '
+  visible: signal if opts.visible is no then no else yes
+  disable: signal if opts.disable is yes then yes else no
+  template: "flow-form-#{type}"
+  templateOf: (control) -> control.template
+
 content = (type, opts) ->
   self = control type, opts
   self.value = wrapValue opts.value, ''
   self
 
 text = (opts) -> content 'text', opts
+
 html = (opts) -> content 'html', opts
+
 markdown = (opts) -> content 'markdown', opts
 
 checkbox = (opts) ->
@@ -77,24 +79,15 @@ button = (opts) ->
   self.click = if isFunction opts.click then opts.click else noop
   self
 
-form = (controls, go) ->
-  go null, signals controls or []
+Flow.Gui =
+  text: text
+  html: html
+  markdown: markdown
+  checkbox: checkbox
+  dropdown: dropdown
+  listbox: listbox
+  textbox: textbox
+  textarea: textarea
+  button: button
 
-#XXX keep this module clean - pull gui() out into routines, exposing
-# gui.* routines on a separate function
-gui = (controls) ->
-  Flow.Async.renderable form, controls, (form, go) ->
-    go null, Flow.Form form
-
-gui.text = text
-gui.html = html
-gui.markdown = markdown
-gui.checkbox = checkbox
-gui.dropdown = dropdown
-gui.listbox = listbox
-gui.textbox = textbox
-gui.textarea = textarea
-gui.button = button
-
-Flow.Gui = gui
 

@@ -1,11 +1,20 @@
-renderable = Flow.Async.renderable
-
 Flow.Routines = (_) ->
+
+  renderable = Flow.Async.renderable
+
   bailout = ->
     renderable Flow.Async.noop, (ignore, go) ->
       go null, Flow.NoAssistView _
 
-  gui = Flow.Gui _
+  form = (controls, go) ->
+    go null, signals controls or []
+
+  gui = (controls) ->
+    Flow.Async.renderable form, controls, (form, go) ->
+      go null, Flow.Form _, form
+
+  for name, f of Flow.Gui
+    gui[name] = f
 
   _flowMenuItems =
     importFiles:
