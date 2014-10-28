@@ -443,7 +443,7 @@ Flow.Notebook = (_, _renderers) ->
   #XXX externalize
   executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
   #XXX externalize
-  executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
+  executeAssist: -> _.insertAndExecuteCell 'cs', 'assist'
   menus: _menus
   toolbar: _toolbar
   cells: _cells

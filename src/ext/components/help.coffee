@@ -1,4 +1,4 @@
 H2O.Help = (_) ->
   executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
-  executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
+  executeAssist: -> _.insertAndExecuteCell 'cs', 'assist'
   template: 'flow-help'

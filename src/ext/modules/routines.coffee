@@ -1,4 +1,4 @@
-_menu =
+_assistance =
   importFiles:
     description: 'Import file(s) into H<sub>2</sub>O'
     icon: 'files-o'
@@ -32,8 +32,6 @@ H2O.Routines = (_) ->
 
   for name, f of Flow.Gui
     gui[name] = f
-
-  menu = -> proceed H2O.Menu, [ _menu ]
 
   help = -> proceed H2O.Help
 
@@ -126,13 +124,16 @@ H2O.Routines = (_) ->
       .fail onFail
 
   assist = (func, args...) ->
-    switch func
-      when importFiles
-        proceed H2O.ImportFilesInput
-      when buildModel
-        proceed H2O.ModelInput, args
-      else
-        proceed Flow.NoAssistView
+    if func is undefined
+      proceed H2O.Assist, [ _assistance ]
+    else
+      switch func
+        when importFiles
+          proceed H2O.ImportFilesInput
+        when buildModel
+          proceed H2O.ModelInput, args
+        else
+          proceed H2O.NoAssistView
 
   fork: (f, args...) -> Flow.Async.fork f, args
   join: (args..., go) -> Flow.Async.join args, _applicate go
@@ -159,6 +160,5 @@ H2O.Routines = (_) ->
   gui: gui
   loadScript: loadScript
   assist: assist
-  menu: menu
   help: help
 
