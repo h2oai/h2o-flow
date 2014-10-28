@@ -88,7 +88,7 @@ Flow.Routines = (_) ->
           go null, Flow.ImportFilesInput _
 
   setupParse = (sourceKeys) ->
-    switch typeOf paths
+    switch typeOf sourceKeys
       when 'Array'
         renderable _.requestParseSetup, sourceKeys, (parseSetupResults, go) ->
           go null, Flow.SetupParseOutput _, parseSetupResults
