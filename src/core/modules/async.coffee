@@ -69,8 +69,6 @@ _fork = (f, args) ->
 
 isFuture = (a) -> if a?.isFuture then yes else no
 
-fork = (f, args...) -> _fork f, args
-
 _join = (args, go) ->
   return go null, [] if args.length is 0
 
@@ -146,7 +144,7 @@ Flow.Async =
   applicate: _applicate
   renderable: renderable
   isFuture: isFuture
-  fork: fork
+  fork: _fork
   join: _join
   pipe: pipe
   iterate: iterate

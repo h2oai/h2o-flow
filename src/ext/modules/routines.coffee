@@ -127,7 +127,7 @@ Flow.Routines = (_) ->
       .done onDone
       .fail onFail
 
-  fork: Flow.Async.fork
+  fork: (f, args...) -> Flow.Async.fork f, args
   join: (args..., go) -> Flow.Async.join args, _applicate go
   call: (go, args...) -> Flow.Async.join args, _applicate go
   apply: (go, args) -> Flow.Async.join args, go
