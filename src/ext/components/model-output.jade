@@ -4,6 +4,13 @@
     | Model
 
   div(data-bind="css:{ 'flow-unhide':isExpanded }")
+    .flow-margin-after
+      table.flow-form
+        tbody
+          tr
+            th Key
+            td(data-bind='text:key')
+      
     .flow-right.flow-margin-after 
       // ko ifnot:isExpanded
       button.flow-button(type='button' data-bind='click:toggle') Show all parameters

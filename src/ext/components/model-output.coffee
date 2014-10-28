@@ -10,6 +10,7 @@ H2O.ModelOutput = (_, _model) ->
   toggle = ->
     _isExpanded not _isExpanded()
 
+  key: _model.key
   inputParameters: _inputParameters
   isExpanded: _isExpanded
   toggle: toggle
