@@ -1,10 +1,27 @@
+_menu =
+  importFiles:
+    description: 'Import file(s) into H<sub>2</sub>O'
+    icon: 'files-o'
+  getFrames:
+    description: 'Get a list of frames in H<sub>2</sub>O'
+    icon: 'database'
+  getModels:
+    description: 'Get a list of models in H<sub>2</sub>O'
+    icon: 'cubes'
+  getJobs:
+    description: 'Get a list of jobs running in H<sub>2</sub>O'
+    icon: 'bolt'
+  buildModel:
+    description: 'Build a model'
+    icon: 'cube'
+
 H2O.Routines = (_) ->
 
   renderable = Flow.Async.renderable
 
-  bailout = ->
+  proceed = (func, args) ->
     renderable Flow.Async.noop, (ignore, go) ->
-      go null, Flow.NoAssistView _
+      go null, apply func, null, [_].concat args or []
 
   form = (controls, go) ->
     go null, signals controls or []
@@ -16,35 +33,9 @@ H2O.Routines = (_) ->
   for name, f of Flow.Gui
     gui[name] = f
 
-  _flowMenuItems =
-    importFiles:
-      description: 'Import file(s) into H<sub>2</sub>O'
-      icon: 'files-o'
-    getFrames:
-      description: 'Get a list of frames in H<sub>2</sub>O'
-      icon: 'database'
-    getModels:
-      description: 'Get a list of models in H<sub>2</sub>O'
-      icon: 'cubes'
-    getJobs:
-      description: 'Get a list of jobs running in H<sub>2</sub>O'
-      icon: 'bolt'
-    buildModel:
-      description: 'Build a model'
-      icon: 'cube'
+  menu = -> proceed H2O.Menu, [ _menu ]
 
-  menu = ->
-    getMenu = (go) -> go null, _flowMenuItems
-    renderable getMenu, (items, go) ->
-      go null, H2O.Menu _, items
-
-  help = ->
-    renderable Flow.Async.noop, (ignore, go) ->
-      go null, 
-        executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
-        executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
-        template: 'flow-help'
-  
+  help = -> proceed H2O.Help
 
   getFrames = ->
     renderable _.requestFrames, (frames, go) ->
@@ -56,7 +47,7 @@ H2O.Routines = (_) ->
         renderable _.requestFrame, key, (frame, go) ->
           go null, H2O.FrameOutput _, frame
       else
-        bailout()
+        assist getFrame
 
   getModels = ->
     renderable _.requestModels, (models, go) ->
@@ -68,7 +59,7 @@ H2O.Routines = (_) ->
         renderable _.requestModel, key, (model, go) ->
           go null, H2O.ModelOutput _, model
       else
-        bailout()
+        assist getModel
 
   getJobs = ->
     renderable _.requestJobs, (jobs, go) ->
@@ -83,9 +74,9 @@ H2O.Routines = (_) ->
         if arg.key?
           getJob arg.key
         else
-          bailout()
+          assist getJob
       else
-        bailout()
+        assist getJob
 
   importFiles = (paths) ->
     switch typeOf paths
@@ -93,8 +84,7 @@ H2O.Routines = (_) ->
         renderable _.requestImportFiles, paths, (importResults, go) ->
           go null, H2O.ImportFilesOutput _, importResults
       else
-        renderable Flow.Async.noop, (ignore, go) ->
-          go null, H2O.ImportFilesInput _
+        assist importFiles
 
   setupParse = (sourceKeys) ->
     switch typeOf sourceKeys
@@ -102,7 +92,7 @@ H2O.Routines = (_) ->
         renderable _.requestParseSetup, sourceKeys, (parseSetupResults, go) ->
           go null, H2O.SetupParseOutput _, parseSetupResults
       else
-        bailout()
+        assist setupParse
 
   parseRaw = (opts) -> #XXX review args
     #XXX validation
@@ -122,11 +112,10 @@ H2O.Routines = (_) ->
 
   buildModel = (algo, opts) ->
     if algo and opts and keys(opts).length > 1
-      renderable _.requestModelBuild, algo, opts, (modelBuildResult, go) ->
-        go null, H2O.JobOutput _, head modelBuildResult.jobs
+      renderable _.requestModelBuild, algo, opts, (result, go) ->
+        go null, H2O.JobOutput _, head result.jobs
     else
-      renderable Flow.Async.noop, (ignore, go) ->
-        go null, H2O.ModelInput _, algo, opts
+      assist buildModel, algo, opts
 
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status
@@ -135,6 +124,15 @@ H2O.Routines = (_) ->
     $.getScript path
       .done onDone
       .fail onFail
+
+  assist = (func, args...) ->
+    switch func
+      when importFiles
+        proceed H2O.ImportFilesInput
+      when buildModel
+        proceed H2O.ModelInput, args
+      else
+        proceed Flow.NoAssistView
 
   fork: (f, args...) -> Flow.Async.fork f, args
   join: (args..., go) -> Flow.Async.join args, _applicate go
@@ -148,7 +146,6 @@ H2O.Routines = (_) ->
   react: react
   lift: lift
   merge: merge
-  menu: menu
   getJobs: getJobs
   getJob: getJob
   importFiles: importFiles
@@ -161,5 +158,7 @@ H2O.Routines = (_) ->
   getModel: getModel
   gui: gui
   loadScript: loadScript
+  assist: assist
+  menu: menu
   help: help
 
