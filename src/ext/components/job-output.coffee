@@ -20,7 +20,7 @@ getJobOutputStatusColor = (status) ->
 getJobProgressPercent = (progress) ->
   "#{Math.ceil 100 * progress}%"
 
-Flow.JobOutput = (_, _job) ->
+H2O.JobOutput = (_, _job) ->
   _isBusy = signal no
   _isLive = signal no
 

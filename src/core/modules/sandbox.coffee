@@ -1,5 +1,5 @@
-Flow.Sandbox = (_) ->
+Flow.Sandbox = (_, routines) ->
+  routines: routines 
   context: {}
   results: {}
-  routines: Flow.Routines _
 

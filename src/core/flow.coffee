@@ -12,7 +12,9 @@
 
 if window?.$?
   $ ->
-    window.flow = flow = Flow.Application do Flow.ApplicationContext
-    ko.applyBindings flow
-    flow.context.ready()
+    context = {}
+    window.flow = Flow.Application context, H2O.Routines
+    H2O.Application context
+    ko.applyBindings window.flow
+    context.ready()
   

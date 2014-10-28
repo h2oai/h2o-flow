@@ -98,26 +98,6 @@ Flow.Dataflow = do ->
 
   createSignals = (array) -> createObservableArray array or []
 
-  createBoard = (sources, parent=null) ->
-    context = root: null, parent: null
-
-    if parent
-      console.assert isDefined parent.root
-      context.root = parent.root
-      context.parent = parent
-    else
-      # This is the root
-      context.root = context.parent = context
-
-    for name, source of sources
-      console.assert isFunction source
-      console.assert not(name of context)
-
-      #TODO Policy injection for debugging
-      context[name] = source
-
-    context
-
   _link = (source, func) ->
     console.assert isFunction source, '[signal] is not a function'
     console.assert isFunction source.subscribe, '[signal] does not have a [dispose] method'
@@ -168,7 +148,6 @@ Flow.Dataflow = do ->
   signal: createSignal
   signals: createSignals
   isSignal: _isSignal
-  board: createBoard
   link: _link
   unlink: _unlink
   act: _act

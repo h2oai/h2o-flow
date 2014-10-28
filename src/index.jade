@@ -41,9 +41,6 @@ html(lang='en')
     //- Core Templates
     //-
 
-    script(type="text/html" id="flow-help")
-      include core/components/help.jade
-
     script(type="text/html" id="flow-keyboard-shortcut-table")
       include core/components/keyboard-help-table.jade
 
@@ -89,9 +86,6 @@ html(lang='en')
     script(type="text/html" id="flow-dom")
       include core/components/dom.jade
 
-    script(type="text/html" id="flow-menu")
-      include core/components/menu.jade
-
     script(type="text/html" id="flow-no-assist-view")
       include core/components/no-assist.jade
 
@@ -135,6 +129,12 @@ html(lang='en')
     //- H2O Extension Templates
     //-
         
+    script(type="text/html" id="flow-help")
+      include ext/components/help.jade
+
+    script(type="text/html" id="flow-menu")
+      include ext/components/menu.jade
+
     script(type="text/html" id="flow-parse-raw-input")
       include ext/components/parse-input.jade
 

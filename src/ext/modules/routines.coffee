@@ -1,4 +1,4 @@
-Flow.Routines = (_) ->
+H2O.Routines = (_) ->
 
   renderable = Flow.Async.renderable
 
@@ -36,7 +36,7 @@ Flow.Routines = (_) ->
   menu = ->
     getMenu = (go) -> go null, _flowMenuItems
     renderable getMenu, (items, go) ->
-      go null, Flow.Menu _, items
+      go null, H2O.Menu _, items
 
   help = ->
     renderable Flow.Async.noop, (ignore, go) ->
@@ -48,37 +48,37 @@ Flow.Routines = (_) ->
 
   getFrames = ->
     renderable _.requestFrames, (frames, go) ->
-      go null, Flow.FramesOutput _, frames
+      go null, H2O.FramesOutput _, frames
 
   getFrame = (key) ->
     switch typeOf key
       when 'String'
         renderable _.requestFrame, key, (frame, go) ->
-          go null, Flow.FrameOutput _, frame
+          go null, H2O.FrameOutput _, frame
       else
         bailout()
 
   getModels = ->
     renderable _.requestModels, (models, go) ->
-      go null, Flow.ModelsOutput _, models
+      go null, H2O.ModelsOutput _, models
 
   getModel = (key) ->
     switch typeOf key
       when 'String'
         renderable _.requestModel, key, (model, go) ->
-          go null, Flow.ModelOutput _, model
+          go null, H2O.ModelOutput _, model
       else
         bailout()
 
   getJobs = ->
     renderable _.requestJobs, (jobs, go) ->
-      go null, Flow.JobsOutput _, jobs    
+      go null, H2O.JobsOutput _, jobs    
 
   getJob = (arg) ->
     switch typeOf arg
       when 'String'
         renderable _.requestJob, arg, (job, go) ->
-          go null, Flow.JobOutput _, job
+          go null, H2O.JobOutput _, job
       when 'Object'
         if arg.key?
           getJob arg.key
@@ -91,16 +91,16 @@ Flow.Routines = (_) ->
     switch typeOf paths
       when 'Array'
         renderable _.requestImportFiles, paths, (importResults, go) ->
-          go null, Flow.ImportFilesOutput _, importResults
+          go null, H2O.ImportFilesOutput _, importResults
       else
         renderable Flow.Async.noop, (ignore, go) ->
-          go null, Flow.ImportFilesInput _
+          go null, H2O.ImportFilesInput _
 
   setupParse = (sourceKeys) ->
     switch typeOf sourceKeys
       when 'Array'
         renderable _.requestParseSetup, sourceKeys, (parseSetupResults, go) ->
-          go null, Flow.SetupParseOutput _, parseSetupResults
+          go null, H2O.SetupParseOutput _, parseSetupResults
       else
         bailout()
 
@@ -118,15 +118,15 @@ Flow.Routines = (_) ->
     checkHeader = opts.checkHeader
 
     renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, (parseResult, go) ->
-      go null, Flow.ParseOutput _, parseResult
+      go null, H2O.ParseOutput _, parseResult
 
   buildModel = (algo, opts) ->
     if algo and opts and keys(opts).length > 1
       renderable _.requestModelBuild, algo, opts, (modelBuildResult, go) ->
-        go null, Flow.JobOutput _, head modelBuildResult.jobs
+        go null, H2O.JobOutput _, head modelBuildResult.jobs
     else
       renderable Flow.Async.noop, (ignore, go) ->
-        go null, Flow.ModelInput _, algo, opts
+        go null, H2O.ModelInput _, algo, opts
 
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status

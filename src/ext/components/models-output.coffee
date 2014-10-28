@@ -1,4 +1,4 @@
-Flow.ModelsOutput = (_, _models) ->
+H2O.ModelsOutput = (_, _models) ->
   createModelView = (model) ->
     key: model.key
     clone: ->

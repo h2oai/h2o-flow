@@ -1,4 +1,4 @@
-Flow.ImportFilesOutput = (_, _importResults) ->
+H2O.ImportFilesOutput = (_, _importResults) ->
   _allKeys = flatten compact map _importResults, ( [ error, result ] ) ->
     if error then null else result.keys
   _canParse = _allKeys.length > 0

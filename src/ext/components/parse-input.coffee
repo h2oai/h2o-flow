@@ -51,7 +51,7 @@ parseDelimiters = do ->
 
   concat whitespaceDelimiters, characterDelimiters, otherDelimiters
 
-Flow.SetupParseOutput = (_, _result) ->
+H2O.SetupParseOutput = (_, _result) ->
   _sourceKeys = map _result.srcs, (src) -> src.name
   _parserType =  signal find parserTypes, (parserType) -> parserType.type is _result.pType
   _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 

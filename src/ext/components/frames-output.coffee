@@ -1,4 +1,4 @@
-Flow.FramesOutput = (_, _frames) ->
+H2O.FramesOutput = (_, _frames) ->
   toSize = (bytes) ->
     sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
     return '0 Byte' if bytes is 0

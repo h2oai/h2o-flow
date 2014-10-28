@@ -25,7 +25,7 @@ formatReal = do ->
   (precision, value) ->
     (getFormatFunction precision) value
 
-Flow.FrameOutput = (_, _frame) ->
+H2O.FrameOutput = (_, _frame) ->
   createMinMaxRow = (attribute, columns) ->
     map columns, (column) ->
       switch column.type

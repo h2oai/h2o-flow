@@ -1,4 +1,4 @@
-Flow.JobsOutput = (_, jobs) ->
+H2O.JobsOutput = (_, jobs) ->
   _jobViews = signals []
   _hasJobViews = lift _jobViews, (jobViews) -> jobViews.length > 0
   _isLive = signal no

@@ -1,4 +1,4 @@
-Flow.ImportFilesInput = (_) ->
+H2O.ImportFilesInput = (_) ->
   #
   # Search files/dirs
   #

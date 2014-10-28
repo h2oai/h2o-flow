@@ -81,7 +81,7 @@ gulp.task 'build-scripts', ->
     .pipe coffee bare: no
     .pipe concat 'flow.js'
     .pipe expand 'shorthand.yml'
-    .pipe header '"use strict";(function(){ var lodash = window._; window.Flow={};'
+    .pipe header '"use strict";(function(){ var lodash = window._; window.Flow={}; window.H2O={};'
     .pipe footer '}).call(this);'
     .pipe gulp.dest config.dir.deploy + '/js/'
 
@@ -90,7 +90,7 @@ gulp.task 'build-tests', ->
     .pipe coffee bare: no
     .pipe concat 'flow-tests.js'
     .pipe expand 'shorthand.yml'
-    .pipe header '"use strict";(function(){ var lodash = require(\'lodash\'); var test = require(\'tape\'); var Flow={};'
+    .pipe header '"use strict";(function(){ var lodash = require(\'lodash\'); var test = require(\'tape\'); var Flow={}; var H2O={};'
     .pipe footer '}).call(this);'
     .pipe gulp.dest './build/js/'
 

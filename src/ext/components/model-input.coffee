@@ -75,7 +75,7 @@ createControlFromParameter = (parameter) ->
 findParameter = (parameters, name) ->
   find parameters, (parameter) -> parameter.name is name
 
-Flow.ModelBuilderForm = (_, _algorithm, _parameters) ->
+H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   _exception = signal null
 
   _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
@@ -147,7 +147,7 @@ Flow.ModelBuilderForm = (_, _algorithm, _parameters) ->
   parameterTemplateOf: parameterTemplateOf
   createModel: createModel
 
-Flow.ModelInput = (_, _algo, _opts) ->
+H2O.ModelInput = (_, _algo, _opts) ->
   _exception = signal null
   _algorithms = [ 'kmeans', 'deeplearning', 'glm', 'gbm' ]
   _algorithm = signal _algo
@@ -201,7 +201,7 @@ Flow.ModelInput = (_, _algo, _opts) ->
           else
             parameters = result.model_builders[algorithm].parameters
             populateFramesAndColumns frameKey, algorithm, parameters, ->
-              _modelForm Flow.ModelBuilderForm _, algorithm, parameters
+              _modelForm H2O.ModelBuilderForm _, algorithm, parameters
       else
         _modelForm null
 

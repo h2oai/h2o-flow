@@ -1,11 +1,12 @@
-Flow.Application = (_) ->
-  _sandbox = Flow.Sandbox _
+Flow.Application = (_, routines) ->
+  Flow.ApplicationContext _
+  _routines = routines _
+  _sandbox = Flow.Sandbox _, _routines
+  #XXX support external renderers
   _renderers = Flow.Renderers _, _sandbox
-  _repl = Flow.Notebook _, _renderers
-
-  Flow.H2O _
+  _notebook = Flow.Notebook _, _renderers
   
   context: _
   sandbox: _sandbox
-  view: _repl
+  view: _notebook
 

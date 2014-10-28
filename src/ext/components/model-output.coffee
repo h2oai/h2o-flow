@@ -1,4 +1,4 @@
-Flow.ModelOutput = (_, _model) ->
+H2O.ModelOutput = (_, _model) ->
   model: _model
   template: 'flow-model-output'
 
