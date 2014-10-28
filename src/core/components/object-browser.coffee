@@ -4,44 +4,35 @@ isExpandable = (type) ->
       no
     else
       yes
-  
-isPrimitive = (type) ->
-  switch type
-    when 'null', 'undefined', 'Boolean', 'String', 'Number', 'Date', 'RegExp'
-      yes
-    else
-      no
 
 previewArray = (array) ->
   ellipsis = if array.length > 5 then ', ...' else ''
-  preview = for element in head array, 5
-    if isPrimitive type = typeOf element then element else type
-  "[#{preview.join ', '}#{ellipsis}]"
+  previews = for element in head array, 5
+    preview element
+  "[#{previews.join ', '}#{ellipsis}]"
 
 previewObject = (object) ->
   count = 0
   previews = []
   ellipsis = ''
   for key, value of object
-    valueType = typeOf value
-    previews.push "#{key}: #{if isPrimitive valueType then value else valueType}"
+    previews.push "#{key}: #{preview value}"
     if ++count is 5
       ellipsis = ', ...'
       break 
   "{#{previews.join ', '}#{ellipsis}}" 
 
-preview = (element) ->
+preview = (element, recurse=no) ->
   type = typeOf element
-  if isPrimitive type
-    element
-  else
-    switch type
-      when 'Array'
-        previewArray element
-      when 'Function', 'Arguments'
-        type
-      else
-        previewObject element
+  switch type
+    when 'Boolean', 'String', 'Number', 'Date', 'RegExp'
+      element
+    when 'undefined', 'null', 'Function', 'Arguments'
+      type
+    when 'Array'
+      if recurse then previewArray element else type
+    else
+      if recurse then previewObject element else type
 
 #TODO slice large arrays
 Flow.ObjectBrowserElement = (key, object) ->
@@ -59,7 +50,7 @@ Flow.ObjectBrowserElement = (key, object) ->
     _isExpanded not _isExpanded()
 
   key: key
-  preview: preview object
+  preview: preview object, yes
   toggle: toggle
   expansions: _expansions
   isExpanded: _isExpanded
