@@ -28,13 +28,7 @@ html(lang='en')
     //- include repl
 
     // ko with:view
-    include core/components/navigation.jade
-
-    .container-fluid
-      .flow-repl(data-bind='template:{ name:templateOf, foreach:cells }')
-
-    include core/components/keyboard-help-dialog.jade    
-
+    include core/components/notebook.jade    
     // /ko
 
     //- 
