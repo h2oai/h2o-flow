@@ -19,10 +19,10 @@
       tr
         th.flow-narrow Destination Key
         td.flow-wide
-          // ko ifnot:kind
+          // ko ifnot:canInspect
           span(data-bind='text:destinationKey')
           // /ko
-          // ko if:kind
+          // ko if:canInspect
           .flow-hint
             i.fa.fa-key
             a(href='#' data-bind='text:destinationKey, click:inspect')

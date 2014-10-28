@@ -440,7 +440,9 @@ Flow.Notebook = (_, _renderers) ->
 
   link _.ready, initialize
 
+  #XXX externalize
   executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
+  #XXX externalize
   executeMenu: -> _.insertAndExecuteCell 'cs', 'menu'
   menus: _menus
   toolbar: _toolbar

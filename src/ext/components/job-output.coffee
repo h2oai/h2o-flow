@@ -32,7 +32,7 @@ H2O.JobOutput = (_, _job) ->
   _status = signal null
   _statusColor = signal null
   _exception = signal null
-  _kind = signal null
+  _canInspect = signal no
 
   isJobRunning = (job) ->
     job.status is 'CREATED' or job.status is 'RUNNING'
@@ -43,6 +43,7 @@ H2O.JobOutput = (_, _job) ->
     _status job.status
     _statusColor getJobOutputStatusColor job.status
     _exception job.exception
+    _canInspect not isJobRunning job
 
   toggleRefresh = ->
     _isLive not _isLive()
@@ -65,28 +66,27 @@ H2O.JobOutput = (_, _job) ->
     refresh() if isLive
 
   inspect = ->
-    switch _kind()
-      when 'frame'
-        _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
-      when 'model'
-        _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
+    return unless _canInspect()
+    _.requestInspect _destinationKey, (error, result) ->
+      if error
+        _exception error #XXX fixme
+      else
+        switch result.kind
+          when 'frame'
+            _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
+          when 'model'
+            _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
 
 
   initialize = (job) ->
     updateJob job
-    toggleRefresh if isJobRunning job
-
-    _.requestInspect _destinationKey, (error, result) ->
-      unless error
-        _kind result.kind
-      return
+    toggleRefresh() if isJobRunning job
 
   initialize _job
 
   key: _key
   description: _description
   destinationKey: _destinationKey
-  kind: _kind
   runTime: _runTime
   progress: _progress
   status: _status
@@ -94,6 +94,7 @@ H2O.JobOutput = (_, _job) ->
   exception: _exception
   isLive: _isLive
   toggleRefresh: toggleRefresh
+  canInspect: _canInspect
   inspect: inspect
   template: 'flow-job-output'
 
