@@ -6,6 +6,10 @@ html(lang='en')
     meta(name='viewport', content='width=device-width, initial-scale=1')
     title H2O Flow
     meta(name='description', content='H2O Flow')
+
+    //- 
+    //- Stylesheets
+    //-
     link(rel='stylesheet', href='css/flow-lib.css', type='text/css')
     link(rel='stylesheet', href='css/flow.css', type='text/css')
     link(rel='stylesheet', href='http://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600', type='text/css')
@@ -23,162 +27,10 @@ html(lang='en')
       | Please <a href="http://browsehappy.com/">upgrade your browser</a>
       | to improve your experience.
     <![endif]-->
-    
-    //- Recursively include other .jade files
-    //- include repl
 
-    // ko with:view
     include core/components/notebook.jade    
-    // /ko
 
-    //- 
-    //- Core Templates
-    //-
-
-    script(type="text/html" id="flow-keyboard-shortcut-table")
-      include core/components/keyboard-help-table.jade
-
-    script(type="text/html" id="flow-toolbar")
-      include core/components/toolbar.jade
-
-    script(type="text/html" id="flow-navbar")
-      include core/components/navbar.jade
-
-    script(type="text/html" id="flow-h1")
-      include core/components/h1.jade
-
-    script(type="text/html" id="flow-h2")
-      include core/components/h2.jade
-
-    script(type="text/html" id="flow-h3")
-      include core/components/h3.jade
-
-    script(type="text/html" id="flow-h4")
-      include core/components/h4.jade
-
-    script(type="text/html" id="flow-h5")
-      include core/components/h5.jade
-
-    script(type="text/html" id="flow-h6")
-      include core/components/h6.jade
-
-    script(type="text/html" id="flow-html")
-      include core/components/html.jade
-
-    script(type="text/html" id="flow-object")
-      include core/components/object.jade
-
-    script(type="text/html" id="flow-object-part")
-      include core/components/object-part.jade
-
-    script(type="text/html" id="flow-raw")
-      include core/components/raw.jade
-
-    script(type="text/html" id="flow-json")
-      include core/components/json.jade
-
-    script(type="text/html" id="flow-dom")
-      include core/components/dom.jade
-
-    script(type="text/html" id="flow-no-assist-view")
-      include core/components/no-assist.jade
-
-    script(type="text/html" id="flow-form-text")
-      include core/components/form-text.jade
-
-    script(type="text/html" id="flow-form-html")
-      include core/components/form-html.jade
-
-    script(type="text/html" id="flow-form-markdown")
-      include core/components/form-markdown.jade
-
-    script(type="text/html" id="flow-form-checkbox")
-      include core/components/form-checkbox.jade
-
-    script(type="text/html" id="flow-form-dropdown")
-      include core/components/form-dropdown.jade
-
-    script(type="text/html" id="flow-form-listbox")
-      include core/components/form-listbox.jade
-
-    script(type="text/html" id="flow-form-textbox")
-      include core/components/form-textbox.jade
-
-    script(type="text/html" id="flow-form-textarea")
-      include core/components/form-textarea.jade
-
-    script(type="text/html" id="flow-form-button")
-      include core/components/form-button.jade
-
-    script(type="text/html" id="flow-form")
-      include core/components/form.jade
-
-    script(type="text/html" id="flow-error")
-      include core/components/error.jade
-
-    script(type="text/html" id="flow-cell")
-      include core/components/cell.jade
-
-    //- 
-    //- H2O Extension Templates
-    //-
-        
-    script(type="text/html" id="flow-help")
-      include ext/components/help.jade
-
-    script(type="text/html" id="flow-menu")
-      include ext/components/menu.jade
-
-    script(type="text/html" id="flow-parse-raw-input")
-      include ext/components/parse-input.jade
-
-    script(type="text/html" id="flow-import-file-output")
-      include ext/components/import-file-output.jade
-
-    script(type="text/html" id="flow-model-output")
-      include ext/components/model-output.jade
-
-    script(type="text/html" id="flow-parse-output")
-      include ext/components/parse-output.jade
-
-    script(type="text/html" id="flow-import-files-output")
-      include ext/components/import-files-output.jade
-
-    script(type="text/html" id="flow-import-files")
-      include ext/components/import-files.jade
-    
-    script(type="text/html" id="flow-checkbox-model-parameter")
-      include ext/components/model-parameter-checkbox.jade
-
-    script(type="text/html" id="flow-textbox-model-parameter")
-      include ext/components/model-parameter-textbox.jade
-
-    script(type="text/html" id="flow-dropdown-model-parameter")
-      include ext/components/model-parameter-dropdown.jade
-
-    script(type="text/html" id="flow-list-model-parameter")
-      include ext/components/model-parameter-list.jade
-
-    script(type="text/html" id="flow-group-model-parameter")
-      include ext/components/model-parameter-group.jade
-
-    script(type="text/html" id="flow-models-output")
-      include ext/components/models-output.jade
-
-    script(type="text/html" id="flow-frames-output")
-      include ext/components/frames-output.jade
-
-    script(type="text/html" id="flow-model-input")
-      include ext/components/model-input.jade
-
-    script(type="text/html" id="flow-jobs-output")
-      include ext/components/jobs-output.jade
-
-    script(type="text/html" id="flow-frame-output")
-      include ext/components/frame-output.jade
-
-    script(type="text/html" id="flow-job-output")
-      include ext/components/job-output.jade
+    include ext/components/h2o.jade    
 
     //- 
     //- Scripts

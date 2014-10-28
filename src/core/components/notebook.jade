@@ -1,8 +1,98 @@
+// ko with:view
 include navigation.jade
 
 .container-fluid
   .flow-repl(data-bind='template:{ name:templateOf, foreach:cells }')
 
 include keyboard-help-dialog.jade    
+// /ko
+
+//- 
+//- Core Templates
+//-
+
+script(type="text/html" id="flow-keyboard-shortcut-table")
+  include keyboard-help-table.jade
+
+script(type="text/html" id="flow-toolbar")
+  include toolbar.jade
+
+script(type="text/html" id="flow-navbar")
+  include navbar.jade
+
+script(type="text/html" id="flow-h1")
+  include h1.jade
+
+script(type="text/html" id="flow-h2")
+  include h2.jade
+
+script(type="text/html" id="flow-h3")
+  include h3.jade
+
+script(type="text/html" id="flow-h4")
+  include h4.jade
+
+script(type="text/html" id="flow-h5")
+  include h5.jade
+
+script(type="text/html" id="flow-h6")
+  include h6.jade
+
+script(type="text/html" id="flow-html")
+  include html.jade
+
+script(type="text/html" id="flow-object")
+  include object.jade
+
+script(type="text/html" id="flow-object-part")
+  include object-part.jade
+
+script(type="text/html" id="flow-raw")
+  include raw.jade
+
+script(type="text/html" id="flow-json")
+  include json.jade
+
+script(type="text/html" id="flow-dom")
+  include dom.jade
+
+script(type="text/html" id="flow-no-assist-view")
+  include no-assist.jade
+
+script(type="text/html" id="flow-form-text")
+  include form-text.jade
+
+script(type="text/html" id="flow-form-html")
+  include form-html.jade
+
+script(type="text/html" id="flow-form-markdown")
+  include form-markdown.jade
+
+script(type="text/html" id="flow-form-checkbox")
+  include form-checkbox.jade
+
+script(type="text/html" id="flow-form-dropdown")
+  include form-dropdown.jade
+
+script(type="text/html" id="flow-form-listbox")
+  include form-listbox.jade
+
+script(type="text/html" id="flow-form-textbox")
+  include form-textbox.jade
+
+script(type="text/html" id="flow-form-textarea")
+  include form-textarea.jade
+
+script(type="text/html" id="flow-form-button")
+  include form-button.jade
+
+script(type="text/html" id="flow-form")
+  include form.jade
+
+script(type="text/html" id="flow-error")
+  include error.jade
+
+script(type="text/html" id="flow-cell")
+  include cell.jade
 
 
