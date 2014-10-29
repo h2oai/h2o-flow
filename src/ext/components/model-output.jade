@@ -3,20 +3,24 @@
     i.fa.fa-cube
     | Model
 
-  div(data-bind="css:{ 'flow-unhide':isExpanded }")
-    .flow-margin-after
-      table.flow-form
-        tbody
-          tr
-            th Key
-            td(data-bind='text:key')
+  .flow-margin-after
+    table.flow-form
+      tbody
+        tr
+          th.flow-narrow Key:
+          td.flow-wide(data-bind='text:key')
       
+  div(data-bind="css:{ 'flow-unhide':isExpanded }")
     .flow-right.flow-margin-after 
       // ko ifnot:isExpanded
-      button.flow-button(type='button' data-bind='click:toggle') Show all parameters
+      button.flow-button(type='button' data-bind='click:toggle')
+        span Show all parameters
+        i.fa.fa-angle-double-down
       // /ko
       // ko if:isExpanded
-      button.flow-button(type='button' data-bind='click:toggle') Hide unmodified parameters
+      button.flow-button(type='button' data-bind='click:toggle')
+        span Show modified parameters
+        i.fa.fa-angle-double-up
       // /ko
     table.flow-form.flow-form-ruled
       thead
@@ -31,3 +35,12 @@
           td(data-bind='text:value')
           td(data-bind='text:help')
         // /ko
+
+  table.flow-form
+    tbody
+      tr
+        th.flow-narrow Actions:
+        td.flow-wide 
+          button.flow-button(type='button' data-bind="click:cloneModel")
+            i.fa.fa-copy
+            | Clone this model&hellip;

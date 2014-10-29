@@ -10,9 +10,15 @@ H2O.ModelOutput = (_, _model) ->
   toggle = ->
     _isExpanded not _isExpanded()
 
+  cloneModel = ->
+    # _.insertAndExecuteCell 'cs', 'assist buildModel, 
+    alert 'Not implemented'
+
+
   key: _model.key
   inputParameters: _inputParameters
   isExpanded: _isExpanded
   toggle: toggle
+  cloneModel: cloneModel
   template: 'flow-model-output'
 
