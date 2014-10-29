@@ -1,62 +1,60 @@
-createTextboxControl = (parameter) ->
-  value = signal parameter.actual_value
+createControl = (kind, parameter) ->
+  _hasError = signal no
+  _hasWarning = signal no
+  _hasInfo = signal no
+  _message = signal ''
+  _hasMessage = lift _message, (message) -> if message then yes else no
 
-  kind: 'textbox'
+  kind: kind
   name: parameter.name
   label: parameter.label
   description: parameter.help
   required: parameter.required
-  value: value
-  defaultValue: parameter.default_value
-  help: signal 'Help goes here.'
-  isInvalid: signal no
+  hasError: _hasError
+  hasWarning: _hasWarning
+  hasInfo: _hasInfo
+  message: _message
+  hasMessage: _hasMessage
+
+createTextboxControl = (parameter) ->
+  _value = signal parameter.actual_value
+
+  control = createControl 'textbox', parameter
+  control.value = _value
+  control.defaultValue = parameter.default_value
+  control
 
 createDropdownControl = (parameter) ->
-  value = signal parameter.actual_value
+  _value = signal parameter.actual_value
 
-  kind: 'dropdown'
-  name: parameter.name
-  label: parameter.label
-  description: parameter.help
-  required: parameter.required
-  values: signals parameter.values
-  value: value
-  defaultValue: parameter.default_value
-  help: signal 'Help goes here.'
-  isInvalid: signal no
+  control = createControl 'dropdown', parameter
+  control.values = signals parameter.values
+  control.value = _value
+  control.defaultValue = parameter.default_value
+  control
 
 createListControl = (parameter) ->
-  value = signal parameter.actual_value or []
-  selection = lift value, (items) ->
+  _value = signal parameter.actual_value or []
+  _selection = lift _value, (items) ->
     caption = "#{Flow.Util.describeCount items.length, 'column'} selected"
     caption += ": #{items.join ', '}" if items.length > 0
     "(#{caption})"
 
-  kind: 'list'
-  name: parameter.name
-  label: parameter.label
-  description: parameter.help
-  required: parameter.required
-  values: signals parameter.values
-  value: value
-  selection: selection
-  defaultValue: parameter.default_value
-  help: signal 'Help goes here.'
-  isInvalid: signal no
+  control = createControl 'list', parameter
+  control.values = signals parameter.values
+  control.value = _value
+  control.selection = _selection
+  control.defaultValue = parameter.default_value
+  control
 
 createCheckboxControl = (parameter) ->
-  value = signal parameter.actual_value is 'true' #FIXME
+  _value = signal parameter.actual_value is 'true' #FIXME
 
-  clientId: do uniqueId
-  kind: 'checkbox'
-  name: parameter.name
-  label: parameter.label
-  description: parameter.help
-  required: parameter.required
-  value: value
-  defaultValue: parameter.default_value is 'true'
-  help: signal 'Help goes here.'
-  isInvalid: signal no
+  control = createControl 'checkbox', parameter
+  control.clientId = do uniqueId
+  control.value = _value
+  control.defaultValue = parameter.default_value is 'true'
+  control
 
 createControlFromParameter = (parameter) ->
   switch parameter.type
@@ -120,12 +118,12 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                   ignoredColumnsParameter.values columnLabels
           return
 
-  createModel = ->
-    _exception null
+  collectParameters = (collectAll=no) ->
     parameters = {}
     for controls in _controls
       for control in controls
-        if control.defaultValue isnt value = control.value()
+        value = control.value()
+        if collectAll or (control.defaultValue isnt value)
           switch control.kind
             when 'dropdown'
               if value
@@ -135,8 +133,19 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                 parameters[control.name] = "[#{value.join ','}]"
             else
               parameters[control.name] = value
-    
-    _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
+    parameters
+
+  createModel = ->
+    _exception null
+    parameters = collectParameters yes
+    _.requestModelInputValidation _algorithm, parameters, (error, result) ->
+      debug error
+      debug result
+      return
+      if error
+      else
+        _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
+
     return
     _.requestModelBuild _algorithm, parameters, (error, result) ->
       if error
@@ -173,23 +182,6 @@ H2O.ModelInput = (_, _algo, _opts) ->
             frameKey = trainingFrameParameter.actual_value
 
         return go()
-
-  # If a source model is specified, we already know the algo, so skip algo selection
-#     if _sourceModel
-#       parameters = _sourceModel.parameters
-#       trainingFrameParameter = findParameter parameters, 'training_frame'
-# 
-#       #TODO INSANE SUPERHACK
-#       hasRateAnnealing = find _sourceModel.parameters, (parameter) -> parameter.name is 'rate_annealing'
-#       algorithm = if hasRateAnnealing
-#           find algorithms, (algorithm) -> algorithm is 'deeplearning'
-#         else
-#           find algorithms, (algorithm) -> algorithm is 'kmeans'
-# 
-#       populateFramesAndColumns _frameKey, algorithm, parameters, ->
-#         _modelForm Flow.ModelBuilderForm _, algorithm, parameters
-# 
-#     else
 
   do ->
     frameKey = _opts?.training_frame

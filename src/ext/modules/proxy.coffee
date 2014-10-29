@@ -139,6 +139,9 @@ H2O.Proxy = (_) ->
   requestModelBuilders = (algo, go) ->
     request "/2/ModelBuilders.json/#{algo}", go
 
+  requestModelInputValidation = (algo, parameters, go) ->
+    post "/2/ModelBuilders.json/#{algo}/parameters", parameters, go
+
   requestModelBuild = (algo, parameters, go) ->
     post "/2/ModelBuilders.json/#{algo}", parameters, go
 
@@ -160,5 +163,6 @@ H2O.Proxy = (_) ->
   link _.requestModel, requestModel
   link _.requestModelBuilders, requestModelBuilders
   link _.requestModelBuild, requestModelBuild
+  link _.requestModelInputValidation, requestModelInputValidation
   link _.requestModelMetrics, requestModelMetrics
 

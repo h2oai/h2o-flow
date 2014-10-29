@@ -1,4 +1,4 @@
-tr(data-bind="css:{'bg-danger':isInvalid}")
+tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}")
   th
     label(data-bind='text:label')
   td
@@ -7,4 +7,7 @@ tr(data-bind="css:{'bg-danger':isInvalid}")
     span(data-bind='text:description')
     br
     span(data-bind='text:selection')
+tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage")
+  th &nbsp;
+  td(colspan='2' data-bind='text:message')
 
