@@ -137,19 +137,20 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
   createModel = ->
     _exception null
-    parameters = collectParameters yes
-    _.requestModelInputValidation _algorithm, parameters, (error, result) ->
-      debug error
-      debug result
-      return
-      if error
-      else
-        _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
+    
+#     parameters = collectParameters yes
+#     _.requestModelInputValidation _algorithm, parameters, (error, result) ->
+#       debug error
+#       debug result
+#       return
+#       if error
+#       else
+#         _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
+# 
+#     return
 
-    return
-    _.requestModelBuild _algorithm, parameters, (error, result) ->
-      if error
-        _exception Flow.Exception error.data.errmsg, error
+    parameters = collectParameters no
+    _.insertAndExecuteCell 'cs', "buildModel 'kmeans', #{stringify parameters}"
 
   form: _form
   exception: _exception
