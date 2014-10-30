@@ -16,13 +16,15 @@
   table.flow-form
     thead
       tr
+        th(width='1') &nbsp;
         th Key
         th.flow-right  Actions
     tbody
       // ko foreach:modelViews
       tr
-        td.flow-hint
+        td
           i.fa.fa-cube
+        td
           a(href='#' data-bind='text:key, click:inspect')
         td.flow-right 
           button.flow-button(type='button' data-bind='click:clone')
