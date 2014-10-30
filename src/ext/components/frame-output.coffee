@@ -146,7 +146,7 @@ H2O.FrameOutput = (_, _frame) ->
     dataRows: createDataRows offset, rowCount, columns
 
   createModel = ->
-    _.insertAndExecuteCell 'cs', "buildModel null, training_frame: #{stringify _frame.key.name}"
+    _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify _frame.key.name}"
 
   data: _frame
   key: _frame.key.name
