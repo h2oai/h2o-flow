@@ -1,37 +1,19 @@
 H2O.Proxy = (_) ->
-  createResponse = (status, data, xhr) ->
-    status: status, data: data, xhr: xhr
-
-  handleResponse = (go, jqxhr) ->
-    jqxhr
+  doGet = (path, go) ->
+    $.getJSON(path)
       .done (data, status, xhr) ->
-        go null, createResponse status, data, xhr
+        go null, data
       .fail (xhr, status, error) ->
-        go createResponse status, xhr.responseJSON, xhr
+        message = xhr.responseJSON.errmsg or 'Unknown error'
+        go new Flow.Error message, new Flow.Error "Error calling GET #{path}"
 
-  h2oGet = (path, go) ->
-    handleResponse go, $.getJSON path
-
-  h2oPost = (path, opts, go) ->
-    handleResponse go, $.post path, opts
-
-  processResponse = (go) ->
-    (error, result) ->
-      if error
-        #TODO error logging / retries, etc.
-        go error, result
-      else
-        if result.data.response?.status is 'error'
-          go result.data.error, result.data
-        else
-          go error, result.data
-
-  request = (path, go) ->
-    h2oGet path, processResponse go
-
-  post = (path, opts, go) ->
-    h2oPost path, opts, processResponse go
-
+  doPost = (path, opts, go) ->
+    $.post(path, opts)
+      .done (data, status, xhr) ->
+        go null, data
+      .fail (xhr, status, error) ->
+        message = xhr.responseJSON.errmsg or 'Unknown error'
+        go new Flow.Error message, new Flow.Error "Error calling POST #{path} with opts #{JSON.stringify opts}"
   mapWithKey = (obj, f) ->
     result = []
     for key, value of obj
@@ -46,7 +28,7 @@ H2O.Proxy = (_) ->
       path
 
   requestWithOpts = (path, opts, go) ->
-    request (composePath path, opts), go
+    doGet (composePath path, opts), go
 
   encodeArray = (array) -> "[#{join (map array, encodeURIComponent), ','}]"
 
@@ -55,24 +37,24 @@ H2O.Proxy = (_) ->
     requestWithOpts '/Inspect.json', opts, go
 
   requestFrames = (go) ->
-    request '/3/Frames.json', (error, result) ->
+    doGet '/3/Frames.json', (error, result) ->
       if error
         go error
       else
         go null, result.frames
 
   requestFrame = (key, go) ->
-    request "/3/Frames/#{encodeURIComponent key}", (error, result) ->
+    doGet "/3/Frames/#{encodeURIComponent key}", (error, result) ->
       if error
         go error
       else
         go null, head result.frames
 
   requestColumnSummary = (key, column, go) ->
-    request "/3/Frames/#{encodeURIComponent key}/columns/#{column}/summary", go
+    doGet "/3/Frames/#{encodeURIComponent key}/columns/#{column}/summary", go
 
   requestJobs = (go) ->
-    request '/Jobs.json', (error, result) ->
+    doGet '/Jobs.json', (error, result) ->
       if error
         go new Flow.Error 'Error fetching jobs', error
       else
@@ -81,7 +63,7 @@ H2O.Proxy = (_) ->
   requestJob = (key, go) ->
     #opts = key: encodeURIComponent key
     #requestWithOpts '/Job.json', opts, go
-    request "/Jobs.json/#{encodeURIComponent key}", (error, result) ->
+    doGet "/Jobs.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go new Flow.Error "Error fetching job '#{key}'", error
       else
@@ -130,23 +112,23 @@ H2O.Proxy = (_) ->
         go error, result.models
 
   requestModel = (key, go) ->
-    request "/3/Models.json/#{encodeURIComponent key}", (error, result) ->
+    doGet "/3/Models.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go error, result
       else
         go error, head result.models
 
   requestModelBuilders = (algo, go) ->
-    request "/2/ModelBuilders.json/#{algo}", go
+    doGet "/2/ModelBuilders.json/#{algo}", go
 
   requestModelInputValidation = (algo, parameters, go) ->
-    post "/2/ModelBuilders.json/#{algo}/parameters", parameters, go
+    doPost "/2/ModelBuilders.json/#{algo}/parameters", parameters, go
 
   requestModelBuild = (algo, parameters, go) ->
-    post "/2/ModelBuilders.json/#{algo}", parameters, go
+    doPost "/2/ModelBuilders.json/#{algo}", parameters, go
 
   requestModelMetrics = (modelKey, frameKey, go) ->
-    post "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, go
+    doPost "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, go
 
   link _.requestInspect, requestInspect
   link _.requestFrames, requestFrames
