@@ -1,11 +1,14 @@
-Flow.Exception = (message, cause) -> 
-  if cause and not cause.stack
-    cause.stack = if stack = printStackTrace()
-      # lop off exception() and printStackTrace() calls from stack
-      (if stack.length > 3 then stack.slice 3 else stack).join '\n'
-    else
-      null
-    cause.stack = stack
+traceCauses = (error, causes) ->
+  if '[object Error]' is Object::toString.call error
+    causes.push error.message
+    traceCauses error.cause if error.cause
+  return causes
+
+Flow.Failure = (error) ->
+  causes = traceCauses error, []
+  message = shift causes
+
   message: message
-  cause: cause
+  stack: error.stack
+  causes: causes
 
