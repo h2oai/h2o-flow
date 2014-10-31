@@ -4,7 +4,12 @@ H2O.Proxy = (_) ->
       .done (data, status, xhr) ->
         go null, data
       .fail (xhr, status, error) ->
-        message = xhr.responseJSON?.errmsg or 'Unknown error'
+        message = if xhr.responseJSON?.errmsg
+          xhr.responseJSON.errmsg
+        else if status is 0
+          'Could not connect to H2O'
+        else
+          'Unknown error'
         go new Flow.Error message, new Flow.Error "Error calling GET #{path}"
 
   doPost = (path, opts, go) ->
@@ -12,7 +17,12 @@ H2O.Proxy = (_) ->
       .done (data, status, xhr) ->
         go null, data
       .fail (xhr, status, error) ->
-        message = xhr.responseJSON?.errmsg or 'Unknown error'
+        message = if xhr.responseJSON?.errmsg
+          xhr.responseJSON.errmsg
+        else if status is 0
+          'Could not connect to H2O'
+        else
+          'Unknown error'
         go new Flow.Error message, new Flow.Error "Error calling POST #{path} with opts #{JSON.stringify opts}"
 
   mapWithKey = (obj, f) ->
