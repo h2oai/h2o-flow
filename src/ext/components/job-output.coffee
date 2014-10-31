@@ -53,7 +53,7 @@ H2O.JobOutput = (_, _job) ->
     _.requestJob _key, (error, job) ->
       _isBusy no
       if error
-        _exception Flow.Exception 'Error fetching jobs', error
+        _exception new Flow.Error 'Error fetching jobs', error
         _isLive no
       else
         updateJob job

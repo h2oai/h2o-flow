@@ -74,7 +74,7 @@ H2O.Proxy = (_) ->
   requestJobs = (go) ->
     request '/Jobs.json', (error, result) ->
       if error
-        go Flow.Exception 'Error fetching jobs', error
+        go new Flow.Error 'Error fetching jobs', error
       else
         go null, result.jobs 
 
@@ -83,7 +83,7 @@ H2O.Proxy = (_) ->
     #requestWithOpts '/Job.json', opts, go
     request "/Jobs.json/#{encodeURIComponent key}", (error, result) ->
       if error
-        go Flow.Exception "Error fetching job '#{key}'", error
+        go new Flow.Error "Error fetching job '#{key}'", error
       else
         go null, head result.jobs
 

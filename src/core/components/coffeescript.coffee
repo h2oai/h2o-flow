@@ -21,12 +21,12 @@ Flow.Coffeescript = (_, guid, sandbox) ->
       if ft?.isFuture
         ft (error, result) ->
           if error
-            output.error Flow.Exception 'Error evaluating cell', error
+            output.error new Flow.Error 'Error evaluating cell', error
           else
             if ft.render
               ft.render result, (error, result) ->
                 if error
-                  output.error Flow.Exception 'Error rendering output', error
+                  output.error new Flow.Error 'Error rendering output', error
                 else
                   output.data result 
             else

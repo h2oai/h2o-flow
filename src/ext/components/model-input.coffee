@@ -190,7 +190,7 @@ H2O.ModelInput = (_, _algo, _opts) ->
       if algorithm
         _.requestModelBuilders algorithm, (error, result) ->
           if error
-            _exception Flow.Exception 'Error fetching model builder', error
+            _exception new Flow.Error 'Error fetching model builder', error
           else
             parameters = result.model_builders[algorithm].parameters
             populateFramesAndColumns frameKey, algorithm, parameters, ->

@@ -91,7 +91,7 @@ _join = (args, go) ->
       return if _settled
       if error
         _settled = yes
-        go Flow.Exception "Error evaluating future[#{task.resultIndex}]", error
+        go new Flow.Error "Error evaluating future[#{task.resultIndex}]", error
       else
         _results[task.resultIndex] = result
         _actual++
