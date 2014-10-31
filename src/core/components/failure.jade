@@ -1,0 +1,16 @@
+.flow-failure
+  h4(data-bind='text:message')
+
+  // ko if: causes && causes.length
+  .flow-margin-after 
+    // ko foreach: causes
+    p(data-bind='text:$data')
+    // /ko
+  // /ko
+
+  // ko if:stack
+  a.flow-small-caps.flow-small(href='#' data-bind='click:toggleStack') Toggle stack trace
+  pre(data-bind='text:stack, visible:isStackVisible' style='overflow:auto; max-height:400px')
+  // /ko
+
+

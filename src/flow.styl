@@ -26,7 +26,7 @@ smallcaps()
   letter-spacing 1px
 
 //TODO table.table is used in frame output
-//TODO alert is used in flow-error
+//TODO alert is used in flow-failure
 
 // 
 // Bootstrap overrides
@@ -54,9 +54,9 @@ blockquote
   font-weight 300
 
 pre
-  background url(unquote('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAKElEQVQImWN89+4dAwODoKAgAwMDE5z1/v17xv///0NYUBkIS1BQEAB7Uw7Oc/qzUwAAAABJRU5ErkJggg=='))
   border none
   border-radius 0
+  background #fafafa
 
 textarea
   &:focus
@@ -306,6 +306,13 @@ table
 .flow-toolbar-button
   padding 2px 7px
   border-radius 2px
+
+//TODO move to failure.styl
+.flow-failure
+  border-top 1px dotted #ccc
+  padding 15px
+  margin 10px 0 20px 0
+  color red
 
 .twitter-typeahead
   width 97%

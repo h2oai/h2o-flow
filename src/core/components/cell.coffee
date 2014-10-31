@@ -60,10 +60,8 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
       error: (error) ->
         _hasError yes
         #XXX review
-        if error.cause?
-          _outputs.push
-            error: error
-            template: 'flow-error'
+        if error.name is 'FlowError'
+          _outputs.push Flow.Failure error
         else
           _outputs.push
             text: JSON.stringify error, null, 2

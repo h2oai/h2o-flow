@@ -4,7 +4,7 @@
     | Build a Model
 
   // ko if:parentException
-  div(data-bind="template: { name:'flow-error', data:parentException }")
+  div(data-bind="template: { name:'flow-failure', data:parentException }")
   // /ko
 
   div
@@ -15,7 +15,7 @@
   // ko with:modelForm
 
   // ko if:exception
-  div(data-bind="template: { name:'flow-error', data:exception }")
+  div(data-bind="template: { name:'flow-failure', data:exception }")
   // /ko
 
   table.flow-form(data-bind='template: { name: parameterTemplateOf, foreach:form }')

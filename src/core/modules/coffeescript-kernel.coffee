@@ -20,13 +20,13 @@ Flow.CoffeescriptKernel = do ->
     try
       go null, CoffeeScript.compile cs, bare: yes
     catch error
-      go Flow.Exception 'Error compiling coffee-script', error
+      go new Flow.Error 'Error compiling coffee-script', error
 
   parseJavascript = (js, go) ->
     try
       go null, esprima.parse js
     catch error
-      go Flow.Exception 'Error parsing javascript expression', error
+      go new Flow.Error 'Error parsing javascript expression', error
 
 
   identifyDeclarations = (node) ->
@@ -132,7 +132,7 @@ Flow.CoffeescriptKernel = do ->
         go null, rootScope, program
 
       catch error
-        go Flow.Exception 'Error parsing root scope', error
+        go new Flow.Error 'Error parsing root scope', error
 
   #TODO DO NOT call this for raw javascript:
   # Require alternate strategy: 
@@ -153,7 +153,7 @@ Flow.CoffeescriptKernel = do ->
             node.declarations = declarations
       go null, rootScope, program
     catch error
-      go Flow.Exception 'Error rewriting javascript', error
+      go new Flow.Error 'Error rewriting javascript', error
 
 
   createGlobalScope = (rootScope, routines) ->
@@ -190,28 +190,28 @@ Flow.CoffeescriptKernel = do ->
                 name: identifier.name
         go null, program
       catch error
-        go Flow.Exception 'Error rewriting javascript', error
+        go new Flow.Error 'Error rewriting javascript', error
 
 
   generateJavascript = (program, go) ->
     try
       go null, escodegen.generate program
     catch error
-      return go Flow.Exception 'Error generating javascript', error
+      return go new Flow.Error 'Error generating javascript', error
 
   compileJavascript = (js, go) ->
     try
       closure = new Function 'h2o', '_h2o_context_', '_h2o_results_', 'print', js
       go null, closure
     catch error
-      go Flow.Exception 'Error compiling javascript', error
+      go new Flow.Error 'Error compiling javascript', error
 
   executeJavascript = (sandbox, print) ->
     (closure, go) ->
       try
         go null, closure sandbox.routines, sandbox.context, sandbox.results, print
       catch error
-        go Flow.Exception 'Error executing javascript', error
+        go new Flow.Error 'Error executing javascript', error
 
   
   safetyWrapCoffeescript: safetyWrapCoffeescript
