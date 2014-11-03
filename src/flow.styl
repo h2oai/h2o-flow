@@ -248,11 +248,14 @@ table
 .flow-wide
   width 99%
 
+// TODO BUG if the .fa is the only child, both these
+//  styles get applied. Need to wrap all captions
+//  in a span for this to work correctly.
 .flow-hint
-  > .fa:first-child
-    margin-right 5px
   > .fa:last-child
     margin-left 5px
+  > .fa:first-child
+    margin-right 5px
 
 .flow-frame-output
   .flow-bg-gray

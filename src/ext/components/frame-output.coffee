@@ -94,7 +94,7 @@ H2O.FrameOutput = (_, _frame) ->
     header: "Row #{offset + index + 1}"
     cells: map columns, (column) ->
       switch column.type
-        when 'uuid','string'
+        when 'uuid', 'string'
           column.str_data[index] or '-'
         when 'enum'
           column.domain[column.data[index]]

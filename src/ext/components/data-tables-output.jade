@@ -1,0 +1,30 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-table
+    | Data
+
+  // ko ifnot:hasTables
+  blockquote No data found.
+  // /ko
+
+  // ko if:hasTables
+  table.flow-form
+    thead
+      tr
+        th(width='1') &nbsp;
+        th Name
+        th Label
+        th Description
+    tbody
+      // ko foreach:tables
+      tr
+        td
+          i.fa.fa-table
+        td
+          a(href='#' data-bind='text:name, click:inspect')
+        td(data-bind='text:label')
+        td(data-bind='text:description')
+      // /ko
+  // /ko
+  
+

@@ -28,7 +28,7 @@
 #
 
 _prototypeId = 0
-nextPrototypeName = -> "Dyna#{++_prototypeId}"
+nextPrototypeName = -> "Map#{++_prototypeId}"
 createCompiledPrototype = (attrs) ->
   params = ( "a#{i}" for i in [0 ... attrs.length] )
   inits = ( "this[#{JSON.stringify attr}]=a#{i};" for attr, i in attrs )
@@ -36,5 +36,26 @@ createCompiledPrototype = (attrs) ->
   prototypeName = nextPrototypeName()
   (new Function "function #{prototypeName}(#{params.join ','}){#{inits.join ''}} return #{prototypeName};")()
 
+createTable = (name, label, description, columns, rows) ->
+  schema = {}
+  schema[column.name] = column for column in columns
+
+  name: name
+  label: label
+  description: description
+  schema: schema
+  columns: columns
+  rows: rows
+
 Flow.Data =
+  String: 'String'
+  Integer: 'Integer'
+  Real: 'Real'
+  Date: 'Date'
+  Array: 'Array'
+  StringArray: 'Array<String>'
+  IntegerArray: 'Array<Integer>'
+  RealArray: 'Array<Real>'
+  DateArray: 'Array<Date>'
+  Table: createTable
   createCompiledPrototype: createCompiledPrototype

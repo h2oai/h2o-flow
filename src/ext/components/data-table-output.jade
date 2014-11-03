@@ -1,0 +1,22 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-table
+    span(data-bind='text:label')
+
+  table.flow-form
+    thead
+      tr
+        th(width='1') &nbsp;
+        th(width='1') Name
+        th Type
+    tbody
+      // ko foreach:columns
+      tr
+        td
+          i.fa.fa-code
+        td(data-bind='text:name')
+        td(data-bind='text:type')
+      // /ko
+
+
+

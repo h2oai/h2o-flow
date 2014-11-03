@@ -30,19 +30,162 @@ H2O.Routines = (_) ->
     Flow.Async.renderable form, controls, (form, go) ->
       go null, Flow.Form _, form
 
-  for name, f of Flow.Gui
-    gui[name] = f
+  gui[name] = f for name, f of Flow.Gui
 
   help = -> proceed H2O.Help
+
+  mixin = (raw, _tableReaders) ->
+    getTables = ->
+      (read() for name, read of _tableReaders)
+
+    getTable = (id) ->
+      if read = _tableReaders[id]
+        read()
+      else
+        undefined
+
+    raw.__flow__ =
+      getTables: getTables
+      getTable: getTable
+
+    raw
+
+  getDataTable = (id, obj) ->
+    if obj.isFuture
+      renderable obj, (obj, go) ->
+        go null, H2O.DataTableOutput _, getDataTable id, obj
+    else
+      if extension = obj.__flow__
+        if extension.getTable
+          extension.getTable id
+        else
+          undefined
+      else
+        undefined
+    
+  getDataTables = (obj) ->
+    if obj.isFuture
+      renderable obj, (obj, go) ->
+        go null, H2O.DataTablesOutput _, getDataTables obj
+    else
+      if extension = obj.__flow__
+        if extension.getTables
+          extension.getTables()
+        else
+          []
+      else
+        []
+
+  getData = (arg1, arg2) ->
+    switch arguments.length
+      when 2
+        if (isString arg1) and isObject arg2
+          getDataTable arg1, arg2
+        else
+          undefined
+      when 1
+        if isObject arg1
+          getDataTables arg1 
+        else
+          undefined
+      else
+        undefined
+
+  plot = ->
+
+  ###
+  getData = (obj, id) ->
+    if obj 
+      if obj.isFuture
+
+      else
+        if extension = obj.__flow__
+          if id
+            if extension.getTable
+              extension.getTable id
+            else
+              undefined
+          else
+            if extension.getTables
+              extension.getTables()
+            else
+              []
+        else
+          undefined
+    else
+      undefined
+    ###
+
+  extensionSchemaConfig =
+    frame:
+      columns: [
+        [ 'label', Flow.Data.String ]
+        [ 'missing', Flow.Data.Integer ]
+        [ 'zeros', Flow.Data.Integer ]
+        [ 'pinfs', Flow.Data.Integer ]
+        [ 'ninfs', Flow.Data.Integer ]
+        [ 'mins', Flow.Data.RealArray ]
+        [ 'maxs', Flow.Data.RealArray ]
+        [ 'mean', Flow.Data.Real ]
+        [ 'sigma', Flow.Data.Real ]
+        [ 'type', Flow.Data.String ]
+        [ 'domain', Flow.Data.Array ]
+        [ 'data', Flow.Data.Array ]
+        [ 'str_data', Flow.Data.Array ]
+        [ 'precision', Flow.Data.Real ]
+        [ 'bins', Flow.Data.IntegerArray ]
+        [ 'base', Flow.Data.Integer ]
+        [ 'stride', Flow.Data.Integer ]
+        [ 'pctiles', Flow.Data.RealArray ]
+      ]
+
+  extensionSchemas = {}
+  for groupName, group of extensionSchemaConfig
+    extensionSchemas[groupName] = schemas = {}
+    for schemaName, tuples of group
+      attributes = for tuple in tuples
+        [ name, type ] = tuple
+        name: name
+        type: type
+
+      schemas[schemaName] =
+        attributes: attributes
+        attributeNames: map attributes, (attribute) -> attribute.name
+        attributeMap: indexBy attributes, (attribute) -> attribute.name
+
+  extendFrame = (frame) ->
+    __getColumns = null
+    getColumns = ->
+      return __getColumns if __getColumns
+
+      schema = extensionSchemas.frame.columns
+      Row = Flow.Data.createCompiledPrototype schema.attributeNames
+      rows = for column in frame.columns
+        row = new Row()
+        row[attr] = column[attr] for attr in schema.attributeNames
+        row
+
+      __getColumns = Flow.Data.Table 'columns', 'Columns', 'A list of columns in the H2O Frame', schema.attributes, rows
+
+    mixin frame,
+      columns: getColumns
 
   getFrames = ->
     renderable _.requestFrames, (frames, go) ->
       go null, H2O.FramesOutput _, frames
 
+  requestFrame = (key, go) ->
+    _.requestFrame key, (error, frame) ->
+      if error
+        go error
+      else
+        go null, extendFrame frame
+
   getFrame = (key) ->
     switch typeOf key
       when 'String'
-        renderable _.requestFrame, key, (frame, go) ->
+        renderable requestFrame, key, (frame, go) ->
+          debug frame
           go null, H2O.FrameOutput _, frame
       else
         assist getFrame
@@ -135,11 +278,14 @@ H2O.Routines = (_) ->
         else
           proceed H2O.NoAssistView
 
+  # fork/join 
   fork: (f, args...) -> Flow.Async.fork f, args
   join: (args..., go) -> Flow.Async.join args, _applicate go
   call: (go, args...) -> Flow.Async.join args, _applicate go
   apply: (go, args) -> Flow.Async.join args, go
   isFuture: Flow.Async.isFuture
+  #
+  # Dataflow
   signal: signal
   signals: signals
   isSignal: isSignal
@@ -147,6 +293,22 @@ H2O.Routines = (_) ->
   react: react
   lift: lift
   merge: merge
+  #
+  # Generic
+  data: getData
+  plot: plot
+  #
+  # Meta
+  assist: assist
+  help: help
+  #
+  # GUI
+  gui: gui
+  #
+  # Util
+  loadScript: loadScript
+  #
+  # H2O
   getJobs: getJobs
   getJob: getJob
   importFiles: importFiles
@@ -157,8 +319,4 @@ H2O.Routines = (_) ->
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
-  gui: gui
-  loadScript: loadScript
-  assist: assist
-  help: help
 
