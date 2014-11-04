@@ -150,7 +150,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 #     return
 
     parameters = collectParameters no
-    _.insertAndExecuteCell 'cs', "buildModel 'kmeans', #{stringify parameters}"
+    _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
 
   form: _form
   exception: _exception
