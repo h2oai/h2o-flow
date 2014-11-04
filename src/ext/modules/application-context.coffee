@@ -16,4 +16,4 @@ H2O.ApplicationContext = (_) ->
   _.requestModel = do slot
   _.requestJobs = do slot
   _.requestJob = do slot
-  _.scan = do slot
+  _.describe = do slot
