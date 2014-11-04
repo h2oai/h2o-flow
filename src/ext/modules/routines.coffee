@@ -46,9 +46,9 @@ H2O.Routines = (_) ->
         (read() for name, read of _tableReaders)
     raw
 
-  getDataTable = (id, obj) ->
+  scanTable = (id, obj) ->
     if obj.isFuture
-      renderable asynchronize, getDataTable, id, obj, (table, go) ->
+      renderable asynchronize, scanTable, id, obj, (table, go) ->
         if table
           go null, H2O.DataTableOutput _, table
         else
@@ -59,9 +59,9 @@ H2O.Routines = (_) ->
       else
         undefined
 
-  getDataTables = (obj) ->
+  scanTables = (obj) ->
     if obj.isFuture
-      renderable asynchronize, getDataTables, obj, (tables, go) ->
+      renderable asynchronize, scanTables, obj, (tables, go) ->
         if tables
           go null, H2O.DataTablesOutput _, tables
         else
@@ -72,16 +72,16 @@ H2O.Routines = (_) ->
       else
         undefined
 
-  getData = (arg1, arg2) ->
+  scan = (arg1, arg2) ->
     switch arguments.length
       when 2
         if (isString arg1) and isObject arg2
-          getDataTable arg1, arg2
+          scanTable arg1, arg2
         else
           undefined
       when 1
         if isObject arg1
-          getDataTables arg1 
+          scanTables arg1 
         else
           undefined
       else
@@ -156,10 +156,72 @@ H2O.Routines = (_) ->
           inspect: ->
             _.insertAndExecuteCell 'cs', "scan 'columns', getFrame #{stringify frameKey}"
 
+    __getData = null
+    getData = ->
+      return __getData if __getData
 
+      frameColumns = frame.columns
+      columns = for column in frameColumns
+        #XXX format functions
+        switch column.type
+          when 'int'
+            name: column.label
+            type: Flow.Data.Integer
+          when 'real'
+            name: column.label
+            type: Flow.Data.Real
+          when 'enum'
+            name: column.label
+            type: Flow.Data.Enum
+            domain: column.domain
+          when 'uuid', 'string'
+            name: column.label
+            type: Flow.Data.String
+          when 'time'
+            name: column.label
+            type: Flow.Data.Date
+          else
+            throw new Error "Invalid column type #{column.type} found in frame #{frameKey}."
+      columnNames = (column.name for column in columns)
+      Row = Flow.Data.createCompiledPrototype columnNames
+      rowCount = (head frame.columns).data.length
+      rows = for i in [0 ... rowCount]
+        row = new Row()
+        for column, j in columns
+          value = frameColumns[j].data[i]
+          switch column.type
+            when Flow.Data.Integer
+              #TODO handle +-Inf
+              row[column.name] = if value is 'NaN' then null else value
+            when Flow.Data.Real
+              #TODO handle +-Inf
+              row[column.name] = if value is 'NaN' then null else value
+            when Flow.Data.Enum
+              row[column.name] = column.domain[value]
+            when Flow.Data.String
+              row[column.name] = value
+            when Flow.Data.Date
+              row[column.name] = value
+        row
+      
+      __getData = Flow.Data.Table
+        name: 'data'
+        label: 'Data'
+        description: 'A partial list of rows in the H2O Frame.'
+        columns: columns
+        rows: rows
+        meta:
+          inspect: ->
+            _.insertAndExecuteCell 'cs', "scan 'data', getFrame #{stringify frameKey}"
+
+
+    __getMins = null
+
+    __getMaxs = null
 
     mixin frame,
       columns: getColumns
+      data: getData
 
   extendColumnSummary = (frameKey, frame) ->
     __getHistogram = null
@@ -330,7 +392,7 @@ H2O.Routines = (_) ->
 
 
   link _.ready, ->
-    link _.scan, getData
+    link _.scan, scan
 
   # fork/join 
   fork: (f, args...) -> Flow.Async.fork f, args
@@ -349,7 +411,7 @@ H2O.Routines = (_) ->
   merge: merge
   #
   # Generic
-  scan: getData
+  scan: scan
   plot: plot
   #
   # Meta
