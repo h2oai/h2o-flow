@@ -108,16 +108,16 @@ H2O.Routines = (_) ->
         [ 'zeros', Flow.Data.Integer ]
         [ 'pinfs', Flow.Data.Integer ]
         [ 'ninfs', Flow.Data.Integer ]
-        [ 'mins', Flow.Data.RealArray ] # Show 1 min
-        [ 'maxs', Flow.Data.RealArray ] # Show 1 max
+        #[ 'mins', Flow.Data.RealArray ] # Show 1 min
+        #[ 'maxs', Flow.Data.RealArray ] # Show 1 max
         [ 'mean', Flow.Data.Real ]
         [ 'sigma', Flow.Data.Real ]
         [ 'type', Flow.Data.String ]
-        [ 'domain', Flow.Data.Array ]
-        [ 'data', Flow.Data.Array ]
-        [ 'str_data', Flow.Data.Array ]
+        #[ 'domain', Flow.Data.Array ]
+        #[ 'data', Flow.Data.Array ]
+        #[ 'str_data', Flow.Data.Array ]
         [ 'precision', Flow.Data.Real ]
-        [ 'pctiles', Flow.Data.RealArray ] #XXX ???
+        #[ 'pctiles', Flow.Data.RealArray ] #XXX ???
       ]
 
   extensionSchemas = {}
@@ -132,7 +132,6 @@ H2O.Routines = (_) ->
       schemas[schemaName] =
         attributes: attributes
         attributeNames: map attributes, (attribute) -> attribute.name
-        attributeMap: indexBy attributes, (attribute) -> attribute.name
 
   extendFrame = (frameKey, frame) ->
     __getColumns = null
