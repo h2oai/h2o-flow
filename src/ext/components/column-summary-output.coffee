@@ -1,7 +1,7 @@
 H2O.ColumnSummaryOutput = (_, frameKey, frame) ->
   column = head frame.columns
 
-  histogram = _.describe 'histogram', frame
+  histogram = _.scan 'histogram', frame
 
   #
   # plot

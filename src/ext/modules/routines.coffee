@@ -46,42 +46,42 @@ H2O.Routines = (_) ->
         (read() for name, read of _tableReaders)
     raw
 
-  describeTable = (id, obj) ->
+  scanTable = (id, obj) ->
     if obj.isFuture
-      renderable asynchronize, describeTable, id, obj, (table, go) ->
+      renderable asynchronize, scanTable, id, obj, (table, go) ->
         if table
           go null, H2O.DataTableOutput _, table
         else
-          go new Flow.Error "Describe failed: data '#{id}' not found."
+          go new Flow.Error "scan() failed: data '#{id}' not found."
     else
       if obj.getData
         obj.getData id
       else
         undefined
 
-  describeTables = (obj) ->
+  scanTables = (obj) ->
     if obj.isFuture
-      renderable asynchronize, describeTables, obj, (tables, go) ->
+      renderable asynchronize, scanTables, obj, (tables, go) ->
         if tables
           go null, H2O.DataTablesOutput _, tables
         else
-          go new Error "Describe failed: no data found."
+          go new Error "scan() failed: no data found."
     else
       if obj.getData
         obj.getData()
       else
         undefined
 
-  describe = (arg1, arg2) ->
+  scan = (arg1, arg2) ->
     switch arguments.length
       when 2
         if (isString arg1) and isObject arg2
-          describeTable arg1, arg2
+          scanTable arg1, arg2
         else
           undefined
       when 1
         if isObject arg1
-          describeTables arg1 
+          scanTables arg1 
         else
           undefined
       else
@@ -153,7 +153,7 @@ H2O.Routines = (_) ->
         rows: rows
         meta:
           inspect: ->
-            _.insertAndExecuteCell 'cs', "describe 'columns', getFrame #{stringify frameKey}"
+            _.insertAndExecuteCell 'cs', "scan 'columns', getFrame #{stringify frameKey}"
 
     __getData = null
     getData = ->
@@ -211,7 +211,7 @@ H2O.Routines = (_) ->
         rows: rows
         meta:
           inspect: ->
-            _.insertAndExecuteCell 'cs', "describe 'data', getFrame #{stringify frameKey}"
+            _.insertAndExecuteCell 'cs', "scan 'data', getFrame #{stringify frameKey}"
 
 
     __getMins = null
@@ -391,7 +391,7 @@ H2O.Routines = (_) ->
 
 
   link _.ready, ->
-    link _.describe, describe
+    link _.scan, scan
 
   # fork/join 
   fork: (f, args...) -> Flow.Async.fork f, args
@@ -410,7 +410,7 @@ H2O.Routines = (_) ->
   merge: merge
   #
   # Generic
-  describe: describe
+  scan: scan
   plot: plot
   #
   # Meta
