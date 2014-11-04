@@ -15,7 +15,6 @@
         th Name
         th Label
         th Description
-        th Columns
     tbody
       // ko foreach:tables
       tr
@@ -25,21 +24,6 @@
           a(href='#' data-bind='text:name, click:inspect')
         td(data-bind='text:label')
         td(data-bind='text:description')
-        td
-          table.flow-form
-            thead
-              tr
-                th(width='1') &nbsp;
-                th(width='1') Name
-                th Type
-            tbody
-              // ko foreach:columns
-              tr
-                td
-                  i.fa.fa-bolt
-                td(data-bind='text:name')
-                td(data-bind='text:type')
-              // /ko
       // /ko
   // /ko
   

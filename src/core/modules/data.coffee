@@ -42,7 +42,11 @@ createCompiledPrototype = (attrs) ->
   prototypeName = nextPrototypeName()
   _prototypeCache[cacheKey] = (new Function "function #{prototypeName}(#{params.join ','}){#{inits.join ''}} return #{prototypeName};")()
 
-createTable = (name, label, description, columns, rows, _fill) ->
+createTable = (opts) ->
+  { name, label, description, columns, rows, meta } = opts
+  label = name unless label
+  description = 'No description available.' unless description
+
   schema = {}
   schema[column.name] = column for column in columns
 
@@ -63,6 +67,7 @@ createTable = (name, label, description, columns, rows, _fill) ->
   schema: schema
   columns: columns
   rows: rows
+  meta: meta
   fill: fill
 
 Flow.Data =

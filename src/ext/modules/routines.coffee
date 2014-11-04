@@ -87,7 +87,7 @@ H2O.Routines = (_) ->
       else
         undefined
 
-  plot = ->
+  plot = (config) ->
 
   extensionSchemaConfig =
     column:
@@ -134,7 +134,7 @@ H2O.Routines = (_) ->
         attributeNames: map attributes, (attribute) -> attribute.name
         attributeMap: indexBy attributes, (attribute) -> attribute.name
 
-  extendFrame = (frame) ->
+  extendFrame = (frameKey, frame) ->
     __getColumns = null
     getColumns = ->
       return __getColumns if __getColumns
@@ -146,7 +146,17 @@ H2O.Routines = (_) ->
         row[attr] = column[attr] for attr in schema.attributeNames
         row
 
-      __getColumns = Flow.Data.Table 'columns', 'Columns', 'A list of columns in the H2O Frame.', schema.attributes, rows
+      __getColumns = Flow.Data.Table
+        name: 'columns'
+        label: 'Columns'
+        description: 'A list of columns in the H2O Frame.'
+        columns: schema.attributes
+        rows: rows
+        meta:
+          inspect: ->
+            _.insertAndExecuteCell 'cs', "scan 'columns', getFrame #{stringify frameKey}"
+
+
 
     mixin frame,
       columns: getColumns
@@ -190,17 +200,22 @@ H2O.Routines = (_) ->
           row.count = count
           rows.push row
 
-      __getHistogram = Flow.Data.Table 'histogram', 'Histogram', "Histogram for column '#{column.label}' in frame '#{frameKey}'.", schema.attributes, rows
+      __getHistogram = Flow.Data.Table
+        name: 'histogram'
+        label: 'Histogram'
+        description: "Histogram for column '#{column.label}' in frame '#{frameKey}'."
+        columns: schema.attributes
+        rows: rows
 
     mixin frame,
       histogram: getHistogram
 
-  requestFrame = (key, go) ->
-    _.requestFrame key, (error, frame) ->
+  requestFrame = (frameKey, go) ->
+    _.requestFrame frameKey, (error, frame) ->
       if error
         go error
       else
-        go null, extendFrame frame
+        go null, extendFrame frameKey, frame
 
   requestColumnSummary = (frameKey, columnName, go) ->
     _.requestColumnSummary frameKey, columnName, (error, frame) ->
@@ -213,10 +228,10 @@ H2O.Routines = (_) ->
     renderable _.requestFrames, (frames, go) ->
       go null, H2O.FramesOutput _, frames
 
-  getFrame = (key) ->
-    switch typeOf key
+  getFrame = (frameKey) ->
+    switch typeOf frameKey
       when 'String'
-        renderable requestFrame, key, (frame, go) ->
+        renderable requestFrame, frameKey, (frame, go) ->
           go null, H2O.FrameOutput _, frame
       else
         assist getFrame
@@ -229,10 +244,10 @@ H2O.Routines = (_) ->
     renderable _.requestModels, (models, go) ->
       go null, H2O.ModelsOutput _, models
 
-  getModel = (key) ->
-    switch typeOf key
+  getModel = (modelKey) ->
+    switch typeOf modelKey
       when 'String'
-        renderable _.requestModel, key, (model, go) ->
+        renderable _.requestModel, modelKey, (model, go) ->
           go null, H2O.ModelOutput _, model
       else
         assist getModel

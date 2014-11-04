@@ -1,6 +1,6 @@
 H2O.DataTablesOutput = (_, _tables) ->
   createTableView = (table) ->
-    inspect = -> console.debug table
+    inspect = -> table.meta.inspect() if table.meta.inspect
 
     name: table.name
     label: table.label
