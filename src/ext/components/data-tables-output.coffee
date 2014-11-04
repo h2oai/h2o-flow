@@ -1,6 +1,7 @@
 H2O.DataTablesOutput = (_, _tables) ->
   createTableView = (table) ->
-    inspect = -> table.meta.inspect() if table.meta.inspect
+    inspect = -> 
+      _.insertAndExecuteCell 'cs', table.meta.scan
 
     name: table.name
     label: table.label

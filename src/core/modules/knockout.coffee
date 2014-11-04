@@ -1,5 +1,14 @@
 return unless window?.ko?
 
+ko.bindingHandlers.raw =
+  update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    arg = ko.unwrap valueAccessor()
+    if arg
+      $element = $ element
+      $element.empty()
+      $element.append arg
+    return
+
 ko.bindingHandlers.markdown =
   update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
     data = ko.unwrap valueAccessor()

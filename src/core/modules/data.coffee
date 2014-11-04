@@ -71,7 +71,7 @@ createTable = (opts) ->
   fill: fill
 
 Flow.Data =
-  Enum: 'Enum'
+  StringEnum: 'Enum<String>'
   String: 'String'
   Integer: 'Integer'
   Real: 'Real'

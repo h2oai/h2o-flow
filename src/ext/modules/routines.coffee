@@ -87,7 +87,30 @@ H2O.Routines = (_) ->
       else
         undefined
 
+  __plot = (config, go) ->
+    Flow.Plot config, (error, plot) ->
+      if error
+        go new Flow.Error 'Error rendering plot.', error
+      else
+        go null, plot
+
+  _plot = (config, go) ->
+    if config.data
+      if config.data.isFuture
+        config.data (error, data) ->
+          if error
+            go new Flow.Error 'Error evaluating data for plot().', error
+          else
+            config.data = data
+            __plot config, go
+      else
+        __plot config, go
+    else
+      go new Flow.Error "Cannot plot(): missing 'data'."
+
   plot = (config) ->
+    renderable _plot, config, (plot, go) ->
+      go null, H2O.PlotOutput _, plot
 
   extensionSchemaConfig =
     column:
@@ -152,8 +175,7 @@ H2O.Routines = (_) ->
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: ->
-            _.insertAndExecuteCell 'cs', "scan 'columns', getFrame #{stringify frameKey}"
+          scan: "scan 'columns', getFrame #{stringify frameKey}"
 
     __getData = null
     getData = ->
@@ -171,7 +193,7 @@ H2O.Routines = (_) ->
             type: Flow.Data.Real
           when 'enum'
             name: column.label
-            type: Flow.Data.Enum
+            type: Flow.Data.StringEnum
             domain: column.domain
           when 'uuid', 'string'
             name: column.label
@@ -195,7 +217,7 @@ H2O.Routines = (_) ->
             when Flow.Data.Real
               #TODO handle +-Inf
               row[column.name] = if value is 'NaN' then null else value
-            when Flow.Data.Enum
+            when Flow.Data.StringEnum
               row[column.name] = column.domain[value]
             when Flow.Data.String
               row[column.name] = value
@@ -210,9 +232,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: ->
-            _.insertAndExecuteCell 'cs', "scan 'data', getFrame #{stringify frameKey}"
-
+          scan: "scan 'data', getFrame #{stringify frameKey}"
 
     __getMins = null
 
