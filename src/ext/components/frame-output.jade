@@ -8,9 +8,12 @@
       tr 
         th(width='1') Actions
         td
+          button.flow-button(type='button' data-bind='click:scan')
+            i.fa.fa-bolt
+            span Scan
           button.flow-button(type='button' data-bind='click:createModel')
             i.fa.fa-cube
-            | Create Model
+            span Create Model
 
   // ko with:table
   div(style='overflow:auto')
@@ -92,13 +95,12 @@
           // /ko
         // /ko
 
-        //-
-          tr.flow-bg-gray
-            th Summary
-            // ko foreach:summaryRow
-            td(data-bind='click:displaySummary') 
-              i.fa.fa-bar-chart
-            // /ko
+        tr.flow-bg-gray
+          th Summary
+          // ko foreach:summaryRow
+          td.flow-pointer(data-bind='click:displaySummary') 
+            i.fa.fa-bar-chart
+          // /ko
 
         // ko foreach:dataRows
         tr

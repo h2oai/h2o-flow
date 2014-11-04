@@ -1,14 +1,11 @@
 H2O.DataTablesOutput = (_, _tables) ->
-
   createTableView = (table) ->
-
-    inspect = -> 
-      debug 'inspect', table
-      #_.insertAndExecuteCell 'cs', "data '#{table.name}', getFrame "
+    inspect = -> console.debug table
 
     name: table.name
     label: table.label
     description: table.description
+    columns: table.columns
     inspect: inspect
 
   hasTables: _tables.length > 0

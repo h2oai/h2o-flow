@@ -62,7 +62,11 @@ H2O.Proxy = (_) ->
         go null, head result.frames
 
   requestColumnSummary = (key, column, go) ->
-    doGet "/3/Frames/#{encodeURIComponent key}/columns/#{encodeURIComponent column}/summary", go
+    doGet "/3/Frames/#{encodeURIComponent key}/columns/#{encodeURIComponent column}/summary", (error, result) ->
+      if error
+        go error
+      else
+        go null, head result.frames
 
   requestJobs = (go) ->
     doGet '/Jobs.json', (error, result) ->

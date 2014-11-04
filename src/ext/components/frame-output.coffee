@@ -84,11 +84,7 @@ H2O.FrameOutput = (_, _frame) ->
   createSummaryRow = (frameKey, columns) ->
     map columns, (column) ->
       displaySummary: ->
-        _.requestColumnSummary frameKey, column.label, (error, result) ->
-          if error
-            _.error 'Error requesting column summary', column, error
-          else
-            createSummaryInspection head result.frames
+        _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify frameKey}, #{stringify column.label}"
 
   createDataRow = (offset, index, columns) ->
     header: "Row #{offset + index + 1}"
@@ -148,6 +144,9 @@ H2O.FrameOutput = (_, _frame) ->
   createModel = ->
     _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify _frame.key.name}"
 
+  scan = ->
+    _.insertAndExecuteCell 'cs', "scan getFrame #{stringify _frame.key.name}"
+
   data: _frame
   key: _frame.key.name
   timestamp: _frame.creation_epoch_time_millis
@@ -155,6 +154,7 @@ H2O.FrameOutput = (_, _frame) ->
   columns: _frame.column_names
   table: createFrameTable _frame.off, _frame.len, _frame.columns
   dispose: ->
+  scan: scan
   createModel: createModel
   template: 'flow-frame-output'
 

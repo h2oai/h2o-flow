@@ -18,6 +18,7 @@ _assistance =
 H2O.Routines = (_) ->
 
   renderable = Flow.Async.renderable
+  asynchronize = (f, args..., go) -> go null, apply f, null, args
 
   proceed = (func, args) ->
     renderable Flow.Async.noop, (ignore, go) ->
@@ -35,46 +36,41 @@ H2O.Routines = (_) ->
   help = -> proceed H2O.Help
 
   mixin = (raw, _tableReaders) ->
-    getTables = ->
-      (read() for name, read of _tableReaders)
-
-    getTable = (id) ->
-      if read = _tableReaders[id]
-        read()
+    raw.getData = (id) ->
+      if id
+        if read = _tableReaders[id]
+          read()
+        else
+          undefined
       else
-        undefined
-
-    raw.__flow__ =
-      getTables: getTables
-      getTable: getTable
-
+        (read() for name, read of _tableReaders)
     raw
 
   getDataTable = (id, obj) ->
     if obj.isFuture
-      renderable obj, (obj, go) ->
-        go null, H2O.DataTableOutput _, getDataTable id, obj
-    else
-      if extension = obj.__flow__
-        if extension.getTable
-          extension.getTable id
+      renderable asynchronize, getDataTable, id, obj, (table, go) ->
+        if table
+          go null, H2O.DataTableOutput _, table
         else
-          undefined
+          go new Flow.Error "Scan failed: data '#{id}' not found."
+    else
+      if obj.getData
+        obj.getData id
       else
         undefined
-    
+
   getDataTables = (obj) ->
     if obj.isFuture
-      renderable obj, (obj, go) ->
-        go null, H2O.DataTablesOutput _, getDataTables obj
-    else
-      if extension = obj.__flow__
-        if extension.getTables
-          extension.getTables()
+      renderable asynchronize, getDataTables, obj, (tables, go) ->
+        if tables
+          go null, H2O.DataTablesOutput _, tables
         else
-          []
+          go new Error "Scan failed: no data found."
+    else
+      if obj.getData
+        obj.getData()
       else
-        []
+        undefined
 
   getData = (arg1, arg2) ->
     switch arguments.length
@@ -93,30 +89,18 @@ H2O.Routines = (_) ->
 
   plot = ->
 
-  ###
-  getData = (obj, id) ->
-    if obj 
-      if obj.isFuture
-
-      else
-        if extension = obj.__flow__
-          if id
-            if extension.getTable
-              extension.getTable id
-            else
-              undefined
-          else
-            if extension.getTables
-              extension.getTables()
-            else
-              []
-        else
-          undefined
-    else
-      undefined
-    ###
-
   extensionSchemaConfig =
+    column:
+      integerHistogram: [
+        [ 'intervalStart', Flow.Data.Integer ]
+        [ 'intervalEnd', Flow.Data.Integer ]
+        [ 'count', Flow.Data.Integer ]
+      ]
+      realHistogram: [
+        [ 'intervalStart', Flow.Data.Real ]
+        [ 'intervalEnd', Flow.Data.Real ]
+        [ 'count', Flow.Data.Integer ]
+      ]
     frame:
       columns: [
         [ 'label', Flow.Data.String ]
@@ -124,8 +108,8 @@ H2O.Routines = (_) ->
         [ 'zeros', Flow.Data.Integer ]
         [ 'pinfs', Flow.Data.Integer ]
         [ 'ninfs', Flow.Data.Integer ]
-        [ 'mins', Flow.Data.RealArray ]
-        [ 'maxs', Flow.Data.RealArray ]
+        [ 'mins', Flow.Data.RealArray ] # Show 1 min
+        [ 'maxs', Flow.Data.RealArray ] # Show 1 max
         [ 'mean', Flow.Data.Real ]
         [ 'sigma', Flow.Data.Real ]
         [ 'type', Flow.Data.String ]
@@ -133,10 +117,7 @@ H2O.Routines = (_) ->
         [ 'data', Flow.Data.Array ]
         [ 'str_data', Flow.Data.Array ]
         [ 'precision', Flow.Data.Real ]
-        [ 'bins', Flow.Data.IntegerArray ]
-        [ 'base', Flow.Data.Integer ]
-        [ 'stride', Flow.Data.Integer ]
-        [ 'pctiles', Flow.Data.RealArray ]
+        [ 'pctiles', Flow.Data.RealArray ] #XXX ???
       ]
 
   extensionSchemas = {}
@@ -165,14 +146,54 @@ H2O.Routines = (_) ->
         row[attr] = column[attr] for attr in schema.attributeNames
         row
 
-      __getColumns = Flow.Data.Table 'columns', 'Columns', 'A list of columns in the H2O Frame', schema.attributes, rows
+      __getColumns = Flow.Data.Table 'columns', 'Columns', 'A list of columns in the H2O Frame.', schema.attributes, rows
 
     mixin frame,
       columns: getColumns
 
-  getFrames = ->
-    renderable _.requestFrames, (frames, go) ->
-      go null, H2O.FramesOutput _, frames
+  extendColumnSummary = (frameKey, frame) ->
+    __getHistogram = null
+    getHistogram = ->
+      return __getHistogram if __getHistogram
+
+      column = head frame.columns
+      histogramDataType = if column.type is 'int' then Flow.Data.Integer else Flow.Data.Real
+      
+      schema = if column.type is 'int' then extensionSchemas.column.integerHistogram else extensionSchemas.column.realHistogram
+      Row = Flow.Data.createCompiledPrototype schema.attributeNames
+      
+      minBinCount = 32
+      { base, stride, bins } = column
+      width = Math.floor bins.length / minBinCount
+      interval = stride * width
+      
+      rows = []
+      if width > 0
+        binCount = minBinCount + if bins.length % width > 0 then 1 else 0
+        for i in [0 ... binCount]
+          m = i * width
+          n = m + width
+          count = 0
+          for binIndex in [m ... n] when n < bins.length
+            count += bins[binIndex]
+
+          row = new Row()
+          row.intervalStart = base + i * interval
+          row.intervalEnd = row.intervalStart + interval
+          row.count = count
+          rows.push row
+      else
+        for count, i in bins
+          row = new Row()
+          row.intervalStart = base + i * stride
+          row.intervalEnd = row.intervalStart + stride
+          row.count = count
+          rows.push row
+
+      __getHistogram = Flow.Data.Table 'histogram', 'Histogram', "Histogram for column '#{column.label}' in frame '#{frameKey}'.", schema.attributes, rows
+
+    mixin frame,
+      histogram: getHistogram
 
   requestFrame = (key, go) ->
     _.requestFrame key, (error, frame) ->
@@ -181,14 +202,28 @@ H2O.Routines = (_) ->
       else
         go null, extendFrame frame
 
+  requestColumnSummary = (frameKey, columnName, go) ->
+    _.requestColumnSummary frameKey, columnName, (error, frame) ->
+      if error
+        go error
+      else
+        go null, extendColumnSummary frameKey, frame
+
+  getFrames = ->
+    renderable _.requestFrames, (frames, go) ->
+      go null, H2O.FramesOutput _, frames
+
   getFrame = (key) ->
     switch typeOf key
       when 'String'
         renderable requestFrame, key, (frame, go) ->
-          debug frame
           go null, H2O.FrameOutput _, frame
       else
         assist getFrame
+
+  getColumnSummary = (frameKey, columnName) ->
+    renderable requestColumnSummary, frameKey, columnName, (frame, go) ->
+      go null, H2O.ColumnSummaryOutput _, frameKey, frame
 
   getModels = ->
     renderable _.requestModels, (models, go) ->
@@ -278,6 +313,10 @@ H2O.Routines = (_) ->
         else
           proceed H2O.NoAssistView
 
+
+  link _.ready, ->
+    link _.scan, getData
+
   # fork/join 
   fork: (f, args...) -> Flow.Async.fork f, args
   join: (args..., go) -> Flow.Async.join args, _applicate go
@@ -295,7 +334,7 @@ H2O.Routines = (_) ->
   merge: merge
   #
   # Generic
-  data: getData
+  scan: getData
   plot: plot
   #
   # Meta
@@ -316,6 +355,7 @@ H2O.Routines = (_) ->
   parseRaw: parseRaw
   getFrames: getFrames
   getFrame: getFrame
+  getColumnSummary: getColumnSummary
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
