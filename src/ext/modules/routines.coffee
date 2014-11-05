@@ -424,17 +424,20 @@ H2O.Routines = (_) ->
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
-      columns = [
+      labelColumn = 
         name: 'label'
         type: Flow.Data.StringEnum
         domain: column.domain
-      ,
+      countColumn = 
         name: 'count'
         type: Flow.Data.Integer
-      , 
+        domain: null
+      percentColumn =
         name: 'percent'
         type: Flow.Data.Real
-      ]
+        domain: [ 0, 100 ]
+
+      columns = [ labelColumn, countColumn, percentColumn ]
 
       Row = Flow.Data.createCompiledPrototype map columns, (column) -> column.name
       rows = for level in sortedLevels
@@ -443,6 +446,8 @@ H2O.Routines = (_) ->
         row.count = level.count
         row.percent = 100 * level.count / rowCount
         row
+
+      countColumn.domain = Flow.Data.computeRange rows, 'count'
       
       __getDomain = Flow.Data.Table
         name: 'domain'
@@ -452,11 +457,12 @@ H2O.Routines = (_) ->
         rows: rows
         meta:
           scan: "scan 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-          plot: """plot
-          type: 'interval'
-          data: scan 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-          x: 'count'
-          y: 'label'
+          plot: """
+          plot
+            type: 'interval'
+            data: scan 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            x: 'count'
+            y: 'label'
           """
 
     mixin frame,

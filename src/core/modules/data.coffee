@@ -70,6 +70,27 @@ createTable = (opts) ->
   meta: meta
   fill: fill
 
+includeZeroInRange = (range) ->
+  [ lo, hi ] = range
+  if lo > 0 and hi > 0
+    [ 0, hi ]
+  else if lo < 0 and hi < 0
+    [ lo, 0 ]
+  else
+    range
+
+computeRange = (rows, attr) ->
+  if rows.length
+    lo = Number.POSITIVE_INFINITY
+    hi = Number.NEGATIVE_INFINITY
+    for row in rows
+      value = row[attr]
+      lo = value if value < lo
+      hi = value if value > hi
+    [ lo , hi ]
+  else
+    [ -1, 1 ]
+
 factor = (array) ->
   _id = 0
   dict = {}
@@ -94,5 +115,17 @@ Flow.Data =
   RealArray: 'Array<Real>'
   DateArray: 'Array<Date>'
   Table: createTable
+  isContinuous: (type) -> type is Flow.Data.Integer or type is Flow.Data.Real
+  isDiscrete: (type) -> type is Flow.Data.StringEnum or type is Flow.Data.String
+  isTemporal: (type) -> type is Flow.Data.Date
+  computeColumnInterpretation: (type) ->
+    if Flow.Data.isContinuous type
+      'c'
+    else if Flow.Data.isDiscrete type
+      'd'
+    else 
+      't'
   createCompiledPrototype: createCompiledPrototype
+  computeRange: computeRange
+  includeZeroInRange: includeZeroInRange
   factor: factor

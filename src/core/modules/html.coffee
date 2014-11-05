@@ -31,6 +31,10 @@ Flow.HTML =
         compile template
   render: (name, html) ->
     el = document.createElement name
-    el.innerHTML = html if html
+    if html
+      if isString html
+        el.innerHTML = html
+      else
+        el.appendChild html
     el
 

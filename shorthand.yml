@@ -277,9 +277,6 @@ lastIndexOf:
 sortedIndex:
   type: qualify
   object: lodash
-range:
-  type: qualify
-  object: lodash
 bind:
   type: qualify
   object: lodash
