@@ -30,7 +30,7 @@ Flow.HTML =
       else
         compile template
   render: (name, html) ->
-    el = document.createElement 'name'
+    el = document.createElement name
     el.innerHTML = html if html
     el
 
