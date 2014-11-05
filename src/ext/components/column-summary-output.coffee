@@ -1,7 +1,10 @@
-H2O.ColumnSummaryOutput = (_, frameKey, frame) ->
+H2O.ColumnSummaryOutput = (_, frameKey, frame, columnName) ->
   column = head frame.columns
 
   histogram = _.scan 'histogram', frame
+
+  scan = ->
+    _.insertAndExecuteCell 'cs', "scan getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
   #
   # plot
@@ -12,4 +15,5 @@ H2O.ColumnSummaryOutput = (_, frameKey, frame) ->
   #
 
   label: column.label
+  scan: scan
   template: 'flow-column-summary-output'

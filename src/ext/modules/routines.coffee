@@ -131,12 +131,12 @@ H2O.Routines = (_) ->
         [ 'zeros', Flow.Data.Integer ]
         [ 'pinfs', Flow.Data.Integer ]
         [ 'ninfs', Flow.Data.Integer ]
-        #[ 'mins', Flow.Data.RealArray ] # Show 1 min
-        #[ 'maxs', Flow.Data.RealArray ] # Show 1 max
+        [ 'min', Flow.Data.Real ]
+        [ 'max', Flow.Data.Real ]
         [ 'mean', Flow.Data.Real ]
         [ 'sigma', Flow.Data.Real ]
         [ 'type', Flow.Data.String ]
-        #[ 'domain', Flow.Data.Array ]
+        [ 'domain', Flow.Data.Integer ]
         #[ 'data', Flow.Data.Array ]
         #[ 'str_data', Flow.Data.Array ]
         [ 'precision', Flow.Data.Real ]
@@ -165,7 +165,16 @@ H2O.Routines = (_) ->
       Row = Flow.Data.createCompiledPrototype schema.attributeNames
       rows = for column in frame.columns
         row = new Row()
-        row[attr] = column[attr] for attr in schema.attributeNames
+        for attr in schema.attributeNames
+          switch attr
+            when 'min'
+              row[attr] = head column.mins
+            when 'max'
+              row[attr] = head column.maxs
+            when 'domain'
+              row[attr] = if domain = column[attr] then domain.length else null
+            else
+              row[attr] = column[attr] 
         row
 
       __getColumns = Flow.Data.Table
@@ -211,17 +220,10 @@ H2O.Routines = (_) ->
         for column, j in columns
           value = frameColumns[j].data[i]
           switch column.type
-            when Flow.Data.Integer
+            when Flow.Data.Integer, Flow.Data.Real
               #TODO handle +-Inf
               row[column.name] = if value is 'NaN' then null else value
-            when Flow.Data.Real
-              #TODO handle +-Inf
-              row[column.name] = if value is 'NaN' then null else value
-            when Flow.Data.StringEnum
-              row[column.name] = column.domain[value]
-            when Flow.Data.String
-              row[column.name] = value
-            when Flow.Data.Date
+            else
               row[column.name] = value
         row
       
@@ -242,7 +244,7 @@ H2O.Routines = (_) ->
       columns: getColumns
       data: getData
 
-  extendColumnSummary = (frameKey, frame) ->
+  extendColumnSummary = (frameKey, frame, columnName) ->
     __getHistogram = null
     getHistogram = ->
       return __getHistogram if __getHistogram
@@ -287,9 +289,93 @@ H2O.Routines = (_) ->
         description: "Histogram for column '#{column.label}' in frame '#{frameKey}'."
         columns: schema.attributes
         rows: rows
+        meta:
+          scan: "scan 'histogram', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+
+    __getCharacteristics = null
+    getCharacteristics = ->
+      return __getCharacteristics if __getCharacteristics
+
+      column = head frame.columns
+      rowCount = frame.rows
+
+      { missing, zeros, pinfs, ninfs } = column
+      other = rowCount - missing - zeros - pinfs - ninfs
+
+      [ domain, characteristics ] = Flow.Data.factor [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
+
+      columns = [
+        name: 'characteristic'
+        type: Flow.Data.StringEnum
+        domain: domain
+      ,
+        name: 'count'
+        type: Flow.Data.Integer
+      ,
+        name: 'percent'
+        type: Flow.Data.Real
+      ]
+
+      rows = for count, i in [ missing, ninfs, zeros, pinfs, other ]
+        characteristic: characteristics[i]
+        count: count
+        percent: 100 * count / rowCount
+
+      __getCharacteristics = Flow.Data.Table
+        name: 'characteristics'
+        label: 'Characteristics'
+        description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
+        columns: columns
+        rows: rows
+        meta:
+          scan: "scan 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+
+    __getDomain = null
+    getDomain = ->
+      return __getDomain if __getDomain
+
+      rowCount = frame.rows
+      column = head frame.columns
+      rowCount = frame.rows
+      levels = map column.bins, (count, index) -> count: count, index: index
+
+      #TODO sort table in-place when sorting is implemented
+      sortedLevels = sortBy levels, (level) -> -level.count
+
+      columns = [
+        name: 'label'
+        type: Flow.Data.StringEnum
+        domain: column.domain
+      ,
+        name: 'count'
+        type: Flow.Data.Integer
+      , 
+        name: 'percent'
+        type: Flow.Data.Real
+      ]
+
+      Row = Flow.Data.createCompiledPrototype (column.name for column in columns)
+      rows = for level in sortedLevels
+        row = new Row()
+        row.label = level.index
+        row.count = level.count
+        row.percent = 100 * level.count / rowCount
+        row
+      
+      __getDomain = Flow.Data.Table
+        name: 'domain'
+        label: 'Domain'
+        description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
+        columns: columns
+        rows: rows
+        meta:
+          scan: "scan 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+
 
     mixin frame,
       histogram: getHistogram
+      characteristics: getCharacteristics
+      domain: getDomain
 
   requestFrame = (frameKey, go) ->
     _.requestFrame frameKey, (error, frame) ->
@@ -303,7 +389,7 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        go null, extendColumnSummary frameKey, frame
+        go null, extendColumnSummary frameKey, frame, columnName
 
   getFrames = ->
     renderable _.requestFrames, (frames, go) ->
@@ -319,7 +405,7 @@ H2O.Routines = (_) ->
 
   getColumnSummary = (frameKey, columnName) ->
     renderable requestColumnSummary, frameKey, columnName, (frame, go) ->
-      go null, H2O.ColumnSummaryOutput _, frameKey, frame
+      go null, H2O.ColumnSummaryOutput _, frameKey, frame, columnName
 
   getModels = ->
     renderable _.requestModels, (models, go) ->

@@ -277,7 +277,7 @@ table
 .flow-left
   text-align left
 
-.flow-right
+.flow-right, .rt
   text-align right
 
 .flow-button
@@ -323,6 +323,16 @@ table
   padding 15px
   margin 10px 0 20px 0
   color red
+
+.flow-plot
+  overflow auto
+  table
+    margin 10px 0 20px 0
+    font-size 85%
+    tbody > tr:nth-child(odd)
+      background-color #eee
+    td, th
+      padding 2px 5px
 
 .twitter-typeahead
   width 97%
