@@ -245,6 +245,39 @@ H2O.Routines = (_) ->
       data: getData
 
   extendColumnSummary = (frameKey, frame, columnName) ->
+    __getPercentiles = null
+    getPercentiles = ->
+      return __getPercentiles if __getPercentiles
+      
+      column = head frame.columns
+      percentiles = frame.default_pctiles
+      percentileValues = column.pctiles
+
+      columns = [
+        name: 'percentile'
+        type: Flow.Data.Real
+      ,
+        name: 'value'
+        type: Flow.Data.Real #TODO depends on type of column?
+      ]
+
+      Row = Flow.Data.createCompiledPrototype map columns, (column) -> column.name
+      rows = for percentile, i in percentiles
+        row = new Row()
+        row.percentile = percentile
+        row.value = percentileValues[i]
+        row
+
+      __getPercentiles = Flow.Data.Table
+        name: 'percentiles'
+        label: 'Percentiles'
+        description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
+        columns: columns
+        rows: rows
+        meta:
+          scan: "scan 'percentiles', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+
+
     __getDistribution = null
     getDistribution = ->
       return __getDistribution if __getDistribution
@@ -332,6 +365,7 @@ H2O.Routines = (_) ->
 
     __getSummary = null
     getSummary = ->
+      return __getSummary if __getSummary
 
       columns = [
         name: 'mean'
@@ -430,6 +464,7 @@ H2O.Routines = (_) ->
       summary: getSummary
       distribution: getDistribution
       domain: getDomain
+      percentiles: getPercentiles
 
   requestFrame = (frameKey, go) ->
     _.requestFrame frameKey, (error, frame) ->
