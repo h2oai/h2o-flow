@@ -70,6 +70,18 @@ createTable = (opts) ->
   meta: meta
   fill: fill
 
+factor = (array) ->
+  _id = 0
+  dict = {}
+  domain = []
+  data = new Array array.length
+  for element, i in array
+    unless undefined isnt id = dict[element]
+      dict[element] = id = _id++
+      domain.push element
+    data[i] = id
+  [ domain, data ]
+
 Flow.Data =
   StringEnum: 'Enum<String>'
   String: 'String'
@@ -83,3 +95,4 @@ Flow.Data =
   DateArray: 'Array<Date>'
   Table: createTable
   createCompiledPrototype: createCompiledPrototype
+  factor: factor
