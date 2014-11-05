@@ -114,12 +114,12 @@ H2O.Routines = (_) ->
 
   extensionSchemaConfig =
     column:
-      integerHistogram: [
+      integerDistribution: [
         [ 'intervalStart', Flow.Data.Integer ]
         [ 'intervalEnd', Flow.Data.Integer ]
         [ 'count', Flow.Data.Integer ]
       ]
-      realHistogram: [
+      realDistribution: [
         [ 'intervalStart', Flow.Data.Real ]
         [ 'intervalEnd', Flow.Data.Real ]
         [ 'count', Flow.Data.Integer ]
@@ -245,14 +245,14 @@ H2O.Routines = (_) ->
       data: getData
 
   extendColumnSummary = (frameKey, frame, columnName) ->
-    __getHistogram = null
-    getHistogram = ->
-      return __getHistogram if __getHistogram
+    __getDistribution = null
+    getDistribution = ->
+      return __getDistribution if __getDistribution
 
       column = head frame.columns
-      histogramDataType = if column.type is 'int' then Flow.Data.Integer else Flow.Data.Real
+      distributionDataType = if column.type is 'int' then Flow.Data.Integer else Flow.Data.Real
       
-      schema = if column.type is 'int' then extensionSchemas.column.integerHistogram else extensionSchemas.column.realHistogram
+      schema = if column.type is 'int' then extensionSchemas.column.integerDistribution else extensionSchemas.column.realDistribution
       Row = Flow.Data.createCompiledPrototype schema.attributeNames
       
       minBinCount = 32
@@ -283,14 +283,14 @@ H2O.Routines = (_) ->
           row.count = count
           rows.push row
 
-      __getHistogram = Flow.Data.Table
-        name: 'histogram'
-        label: 'Histogram'
-        description: "Histogram for column '#{column.label}' in frame '#{frameKey}'."
+      __getDistribution = Flow.Data.Table
+        name: 'distribution'
+        label: 'Distribution'
+        description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         columns: schema.attributes
         rows: rows
         meta:
-          scan: "scan 'histogram', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          scan: "scan 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     __getCharacteristics = null
     getCharacteristics = ->
@@ -330,6 +330,54 @@ H2O.Routines = (_) ->
         meta:
           scan: "scan 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
+    __getSummary = null
+    getSummary = ->
+
+      columns = [
+        name: 'mean'
+        type: Flow.Data.Real
+      ,
+        name: 'q1'
+        type: Flow.Data.Real
+      ,
+        name: 'q2'
+        type: Flow.Data.Real
+      ,
+        name: 'q3'
+        type: Flow.Data.Real
+      ,
+        name: 'outliers'
+        type: Flow.Data.RealArray
+      ]
+
+      defaultPercentiles = frame.default_pctiles
+      rowCount = frame.rows
+
+      column = head frame.columns
+      percentiles = column.pctiles
+
+      mean = column.mean
+      q1 = percentiles[defaultPercentiles.indexOf 0.25]
+      q2 = percentiles[defaultPercentiles.indexOf 0.5]
+      q3 = percentiles[defaultPercentiles.indexOf 0.75]
+      outliers = unique concat column.mins, column.maxs
+
+      row =
+        mean: mean
+        q1: q1
+        q2: q2
+        q3: q3
+        outliers: outliers
+
+      __getSummary = Flow.Data.Table
+        name: 'summary'
+        label: 'Summary'
+        description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
+        columns: columns
+        rows: [ row ]
+        meta:
+          scan: "scan 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+
     __getDomain = null
     getDomain = ->
       return __getDomain if __getDomain
@@ -354,7 +402,7 @@ H2O.Routines = (_) ->
         type: Flow.Data.Real
       ]
 
-      Row = Flow.Data.createCompiledPrototype (column.name for column in columns)
+      Row = Flow.Data.createCompiledPrototype map columns, (column) -> column.name
       rows = for level in sortedLevels
         row = new Row()
         row.label = level.index
@@ -370,11 +418,17 @@ H2O.Routines = (_) ->
         rows: rows
         meta:
           scan: "scan 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-
+          plot: """plot
+          type: 'interval'
+          data: scan 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+          x: 'count'
+          y: 'label'
+          """
 
     mixin frame,
-      histogram: getHistogram
       characteristics: getCharacteristics
+      summary: getSummary
+      distribution: getDistribution
       domain: getDomain
 
   requestFrame = (frameKey, go) ->
