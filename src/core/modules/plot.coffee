@@ -236,7 +236,7 @@ plot = (_config, go) ->
     go null, Flow.HTML.render 'div', el
 
   renderText = (config, go) ->
-    [ table, thead, tbody, tr, th, td, tdr ] = Flow.HTML.template 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=td.rt'
+    [ grid, h4, p, table, thead, tbody, tr, th, td, tdr ] = Flow.HTML.template '.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=td.rt'
     
     ths = for column in config.data.columns
       th escape column.name
@@ -257,9 +257,13 @@ plot = (_config, go) ->
       tr tds
 
     go null, Flow.HTML.render 'div',
-      table [
-        thead tr ths
-        tbody trs
+      grid [
+        h4 config.data.label
+        p config.data.description
+        table [
+          thead tr ths
+          tbody trs
+        ]
       ]
 
   initialize = (config) ->
