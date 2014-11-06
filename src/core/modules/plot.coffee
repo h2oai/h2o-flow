@@ -273,6 +273,5 @@ stack = (attr) ->
     
   self
 
-Flow.Plot =
-  plot: plot
-  stack: stack
+Flow.Plot = plot
+plot.stack = stack

@@ -88,7 +88,7 @@ H2O.Routines = (_) ->
         undefined
 
   __plot = (config, go) ->
-    Flow.Plot.plot config, (error, plot) ->
+    Flow.Plot config, (error, plot) ->
       if error
         go new Flow.Error 'Error rendering plot.', error
       else
