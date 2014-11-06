@@ -19,7 +19,7 @@ createAxis = (scale, opts) ->
   axis.ticks opts.ticks if opts.ticks
   axis
 
-renderD3StackedBar = (table, attrX1, attrX2, attrColor) ->
+renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
   { schema, columns, rows } = table
 
   columnX1 = table.schema[attrX1]
@@ -74,7 +74,7 @@ renderD3StackedBar = (table, attrX1, attrX2, attrColor) ->
 
   svg
 
-renderD3BarChart = (table, attrX, attrY) ->
+renderD3BarChart = (title, table, attrX, attrY) ->
   { schema, columns, rows } = table
 
   columnX = schema[attrX]
@@ -174,7 +174,12 @@ renderD3BarChart = (table, attrX, attrY) ->
     .attr 'y', positionY
     .attr 'height', heightY
 
-  svg
+  el = document.createElement 'div'
+  if title
+    [ h4 ] = Flow.HTML.template '=h4'
+    el.appendChild Flow.HTML.render 'div', h4 escape title
+  el.appendChild svg
+  el
 
 plot = (_config, go) ->
   #
@@ -199,16 +204,16 @@ plot = (_config, go) ->
     #XXX Does not handle all cases - rework
     if config.x and not config.y
       [ attrX1, attrX2 ] = config.x config.data
-      el = renderD3StackedBar config.data, attrX1, attrX2, config.color
+      el = renderD3StackedBar config.title, config.data, attrX1, attrX2, config.color
     else
-      el = renderD3BarChart config.data, config.x, config.y
+      el = renderD3BarChart config.title, config.data, config.x, config.y
     go null, Flow.HTML.render 'div', el
 
   renderText = (config, go) ->
     [ table, thead, tbody, tr, th, td, tdr ] = Flow.HTML.template 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=td.rt'
     
     ths = for column in config.data.columns
-      th column.name
+      th escape column.name
 
     trs = for row in config.data.rows
       tds = for column in config.data.columns
@@ -216,7 +221,7 @@ plot = (_config, go) ->
         value = row[column.name]
         switch column.type
           when Flow.Data.StringEnum
-            td if value is null then '-' else column.domain[value]
+            td if value is null then '-' else escape column.domain[value]
           when Flow.Data.Integer, Flow.Data.Real
             tdr if value is null then '-' else value
           when Flow.Data.RealArray

@@ -368,6 +368,7 @@ H2O.Routines = (_) ->
           scan: "scan 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
+            title: 'Characteristics for #{frameKey} : #{column.label}'
             type: 'interval'
             data: scan 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: plot.stack 'count'
@@ -470,6 +471,7 @@ H2O.Routines = (_) ->
           scan: "scan 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
+            title: 'Domain for #{frameKey} : #{column.label}'
             type: 'interval'
             data: scan 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: 'count'
