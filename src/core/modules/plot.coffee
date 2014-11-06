@@ -72,7 +72,12 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
     .append 'title'
       .text tooltip
 
-  svg
+  el = document.createElement 'div'
+  if title
+    [ h4 ] = Flow.HTML.template '=h4'
+    el.appendChild Flow.HTML.render 'div', h4 escape title
+  el.appendChild svg
+  el
 
 renderD3BarChart = (title, table, attrX, attrY) ->
   { schema, columns, rows } = table
