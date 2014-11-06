@@ -88,7 +88,7 @@ H2O.Routines = (_) ->
         undefined
 
   __plot = (config, go) ->
-    Flow.Plot config, (error, plot) ->
+    Flow.Plot.plot config, (error, plot) ->
       if error
         go new Flow.Error 'Error rendering plot.', error
       else
@@ -111,6 +111,8 @@ H2O.Routines = (_) ->
   plot = (config) ->
     renderable _plot, config, (plot, go) ->
       go null, H2O.PlotOutput _, plot
+
+  plot.stack = Flow.Plot.stack
 
   extensionSchemaConfig =
     column:
@@ -344,9 +346,11 @@ H2O.Routines = (_) ->
       ,
         name: 'count'
         type: Flow.Data.Integer
+        domain: [ 0, rowCount ]
       ,
         name: 'percent'
         type: Flow.Data.Real
+        domain: [ 0, 100 ]
       ]
 
       rows = for count, i in [ missing, ninfs, zeros, pinfs, other ]
@@ -362,6 +366,13 @@ H2O.Routines = (_) ->
         rows: rows
         meta:
           scan: "scan 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          plot: """
+          plot
+            type: 'interval'
+            data: scan 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            x: plot.stack 'count'
+            color: 'characteristic'
+          """
 
     __getSummary = null
     getSummary = ->

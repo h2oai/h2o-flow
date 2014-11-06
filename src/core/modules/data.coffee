@@ -60,6 +60,14 @@ createTable = (opts) ->
           rows[ startIndex + index ] = values[ index ]
         go null
     return
+  
+  expand = (types...) ->
+    for type in types
+      name = uniqueId '__flow_column_'
+      schema[name] =
+        name: name
+        label: name
+        type: type
 
   name: name
   label: label
@@ -69,6 +77,7 @@ createTable = (opts) ->
   rows: rows
   meta: meta
   fill: fill
+  expand: expand
 
 includeZeroInRange = (range) ->
   [ lo, hi ] = range
@@ -78,6 +87,16 @@ includeZeroInRange = (range) ->
     [ lo, 0 ]
   else
     range
+
+combineRanges = (ranges...) ->
+  lo = Number.POSITIVE_INFINITY
+  hi = Number.NEGATIVE_INFINITY
+  for range in ranges
+    if lo > value = range[0]
+      lo = value
+    if hi < value = range[1]
+      hi = value
+  [ lo, hi ]
 
 computeRange = (rows, attr) ->
   if rows.length
@@ -90,6 +109,12 @@ computeRange = (rows, attr) ->
     [ lo , hi ]
   else
     [ -1, 1 ]
+
+permute = (array, indices) ->
+  permuted = new Array array.length
+  for index, i in indices
+    permuted[i] = array[index]
+  permuted
 
 factor = (array) ->
   _id = 0
@@ -127,5 +152,7 @@ Flow.Data =
       't'
   createCompiledPrototype: createCompiledPrototype
   computeRange: computeRange
+  combineRanges: combineRanges
   includeZeroInRange: includeZeroInRange
   factor: factor
+  permute: permute

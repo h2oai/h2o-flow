@@ -1,3 +1,7 @@
+# Performance notes:
+#
+# Rendering loops should use (row[attr] for row in rows) - not (attr(row) for row in rows) - avoids 1 func call per attr per row. This also implies that attrs should be passed around as strings, not functions.
+#
 
 createOrdinalBandScale = (domain, range) ->
   d3.scale.ordinal()
@@ -15,6 +19,61 @@ createAxis = (scale, opts) ->
   axis.ticks opts.ticks if opts.ticks
   axis
 
+renderD3StackedBar = (table, attrX1, attrX2, attrColor) ->
+  { schema, columns, rows } = table
+
+  columnX1 = table.schema[attrX1]
+  columnX2 = table.schema[attrX2]
+  columnColor = table.schema[attrColor]
+
+  domainX = Flow.Data.combineRanges columnX1.domain, columnX2.domain
+
+  availableWidth = 450
+  availableHeight = 20
+  
+  margin =
+    top: 0
+    right: 0
+    bottom: 0
+    left: 0
+
+  width = availableWidth - margin.left - margin.right
+  height = availableHeight - margin.top - margin.bottom
+
+  scaleX = d3.scale.linear()
+    .domain domainX
+    .range [ 0, width ]
+
+  scaleColor = d3.scale.category20()
+    .domain columnColor.domain
+
+  svg = document.createElementNS 'http://www.w3.org/2000/svg', 'svg'
+  viz = d3.select svg
+    .attr 'width', availableWidth
+    .attr 'height', availableHeight
+    .append 'g'
+    .attr 'transform', "translate(#{margin.left},#{margin.top})"
+
+  tooltip = (d) ->
+    tip = ''
+    for column in columns
+      tip += "#{column.name}: #{if Flow.Data.isDiscrete column.type then column.domain[d[column.name]] else d[column.name]}\n"
+    tip.trim()
+
+  bar = viz.selectAll '.bar'
+    .data rows
+    .enter()
+    .append 'rect'
+    .attr 'class', 'bar'
+    .attr 'x', (d) -> scaleX d[attrX1]
+    .attr 'width', (d) -> scaleX d[attrX2] - d[attrX1]
+    .attr 'height', height
+    .style 'fill', (d) -> scaleColor d[attrColor]
+    .append 'title'
+      .text tooltip
+
+  svg
+
 renderD3BarChart = (table, attrX, attrY) ->
   { schema, columns, rows } = table
 
@@ -25,8 +84,17 @@ renderD3BarChart = (table, attrX, attrY) ->
   interpretationY = Flow.Data.computeColumnInterpretation columnY.type
   interpretationXY = interpretationX + interpretationY
 
-  domainX = if interpretationX is 'c' then Flow.Data.includeZeroInRange columnX.domain else columnX.domain
-  domainY = if interpretationY is 'c' then Flow.Data.includeZeroInRange columnY.domain else columnY.domain
+  domainX = if interpretationX is 'c'
+    Flow.Data.includeZeroInRange columnX.domain
+  else
+    for row in rows
+      columnX.domain[row[attrX]]
+
+  domainY = if interpretationY is 'c'
+    Flow.Data.includeZeroInRange columnY.domain 
+  else 
+    for row in rows
+      columnY.domain[row[attrY]]
 
   availableWidth = if interpretationX is 'c' then 500 else domainX.length * 20
   availableHeight = if interpretationY is 'c' then 500 else domainY.length * 20
@@ -57,31 +125,31 @@ renderD3BarChart = (table, attrX, attrY) ->
     orient: 'left'
 
   if interpretationXY is 'dc'
-    positionX = (d) -> scaleX domainX[d[attrX]]
+    positionX = (d) -> scaleX columnX.domain[d[attrX]]
     positionY = (d) -> scaleY d[attrY]
     widthX = scaleX.rangeBand()
     heightY = (d) -> height - scaleY d[attrY]
   else #XXX 'cc', 'dd' not handled
     positionX = (d) -> scaleX 0
-    positionY = (d) -> scaleY domainY[d[attrY]]
+    positionY = (d) -> scaleY columnY.domain[d[attrY]]
     widthX = (d) -> scaleX d[attrX]
     heightY = scaleY.rangeBand()
 
-  el = document.createElementNS 'http://www.w3.org/2000/svg', 'svg'
-  svg = d3.select el
+  svg = document.createElementNS 'http://www.w3.org/2000/svg', 'svg'
+  viz = d3.select svg
     .attr 'class', 'plot'
-    .attr 'width', width + margin.left + margin.right
-    .attr 'height', height + margin.top + margin.bottom
+    .attr 'width', availableWidth
+    .attr 'height', availableHeight
     .append 'g'
     .attr 'transform', 'translate(' + margin.left + ',' + margin.top + ')'
 
-  svgAxisX = svg
+  svgAxisX = viz
     .append 'g'
     .attr 'class', 'axis'
     .attr 'transform', 'translate(0,' + height + ')'
     .call axisX
 
-  svgAxisY = svg
+  svgAxisY = viz
     .append 'g'
     .attr 'class', 'axis'
     .call axisY
@@ -95,7 +163,7 @@ renderD3BarChart = (table, attrX, attrY) ->
       .style 'text-anchor', 'end'
       .text columnY.name #TODO change to label.
 
-  svg
+  viz
     .selectAll '.bar'
     .data rows
     .enter()
@@ -106,10 +174,9 @@ renderD3BarChart = (table, attrX, attrY) ->
     .attr 'y', positionY
     .attr 'height', heightY
 
-  el 
+  svg
 
-Flow.Plot = (_config, go) ->
-
+plot = (_config, go) ->
   #
   # syntax for stacked bar charts
   # data for box plots
@@ -129,8 +196,13 @@ Flow.Plot = (_config, go) ->
 
   # TODO characteristics, histogram, boxplot
   renderInterval = (config, go) ->
-    svg = renderD3BarChart config.data, config.x, config.y
-    go null, Flow.HTML.render 'div', svg
+    #XXX Does not handle all cases - rework
+    if config.x and not config.y
+      [ attrX1, attrX2 ] = config.x config.data
+      el = renderD3StackedBar config.data, attrX1, attrX2, config.color
+    else
+      el = renderD3BarChart config.data, config.x, config.y
+    go null, Flow.HTML.render 'div', el
 
   renderText = (config, go) ->
     [ table, thead, tbody, tr, th, td, tdr ] = Flow.HTML.template 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=td.rt'
@@ -160,14 +232,47 @@ Flow.Plot = (_config, go) ->
       ]
 
   initialize = (config) ->
-    switch config.type
-      when 'interval'
-        renderInterval config, go
-      when 'schema'
-        renderSchema config, go
-      when 'text'
-        renderText config, go
-      else
-        go new Error 'Not implemented'
+    try
+      switch config.type
+        when 'interval'
+          renderInterval config, go
+        when 'schema'
+          renderSchema config, go
+        when 'text'
+          renderText config, go
+        else
+          go new Error 'Not implemented'
+    catch error
+      go new Flow.Error 'Error creating plot.', error
 
   initialize _config
+
+stack = (attr) ->
+  self = (table) ->
+    type = table.schema[attr].type
+    [ startColumn, endColumn ] = table.expand type, type
+
+    start = startColumn.name
+    end = endColumn.name
+
+    n = 0 
+    p = 0
+    for row in table.rows
+      value = row[attr]
+      if value >= 0
+        row[start] = p
+        row[end] = p = p + value
+      else
+        row[start] = n
+        row[end] = n = n + value
+
+    startColumn.domain = [ n, p ]
+    endColumn.domain = [ n, p ]
+    
+    [ start, end ]
+    
+  self
+
+Flow.Plot =
+  plot: plot
+  stack: stack
