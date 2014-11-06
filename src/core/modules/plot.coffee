@@ -72,11 +72,22 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
     .append 'title'
       .text tooltip
 
+  [ legends, legend, swatch, label ] = Flow.HTML.template '.flow-legend', 'span.flow-legend-item', "+span.flow-legend-swatch style='background:{0}'", '=span.flow-legend-label'
+
+  items = for d in columnColor.domain
+    legend [
+      swatch '', scaleColor d
+      label d
+    ]
+  
+  legendEl = Flow.HTML.render 'div', legends items
+
   el = document.createElement 'div'
   if title
     [ h4 ] = Flow.HTML.template '=h4'
     el.appendChild Flow.HTML.render 'div', h4 escape title
   el.appendChild svg
+  el.appendChild legendEl
   el
 
 renderD3BarChart = (title, table, attrX, attrY) ->
