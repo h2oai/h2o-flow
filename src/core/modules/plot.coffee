@@ -27,15 +27,14 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
   columnColor = table.schema[attrColor]
 
   domainX = Flow.Data.combineRanges columnX1.domain, columnX2.domain
-
   availableWidth = 450
-  availableHeight = 20
+  availableHeight = 16 + 30
   
   margin =
     top: 0
-    right: 0
-    bottom: 0
-    left: 0
+    right: 10
+    bottom: 30
+    left: 10
 
   width = availableWidth - margin.left - margin.right
   height = availableHeight - margin.top - margin.bottom
@@ -44,15 +43,26 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
     .domain domainX
     .range [ 0, width ]
 
-  scaleColor = d3.scale.category20()
+  scaleColor = d3.scale.ordinal()
     .domain columnColor.domain
+    .range d3.scale.category10().range()
+
+  axisX = createAxis scaleX, 
+    orient: 'bottom'
 
   svg = document.createElementNS 'http://www.w3.org/2000/svg', 'svg'
   viz = d3.select svg
+    .attr 'class', 'plot'
     .attr 'width', availableWidth
     .attr 'height', availableHeight
     .append 'g'
     .attr 'transform', "translate(#{margin.left},#{margin.top})"
+
+  svgAxisX = viz
+    .append 'g'
+    .attr 'class', 'axis'
+    .attr 'transform', 'translate(0,' + height + ')'
+    .call axisX
 
   tooltip = (d) ->
     tip = ''
@@ -68,7 +78,7 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
     .attr 'x', (d) -> scaleX d[attrX1]
     .attr 'width', (d) -> scaleX d[attrX2] - d[attrX1]
     .attr 'height', height
-    .style 'fill', (d) -> scaleColor d[attrColor]
+    .style 'fill', (d) -> scaleColor columnColor.domain[d[attrColor]]
     .append 'title'
       .text tooltip
 
