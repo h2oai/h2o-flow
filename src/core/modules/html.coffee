@@ -22,13 +22,19 @@ compile = (template, type) ->
   else
     (contents) -> beginTag + (contents.join '') + closeTag
 
+
+_templateCache = {}
 Flow.HTML =
   template: (templates...) ->
     for template in templates
-      if 0 is index = template.indexOf '='
-        compile (template.substr 1), '='
+      if cached = _templateCache[template]
+        cached
       else
-        compile template
+        if 0 is index = template.indexOf '='
+          _templateCache[template] = compile (template.substr 1), '='
+        else
+          _templateCache[template] = compile template
+
   render: (name, html) ->
     el = document.createElement name
     if html
