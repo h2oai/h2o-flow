@@ -33,19 +33,19 @@
           // /ko
         td
           p
-            a(href='#' data-bind='text:key, click:inspect')
+            a(href='#' data-bind='text:key, click:view')
           p.flow-small(data-bind='text:description')
           // ko ifnot:isText
           p
-            button.flow-button(type='button' data-bind='click:scanColumns')
+            button.flow-button(type='button' data-bind='click:inspectColumns')
               i.fa.fa-table
               span View Columns
-            button.flow-button(type='button' data-bind='click:scanData')
+            button.flow-button(type='button' data-bind='click:inspectData')
               i.fa.fa-table
               span View Data
-            button.flow-button(type='button' data-bind='click:scan')
+            button.flow-button(type='button' data-bind='click:inspect')
               i.fa.fa-sitemap
-              span Scan
+              span Inspect
           // /ko
         td.flow-right(data-bind='text:rowCount')
         td.flow-right(data-bind='text:columnCount')

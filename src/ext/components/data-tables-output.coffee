@@ -1,13 +1,13 @@
 H2O.DataTablesOutput = (_, _tables) ->
   createTableView = (table) ->
-    inspect = -> 
-      _.insertAndExecuteCell 'cs', table.meta.scan
+    describe = -> 
+      _.insertAndExecuteCell 'cs', table.meta.inspect
 
-    view = ->
+    inspect = ->
       _.insertAndExecuteCell 'cs', """
       plot 
         type: 'text'
-        data: #{table.meta.scan}
+        data: #{table.meta.inspect}
       """
 
     plot = ->
@@ -17,8 +17,8 @@ H2O.DataTablesOutput = (_, _tables) ->
     label: table.label
     description: table.description
     columns: table.columns
+    describe: describe
     inspect: inspect
-    view: view
     canPlot: if table.meta.plot then yes else no
     plot: plot
 

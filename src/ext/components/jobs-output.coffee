@@ -6,11 +6,11 @@ H2O.JobsOutput = (_, jobs) ->
   _exception = signal null
 
   createJobView = (job) ->
-    inspect = ->
+    view = ->
       _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
 
     job: job
-    inspect: inspect
+    view: view
 
   toggleRefresh = ->
     _isLive not _isLive()

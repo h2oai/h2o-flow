@@ -9,28 +9,28 @@ H2O.FramesOutput = (_, _frames) ->
     columnLabels = head (map frame.columns, (column) -> column.label), 15
     description = 'Columns: ' + (columnLabels.join ', ') + if frame.columns.length > columnLabels.length then "... (#{frame.columns.length - columnLabels.length} more columns)" else ''
 
-    inspect = ->
+    view = ->
       if frame.isText
         _.insertAndExecuteCell 'cs', "setupParse [ #{stringify frame.key.name } ]"
       else
         _.insertAndExecuteCell 'cs', "getFrame #{stringify frame.key.name}"
 
-    scanColumns = ->
+    inspectColumns = ->
       _.insertAndExecuteCell 'cs', """
       plot 
         type: 'text'
-        data: scan 'columns', getFrame #{stringify frame.key.name}
+        data: inspect 'columns', getFrame #{stringify frame.key.name}
       """
 
-    scanData = ->
+    inspectData = ->
       _.insertAndExecuteCell 'cs', """
       plot 
         type: 'text'
-        data: scan 'data', getFrame #{stringify frame.key.name}
+        data: inspect 'data', getFrame #{stringify frame.key.name}
       """
 
-    scan = ->
-      _.insertAndExecuteCell 'cs', "scan getFrame #{stringify frame.key.name}"
+    inspect = ->
+      _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify frame.key.name}"
 
     key: frame.key.name
     description: description
@@ -38,10 +38,10 @@ H2O.FramesOutput = (_, _frames) ->
     rowCount: frame.rows
     columnCount: frame.columns.length
     isText: frame.isText
+    view: view
+    inspectColumns: inspectColumns
+    inspectData: inspectData
     inspect: inspect
-    scanColumns: scanColumns
-    scanData: scanData
-    scan: scan
 
   importFiles = ->
     _.insertAndExecuteCell 'cs', 'importFiles'

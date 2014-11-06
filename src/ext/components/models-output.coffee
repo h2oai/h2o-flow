@@ -4,7 +4,7 @@ H2O.ModelsOutput = (_, _models) ->
     clone: ->
       return alert 'Not implemented'
       _.insertAndExecuteCell 'cs', "cloneModel #{stringify model.key}"
-    inspect: ->
+    view: ->
       _.insertAndExecuteCell 'cs', "getModel #{stringify model.key}"
 
   buildModel = ->

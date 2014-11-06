@@ -32,7 +32,7 @@ H2O.JobOutput = (_, _job) ->
   _status = signal null
   _statusColor = signal null
   _exception = signal null
-  _canInspect = signal no
+  _canView = signal no
 
   isJobRunning = (job) ->
     job.status is 'CREATED' or job.status is 'RUNNING'
@@ -43,7 +43,7 @@ H2O.JobOutput = (_, _job) ->
     _status job.status
     _statusColor getJobOutputStatusColor job.status
     _exception job.exception
-    _canInspect not isJobRunning job
+    _canView not isJobRunning job
 
   toggleRefresh = ->
     _isLive not _isLive()
@@ -65,8 +65,8 @@ H2O.JobOutput = (_, _job) ->
   act _isLive, (isLive) ->
     refresh() if isLive
 
-  inspect = ->
-    return unless _canInspect()
+  view = ->
+    return unless _canView()
     _.requestInspect _destinationKey, (error, result) ->
       if error
         _exception error #XXX fixme
@@ -94,7 +94,7 @@ H2O.JobOutput = (_, _job) ->
   exception: _exception
   isLive: _isLive
   toggleRefresh: toggleRefresh
-  canInspect: _canInspect
-  inspect: inspect
+  canView: _canView
+  view: view
   template: 'flow-job-output'
 

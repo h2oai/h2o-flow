@@ -3,7 +3,7 @@ H2O.DataTableOutput = (_, _table) ->
   view = ->
     _.insertAndExecuteCell 'cs', """
     plot
-      data: #{_table.meta.scan}
+      data: #{_table.meta.inspect}
       type: 'text'
     """
 

@@ -19,13 +19,13 @@
       tr
         th.flow-narrow Destination Key
         td.flow-wide
-          // ko ifnot:canInspect
+          // ko ifnot:canView
           span(data-bind='text:destinationKey')
           // /ko
-          // ko if:canInspect
+          // ko if:canView
           .flow-hint
             i.fa.fa-key
-            a(href='#' data-bind='text:destinationKey, click:inspect')
+            a(href='#' data-bind='text:destinationKey, click:view')
           // /ko
       tr
         th.flow-narrow Run Time
@@ -47,9 +47,9 @@
       tr
         th.flow-narrow Actions
         td.flow-wide
-          button.flow-button(type='button' data-bind="click:inspect")
+          button.flow-button(type='button' data-bind="click:view")
             i.fa.fa-key
-            | Inspect
+            | View
             
           button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
             // ko if:isLive

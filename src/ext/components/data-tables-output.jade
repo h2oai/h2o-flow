@@ -23,13 +23,13 @@
         td
           i.fa.fa-table
         td
-          a(href='#' data-bind='text:name, click:view')
+          a(href='#' data-bind='text:name, click:inspect')
         td(data-bind='text:label')
         td(data-bind='text:description')
         td
-          button.flow-button(type='button' data-bind='click:inspect')
+          button.flow-button(type='button' data-bind='click:describe')
             i.fa.fa-sitemap
-            span Schema
+            span Describe
           // ko if:canPlot
           button.flow-button(type='button' data-bind='click:plot')
             i.fa.fa-bar-chart
