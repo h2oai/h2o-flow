@@ -10,6 +10,9 @@ compile = (template, type) ->
     id = name.substr 1
     name = 'div'
 
+  if name is ''
+    name = 'div'
+
   beginTag = "<#{name}"
   beginTag += " id='#{id}'" if id
   beginTag += " class='#{classes.join ' '}'" if classes.length
@@ -19,9 +22,12 @@ compile = (template, type) ->
 
   if type is '='
     (content) -> beginTag + content + closeTag
+  else if type is '+'
+    (content, arg0) -> #TODO add more args as necessary
+      tag = replace beginTag, '{0}', arg0
+      tag + content + closeTag
   else
     (contents) -> beginTag + (contents.join '') + closeTag
-
 
 _templateCache = {}
 Flow.HTML =
@@ -30,11 +36,11 @@ Flow.HTML =
       if cached = _templateCache[template]
         cached
       else
-        if 0 is index = template.indexOf '='
-          _templateCache[template] = compile (template.substr 1), '='
+        type = charAt template, 0
+        if type is '=' or type is '+'
+          _templateCache[template] = compile (template.substr 1), type
         else
           _templateCache[template] = compile template
-
   render: (name, html) ->
     el = document.createElement name
     if html
