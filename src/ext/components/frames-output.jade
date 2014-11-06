@@ -32,9 +32,21 @@
           i.fa.fa-database
           // /ko
         td
-          div
+          p
             a(href='#' data-bind='text:key, click:inspect')
-          .flow-small(data-bind='text:description')
+          p.flow-small(data-bind='text:description')
+          // ko ifnot:isText
+          p
+            button.flow-button(type='button' data-bind='click:scanColumns')
+              i.fa.fa-table
+              span View Columns
+            button.flow-button(type='button' data-bind='click:scanData')
+              i.fa.fa-table
+              span View Data
+            button.flow-button(type='button' data-bind='click:scan')
+              i.fa.fa-sitemap
+              span Scan
+          // /ko
         td.flow-right(data-bind='text:rowCount')
         td.flow-right(data-bind='text:columnCount')
         td.flow-right(data-bind='text:size')

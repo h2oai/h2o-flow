@@ -10,7 +10,7 @@ _assistance =
     icon: 'cubes'
   getJobs:
     description: 'Get a list of jobs running in H<sub>2</sub>O'
-    icon: 'bolt'
+    icon: 'tasks'
   buildModel:
     description: 'Build a model'
     icon: 'cube'
@@ -247,11 +247,13 @@ H2O.Routines = (_) ->
       data: getData
 
   extendColumnSummary = (frameKey, frame, columnName) ->
+    column = head frame.columns
+    rowCount = frame.rows
+
     __getPercentiles = null
     getPercentiles = ->
       return __getPercentiles if __getPercentiles
       
-      column = head frame.columns
       percentiles = frame.default_pctiles
       percentileValues = column.pctiles
 
@@ -284,7 +286,6 @@ H2O.Routines = (_) ->
     getDistribution = ->
       return __getDistribution if __getDistribution
 
-      column = head frame.columns
       distributionDataType = if column.type is 'int' then Flow.Data.Integer else Flow.Data.Real
       
       schema = if column.type is 'int' then extensionSchemas.column.integerDistribution else extensionSchemas.column.realDistribution
@@ -330,9 +331,6 @@ H2O.Routines = (_) ->
     __getCharacteristics = null
     getCharacteristics = ->
       return __getCharacteristics if __getCharacteristics
-
-      column = head frame.columns
-      rowCount = frame.rows
 
       { missing, zeros, pinfs, ninfs } = column
       other = rowCount - missing - zeros - pinfs - ninfs
@@ -397,9 +395,6 @@ H2O.Routines = (_) ->
       ]
 
       defaultPercentiles = frame.default_pctiles
-      rowCount = frame.rows
-
-      column = head frame.columns
       percentiles = column.pctiles
 
       mean = column.mean
@@ -428,9 +423,6 @@ H2O.Routines = (_) ->
     getDomain = ->
       return __getDomain if __getDomain
 
-      rowCount = frame.rows
-      column = head frame.columns
-      rowCount = frame.rows
       levels = map column.bins, (count, index) -> count: count, index: index
 
       #TODO sort table in-place when sorting is implemented
@@ -478,12 +470,19 @@ H2O.Routines = (_) ->
             y: 'label'
           """
 
-    mixin frame,
-      characteristics: getCharacteristics
-      summary: getSummary
-      distribution: getDistribution
-      domain: getDomain
-      percentiles: getPercentiles
+    switch column.type
+      when 'int', 'real'
+        mixin frame,
+          characteristics: getCharacteristics
+          summary: getSummary
+          distribution: getDistribution
+          percentiles: getPercentiles
+      else
+        mixin frame,
+          characteristics: getCharacteristics
+          domain: getDomain
+          percentiles: getPercentiles
+
 
   requestFrame = (frameKey, go) ->
     _.requestFrame frameKey, (error, frame) ->

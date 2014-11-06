@@ -16,15 +16,25 @@
         th Name
         th Label
         th Description
+        th Actions
     tbody
       // ko foreach:tables
       tr
         td
           i.fa.fa-table
         td
-          a(href='#' data-bind='text:name, click:inspect')
+          a(href='#' data-bind='text:name, click:view')
         td(data-bind='text:label')
         td(data-bind='text:description')
+        td
+          button.flow-button(type='button' data-bind='click:inspect')
+            i.fa.fa-sitemap
+            span Schema
+          // ko if:canPlot
+          button.flow-button(type='button' data-bind='click:plot')
+            i.fa.fa-bar-chart
+            span Plot
+          // /ko
       // /ko
   // /ko
   
