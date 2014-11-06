@@ -67,7 +67,7 @@ _fork = (f, args) ->
 
   self
 
-isFuture = (a) -> if a?.isFuture then yes else no
+_isFuture = (a) -> if a?.isFuture then yes else no
 
 _join = (args, go) ->
   return go null, [] if args.length is 0
@@ -138,15 +138,75 @@ iterate = (tasks) ->
   (go) ->
     next go
 
+#
+# Gives a synchronous operation an asynchronous signature.
+# Used to pass synchronous functions to callers that expect
+#   asynchronous signatures.
+_async = (f, args...) ->
+  later = (args..., go) ->
+    go null, apply f, null, args
+  _fork later, args
+
+#
+# Asynchronous find operation.
+#
+# find attr, prop, array
+# find array, attr, prop
+# find attr, obj
+# find obj, attr
+#
+
+_find$3 = (attr, prop, obj) ->
+  if _isFuture obj
+    return _async _find$3, attr, prop, obj
+  else if isArray obj
+    for v in obj
+      return v if v[attr] is prop
+    return
+  return
+
+_find$2 = (attr, obj) ->
+  if _isFuture obj
+    return _async _find$2, attr, obj
+  else if isString attr
+    if isArray obj
+      return _find$3 'name', attr, obj
+    else
+      return obj[attr]
+  return
+
+_find = (args...) ->
+  switch args.length
+    when 3
+      [ a, b, c ] = args
+      ta = typeOf a
+      tb = typeOf b
+      tc = typeOf c
+      if ta is 'Array' and tb is 'String'
+        return _find$3 b, c, a
+      else if ta is 'String' and tc = 'Array'
+        return _find$3 a, b, c
+    when 2
+      [ a, b ] = args
+      return unless a
+      return unless b
+      if isString b
+        return _find$2 b, a
+      else if isString a
+        return _find$2 a, b
+  return
+
 Flow.Async =
   createBuffer: createBuffer #XXX rename
   noop: _noop
   applicate: _applicate
   renderable: renderable
-  isFuture: isFuture
+  isFuture: _isFuture
   fork: _fork
   join: _join
   pipe: pipe
   iterate: iterate
+  async: _async
+  find: _find
 
 

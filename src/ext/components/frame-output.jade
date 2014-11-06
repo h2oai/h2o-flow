@@ -6,14 +6,15 @@
   table.flow-form
     tbody
       tr 
-        th(width='1') Actions
+        th(width='1') Actions:
         td
-          button.flow-button(type='button' data-bind='click:inspect')
-            i.fa.fa-sitemap
-            span Inspect
           button.flow-button(type='button' data-bind='click:createModel')
             i.fa.fa-cube
             span Create Model
+        td.flow-right
+          button.flow-button(type='button' data-bind='click:inspect')
+            i.fa.fa-sitemap
+            span Inspect
 
   // ko with:table
   div(style='overflow:auto')

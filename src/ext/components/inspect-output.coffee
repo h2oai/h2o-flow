@@ -1,11 +1,7 @@
-H2O.DataTableOutput = (_, _table) ->
+H2O.InspectOutput = (_, _table) ->
   
   view = ->
-    _.insertAndExecuteCell 'cs', """
-    plot
-      data: #{_table.meta.inspect}
-      type: 'text'
-    """
+    _.insertAndExecuteCell 'cs', "grid #{_table.meta.inspect}"
 
   plot = ->
     _.insertAndExecuteCell 'cs', _table.meta.plot
@@ -15,5 +11,5 @@ H2O.DataTableOutput = (_, _table) ->
   view: view
   canPlot: if _table.meta.plot then yes else no
   plot: plot
-  template: 'flow-data-table-output'
+  template: 'flow-inspect-output'
 

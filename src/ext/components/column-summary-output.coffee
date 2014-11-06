@@ -1,7 +1,7 @@
 H2O.ColumnSummaryOutput = (_, frameKey, frame, columnName) ->
   column = head frame.columns
 
-  histogram = _.inspect 'histogram', frame
+  histogram = _.inspect(frame).histogram
 
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"

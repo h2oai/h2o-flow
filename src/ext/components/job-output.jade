@@ -24,7 +24,7 @@
           // /ko
           // ko if:canView
           .flow-hint
-            i.fa.fa-key
+            i.fa.fa-search
             a(href='#' data-bind='text:destinationKey, click:view')
           // /ko
       tr
@@ -48,7 +48,7 @@
         th.flow-narrow Actions
         td.flow-wide
           button.flow-button(type='button' data-bind="click:view")
-            i.fa.fa-key
+            i.fa.fa-search
             | View
             
           button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")

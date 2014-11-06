@@ -29,9 +29,10 @@ Flow.Coffeescript = (_, guid, sandbox) ->
                   output.error new Flow.Error 'Error rendering output', error
                 else
                   output.data result 
+            else if result?._render_
+              output.data result._render_()
             else
-              #XXX pick smarter renderers based on content
-              output.data Flow.ObjectBrowser 'output', ft
+              output.data Flow.ObjectBrowser 'output', result
       else
         output.data Flow.ObjectBrowser 'output', ft
 

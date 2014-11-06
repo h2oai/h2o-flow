@@ -17,8 +17,16 @@ _assistance =
 
 H2O.Routines = (_) ->
 
-  renderable = Flow.Async.renderable
-  asynchronize = (f, args..., go) -> go null, apply f, null, args
+  #TODO move these into Flow.Async
+  _fork = (f, args...) -> Flow.Async.fork f, args
+  _join = (args..., go) -> Flow.Async.join args, _applicate go
+  _call = (go, args...) -> Flow.Async.join args, _applicate go
+  _apply = (go, args) -> Flow.Async.join args, go
+  _isFuture = Flow.Async.isFuture
+  _async = Flow.Async.async
+  _find = Flow.Async.find
+
+  renderable = Flow.Async.renderable #XXX obsolete
 
   proceed = (func, args) ->
     renderable Flow.Async.noop, (ignore, go) ->
@@ -35,55 +43,23 @@ H2O.Routines = (_) ->
 
   help = -> proceed H2O.Help
 
-  mixin = (raw, _tableReaders) ->
-    raw.getData = (id) ->
-      if id
-        if read = _tableReaders[id]
-          read()
-        else
-          undefined
-      else
-        (read() for name, read of _tableReaders)
+  mixin = (raw, _inspections) ->
+    __tables = null
+    raw._inspect_ = ->
+      return __tables if __tables
+      tables = (action() for name, action of _inspections)
+      forEach tables, (table) ->
+        table._render_ = -> H2O.InspectOutput _, table
+      tables._render_ = -> H2O.InspectsOutput _, tables
+      __tables = tables
     raw
 
-  inspectTable = (id, obj) ->
-    if obj.isFuture
-      renderable asynchronize, inspectTable, id, obj, (table, go) ->
-        if table
-          go null, H2O.DataTableOutput _, table
-        else
-          go new Flow.Error "inspect() failed: data '#{id}' not found."
+  inspect = (obj) ->
+    if _isFuture obj
+      _async inspect, obj
     else
-      if obj.getData
-        obj.getData id
-      else
-        undefined
-
-  inspectTables = (obj) ->
-    if obj.isFuture
-      renderable asynchronize, inspectTables, obj, (tables, go) ->
-        if tables
-          go null, H2O.DataTablesOutput _, tables
-        else
-          go new Error "inspect() failed: no data found."
-    else
-      if obj.getData
-        obj.getData()
-      else
-        undefined
-
-  inspect = (arg1, arg2) ->
-    switch arguments.length
-      when 2
-        if (isString arg1) and isObject arg2
-          inspectTable arg1, arg2
-        else
-          undefined
-      when 1
-        if isObject arg1
-          inspectTables arg1 
-        else
-          undefined
+      if obj._inspect_
+        obj._inspect_()
       else
         undefined
 
@@ -96,7 +72,7 @@ H2O.Routines = (_) ->
 
   _plot = (config, go) ->
     if config.data
-      if config.data.isFuture
+      if _isFuture config.data
         config.data (error, data) ->
           if error
             go new Flow.Error 'Error evaluating data for plot().', error
@@ -108,11 +84,18 @@ H2O.Routines = (_) ->
     else
       go new Flow.Error "Cannot plot(): missing 'data'."
 
+
+
   plot = (config) ->
     renderable _plot, config, (plot, go) ->
       go null, H2O.PlotOutput _, plot
 
   plot.stack = Flow.Plot.stack
+
+  grid = (data) ->
+    plot
+      type: 'text'
+      data: data
 
   extensionSchemaConfig =
     column:
@@ -186,7 +169,7 @@ H2O.Routines = (_) ->
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: "inspect 'columns', getFrame #{stringify frameKey}"
+          inspect: "find 'columns', inspect getFrame #{stringify frameKey}"
 
     __getData = null
     getData = ->
@@ -236,7 +219,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'data', getFrame #{stringify frameKey}"
+          inspect: "find 'data', inspect getFrame #{stringify frameKey}"
 
     __getMins = null
 
@@ -279,7 +262,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'percentiles', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "find 'percentiles', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
 
     __getDistribution = null
@@ -326,7 +309,7 @@ H2O.Routines = (_) ->
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: "inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "find 'distribution', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     __getCharacteristics = null
     getCharacteristics = ->
@@ -363,12 +346,12 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "find 'characteristics', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
             title: 'Characteristics for #{frameKey} : #{column.label}'
             type: 'interval'
-            data: inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            data: find 'characteristics', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: plot.stack 'count'
             color: 'characteristic'
           """
@@ -417,7 +400,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: [ row ]
         meta:
-          inspect: "inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "find 'summary', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     __getDomain = null
     getDomain = ->
@@ -460,12 +443,12 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "find 'domain', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
             title: 'Domain for #{frameKey} : #{column.label}'
             type: 'interval'
-            data: inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            data: find 'domain', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: 'count'
             y: 'label'
           """
@@ -607,11 +590,11 @@ H2O.Routines = (_) ->
     link _.inspect, inspect
 
   # fork/join 
-  fork: (f, args...) -> Flow.Async.fork f, args
-  join: (args..., go) -> Flow.Async.join args, _applicate go
-  call: (go, args...) -> Flow.Async.join args, _applicate go
-  apply: (go, args) -> Flow.Async.join args, go
-  isFuture: Flow.Async.isFuture
+  fork: _fork
+  join: _join
+  call: _call
+  apply: _apply
+  isFuture: _isFuture
   #
   # Dataflow
   signal: signal
@@ -625,6 +608,8 @@ H2O.Routines = (_) ->
   # Generic
   inspect: inspect
   plot: plot
+  grid: grid
+  find: _find
   #
   # Meta
   assist: assist

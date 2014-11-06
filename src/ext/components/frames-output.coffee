@@ -16,18 +16,10 @@ H2O.FramesOutput = (_, _frames) ->
         _.insertAndExecuteCell 'cs', "getFrame #{stringify frame.key.name}"
 
     inspectColumns = ->
-      _.insertAndExecuteCell 'cs', """
-      plot 
-        type: 'text'
-        data: inspect 'columns', getFrame #{stringify frame.key.name}
-      """
+      _.insertAndExecuteCell 'cs', "grid find 'columns', inspect getFrame #{stringify frame.key.name}"
 
     inspectData = ->
-      _.insertAndExecuteCell 'cs', """
-      plot 
-        type: 'text'
-        data: inspect 'data', getFrame #{stringify frame.key.name}
-      """
+      _.insertAndExecuteCell 'cs', "grid data: find 'data', inspect getFrame #{stringify frame.key.name}"
 
     inspect = ->
       _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify frame.key.name}"

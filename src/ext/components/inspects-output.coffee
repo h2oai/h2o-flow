@@ -1,14 +1,10 @@
-H2O.DataTablesOutput = (_, _tables) ->
+H2O.InspectsOutput = (_, _tables) ->
   createTableView = (table) ->
     describe = -> 
       _.insertAndExecuteCell 'cs', table.meta.inspect
 
     inspect = ->
-      _.insertAndExecuteCell 'cs', """
-      plot 
-        type: 'text'
-        data: #{table.meta.inspect}
-      """
+      _.insertAndExecuteCell 'cs', "grid #{table.meta.inspect}"
 
     plot = ->
       _.insertAndExecuteCell 'cs', table.meta.plot
@@ -24,5 +20,5 @@ H2O.DataTablesOutput = (_, _tables) ->
 
   hasTables: _tables.length > 0
   tables: map _tables, createTableView
-  template: 'flow-data-tables-output'
+  template: 'flow-inspects-output'
 

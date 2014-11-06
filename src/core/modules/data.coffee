@@ -78,6 +78,7 @@ createTable = (opts) ->
   meta: meta
   fill: fill
   expand: expand
+  _is_table_: yes
 
 includeZeroInRange = (range) ->
   [ lo, hi ] = range
