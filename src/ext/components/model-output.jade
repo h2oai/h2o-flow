@@ -12,24 +12,16 @@
         tr 
           th(width='1') Actions:
           td
-            button.flow-button(type='button' data-bind='click:predict')
-              i.fa.fa-bolt
-              span Predict
-            button.flow-button(type='button' data-bind="click:cloneModel")
-              i.fa.fa-copy
-              span Clone this model&hellip;
+            +button('Predict', 'bolt', 'predict')
+            +button('Clone this model&hellip;', 'copy', 'cloneModel')
       
   div(data-bind="css:{ 'flow-unhide':isExpanded }")
     .flow-right.flow-margin-after 
       // ko ifnot:isExpanded
-      button.flow-button(type='button' data-bind='click:toggle')
-        span Show all parameters
-        i.fa.fa-angle-double-down
+      +button('Show all parameters', 'angle-double-down', 'toggle')
       // /ko
       // ko if:isExpanded
-      button.flow-button(type='button' data-bind='click:toggle')
-        span Show modified parameters
-        i.fa.fa-angle-double-up
+      +button('Show modified parameters', 'angle-double-up', 'toggle')
       // /ko
     table.flow-form.flow-form-ruled
       thead

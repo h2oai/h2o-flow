@@ -1,15 +1,10 @@
 .flow-widget
-  h3.flow-hint
-    i.fa.fa-cubes
-    | Models
+  +subtitle('Models', 'cubes')
   
   // ko ifnot:hasModels
   blockquote Your H<sub>2</sub>O cloud has no models.
   .flow-panel
-    button.flow-button(type='button' data-bind='click:buildModel')
-      i.fa.fa-cube
-      | Build a model&hellip;
-    
+    +button('Build a model&hellip;', 'cube', 'buildModel')
   // /ko
 
   // ko if:hasModels
@@ -25,14 +20,10 @@
         td
           i.fa.fa-cube
         td
-          a(href='#' data-bind='text:key, click:view')
+          +link('@key', 'view')
         td.flow-right 
-          button.flow-button(type='button' data-bind='click:predict')
-            i.fa.fa-bolt
-            span Predict
-          button.flow-button(type='button' data-bind='click:clone')
-            i.fa.fa-cube
-            span Clone
+          +button('Predict', 'bolt', 'predict')
+          +button('Clone', 'copy', 'clone')
       // /ko
   // /ko
 
