@@ -11,12 +11,16 @@
   table.flow-form
     thead
       tr
+        th(width='1' style='font-size:inherit')
+          input(type='checkbox' title='Select or deselect all' data-bind="checked:checkAllModels")
         th(width='1') &nbsp;
         th Key
         th.flow-right  Actions
     tbody
       // ko foreach:modelViews
       tr
+        td
+          input(type='checkbox' data-bind="checked:isChecked")
         td
           i.fa.fa-cube
         td
@@ -25,5 +29,8 @@
           +button('Predict', 'bolt', 'predict')
           +button('Clone', 'copy', 'clone')
       // /ko
+  .flow-panel
+    +button('Compare selected models&hellip;', 'area-chart', 'compareModels', 'canCompareModels')
+
   // /ko
 
