@@ -141,6 +141,10 @@ H2O.Routines = (_) ->
         attributes: attributes
         attributeNames: map attributes, (attribute) -> attribute.name
 
+  extendFrames = (frames) ->
+    frames._render_ = -> H2O.FramesOutput _, frames
+    frames
+
   extendFrame = (frameKey, frame) ->
     __getColumns = null
     getColumns = ->
@@ -484,6 +488,15 @@ H2O.Routines = (_) ->
   getFrames = ->
     renderable _.requestFrames, (frames, go) ->
       go null, H2O.FramesOutput _, frames
+
+  requestFrames = (go) ->
+    _.requestFrames (error, frames) ->
+      if error
+        go error
+      else
+        go null, extendFrames frames
+
+  getFrames = -> _fork requestFrames  
 
   getFrame = (frameKey) ->
     switch typeOf frameKey

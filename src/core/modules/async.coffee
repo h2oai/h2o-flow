@@ -144,7 +144,11 @@ iterate = (tasks) ->
 #   asynchronous signatures.
 _async = (f, args...) ->
   later = (args..., go) ->
-    go null, apply f, null, args
+    try
+      result = apply f, null, args
+      go null, result
+    catch error
+      go error
   _fork later, args
 
 #

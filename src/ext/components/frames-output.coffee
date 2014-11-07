@@ -24,6 +24,9 @@ H2O.FramesOutput = (_, _frames) ->
     inspect = ->
       _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify frame.key.name}"
 
+    createModel = ->
+      _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify frame.key.name}"
+
     key: frame.key.name
     description: description
     size: toSize frame.byteSize
@@ -34,6 +37,7 @@ H2O.FramesOutput = (_, _frames) ->
     inspectColumns: inspectColumns
     inspectData: inspectData
     inspect: inspect
+    createModel: createModel
 
   importFiles = ->
     _.insertAndExecuteCell 'cs', 'importFiles'
