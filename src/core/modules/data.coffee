@@ -130,6 +130,7 @@ factor = (array) ->
   [ domain, data ]
 
 Flow.Data =
+  Object: 'Object'
   StringEnum: 'Enum<String>'
   String: 'String'
   Integer: 'Integer'

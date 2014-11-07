@@ -145,9 +145,138 @@ H2O.Routines = (_) ->
     frames._render_ = -> H2O.FramesOutput _, frames
     frames
 
-  extendModelMetrics = (metrics) ->
+  computeTruePositiveRate = (cm) ->
+    [[tn, fp], [fn, tp]] = cm
+    tp / (tp + fn)
+    
+  computeFalsePositiveRate = (cm) ->
+    [[tn, fp], [fn, tp]] = cm
+    fp / (fp + tn)
 
-    metrics
+  createNumberColumn = (name, domain) ->
+    name: name
+    type: Flow.Data.Real
+    domain: domain or null
+
+  createEnumColumn = (name, domain) ->
+    name: name
+    type: Flow.Data.StringEnum
+    domain: domain or null
+
+  createObjectColumn = (name) ->
+    name: name
+    type: Flow.Data.Object
+
+  nullifyNaN = (value) -> if value is 'NaN' then null else value
+
+  extendModelMetrics = (modelMetrics) ->
+    { frame, model, auc } = modelMetrics
+#threshold_criterion scalar
+#AUC scalar
+#Gini scalar
+
+#actual_domain 2
+
+    getScores = ->
+      columns = [
+        thresholdsColumn = createNumberColumn 'threshold'
+        f1Column = createNumberColumn 'F1'
+        f2Column = createNumberColumn 'F2'
+        f05Column = createNumberColumn 'F0point5'
+        accuracyColumn = createNumberColumn 'accuracy'
+        errorColumn = createNumberColumn 'errorr'
+        precisionColumn = createNumberColumn 'precision'
+        recallColumn = createNumberColumn 'recall'
+        specificityColumn = createNumberColumn 'specificity'
+        mccColumn = createNumberColumn 'mcc'
+        mpceColumn = createNumberColumn 'max_per_class_error'
+        cmColumn = createObjectColumn 'confusion_matrices'
+        tprColumn = createNumberColumn 'TPR'
+        fprColumn = createNumberColumn 'FPR'
+      ]
+
+      Row = Flow.Data.createCompiledPrototype (column.name for column in columns)
+      rows = for i in [ 0 ... auc.thresholds.length ]
+        row = new Row()
+        row.threshold = nullifyNaN auc.thresholds[i]
+        row.F1 = nullifyNaN auc.F1[i]
+        row.F2 = nullifyNaN auc.F2[i]
+        row.F0point5 = nullifyNaN auc.F0point5[i]
+        row.accuracy = nullifyNaN auc.accuracy[i]
+        row.errorr = nullifyNaN auc.errorr[i]
+        row.precision = nullifyNaN auc.precision[i]
+        row.recall = nullifyNaN auc.recall[i]
+        row.specificity = nullifyNaN auc.specificity[i]
+        row.mcc = nullifyNaN auc.mcc[i]
+        row.max_per_class_error = nullifyNaN auc.max_per_class_error[i]
+        row.confusion_matrices = cm = auc.confusion_matrices[i]
+        row.TPR = computeTruePositiveRate cm
+        row.FPR = computeFalsePositiveRate cm
+        row
+
+      Flow.Data.Table
+        name: 'metrics'
+        label: 'Metrics'
+        description: "Metrics for model '#{model.key}' on frame '#{frame.key.name}'"
+        columns: columns
+        rows: rows
+        meta:
+          inspect: "find 'metrics', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
+
+    getMetrics = ->
+      
+      [ criteriaDomain, criteriaData ] = Flow.Data.factor auc.threshold_criteria
+
+      columns = [
+        criteriaColumn = createEnumColumn 'criteria', criteriaDomain
+        thresholdColumn = createNumberColumn 'threshold'
+        f1Column = createNumberColumn 'F1'
+        f2Column = createNumberColumn 'F2'
+        f05Column = createNumberColumn 'F0point5'
+        accuracyColumn = createNumberColumn 'accuracy'
+        errorColumn = createNumberColumn 'error'
+        precisionColumn = createNumberColumn 'precision'
+        recallColumn = createNumberColumn 'recall'
+        specificityColumn = createNumberColumn 'specificity'
+        mccColumn = createNumberColumn 'mcc'
+        mpceColumn = createNumberColumn 'max_per_class_error'
+        cmColumn = createObjectColumn 'confusion_matrix' 
+        tprColumn = createNumberColumn 'TPR'
+        fprColumn = createNumberColumn 'FPR'
+      ]
+
+      Row = Flow.Data.createCompiledPrototype (column.name for column in columns)
+      rows = for i in [ 0 ... auc.threshold_criteria.length ]
+        row = new Row()
+        row.criteria = criteriaData[i]
+        row.threshold = nullifyNaN auc.threshold_for_criteria[i]
+        row.F1 = nullifyNaN auc.F1_for_criteria[i]
+        row.F2 = nullifyNaN auc.F2_for_criteria[i]
+        row.F0point5 = nullifyNaN auc.F0point5_for_criteria[i]
+        row.accuracy = nullifyNaN auc.accuracy_for_criteria[i]
+        row.error = nullifyNaN auc.error_for_criteria[i]
+        row.precision = nullifyNaN auc.precision_for_criteria[i]
+        row.recall = nullifyNaN auc.recall_for_criteria[i]
+        row.specificity = nullifyNaN auc.specificity_for_criteria[i]
+        row.mcc = nullifyNaN auc.mcc_for_criteria[i]
+        row.max_per_class_error = nullifyNaN auc.max_per_class_error_for_criteria[i]
+        row.confusion_matrix = cm = auc.confusion_matrix_for_criteria[i] 
+        row.TPR = computeTruePositiveRate cm
+        row.FPR = computeFalsePositiveRate cm
+        row
+
+      Flow.Data.Table
+        name: 'scores'
+        label: 'Scores'
+        description: "Scores for model '#{modelMetrics.model.key}' on frame '#{modelMetrics.frame.key.name}'"
+        columns: columns
+        rows: rows
+        meta:
+          inspect: "find 'scores', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
+    
+    mixin modelMetrics,
+      scores: getScores
+      metrics: getMetrics
 
   extendFrame = (frameKey, frame) ->
     __getColumns = null
