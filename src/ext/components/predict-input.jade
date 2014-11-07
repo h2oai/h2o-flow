@@ -1,0 +1,34 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-bolt
+    | Predict
+
+  table.flow-form
+    tr
+      th
+        label Frame:
+      td
+        // ko if:hasFrame
+        span(data-bind='text:frame')
+        // /ko
+        // ko ifnot:hasFrame
+        select(data-bind="options:frames, value:frame, optionsCaption:'(Select)'")
+        // /ko
+    tr
+      th
+        label Model:
+      td
+        // ko if:hasModel
+        span(data-bind='text:model')
+        // /ko
+        // ko ifnot:hasModel
+        select(data-bind="options:models, value:model, optionsCaption:'(Select)'")
+        // /ko
+    tr
+      th
+        label Actions:
+      td
+        button.flow-button(type='button' data-bind='click:predict, enable:canPredict')
+          i.fa.fa-bolt
+          span Predict
+

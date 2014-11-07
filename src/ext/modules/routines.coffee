@@ -145,6 +145,10 @@ H2O.Routines = (_) ->
     frames._render_ = -> H2O.FramesOutput _, frames
     frames
 
+  extendModelMetrics = (metrics) ->
+    #XXX
+    metrics
+
   extendFrame = (frameKey, frame) ->
     __getColumns = null
     getColumns = ->
@@ -485,10 +489,6 @@ H2O.Routines = (_) ->
       else
         go null, extendColumnSummary frameKey, frame, columnName
 
-  getFrames = ->
-    renderable _.requestFrames, (frames, go) ->
-      go null, H2O.FramesOutput _, frames
-
   requestFrames = (go) ->
     _.requestFrames (error, frames) ->
       if error
@@ -496,7 +496,8 @@ H2O.Routines = (_) ->
       else
         go null, extendFrames frames
 
-  getFrames = -> _fork requestFrames  
+  getFrames = ->
+    _fork requestFrames  
 
   getFrame = (frameKey) ->
     switch typeOf frameKey
@@ -578,6 +579,19 @@ H2O.Routines = (_) ->
     else
       assist buildModel, algo, opts
 
+  requestModelMetrics = (modelKey, frameKey, go) ->
+    _.requestModelMetrics modelKey, frameKey, (error, metrics) ->
+      if error
+        go error
+      else
+        go null, extendModelMetrics metrics
+
+  predict = (modelKey, frameKey) ->
+    if modelKey and frameKey
+      _fork requestModelMetrics, modelKey, frameKey
+    else
+      assist predict, modelKey, frameKey
+
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status
     onFail = (jqxhr, settings, error) -> go error #TODO use framework error
@@ -595,9 +609,10 @@ H2O.Routines = (_) ->
           proceed H2O.ImportFilesInput
         when buildModel
           proceed H2O.ModelInput, args
+        when predict
+          proceed H2O.PredictInput, args
         else
           proceed H2O.NoAssistView
-
 
   link _.ready, ->
     link _.inspect, inspect
@@ -646,4 +661,5 @@ H2O.Routines = (_) ->
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
+  predict: predict
 
