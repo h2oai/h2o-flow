@@ -1,6 +1,8 @@
 H2O.ModelsOutput = (_, _models) ->
   createModelView = (model) ->
     key: model.key
+    predict: ->
+      _.insertAndExecuteCell 'cs', "predict #{stringify model.key}"
     clone: ->
       return alert 'Not implemented'
       _.insertAndExecuteCell 'cs', "cloneModel #{stringify model.key}"

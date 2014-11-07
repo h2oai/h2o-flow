@@ -14,11 +14,14 @@ H2O.ModelOutput = (_, _model) ->
     # _.insertAndExecuteCell 'cs', 'assist buildModel, 
     alert 'Not implemented'
 
+  predict = ->
+    _.insertAndExecuteCell 'cs', "predict #{stringify _model.key}"
 
   key: _model.key
   inputParameters: _inputParameters
   isExpanded: _isExpanded
   toggle: toggle
   cloneModel: cloneModel
+  predict: predict
   template: 'flow-model-output'
 

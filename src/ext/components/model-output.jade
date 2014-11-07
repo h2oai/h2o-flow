@@ -9,6 +9,15 @@
         tr
           th.flow-narrow Key:
           td.flow-wide(data-bind='text:key')
+        tr 
+          th(width='1') Actions:
+          td
+            button.flow-button(type='button' data-bind='click:predict')
+              i.fa.fa-bolt
+              span Predict
+            button.flow-button(type='button' data-bind="click:cloneModel")
+              i.fa.fa-copy
+              span Clone this model&hellip;
       
   div(data-bind="css:{ 'flow-unhide':isExpanded }")
     .flow-right.flow-margin-after 
@@ -35,12 +44,3 @@
           td(data-bind='text:value')
           td(data-bind='text:help')
         // /ko
-
-  table.flow-form
-    tbody
-      tr
-        th.flow-narrow Actions:
-        td.flow-wide 
-          button.flow-button(type='button' data-bind="click:cloneModel")
-            i.fa.fa-copy
-            | Clone this model&hellip;
