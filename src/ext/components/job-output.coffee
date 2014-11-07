@@ -42,7 +42,7 @@ H2O.JobOutput = (_, _job) ->
     _progress getJobProgressPercent job.progress
     _status job.status
     _statusColor getJobOutputStatusColor job.status
-    _exception job.exception
+    _exception if job.exception then Flow.Failure new Flow.Error "Job failure.", new Error job.exception else null
     _canView not isJobRunning job
 
   toggleRefresh = ->
@@ -53,7 +53,7 @@ H2O.JobOutput = (_, _job) ->
     _.requestJob _key, (error, job) ->
       _isBusy no
       if error
-        _exception new Flow.Error 'Error fetching jobs', error
+        _exception Flow.Failure new Flow.Error 'Error fetching jobs', error
         _isLive no
       else
         updateJob job
@@ -69,7 +69,7 @@ H2O.JobOutput = (_, _job) ->
     return unless _canView()
     _.requestInspect _destinationKey, (error, result) ->
       if error
-        _exception error #XXX fixme
+        _exception Flow.Failure new Flow.Error "Error inspecting job target.", error
       else
         switch result.kind
           when 'frame'

@@ -146,7 +146,7 @@ H2O.Routines = (_) ->
     frames
 
   extendModelMetrics = (metrics) ->
-    #XXX
+
     metrics
 
   extendFrame = (frameKey, frame) ->
