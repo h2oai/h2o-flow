@@ -6,16 +6,6 @@
   table.flow-form
     tr
       th
-        label Frame:
-      td
-        // ko if:hasFrame
-        span(data-bind='text:frame')
-        // /ko
-        // ko ifnot:hasFrame
-        select(data-bind="options:frames, value:frame, optionsCaption:'(Select)'")
-        // /ko
-    tr
-      th
         label Model:
       td
         // ko if:hasModel
@@ -23,6 +13,16 @@
         // /ko
         // ko ifnot:hasModel
         select(data-bind="options:models, value:model, optionsCaption:'(Select)'")
+        // /ko
+    tr
+      th
+        label Frame:
+      td
+        // ko if:hasFrame
+        span(data-bind='text:frame')
+        // /ko
+        // ko ifnot:hasFrame
+        select(data-bind="options:frames, value:frame, optionsCaption:'(Select)'")
         // /ko
     tr
       th

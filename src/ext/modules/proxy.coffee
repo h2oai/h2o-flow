@@ -142,8 +142,19 @@ H2O.Proxy = (_) ->
   requestModelBuild = (algo, parameters, go) ->
     doPost "/2/ModelBuilders.json/#{algo}", parameters, go
 
+  requestPredict = (modelKey, frameKey, go) ->
+    doPost "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, (error, result) ->
+      if error
+        go error
+      else
+        go null, head result.model_metrics
+
   requestModelMetrics = (modelKey, frameKey, go) ->
-    doPost "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, go
+    doGet "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", (error, result) ->
+      if error
+        go error
+      else
+        go null, result.output.model_metrics
 
   link _.requestInspect, requestInspect
   link _.requestFrames, requestFrames
@@ -161,5 +172,6 @@ H2O.Proxy = (_) ->
   link _.requestModelBuilders, requestModelBuilders
   link _.requestModelBuild, requestModelBuild
   link _.requestModelInputValidation, requestModelInputValidation
+  link _.requestPredict, requestPredict
   link _.requestModelMetrics, requestModelMetrics
 

@@ -579,6 +579,13 @@ H2O.Routines = (_) ->
     else
       assist buildModel, algo, opts
 
+  requestPredict = (modelKey, frameKey, go) ->
+    _.requestPredict modelKey, frameKey, (error, metrics) ->
+      if error
+        go error
+      else
+        go null, extendModelMetrics metrics
+
   requestModelMetrics = (modelKey, frameKey, go) ->
     _.requestModelMetrics modelKey, frameKey, (error, metrics) ->
       if error
@@ -588,9 +595,15 @@ H2O.Routines = (_) ->
 
   predict = (modelKey, frameKey) ->
     if modelKey and frameKey
-      _fork requestModelMetrics, modelKey, frameKey
+      _fork requestPredict, modelKey, frameKey
     else
       assist predict, modelKey, frameKey
+
+  getPrediction = (modelKey, frameKey) -> #XXX not exposed
+    if modelKey and frameKey
+      _fork requestModelMetrics, modelKey, frameKey
+    else
+      assist requestModelMetrics, modelKey, frameKey
 
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status

@@ -11,6 +11,7 @@ H2O.ApplicationContext = (_) ->
   _.requestModelBuilders = do slot
   _.requestModelBuild = do slot
   _.requestModelInputValidation = do slot
+  _.requestPredict = do slot
   _.requestModelMetrics = do slot
   _.requestModels = do slot
   _.requestModel = do slot
