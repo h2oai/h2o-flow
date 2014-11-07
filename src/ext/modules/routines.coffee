@@ -167,7 +167,7 @@ H2O.Routines = (_) ->
     name: name
     type: Flow.Data.Object
 
-  nullifyNaN = (value) -> if value is 'NaN' then null else value
+  read = (value) -> if value is 'NaN' then null else value
 
   extendModelMetrics = (modelMetrics) ->
     { frame, model, auc } = modelMetrics
@@ -198,17 +198,17 @@ H2O.Routines = (_) ->
       Row = Flow.Data.createCompiledPrototype (column.name for column in columns)
       rows = for i in [ 0 ... auc.thresholds.length ]
         row = new Row()
-        row.threshold = nullifyNaN auc.thresholds[i]
-        row.F1 = nullifyNaN auc.F1[i]
-        row.F2 = nullifyNaN auc.F2[i]
-        row.F0point5 = nullifyNaN auc.F0point5[i]
-        row.accuracy = nullifyNaN auc.accuracy[i]
-        row.errorr = nullifyNaN auc.errorr[i]
-        row.precision = nullifyNaN auc.precision[i]
-        row.recall = nullifyNaN auc.recall[i]
-        row.specificity = nullifyNaN auc.specificity[i]
-        row.mcc = nullifyNaN auc.mcc[i]
-        row.max_per_class_error = nullifyNaN auc.max_per_class_error[i]
+        row.threshold = read auc.thresholds[i]
+        row.F1 = read auc.F1[i]
+        row.F2 = read auc.F2[i]
+        row.F0point5 = read auc.F0point5[i]
+        row.accuracy = read auc.accuracy[i]
+        row.errorr = read auc.errorr[i]
+        row.precision = read auc.precision[i]
+        row.recall = read auc.recall[i]
+        row.specificity = read auc.specificity[i]
+        row.mcc = read auc.mcc[i]
+        row.max_per_class_error = read auc.max_per_class_error[i]
         row.confusion_matrices = cm = auc.confusion_matrices[i]
         row.TPR = computeTruePositiveRate cm
         row.FPR = computeFalsePositiveRate cm
@@ -249,17 +249,17 @@ H2O.Routines = (_) ->
       rows = for i in [ 0 ... auc.threshold_criteria.length ]
         row = new Row()
         row.criteria = criteriaData[i]
-        row.threshold = nullifyNaN auc.threshold_for_criteria[i]
-        row.F1 = nullifyNaN auc.F1_for_criteria[i]
-        row.F2 = nullifyNaN auc.F2_for_criteria[i]
-        row.F0point5 = nullifyNaN auc.F0point5_for_criteria[i]
-        row.accuracy = nullifyNaN auc.accuracy_for_criteria[i]
-        row.error = nullifyNaN auc.error_for_criteria[i]
-        row.precision = nullifyNaN auc.precision_for_criteria[i]
-        row.recall = nullifyNaN auc.recall_for_criteria[i]
-        row.specificity = nullifyNaN auc.specificity_for_criteria[i]
-        row.mcc = nullifyNaN auc.mcc_for_criteria[i]
-        row.max_per_class_error = nullifyNaN auc.max_per_class_error_for_criteria[i]
+        row.threshold = read auc.threshold_for_criteria[i]
+        row.F1 = read auc.F1_for_criteria[i]
+        row.F2 = read auc.F2_for_criteria[i]
+        row.F0point5 = read auc.F0point5_for_criteria[i]
+        row.accuracy = read auc.accuracy_for_criteria[i]
+        row.error = read auc.error_for_criteria[i]
+        row.precision = read auc.precision_for_criteria[i]
+        row.recall = read auc.recall_for_criteria[i]
+        row.specificity = read auc.specificity_for_criteria[i]
+        row.mcc = read auc.mcc_for_criteria[i]
+        row.max_per_class_error = read auc.max_per_class_error_for_criteria[i]
         row.confusion_matrix = cm = auc.confusion_matrix_for_criteria[i] 
         row.TPR = computeTruePositiveRate cm
         row.FPR = computeFalsePositiveRate cm
@@ -274,9 +274,14 @@ H2O.Routines = (_) ->
         meta:
           inspect: "find 'scores', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
     
+    # clumsy
     mixin modelMetrics,
       scores: getScores
       metrics: getMetrics
+
+    modelMetrics._render_ = -> H2O.PredictOutput _, modelMetrics
+
+    modelMetrics
 
   extendFrame = (frameKey, frame) ->
     __getColumns = null
@@ -640,9 +645,12 @@ H2O.Routines = (_) ->
     renderable requestColumnSummary, frameKey, columnName, (frame, go) ->
       go null, H2O.ColumnSummaryOutput _, frameKey, frame, columnName
 
-  getModels = ->
-    renderable _.requestModels, (models, go) ->
-      go null, H2O.ModelsOutput _, models
+  getModels = (modelKeys) ->
+    if isArray modelKeys
+      
+    else
+      renderable _.requestModels, (models, go) ->
+        go null, H2O.ModelsOutput _, models
 
   getModel = (modelKey) ->
     switch typeOf modelKey
