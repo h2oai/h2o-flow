@@ -1,15 +1,15 @@
 H2O.InspectsOutput = (_, _tables) ->
   createTableView = (table) ->
     inspect = -> 
-      _.insertAndExecuteCell 'cs', "inspect #{stringify table.name}, #{table.meta.origin}"
+      _.insertAndExecuteCell 'cs', "inspect #{stringify table.label}, #{table.meta.origin}"
 
     grid = ->
-      _.insertAndExecuteCell 'cs', "grid inspect #{stringify table.name}, #{table.meta.origin}"
+      _.insertAndExecuteCell 'cs', "grid inspect #{stringify table.label}, #{table.meta.origin}"
 
     plot = ->
       _.insertAndExecuteCell 'cs', table.meta.plot
 
-    name: table.name
+    label: table.label
     description: table.description
     columns: table.columns
     inspect: inspect

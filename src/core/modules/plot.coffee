@@ -67,7 +67,7 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
   tooltip = (d) ->
     tip = ''
     for column in columns
-      tip += "#{column.name}: #{if column.type is Flow.Data.Enum then column.domain[d[column.name]] else d[column.name]}\n"
+      tip += "#{column.label}: #{if column.type is TFactor then column.domain[d[column.label]] else d[column.label]}\n"
     tip.trim()
 
   bar = viz.selectAll '.bar'
@@ -187,7 +187,7 @@ renderD3BarChart = (title, table, attrX, attrY) ->
       .attr 'y', 6
       .attr 'dy', '.71em'
       .style 'text-anchor', 'end'
-      .text columnY.name #TODO change to label.
+      .text columnY.label
 
   viz
     .selectAll '.bar'
@@ -239,18 +239,18 @@ plot = (_config, go) ->
     [ grid, h4, p, table, thead, tbody, tr, th, td, tdr ] = Flow.HTML.template '.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=td.rt'
     
     ths = for column in config.data.columns
-      th escape column.name
+      th escape column.label
 
     trs = for row in config.data.rows
       tds = for column in config.data.columns
         #XXX formatting
-        value = row[column.name]
+        value = row[column.label]
         switch column.type
-          when Flow.Data.Enum
+          when TFactor
             td if value is null then '-' else escape column.domain[value]
-          when Flow.Data.Integer, Flow.Data.Real
+          when TInteger, TReal
             tdr if value is null then '-' else value
-          when Flow.Data.Array
+          when TArray
             td if value is null then '-' else value.join ', '
           else
             td if value is null then '-' else value
@@ -287,8 +287,8 @@ stack = (attr) ->
     type = table.schema[attr].type
     [ startColumn, endColumn ] = table.expand type, type
 
-    start = startColumn.name
-    end = endColumn.name
+    start = startColumn.label
+    end = endColumn.label
 
     n = 0 
     p = 0

@@ -167,12 +167,24 @@ H2O.Proxy = (_) ->
       else
         go null, head result.model_metrics
 
-  requestModelMetrics = (modelKey, frameKey, go) ->
-    doGet "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", (error, result) ->
+  requestPredictions = (modelKey, frameKey, _go) ->
+    go = (error, result) ->
       if error
-        go error
+        _go error
       else
-        go null, result.output.model_metrics
+        _go null, result.model_metrics
+
+    if modelKey and frameKey
+      doGet "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", go
+    else if modelKey
+      doGet "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}", go
+    else if frameKey
+      doGet "/3/ModelMetrics.json/frames/#{encodeURIComponent frameKey}", go
+    else
+      doGet "/3/ModelMetrics.json", go
+
+
+
 
   link _.requestInspect, requestInspect
   link _.requestFrames, requestFrames
@@ -191,5 +203,5 @@ H2O.Proxy = (_) ->
   link _.requestModelBuild, requestModelBuild
   link _.requestModelInputValidation, requestModelInputValidation
   link _.requestPredict, requestPredict
-  link _.requestModelMetrics, requestModelMetrics
+  link _.requestPredictions, requestPredictions
 

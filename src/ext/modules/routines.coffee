@@ -63,7 +63,6 @@ H2O.Routines = (_) ->
     else
       inspect$2 a, b
 
-
   inspect$1 = (obj) ->
     if _isFuture obj
       _async inspect, obj
@@ -124,31 +123,31 @@ H2O.Routines = (_) ->
   extensionSchemaConfig =
     column:
       integerDistribution: [
-        [ 'intervalStart', Flow.Data.Integer ]
-        [ 'intervalEnd', Flow.Data.Integer ]
-        [ 'count', Flow.Data.Integer ]
+        [ 'intervalStart', TInteger ]
+        [ 'intervalEnd', TInteger ]
+        [ 'count', TInteger ]
       ]
       realDistribution: [
-        [ 'intervalStart', Flow.Data.Real ]
-        [ 'intervalEnd', Flow.Data.Real ]
-        [ 'count', Flow.Data.Integer ]
+        [ 'intervalStart', TReal ]
+        [ 'intervalEnd', TReal ]
+        [ 'count', TInteger ]
       ]
     frame:
       columns: [
-        [ 'label', Flow.Data.String ]
-        [ 'missing', Flow.Data.Integer ]
-        [ 'zeros', Flow.Data.Integer ]
-        [ 'pinfs', Flow.Data.Integer ]
-        [ 'ninfs', Flow.Data.Integer ]
-        [ 'min', Flow.Data.Real ]
-        [ 'max', Flow.Data.Real ]
-        [ 'mean', Flow.Data.Real ]
-        [ 'sigma', Flow.Data.Real ]
-        [ 'type', Flow.Data.String ]
-        [ 'domain', Flow.Data.Integer ]
-        #[ 'data', Flow.Data.Array ]
-        #[ 'str_data', Flow.Data.Array ]
-        [ 'precision', Flow.Data.Real ]
+        [ 'label', TString ]
+        [ 'missing', TInteger ]
+        [ 'zeros', TInteger ]
+        [ 'pinfs', TInteger ]
+        [ 'ninfs', TInteger ]
+        [ 'min', TReal ]
+        [ 'max', TReal ]
+        [ 'mean', TReal ]
+        [ 'sigma', TReal ]
+        [ 'type', TString ]
+        [ 'domain', TInteger ]
+        #[ 'data', TArray ]
+        #[ 'str_data', TArray ]
+        [ 'precision', TReal ]
       ]
 
   extensionSchemas = {}
@@ -156,43 +155,43 @@ H2O.Routines = (_) ->
     extensionSchemas[groupName] = schemas = {}
     for schemaName, tuples of group
       attributes = for tuple in tuples
-        [ name, type ] = tuple
-        name: name
+        [ label, type ] = tuple
+        label: label
         type: type
 
       schemas[schemaName] =
         attributes: attributes
-        attributeNames: map attributes, (attribute) -> attribute.name
+        attributeNames: map attributes, (attribute) -> attribute.label
 
   extendFrames = (frames) ->
     render_ frames, -> H2O.FramesOutput _, frames
     frames
 
-  getMultiModelParameters = (models) -> ->
+  #TODO rename
+  inspectMultimodelParameters = (models) -> ->
     leader = head models
     parameters = leader.parameters
     columns = for parameter in parameters
       switch parameter.type
         when 'enum', 'Frame', 'string', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-          read = Flow.Data.Factor()
-          createColumn parameter.label, Flow.Data.Enum, read.domain, read
+          Flow.Data.Factor parameter.label
         when 'byte', 'short', 'int', 'long', 'float', 'double'
-          createColumn parameter.label, Flow.Data.Real
+          Flow.Data.Variable parameter.label, TReal
         when 'string[]'
-          createColumn parameter.label, Flow.Data.Array
+          Flow.Data.Variable parameter.label, TArray
         when 'boolean'
-          createColumn parameter.label, Flow.Data.Boolean
+          Flow.Data.Variable parameter.label, Flow.Data.Boolean
         else
-          createColumn parameter.label, Flow.Data.Object
+          Flow.Data.Variable parameter.label, TObject
 
-    Row = Flow.Data.compile columns
+    Record = Flow.Data.compile columns
 
     rows = new Array models.length
     for model, i in models
-      rows[i] = row = new Row()
-      for parameter, j in parameters
+      rows[i] = row = new Record()
+      for parameter, j in model.parameters
         column = columns[j]
-        row[column.name] = if column.type is Flow.Data.Enum
+        row[column.label] = if column.type is TFactor
           column.read parameter.actual_value
         else
           parameter.actual_value
@@ -200,32 +199,32 @@ H2O.Routines = (_) ->
     modelKeys = (model.key for model in models)
 
     Flow.Data.Table
-      name: 'parameters'
+      label: 'parameters'
       description: "Parameters for models #{modelKeys.join ', '}"
       columns: columns
       rows: rows
       meta:
         origin: "getModels #{stringify modelKeys}"
 
-  getModelParameters = (model) -> ->
+  inspectModelParameters = (model) -> ->
     parameters = model.parameters
     columns = [
-      createColumn 'label', Flow.Data.String
-      createColumn 'type', Flow.Data.String
-      createColumn 'level', Flow.Data.String
-      createColumn 'actual_value', Flow.Data.Object
-      createColumn 'default_value', Flow.Data.Object
+      Flow.Data.Variable 'label', TString
+      Flow.Data.Variable 'type', TString
+      Flow.Data.Variable 'level', TString
+      Flow.Data.Variable 'actual_value', TObject
+      Flow.Data.Variable 'default_value', TObject
     ]
 
-    Row = Flow.Data.compile columns
+    Record = Flow.Data.compile columns
     rows = new Array parameters.length
     for parameter, i in parameters
-      rows[i] = row = new Row()
+      rows[i] = row = new Record()
       for column in columns
-        row[column.name] = parameter[column.name]
+        row[column.label] = parameter[column.label]
 
     Flow.Data.Table
-      name: 'parameters'
+      label: 'parameters'
       description: "Parameters for model '#{model.key}'" #TODO frame key
       columns: columns
       rows: rows
@@ -234,15 +233,15 @@ H2O.Routines = (_) ->
 
   extendKMeansModel = (model) ->
     inspect_ model,
-      parameters: getModelParameters model
+      parameters: inspectModelParameters model
 
   extendDeepLearningModel = (model) ->
     inspect_ model,
-      parameters: getModelParameters model
+      parameters: inspectModelParameters model
   
   extendGLMModel = (model) ->
     inspect_ model,
-      parameters: getModelParameters model
+      parameters: inspectModelParameters model
 
   extendModel = (model) ->
     switch model.algo
@@ -262,7 +261,7 @@ H2O.Routines = (_) ->
     algos = unique (model.algo for model in models)
     if algos.length is 1
       inspect_ models,
-        parameters: getMultiModelParameters models 
+        parameters: inspectMultimodelParameters models 
 
     render_ models, -> H2O.ModelsOutput _, models
 
@@ -274,61 +273,41 @@ H2O.Routines = (_) ->
     [[tn, fp], [fn, tp]] = cm
     fp / (fp + tn)
 
-  createColumn = (name, type, domain, read, write) ->
-    name: name
-    type: type
-    domain: domain or null
-    read: read or null
-    write: write or null
-
-  #XXX obsolete
-  createNumberColumn = (name, domain) ->
-    name: name
-    type: Flow.Data.Real
-    domain: domain or null
-
-  #XXX obsolete
-  createEnumColumn = (name, domain) ->
-    name: name
-    type: Flow.Data.Enum
-    domain: domain or null
-
-  #XXX obsolete
-  createObjectColumn = (name) ->
-    name: name
-    type: Flow.Data.Object
-
   read = (value) -> if value is 'NaN' then null else value
 
-  extendModelMetrics = (modelMetrics) ->
-    { frame, model, auc } = modelMetrics
-#threshold_criterion scalar
-#AUC scalar
-#Gini scalar
+  extendPredictions = (predictions) ->
+    
 
-#actual_domain 2
+  extendPrediction = (prediction) ->
+    { frame, model, auc } = prediction
 
-    getScores = ->
+    #threshold_criterion scalar
+    #AUC scalar
+    #Gini scalar
+
+    #actual_domain 2
+
+    inspectScores = ->
       columns = [
-        thresholdsColumn = createNumberColumn 'threshold'
-        f1Column = createNumberColumn 'F1'
-        f2Column = createNumberColumn 'F2'
-        f05Column = createNumberColumn 'F0point5'
-        accuracyColumn = createNumberColumn 'accuracy'
-        errorColumn = createNumberColumn 'errorr'
-        precisionColumn = createNumberColumn 'precision'
-        recallColumn = createNumberColumn 'recall'
-        specificityColumn = createNumberColumn 'specificity'
-        mccColumn = createNumberColumn 'mcc'
-        mpceColumn = createNumberColumn 'max_per_class_error'
-        cmColumn = createObjectColumn 'confusion_matrices'
-        tprColumn = createNumberColumn 'TPR'
-        fprColumn = createNumberColumn 'FPR'
+        thresholdsColumn = Flow.Data.Variable 'threshold', TReal
+        f1Column = Flow.Data.Variable 'F1', TReal
+        f2Column = Flow.Data.Variable 'F2', TReal
+        f05Column = Flow.Data.Variable 'F0point5', TReal
+        accuracyColumn = Flow.Data.Variable 'accuracy', TReal
+        errorColumn = Flow.Data.Variable 'errorr', TReal
+        precisionColumn = Flow.Data.Variable 'precision', TReal
+        recallColumn = Flow.Data.Variable 'recall', TReal
+        specificityColumn = Flow.Data.Variable 'specificity', TReal
+        mccColumn = Flow.Data.Variable 'mcc', TReal
+        mpceColumn = Flow.Data.Variable 'max_per_class_error', TReal
+        cmColumn = Flow.Data.Variable 'confusion_matrices', TObject
+        tprColumn = Flow.Data.Variable 'TPR', TReal
+        fprColumn = Flow.Data.Variable 'FPR', TReal
       ]
 
-      Row = Flow.Data.createCompiledPrototype (column.name for column in columns)
+      Record = Flow.Data.Record (column.label for column in columns)
       rows = for i in [ 0 ... auc.thresholds.length ]
-        row = new Row()
+        row = new Record()
         row.threshold = read auc.thresholds[i]
         row.F1 = read auc.F1[i]
         row.F2 = read auc.F2[i]
@@ -346,38 +325,38 @@ H2O.Routines = (_) ->
         row
 
       Flow.Data.Table
-        name: 'metrics'
+        label: 'metrics'
         description: "Metrics for model '#{model.key}' on frame '#{frame.key.name}'"
         columns: columns
         rows: rows
         meta:
-          origin: "predict #{stringify model.key}, #{stringify frame.key.name}"
+          origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
 
-    getMetrics = ->
+    inspectMetrics = ->
       
       [ criteriaDomain, criteriaData ] = Flow.Data.factor auc.threshold_criteria
 
       columns = [
-        criteriaColumn = createEnumColumn 'criteria', criteriaDomain
-        thresholdColumn = createNumberColumn 'threshold'
-        f1Column = createNumberColumn 'F1'
-        f2Column = createNumberColumn 'F2'
-        f05Column = createNumberColumn 'F0point5'
-        accuracyColumn = createNumberColumn 'accuracy'
-        errorColumn = createNumberColumn 'error'
-        precisionColumn = createNumberColumn 'precision'
-        recallColumn = createNumberColumn 'recall'
-        specificityColumn = createNumberColumn 'specificity'
-        mccColumn = createNumberColumn 'mcc'
-        mpceColumn = createNumberColumn 'max_per_class_error'
-        cmColumn = createObjectColumn 'confusion_matrix' 
-        tprColumn = createNumberColumn 'TPR'
-        fprColumn = createNumberColumn 'FPR'
+        criteriaColumn = Flow.Data.Variable 'criteria', TFactor, criteriaDomain
+        thresholdColumn = Flow.Data.Variable 'threshold', TReal
+        f1Column = Flow.Data.Variable 'F1', TReal
+        f2Column = Flow.Data.Variable 'F2', TReal
+        f05Column = Flow.Data.Variable 'F0point5', TReal
+        accuracyColumn = Flow.Data.Variable 'accuracy', TReal
+        errorColumn = Flow.Data.Variable 'error', TReal
+        precisionColumn = Flow.Data.Variable 'precision', TReal
+        recallColumn = Flow.Data.Variable 'recall', TReal
+        specificityColumn = Flow.Data.Variable 'specificity', TReal
+        mccColumn = Flow.Data.Variable 'mcc', TReal
+        mpceColumn = Flow.Data.Variable 'max_per_class_error', TReal
+        cmColumn = Flow.Data.Variable 'confusion_matrix', TObject
+        tprColumn = Flow.Data.Variable 'TPR', TReal
+        fprColumn = Flow.Data.Variable 'FPR', TReal
       ]
 
-      Row = Flow.Data.createCompiledPrototype (column.name for column in columns)
+      Record = Flow.Data.Record (column.label for column in columns)
       rows = for i in [ 0 ... auc.threshold_criteria.length ]
-        row = new Row()
+        row = new Record()
         row.criteria = criteriaData[i]
         row.threshold = read auc.threshold_for_criteria[i]
         row.F1 = read auc.F1_for_criteria[i]
@@ -396,24 +375,24 @@ H2O.Routines = (_) ->
         row
 
       Flow.Data.Table
-        name: 'scores'
-        description: "Scores for model '#{modelMetrics.model.key}' on frame '#{modelMetrics.frame.key.name}'"
+        label: 'scores'
+        description: "Scores for model '#{prediction.model.key}' on frame '#{prediction.frame.key.name}'"
         columns: columns
         rows: rows
         meta:
-          origin: "predict #{stringify model.key}, #{stringify frame.key.name}"
+          origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
     
-    render_ modelMetrics, -> H2O.PredictOutput _, modelMetrics
-    inspect_ modelMetrics,
-      scores: getScores
-      metrics: getMetrics
+    render_ prediction, -> H2O.PredictOutput _, prediction
+    inspect_ prediction,
+      scores: inspectScores
+      metrics: inspectMetrics
 
   extendFrame = (frameKey, frame) ->
-    getColumns = ->
+    inspectColumns = ->
       schema = extensionSchemas.frame.columns
-      Row = Flow.Data.createCompiledPrototype schema.attributeNames
+      Record = Flow.Data.Record schema.attributeNames
       rows = for column in frame.columns
-        row = new Row()
+        row = new Record()
         for attr in schema.attributeNames
           switch attr
             when 'min'
@@ -427,53 +406,53 @@ H2O.Routines = (_) ->
         row
 
       Flow.Data.Table
-        name: 'columns'
+        label: 'columns'
         description: 'A list of columns in the H2O Frame.'
         columns: schema.attributes
         rows: rows
         meta:
           origin: "getFrame #{stringify frameKey}"
 
-    getData = ->
+    inspectData = ->
       frameColumns = frame.columns
       columns = for column in frameColumns
         #XXX format functions
         switch column.type
           when 'int'
-            name: column.label
-            type: Flow.Data.Integer
+            label: column.label
+            type: TInteger
           when 'real'
-            name: column.label
-            type: Flow.Data.Real
+            label: column.label
+            type: TReal
           when 'enum'
-            name: column.label
-            type: Flow.Data.Enum
+            label: column.label
+            type: TFactor
             domain: column.domain
           when 'uuid', 'string'
-            name: column.label
-            type: Flow.Data.String
+            label: column.label
+            type: TString
           when 'time'
-            name: column.label
-            type: Flow.Data.Date
+            label: column.label
+            type: TDate
           else
             throw new Error "Invalid column type #{column.type} found in frame #{frameKey}."
-      columnNames = (column.name for column in columns)
-      Row = Flow.Data.createCompiledPrototype columnNames
+      columnNames = (column.label for column in columns)
+      Record = Flow.Data.Record columnNames
       rowCount = (head frame.columns).data.length
       rows = for i in [0 ... rowCount]
-        row = new Row()
+        row = new Record()
         for column, j in columns
           value = frameColumns[j].data[i]
           switch column.type
-            when Flow.Data.Integer, Flow.Data.Real
+            when TInteger, TReal
               #TODO handle +-Inf
-              row[column.name] = if value is 'NaN' then null else value
+              row[column.label] = if value is 'NaN' then null else value
             else
-              row[column.name] = value
+              row[column.label] = value
         row
       
       Flow.Data.Table
-        name: 'data'
+        label: 'data'
         description: 'A partial list of rows in the H2O Frame.'
         columns: columns
         rows: rows
@@ -481,34 +460,34 @@ H2O.Routines = (_) ->
           origin: "getFrame #{stringify frameKey}"
 
     inspect_ frame,
-      columns: getColumns
-      data: getData
+      columns: inspectColumns
+      data: inspectData
 
   extendColumnSummary = (frameKey, frame, columnName) ->
     column = head frame.columns
     rowCount = frame.rows
 
-    getPercentiles = ->
+    inspectPercentiles = ->
       percentiles = frame.default_pctiles
       percentileValues = column.pctiles
 
       columns = [
-        name: 'percentile'
-        type: Flow.Data.Real
+        label: 'percentile'
+        type: TReal
       ,
-        name: 'value'
-        type: Flow.Data.Real #TODO depends on type of column?
+        label: 'value'
+        type: TReal #TODO depends on type of column?
       ]
 
-      Row = Flow.Data.createCompiledPrototype map columns, (column) -> column.name
+      Record = Flow.Data.Record map columns, (column) -> column.label
       rows = for percentile, i in percentiles
-        row = new Row()
+        row = new Record()
         row.percentile = percentile
         row.value = percentileValues[i]
         row
 
       Flow.Data.Table
-        name: 'percentiles'
+        label: 'percentiles'
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
@@ -516,11 +495,11 @@ H2O.Routines = (_) ->
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
 
-    getDistribution = ->
-      distributionDataType = if column.type is 'int' then Flow.Data.Integer else Flow.Data.Real
+    inspectDistribution = ->
+      distributionDataType = if column.type is 'int' then TInteger else TReal
       
       schema = if column.type is 'int' then extensionSchemas.column.integerDistribution else extensionSchemas.column.realDistribution
-      Row = Flow.Data.createCompiledPrototype schema.attributeNames
+      Record = Flow.Data.Record schema.attributeNames
       
       minBinCount = 32
       { base, stride, bins } = column
@@ -537,44 +516,44 @@ H2O.Routines = (_) ->
           for binIndex in [m ... n] when n < bins.length
             count += bins[binIndex]
 
-          row = new Row()
+          row = new Record()
           row.intervalStart = base + i * interval
           row.intervalEnd = row.intervalStart + interval
           row.count = count
           rows.push row
       else
         for count, i in bins
-          row = new Row()
+          row = new Record()
           row.intervalStart = base + i * stride
           row.intervalEnd = row.intervalStart + stride
           row.count = count
           rows.push row
 
       Flow.Data.Table
-        name: 'distribution'
+        label: 'distribution'
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         columns: schema.attributes
         rows: rows
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
-    getCharacteristics = ->
+    inspectCharacteristics = ->
       { missing, zeros, pinfs, ninfs } = column
       other = rowCount - missing - zeros - pinfs - ninfs
 
       [ domain, characteristics ] = Flow.Data.factor [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
 
       columns = [
-        name: 'characteristic'
-        type: Flow.Data.Enum
+        label: 'characteristic'
+        type: TFactor
         domain: domain
       ,
-        name: 'count'
-        type: Flow.Data.Integer
+        label: 'count'
+        type: TInteger
         domain: [ 0, rowCount ]
       ,
-        name: 'percent'
-        type: Flow.Data.Real
+        label: 'percent'
+        type: TReal
         domain: [ 0, 100 ]
       ]
 
@@ -584,7 +563,7 @@ H2O.Routines = (_) ->
         percent: 100 * count / rowCount
 
       Flow.Data.Table
-        name: 'characteristics'
+        label: 'characteristics'
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
@@ -599,22 +578,22 @@ H2O.Routines = (_) ->
             color: 'characteristic'
           """
 
-    getSummary = ->
+    inspectSummary = ->
       columns = [
-        name: 'mean'
-        type: Flow.Data.Real
+        label: 'mean'
+        type: TReal
       ,
-        name: 'q1'
-        type: Flow.Data.Real
+        label: 'q1'
+        type: TReal
       ,
-        name: 'q2'
-        type: Flow.Data.Real
+        label: 'q2'
+        type: TReal
       ,
-        name: 'q3'
-        type: Flow.Data.Real
+        label: 'q3'
+        type: TReal
       ,
-        name: 'outliers'
-        type: Flow.Data.Array
+        label: 'outliers'
+        type: TArray
       ]
 
       defaultPercentiles = frame.default_pctiles
@@ -634,37 +613,37 @@ H2O.Routines = (_) ->
         outliers: outliers
 
       Flow.Data.Table
-        name: 'summary'
+        label: 'summary'
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: [ row ]
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
-    getDomain = ->
+    inspectDomain = ->
       levels = map column.bins, (count, index) -> count: count, index: index
 
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
       labelColumn = 
-        name: 'label'
-        type: Flow.Data.Enum
+        label: 'label'
+        type: TFactor
         domain: column.domain
       countColumn = 
-        name: 'count'
-        type: Flow.Data.Integer
+        label: 'count'
+        type: TInteger
         domain: null
       percentColumn =
-        name: 'percent'
-        type: Flow.Data.Real
+        label: 'percent'
+        type: TReal
         domain: [ 0, 100 ]
 
       columns = [ labelColumn, countColumn, percentColumn ]
 
-      Row = Flow.Data.createCompiledPrototype map columns, (column) -> column.name
+      Record = Flow.Data.Record map columns, (column) -> column.label
       rows = for level in sortedLevels
-        row = new Row()
+        row = new Record()
         row.label = level.index
         row.count = level.count
         row.percent = 100 * level.count / rowCount
@@ -673,7 +652,7 @@ H2O.Routines = (_) ->
       countColumn.domain = Flow.Data.computeRange rows, 'count'
       
       Flow.Data.Table
-        name: 'domain'
+        label: 'domain'
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
@@ -691,15 +670,15 @@ H2O.Routines = (_) ->
     switch column.type
       when 'int', 'real'
         inspect_ frame,
-          characteristics: getCharacteristics
-          summary: getSummary
-          distribution: getDistribution
-          percentiles: getPercentiles
+          characteristics: inspectCharacteristics
+          summary: inspectSummary
+          distribution: inspectDistribution
+          percentiles: inspectPercentiles
       else
         inspect_ frame,
-          characteristics: getCharacteristics
-          domain: getDomain
-          percentiles: getPercentiles
+          characteristics: inspectCharacteristics
+          domain: inspectDomain
+          percentiles: inspectPercentiles
 
 
   requestFrame = (frameKey, go) ->
@@ -825,18 +804,11 @@ H2O.Routines = (_) ->
       assist buildModel, algo, opts
 
   requestPredict = (modelKey, frameKey, go) ->
-    _.requestPredict modelKey, frameKey, (error, metrics) ->
+    _.requestPredict modelKey, frameKey, (error, prediction) ->
       if error
         go error
       else
-        go null, extendModelMetrics metrics
-
-  requestModelMetrics = (modelKey, frameKey, go) ->
-    _.requestModelMetrics modelKey, frameKey, (error, metrics) ->
-      if error
-        go error
-      else
-        go null, extendModelMetrics metrics
+        go null, extendPrediction prediction
 
   predict = (modelKey, frameKey) ->
     if modelKey and frameKey
@@ -844,11 +816,25 @@ H2O.Routines = (_) ->
     else
       assist predict, modelKey, frameKey
 
-  getPrediction = (modelKey, frameKey) -> #XXX not exposed
+  requestPredictions = (modelKey, frameKey, go) ->
+    _.requestPredictions modelKey, frameKey, (error, predictions) ->
+      if error
+        go error
+      else
+        if modelKey and frameKey
+          go null, extendPrediction head predictions
+        else
+          go null, extendPredictions predictions
+
+  getPrediction = (modelKey, frameKey) ->
     if modelKey and frameKey
-      _fork requestModelMetrics, modelKey, frameKey
+      _fork requestPredictions, modelKey, frameKey
     else
-      assist requestModelMetrics, modelKey, frameKey
+      assist requestPredictions, modelKey, frameKey
+
+  getPredictions = (opts={}) ->
+    { frame:frameKey, model:modelKey } = opts
+    _fork requestPredictions, modelKey, frameKey 
 
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status
@@ -920,4 +906,6 @@ H2O.Routines = (_) ->
   getModels: getModels
   getModel: getModel
   predict: predict
+  getPrediction: getPrediction
+  getPredictions: getPredictions
 

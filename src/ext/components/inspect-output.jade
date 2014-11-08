@@ -1,7 +1,7 @@
 .flow-widget
   h3.flow-hint
     i.fa.fa-table
-    span(data-bind='text:name')
+    span(data-bind='text:label')
 
   h4 Schema
   table.flow-form
@@ -15,7 +15,7 @@
       tr
         td
           +fa('ellipsis-v')
-        td(data-bind='text:name')
+        td(data-bind='text:label')
         td(data-bind='text:type')
       // /ko
 

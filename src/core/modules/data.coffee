@@ -37,15 +37,14 @@ createCompiledPrototype = (attrs) ->
   _prototypeCache[cacheKey] = (new Function "function #{prototypeName}(#{params.join ','}){#{inits.join ''}} return #{prototypeName};")()
 
 compile = (columns) ->
-  createCompiledPrototype (column.name for column in columns)
+  createCompiledPrototype (column.label for column in columns)
 
 createTable = (opts) ->
-  { name, label, description, columns, rows, meta } = opts
-  label = name unless label
+  { label, description, columns, rows, meta } = opts
   description = 'No description available.' unless description
 
   schema = {}
-  schema[column.name] = column for column in columns
+  schema[column.label] = column for column in columns
 
   fill = (i, go) ->
     _fill i, (error, result) ->
@@ -60,13 +59,11 @@ createTable = (opts) ->
   
   expand = (types...) ->
     for type in types
-      name = uniqueId '__flow_column_'
-      schema[name] =
-        name: name
-        label: name
+      label = uniqueId '__flow_column_'
+      schema[label] =
+        label: label
         type: type
 
-  name: name
   label: label
   description: description
   schema: schema
@@ -114,54 +111,74 @@ permute = (array, indices) ->
     permuted[i] = array[index]
   permuted
 
-createFactor = ->
+createAbstractVariable = (_label, _type, _domain, _format, _read) ->
+  label: _label
+  type: _type
+  domain: _domain or []
+  format: _format or identity
+  read: _read or identity
+
+createNumericVariable = (_label, _domain, _format, _read) ->
+  self = createAbstractVariable _label, TReal, _domain or [ Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY], _format, _read
+  unless self.read
+    self.read = (datum) ->
+      self.domain[0] = datum if datum < self.domain[0]
+      self.domain[1] = datum if datum > self.domain[1]
+      datum
+  self
+
+createVariable = (_label, _type, _domain, _format, _read) ->
+  if _type is TReal
+    createNumericVariable _label, _domain, _format, _read
+  else
+    createAbstractVariable _label, _type, _domain, _format, _read
+
+createFactor = (_label, _domain, _format, _read) ->
+  self = createAbstractVariable _label, TFactor, _domain or [], _format, _read
   _id = 0
-  _dict = {}
-  _domain = []
-  self = (element) ->
-    value = if element is undefined or element is null then 'null' else element
-    unless undefined isnt id = _dict[value]
-      _dict[value] = id = _id++
-      _domain.push value
-    id
-  self.domain = _domain
+  _levels = {}
+  if self.domain.length
+    for level in self.domain
+      _levels[level] = _id++
+
+  unless self.read
+    self.read = (datum) ->
+      level = if datum is undefined or datum is null then 'null' else datum
+      unless undefined isnt id = _levels[level]
+        _levels[level] = id = _id++
+        push self.domain, level
+      id
+
   self
 
 factor = (array) ->
   _id = 0
-  dict = {}
+  levels = {}
   domain = []
   data = new Array array.length
-  for element, i in array
-    unless undefined isnt id = dict[element]
-      dict[element] = id = _id++
-      domain.push element
+  for level, i in array
+    unless undefined isnt id = levels[level]
+      levels[level] = id = _id++
+      domain.push level
     data[i] = id
   [ domain, data ]
 
 Flow.Data =
-  Enum: 'Enum'
-  Object: 'Object'
-  String: 'String'
-  Integer: 'Integer'
-  Real: 'Real'
-  Date: 'Date'
-  Array: 'Array'
-  Boolean: 'Boolean'
   Table: createTable
+  Variable: createVariable
+  Factor: createFactor
   computeColumnInterpretation: (type) ->
-    #XXX switch to Flow.Data.Integer
-    if type is Flow.Data.Real or type is Flow.Data.Integer
+    #XXX switch to TInteger
+    if type is TReal or type is TInteger
       'c'
-    else if type is Flow.Data.Enum
+    else if type is TFactor
       'd'
     else 
       't'
-  createCompiledPrototype: createCompiledPrototype
+  Record: createCompiledPrototype
   compile: compile
   computeRange: computeRange
   combineRanges: combineRanges
   includeZeroInRange: includeZeroInRange
   factor: factor
-  Factor: createFactor
   permute: permute
