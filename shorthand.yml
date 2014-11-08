@@ -436,6 +436,51 @@ unescape:
 now:
   type: qualify
   object: lodash
+TUndefined:
+  type: qualify
+  object: Flow
+TNull:
+  type: qualify
+  object: Flow
+TBoolean:
+  type: qualify
+  object: Flow
+TString:
+  type: qualify
+  object: Flow
+TReal:
+  type: qualify
+  object: Flow
+TInteger:
+  type: qualify
+  object: Flow
+TNumber:
+  type: qualify
+  object: Flow
+TFunction:
+  type: qualify
+  object: Flow
+TObject:
+  type: qualify
+  object: Flow
+TArray:
+  type: qualify
+  object: Flow
+TArguments:
+  type: qualify
+  object: Flow
+TDate:
+  type: qualify
+  object: Flow
+TRegExp:
+  type: qualify
+  object: Flow
+TError:
+  type: qualify
+  object: Flow
+TFactor:
+  type: qualify
+  object: Flow
 slot:
   type: qualify
   object: Flow.Dataflow

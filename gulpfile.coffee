@@ -32,7 +32,7 @@ expand = (yml) ->
       return
 
     symbols = yaml.safeLoad fs.readFileSync yml, encoding: 'utf8'
-    implicits = [ 'console', 'Math', 'lodash', 'Flow.Prelude', 'Flow.Dataflow' ]
+    implicits = [ 'console', 'Math', 'lodash', 'Flow', 'Flow.Prelude', 'Flow.Dataflow' ]
     try
       file.contents = new Buffer shorthand symbols, file.contents.toString(), implicits: implicits
       cb null, file
