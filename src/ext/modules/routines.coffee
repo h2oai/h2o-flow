@@ -43,34 +43,29 @@ H2O.Routines = (_) ->
 
   help = -> proceed H2O.Help
 
-  mixinRender = (raw, render) ->
-    raw._render_ = render
+  render_ = (raw, render) ->
+    raw._flow_ = {} unless raw._flow_
+    raw._flow_.render = render
+    raw
 
-  mixinInspect = (raw, _inspections) ->
+  inspect_ = (raw, _inspections) ->
     __tables = null
-    raw._inspect_ = ->
+    raw._flow_ = {} unless raw._flow_
+    raw._flow_.inspect = ->
       return __tables if __tables
       tables = (action() for name, action of _inspections)
       forEach tables, (table) ->
-        mixinRender table, -> H2O.InspectOutput _, table
-      mixinRender tables, -> H2O.InspectsOutput _, tables
+        render_ table, -> H2O.InspectOutput _, table
+      render_ tables, -> H2O.InspectsOutput _, tables
       __tables = tables
-
-  mixin = (raw, obj) ->
-    for k, v of obj
-      switch k
-        when 'render'
-          mixinRender raw, v
-        when 'inspect'
-          mixinInspect raw, v
     raw
 
   inspect = (obj) ->
     if _isFuture obj
       _async inspect, obj
     else
-      if obj._inspect_
-        obj._inspect_()
+      if obj._flow_?.inspect
+        obj._flow_.inspect()
       else
         undefined
 
@@ -150,7 +145,7 @@ H2O.Routines = (_) ->
         attributeNames: map attributes, (attribute) -> attribute.name
 
   extendFrames = (frames) ->
-    mixinRender frames, -> H2O.FramesOutput _, frames
+    render_ frames, -> H2O.FramesOutput _, frames
     frames
 
   getMultiModelParameters = (models) -> ->
@@ -218,21 +213,16 @@ H2O.Routines = (_) ->
         inspect: "find 'parameters', inspect getModel #{stringify model.key}"
 
   extendKMeansModel = (model) ->
-    #getOutput = ->
-    mixin model,
-      inspect:
-        #output: getOutput
-        parameters: getModelParameters model
+    inspect_ model,
+      parameters: getModelParameters model
 
   extendDeepLearningModel = (model) ->
-    mixin model,
-      inspect:
-        parameters: getModelParameters model
+    inspect_ model,
+      parameters: getModelParameters model
   
   extendGLMModel = (model) ->
-    mixin model,
-      inspect:
-        parameters: getModelParameters model
+    inspect_ model,
+      parameters: getModelParameters model
 
   extendModel = (model) ->
     switch model.algo
@@ -243,8 +233,7 @@ H2O.Routines = (_) ->
       when 'glm'
         extendGLMModel model
 
-    mixin model,
-      render: -> H2O.ModelOutput _, model
+    render_ model, -> H2O.ModelOutput _, model
 
   extendModels = (models) ->
     for model in models
@@ -252,12 +241,10 @@ H2O.Routines = (_) ->
 
     algos = unique (model.algo for model in models)
     if algos.length is 1
-      mixin models,
-        inspect:
-          parameters: getMultiModelParameters models 
+      inspect_ models,
+        parameters: getMultiModelParameters models 
 
-    mixin models,
-      render: -> H2O.ModelsOutput _, models
+    render_ models, -> H2O.ModelsOutput _, models
 
   computeTruePositiveRate = (cm) ->
     [[tn, fp], [fn, tp]] = cm
@@ -396,11 +383,10 @@ H2O.Routines = (_) ->
         meta:
           inspect: "find 'scores', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
     
-    mixin modelMetrics,
-      inspect:
-        scores: getScores
-        metrics: getMetrics
-      render: -> H2O.PredictOutput _, modelMetrics
+    render_ modelMetrics, -> H2O.PredictOutput _, modelMetrics
+    inspect_ modelMetrics,
+      scores: getScores
+      metrics: getMetrics
 
   extendFrame = (frameKey, frame) ->
     __getColumns = null
@@ -484,10 +470,9 @@ H2O.Routines = (_) ->
 
     __getMaxs = null
 
-    mixin frame,
-      inspect:
-        columns: getColumns
-        data: getData
+    inspect_ frame,
+      columns: getColumns
+      data: getData
 
   extendColumnSummary = (frameKey, frame, columnName) ->
     column = head frame.columns
@@ -710,18 +695,16 @@ H2O.Routines = (_) ->
 
     switch column.type
       when 'int', 'real'
-        mixin frame,
-          inspect:
-            characteristics: getCharacteristics
-            summary: getSummary
-            distribution: getDistribution
-            percentiles: getPercentiles
+        inspect_ frame,
+          characteristics: getCharacteristics
+          summary: getSummary
+          distribution: getDistribution
+          percentiles: getPercentiles
       else
-        mixin frame,
-          inspect:
-            characteristics: getCharacteristics
-            domain: getDomain
-            percentiles: getPercentiles
+        inspect_ frame,
+          characteristics: getCharacteristics
+          domain: getDomain
+          percentiles: getPercentiles
 
 
   requestFrame = (frameKey, go) ->
