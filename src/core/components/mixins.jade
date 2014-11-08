@@ -16,9 +16,11 @@ mixin button(caption, icon, action, enable)
   if enable
     button.flow-button(type='button' data-bind="click:#{action}, enable:#{enable}")
       +fa(icon)
-      span!=caption
+      if caption
+        span!=caption
   else
     button.flow-button(type='button' data-bind="click:#{action}")
       +fa(icon)
-      span!=caption
+      if caption
+        span!=caption
 

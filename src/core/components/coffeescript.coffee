@@ -29,7 +29,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
                   output.error new Flow.Error 'Error rendering output', error
                 else
                   output.data result 
-            else if result?._flow_.render
+            else if result?._flow_?.render
               output.data result._flow_.render()
             else
               output.data Flow.ObjectBrowser 'output', result
