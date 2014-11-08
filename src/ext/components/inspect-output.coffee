@@ -1,7 +1,7 @@
 H2O.InspectOutput = (_, _table) ->
   
   view = ->
-    _.insertAndExecuteCell 'cs', "grid #{_table.meta.inspect}"
+    _.insertAndExecuteCell 'cs', "grid inspect #{stringify _table.name}, #{_table.meta.origin}"
 
   plot = ->
     _.insertAndExecuteCell 'cs', _table.meta.plot
