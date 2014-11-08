@@ -43,31 +43,51 @@ H2O.Routines = (_) ->
 
   help = -> proceed H2O.Help
 
+  flow_ = (raw) ->
+    raw._flow_ or raw._flow_ = _cache_: {}
+
   render_ = (raw, render) ->
-    raw._flow_ = {} unless raw._flow_
-    raw._flow_.render = render
+    (flow_ raw).render = render
     raw
 
-  inspect_ = (raw, _inspections) ->
-    __tables = null
-    raw._flow_ = {} unless raw._flow_
-    raw._flow_.inspect = ->
-      return __tables if __tables
-      tables = (action() for name, action of _inspections)
-      forEach tables, (table) ->
-        render_ table, -> H2O.InspectOutput _, table
-      render_ tables, -> H2O.InspectsOutput _, tables
-      __tables = tables
+  inspect_ = (raw, inspectors) ->
+    root = flow_ raw
+    root.inspect = {} unless root.inspect?
+    for attr, f of inspectors
+      root.inspect[attr] = f
     raw
 
-  inspect = (obj) ->
+  inspect = (a, b) ->
+    if arguments.length is 1
+      inspect$1 a
+    else
+      inspect$2 a, b
+
+
+  inspect$1 = (obj) ->
     if _isFuture obj
       _async inspect, obj
     else
-      if obj._flow_?.inspect
-        obj._flow_.inspect()
+      if inspectors = obj?._flow_?.inspect
+        inspections = []
+        for attr, f of inspectors
+          inspections.push inspect$2 attr, obj
+        render_ inspections, -> H2O.InspectsOutput _, inspections
+        inspections
       else
-        undefined
+        {}
+
+  inspect$2 = (attr, obj) ->
+    return unless attr
+    return _async inspect, attr, obj if _isFuture obj
+    return unless obj
+    return unless root = obj._flow_
+    return unless inspectors = root.inspect
+    return cached if cached = root._cache_[ key = "inspect_#{attr}" ]
+    return unless f = inspectors[attr]
+    root._cache_[key] = inspection = f()
+    render_ inspection, -> H2O.InspectOutput _, inspection
+    inspection
 
   __plot = (config, go) ->
     Flow.Plot config, (error, plot) ->
@@ -185,7 +205,7 @@ H2O.Routines = (_) ->
       columns: columns
       rows: rows
       meta:
-        inspect: "get 'parameters', inspect getModels #{stringify modelKeys}"
+        inspect: "inspect 'parameters', getModels #{stringify modelKeys}"
 
   getModelParameters = (model) -> ->
     parameters = model.parameters
@@ -210,7 +230,7 @@ H2O.Routines = (_) ->
       columns: columns
       rows: rows
       meta:
-        inspect: "get 'parameters', inspect getModel #{stringify model.key}"
+        inspect: "inspect 'parameters', getModel #{stringify model.key}"
 
   extendKMeansModel = (model) ->
     inspect_ model,
@@ -331,7 +351,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "get 'metrics', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
+          inspect: "inspect 'metrics', predict #{stringify model.key}, #{stringify frame.key.name}"
 
     getMetrics = ->
       
@@ -381,7 +401,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "get 'scores', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
+          inspect: "inspect 'scores', predict #{stringify model.key}, #{stringify frame.key.name}"
     
     render_ modelMetrics, -> H2O.PredictOutput _, modelMetrics
     inspect_ modelMetrics,
@@ -415,7 +435,7 @@ H2O.Routines = (_) ->
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: "get 'columns', inspect getFrame #{stringify frameKey}"
+          inspect: "inspect 'columns', getFrame #{stringify frameKey}"
 
     __getData = null
     getData = ->
@@ -464,7 +484,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "get 'data', inspect getFrame #{stringify frameKey}"
+          inspect: "inspect 'data', getFrame #{stringify frameKey}"
 
     __getMins = null
 
@@ -506,7 +526,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "get 'percentiles', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "inspect 'percentiles', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
 
     __getDistribution = null
@@ -552,7 +572,7 @@ H2O.Routines = (_) ->
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: "get 'distribution', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     __getCharacteristics = null
     getCharacteristics = ->
@@ -588,12 +608,12 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "get 'characteristics', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
             title: 'Characteristics for #{frameKey} : #{column.label}'
             type: 'interval'
-            data: get 'characteristics', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            data: inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: plot.stack 'count'
             color: 'characteristic'
           """
@@ -641,7 +661,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: [ row ]
         meta:
-          inspect: "get 'summary', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     __getDomain = null
     getDomain = ->
@@ -683,12 +703,12 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "get 'domain', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
             title: 'Domain for #{frameKey} : #{column.label}'
             type: 'interval'
-            data: get 'domain', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            data: inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: 'count'
             y: 'label'
           """
