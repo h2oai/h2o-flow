@@ -201,6 +201,17 @@ _find = (args...) ->
         return _find$2 a, b
   return
 
+# Duplicate of _find$2
+_get = (attr, obj) ->
+  if _isFuture obj
+    return _async _get, attr, obj
+  else if isString attr
+    if isArray obj
+      return _find$3 'name', attr, obj
+    else
+      return obj[attr]
+  return
+
 Flow.Async =
   createBuffer: createBuffer #XXX rename
   noop: _noop
@@ -213,5 +224,6 @@ Flow.Async =
   iterate: iterate
   async: _async
   find: _find
+  get: _get
 
 
