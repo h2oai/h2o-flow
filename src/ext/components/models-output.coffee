@@ -29,10 +29,15 @@ H2O.ModelsOutput = (_, _models) ->
     view = ->
       _.insertAndExecuteCell 'cs', "getModel #{stringify model.key}"
 
+    inspect = ->
+      _.insertAndExecuteCell 'cs', "inspect getModel #{stringify model.key}"
+
+
     key: model.key
     isChecked: _isChecked
     predict: predict
     clone: clone
+    inspect: inspect
     view: view
 
   buildModel = ->
@@ -40,7 +45,7 @@ H2O.ModelsOutput = (_, _models) ->
 
   compareModels = ->
     keys = (view.key for view in _modelViews() when view.isChecked())
-    _.insertAndExecuteCell 'cs', "getModels #{stringify keys}"
+    _.insertAndExecuteCell 'cs', "inspect getModels #{stringify keys}"
 
   initialize = (models) ->
     _modelViews map models, createModelView
