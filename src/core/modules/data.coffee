@@ -8,23 +8,17 @@
 # Applies to IE as well:
 # http://msdn.microsoft.com/en-us/library/windows/apps/hh781219.aspx#optimize_property_access
 #
-# http://jsperf.com/big-data-matrix 
+# http://jsperf.com/big-data-matrix/3
 # As of 31 Oct 2014, for a 10000 row, 100 column table in Chrome,
 #   retained memory sizes:
 # raw json: 31,165 KB
 # array of objects: 41,840 KB
-# array of arrays: 14,960  KB
-# array of prototyped instances: 4,160 KB
+# array of arrays: 14,960 KB
+# array of prototyped instances: 14,840 KB
 #
 # Usage:
 # Foo = Flow.Data.createCompiledPrototype [ 'bar', 'baz', 'qux', ... ]
 # foo = new Foo()
-#
-# ** Initialization order is important **
-# foo.bar = ...
-# foo.baz = ...
-# foo.qux = ...
-# 
 #
 
 _prototypeId = 0
@@ -41,6 +35,9 @@ createCompiledPrototype = (attrs) ->
 
   prototypeName = nextPrototypeName()
   _prototypeCache[cacheKey] = (new Function "function #{prototypeName}(#{params.join ','}){#{inits.join ''}} return #{prototypeName};")()
+
+compile = (columns) ->
+  createCompiledPrototype (column.name for column in columns)
 
 createTable = (opts) ->
   { name, label, description, columns, rows, meta } = opts
@@ -117,6 +114,19 @@ permute = (array, indices) ->
     permuted[i] = array[index]
   permuted
 
+createFactor = ->
+  _id = 0
+  _dict = {}
+  _domain = []
+  self = (element) ->
+    value = if element is undefined or element is null then 'null' else element
+    unless undefined isnt id = _dict[value]
+      _dict[value] = id = _id++
+      _domain.push value
+    id
+  self.domain = _domain
+  self
+
 factor = (array) ->
   _id = 0
   dict = {}
@@ -130,31 +140,28 @@ factor = (array) ->
   [ domain, data ]
 
 Flow.Data =
+  Enum: 'Enum'
   Object: 'Object'
-  StringEnum: 'Enum<String>'
   String: 'String'
   Integer: 'Integer'
   Real: 'Real'
   Date: 'Date'
   Array: 'Array'
-  StringArray: 'Array<String>'
-  IntegerArray: 'Array<Integer>'
-  RealArray: 'Array<Real>'
-  DateArray: 'Array<Date>'
+  Boolean: 'Boolean'
   Table: createTable
-  isContinuous: (type) -> type is Flow.Data.Integer or type is Flow.Data.Real
-  isDiscrete: (type) -> type is Flow.Data.StringEnum or type is Flow.Data.String
-  isTemporal: (type) -> type is Flow.Data.Date
   computeColumnInterpretation: (type) ->
-    if Flow.Data.isContinuous type
+    #XXX switch to Flow.Data.Integer
+    if type is Flow.Data.Real or type is Flow.Data.Integer
       'c'
-    else if Flow.Data.isDiscrete type
+    else if type is Flow.Data.Enum
       'd'
     else 
       't'
   createCompiledPrototype: createCompiledPrototype
+  compile: compile
   computeRange: computeRange
   combineRanges: combineRanges
   includeZeroInRange: includeZeroInRange
   factor: factor
+  Factor: createFactor
   permute: permute

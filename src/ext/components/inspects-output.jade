@@ -14,7 +14,6 @@
       tr
         th(width='1') &nbsp;
         th Name
-        th Label
         th Description
         th Actions
     tbody
@@ -24,7 +23,6 @@
           i.fa.fa-table
         td
           a(href='#' data-bind='text:name, click:inspect')
-        td(data-bind='text:label')
         td(data-bind='text:description')
         td
           button.flow-button(type='button' data-bind='click:describe')
