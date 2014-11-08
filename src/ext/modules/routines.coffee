@@ -24,7 +24,7 @@ H2O.Routines = (_) ->
   _apply = (go, args) -> Flow.Async.join args, go
   _isFuture = Flow.Async.isFuture
   _async = Flow.Async.async
-  _find = Flow.Async.find
+  _get = Flow.Async.get
 
   renderable = Flow.Async.renderable #XXX obsolete
 
@@ -185,7 +185,7 @@ H2O.Routines = (_) ->
       columns: columns
       rows: rows
       meta:
-        inspect: "find 'parameters', inspect getModels #{stringify modelKeys}"
+        inspect: "get 'parameters', inspect getModels #{stringify modelKeys}"
 
   getModelParameters = (model) -> ->
     parameters = model.parameters
@@ -210,7 +210,7 @@ H2O.Routines = (_) ->
       columns: columns
       rows: rows
       meta:
-        inspect: "find 'parameters', inspect getModel #{stringify model.key}"
+        inspect: "get 'parameters', inspect getModel #{stringify model.key}"
 
   extendKMeansModel = (model) ->
     inspect_ model,
@@ -331,7 +331,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "find 'metrics', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
+          inspect: "get 'metrics', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
 
     getMetrics = ->
       
@@ -381,7 +381,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "find 'scores', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
+          inspect: "get 'scores', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
     
     render_ modelMetrics, -> H2O.PredictOutput _, modelMetrics
     inspect_ modelMetrics,
@@ -415,7 +415,7 @@ H2O.Routines = (_) ->
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: "find 'columns', inspect getFrame #{stringify frameKey}"
+          inspect: "get 'columns', inspect getFrame #{stringify frameKey}"
 
     __getData = null
     getData = ->
@@ -464,7 +464,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "find 'data', inspect getFrame #{stringify frameKey}"
+          inspect: "get 'data', inspect getFrame #{stringify frameKey}"
 
     __getMins = null
 
@@ -506,7 +506,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "find 'percentiles', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "get 'percentiles', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
 
     __getDistribution = null
@@ -552,7 +552,7 @@ H2O.Routines = (_) ->
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: "find 'distribution', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "get 'distribution', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     __getCharacteristics = null
     getCharacteristics = ->
@@ -588,12 +588,12 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "find 'characteristics', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "get 'characteristics', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
             title: 'Characteristics for #{frameKey} : #{column.label}'
             type: 'interval'
-            data: find 'characteristics', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            data: get 'characteristics', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: plot.stack 'count'
             color: 'characteristic'
           """
@@ -641,7 +641,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: [ row ]
         meta:
-          inspect: "find 'summary', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "get 'summary', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     __getDomain = null
     getDomain = ->
@@ -683,12 +683,12 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "find 'domain', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          inspect: "get 'domain', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
             title: 'Domain for #{frameKey} : #{column.label}'
             type: 'interval'
-            data: find 'domain', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            data: get 'domain', inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: 'count'
             y: 'label'
           """
@@ -900,7 +900,7 @@ H2O.Routines = (_) ->
   inspect: inspect
   plot: plot
   grid: grid
-  find: _find
+  get: _get
   #
   # Meta
   assist: assist
