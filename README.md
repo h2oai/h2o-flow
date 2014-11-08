@@ -9,8 +9,8 @@
 To build and integrate H2O Flow with H2O Dev, intall Node.js on your operating system (see below), then run:
 
     cd path/to/h2o-flow
-    npm start --output=/path/to/h2o-dev/h2o-web/src/main/resources/www/flow
-    cd path/to/h2o-dev && gradle build -x test
+    npm start --output=../h2o-dev/h2o-web/src/main/resources/www/flow
+    cd ../h2o-dev && gradle build -x test
     java -Xmx4g -jar build/h2o.jar
 
 ...and then navigate to http://localhost:54321/flow/index.html
