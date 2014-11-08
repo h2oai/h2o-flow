@@ -21,31 +21,31 @@ Flow.Prelude = do ->
   _typeOf = (a) ->
     type = Object::toString.call a
     if a is null
-      return 'null'
+      return TNull
     else if a is undefined
-      return 'undefined'
+      return TUndefined
     else if a is true or a is false or type is '[object Boolean]'
-      return 'Boolean'
+      return TBoolean
     else
       switch type
         when '[object String]'
-          return 'String'
+          return TString
         when '[object Number]'
-          return 'Number'
+          return TNumber
         when '[object Function]'
-          return 'Function'
+          return TFunction
         when '[object Object]'
-          return 'Object'
+          return TObject
         when '[object Array]'
-          return 'Array'
+          return TArray
         when '[object Arguments]'
-          return 'Arguments'
+          return TArguments
         when '[object Date]'
-          return 'Date'
+          return TDate
         when '[object RegExp]'
-          return 'RegExp'
+          return TRegExp
         when '[object Error]'
-          return 'Error'
+          return TError
         else
           return type
 
