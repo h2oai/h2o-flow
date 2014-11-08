@@ -10,7 +10,6 @@ H2O.InspectsOutput = (_, _tables) ->
       _.insertAndExecuteCell 'cs', table.meta.plot
 
     name: table.name
-    label: table.label
     description: table.description
     columns: table.columns
     describe: describe

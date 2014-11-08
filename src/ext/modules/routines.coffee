@@ -19,8 +19,8 @@ H2O.Routines = (_) ->
 
   #TODO move these into Flow.Async
   _fork = (f, args...) -> Flow.Async.fork f, args
-  _join = (args..., go) -> Flow.Async.join args, _applicate go
-  _call = (go, args...) -> Flow.Async.join args, _applicate go
+  _join = (args..., go) -> Flow.Async.join args, Flow.Async.applicate go
+  _call = (go, args...) -> Flow.Async.join args, Flow.Async.applicate go
   _apply = (go, args) -> Flow.Async.join args, go
   _isFuture = Flow.Async.isFuture
   _async = Flow.Async.async
@@ -43,15 +43,26 @@ H2O.Routines = (_) ->
 
   help = -> proceed H2O.Help
 
-  mixin = (raw, _inspections) ->
+  mixinRender = (raw, render) ->
+    raw._render_ = render
+
+  mixinInspect = (raw, _inspections) ->
     __tables = null
     raw._inspect_ = ->
       return __tables if __tables
       tables = (action() for name, action of _inspections)
       forEach tables, (table) ->
-        table._render_ = -> H2O.InspectOutput _, table
-      tables._render_ = -> H2O.InspectsOutput _, tables
+        mixinRender table, -> H2O.InspectOutput _, table
+      mixinRender tables, -> H2O.InspectsOutput _, tables
       __tables = tables
+
+  mixin = (raw, obj) ->
+    for k, v of obj
+      switch k
+        when 'render'
+          mixinRender raw, v
+        when 'inspect'
+          mixinInspect raw, v
     raw
 
   inspect = (obj) ->
@@ -83,8 +94,6 @@ H2O.Routines = (_) ->
         __plot config, go
     else
       go new Flow.Error "Cannot plot(): missing 'data'."
-
-
 
   plot = (config) ->
     renderable _plot, config, (plot, go) ->
@@ -125,7 +134,6 @@ H2O.Routines = (_) ->
         #[ 'data', Flow.Data.Array ]
         #[ 'str_data', Flow.Data.Array ]
         [ 'precision', Flow.Data.Real ]
-        #[ 'pctiles', Flow.Data.RealArray ] #XXX ???
       ]
 
   extensionSchemas = {}
@@ -142,8 +150,114 @@ H2O.Routines = (_) ->
         attributeNames: map attributes, (attribute) -> attribute.name
 
   extendFrames = (frames) ->
-    frames._render_ = -> H2O.FramesOutput _, frames
+    mixinRender frames, -> H2O.FramesOutput _, frames
     frames
+
+  getMultiModelParameters = (models) -> ->
+    leader = head models
+    parameters = leader.parameters
+    columns = for parameter in parameters
+      switch parameter.type
+        when 'enum', 'Frame', 'string', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+          read = Flow.Data.Factor()
+          createColumn parameter.label, Flow.Data.Enum, read.domain, read
+        when 'byte', 'short', 'int', 'long', 'float', 'double'
+          createColumn parameter.label, Flow.Data.Real
+        when 'string[]'
+          createColumn parameter.label, Flow.Data.Array
+        when 'boolean'
+          createColumn parameter.label, Flow.Data.Boolean
+        else
+          createColumn parameter.label, Flow.Data.Object
+
+    Row = Flow.Data.compile columns
+
+    rows = new Array models.length
+    for model, i in models
+      rows[i] = row = new Row()
+      for parameter, j in parameters
+        column = columns[j]
+        row[column.name] = if column.type is Flow.Data.Enum
+          column.read parameter.actual_value
+        else
+          parameter.actual_value
+
+    modelKeys = (model.key for model in models)
+
+    Flow.Data.Table
+      name: 'parameters'
+      description: "Parameters for models #{modelKeys.join ', '}"
+      columns: columns
+      rows: rows
+      meta:
+        inspect: "find 'parameters', inspect getModels #{stringify modelKeys}"
+
+  getModelParameters = (model) -> ->
+    parameters = model.parameters
+    columns = [
+      createColumn 'label', Flow.Data.String
+      createColumn 'type', Flow.Data.String
+      createColumn 'level', Flow.Data.String
+      createColumn 'actual_value', Flow.Data.Object
+      createColumn 'default_value', Flow.Data.Object
+    ]
+
+    Row = Flow.Data.compile columns
+    rows = new Array parameters.length
+    for parameter, i in parameters
+      rows[i] = row = new Row()
+      for column in columns
+        row[column.name] = parameter[column.name]
+
+    Flow.Data.Table
+      name: 'parameters'
+      description: "Parameters for model '#{model.key}'" #TODO frame key
+      columns: columns
+      rows: rows
+      meta:
+        inspect: "find 'parameters', inspect getModel #{stringify model.key}"
+
+  extendKMeansModel = (model) ->
+    #getOutput = ->
+    mixin model,
+      inspect:
+        #output: getOutput
+        parameters: getModelParameters model
+
+  extendDeepLearningModel = (model) ->
+    mixin model,
+      inspect:
+        parameters: getModelParameters model
+  
+  extendGLMModel = (model) ->
+    mixin model,
+      inspect:
+        parameters: getModelParameters model
+
+  extendModel = (model) ->
+    switch model.algo
+      when 'kmeans'
+        extendKMeansModel model
+      when 'deeplearning'
+        extendDeepLearningModel model
+      when 'glm'
+        extendGLMModel model
+
+    mixin model,
+      render: -> H2O.ModelOutput _, model
+
+  extendModels = (models) ->
+    for model in models
+      extendModel model
+
+    algos = unique (model.algo for model in models)
+    if algos.length is 1
+      mixin models,
+        inspect:
+          parameters: getMultiModelParameters models 
+
+    mixin models,
+      render: -> H2O.ModelsOutput _, models
 
   computeTruePositiveRate = (cm) ->
     [[tn, fp], [fn, tp]] = cm
@@ -153,16 +267,26 @@ H2O.Routines = (_) ->
     [[tn, fp], [fn, tp]] = cm
     fp / (fp + tn)
 
+  createColumn = (name, type, domain, read, write) ->
+    name: name
+    type: type
+    domain: domain or null
+    read: read or null
+    write: write or null
+
+  #XXX obsolete
   createNumberColumn = (name, domain) ->
     name: name
     type: Flow.Data.Real
     domain: domain or null
 
+  #XXX obsolete
   createEnumColumn = (name, domain) ->
     name: name
-    type: Flow.Data.StringEnum
+    type: Flow.Data.Enum
     domain: domain or null
 
+  #XXX obsolete
   createObjectColumn = (name) ->
     name: name
     type: Flow.Data.Object
@@ -216,7 +340,6 @@ H2O.Routines = (_) ->
 
       Flow.Data.Table
         name: 'metrics'
-        label: 'Metrics'
         description: "Metrics for model '#{model.key}' on frame '#{frame.key.name}'"
         columns: columns
         rows: rows
@@ -267,21 +390,17 @@ H2O.Routines = (_) ->
 
       Flow.Data.Table
         name: 'scores'
-        label: 'Scores'
         description: "Scores for model '#{modelMetrics.model.key}' on frame '#{modelMetrics.frame.key.name}'"
         columns: columns
         rows: rows
         meta:
           inspect: "find 'scores', inspect predict #{stringify model.key}, #{stringify frame.key.name}"
     
-    # clumsy
     mixin modelMetrics,
-      scores: getScores
-      metrics: getMetrics
-
-    modelMetrics._render_ = -> H2O.PredictOutput _, modelMetrics
-
-    modelMetrics
+      inspect:
+        scores: getScores
+        metrics: getMetrics
+      render: -> H2O.PredictOutput _, modelMetrics
 
   extendFrame = (frameKey, frame) ->
     __getColumns = null
@@ -306,7 +425,6 @@ H2O.Routines = (_) ->
 
       __getColumns = Flow.Data.Table
         name: 'columns'
-        label: 'Columns'
         description: 'A list of columns in the H2O Frame.'
         columns: schema.attributes
         rows: rows
@@ -329,7 +447,7 @@ H2O.Routines = (_) ->
             type: Flow.Data.Real
           when 'enum'
             name: column.label
-            type: Flow.Data.StringEnum
+            type: Flow.Data.Enum
             domain: column.domain
           when 'uuid', 'string'
             name: column.label
@@ -356,7 +474,6 @@ H2O.Routines = (_) ->
       
       __getData = Flow.Data.Table
         name: 'data'
-        label: 'Data'
         description: 'A partial list of rows in the H2O Frame.'
         columns: columns
         rows: rows
@@ -368,8 +485,9 @@ H2O.Routines = (_) ->
     __getMaxs = null
 
     mixin frame,
-      columns: getColumns
-      data: getData
+      inspect:
+        columns: getColumns
+        data: getData
 
   extendColumnSummary = (frameKey, frame, columnName) ->
     column = head frame.columns
@@ -399,7 +517,6 @@ H2O.Routines = (_) ->
 
       __getPercentiles = Flow.Data.Table
         name: 'percentiles'
-        label: 'Percentiles'
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
@@ -446,7 +563,6 @@ H2O.Routines = (_) ->
 
       __getDistribution = Flow.Data.Table
         name: 'distribution'
-        label: 'Distribution'
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         columns: schema.attributes
         rows: rows
@@ -464,7 +580,7 @@ H2O.Routines = (_) ->
 
       columns = [
         name: 'characteristic'
-        type: Flow.Data.StringEnum
+        type: Flow.Data.Enum
         domain: domain
       ,
         name: 'count'
@@ -483,7 +599,6 @@ H2O.Routines = (_) ->
 
       __getCharacteristics = Flow.Data.Table
         name: 'characteristics'
-        label: 'Characteristics'
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
@@ -516,7 +631,7 @@ H2O.Routines = (_) ->
         type: Flow.Data.Real
       ,
         name: 'outliers'
-        type: Flow.Data.RealArray
+        type: Flow.Data.Array
       ]
 
       defaultPercentiles = frame.default_pctiles
@@ -537,7 +652,6 @@ H2O.Routines = (_) ->
 
       __getSummary = Flow.Data.Table
         name: 'summary'
-        label: 'Summary'
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: [ row ]
@@ -555,7 +669,7 @@ H2O.Routines = (_) ->
 
       labelColumn = 
         name: 'label'
-        type: Flow.Data.StringEnum
+        type: Flow.Data.Enum
         domain: column.domain
       countColumn = 
         name: 'count'
@@ -580,7 +694,6 @@ H2O.Routines = (_) ->
       
       __getDomain = Flow.Data.Table
         name: 'domain'
-        label: 'Domain'
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
@@ -598,15 +711,17 @@ H2O.Routines = (_) ->
     switch column.type
       when 'int', 'real'
         mixin frame,
-          characteristics: getCharacteristics
-          summary: getSummary
-          distribution: getDistribution
-          percentiles: getPercentiles
+          inspect:
+            characteristics: getCharacteristics
+            summary: getSummary
+            distribution: getDistribution
+            percentiles: getPercentiles
       else
         mixin frame,
-          characteristics: getCharacteristics
-          domain: getDomain
-          percentiles: getPercentiles
+          inspect:
+            characteristics: getCharacteristics
+            domain: getDomain
+            percentiles: getPercentiles
 
 
   requestFrame = (frameKey, go) ->
@@ -645,18 +760,33 @@ H2O.Routines = (_) ->
     renderable requestColumnSummary, frameKey, columnName, (frame, go) ->
       go null, H2O.ColumnSummaryOutput _, frameKey, frame, columnName
 
+  requestModels = (go) ->
+    _.requestModels (error, models) ->
+      if error then go error else go null, extendModels models
+
+  requestModelsByKeys = (modelKeys, go) ->
+    futures = for key in modelKeys
+      _fork _.requestModel, key
+    Flow.Async.join futures, (error, models) ->
+      if error then go error else go null, extendModels models
+
   getModels = (modelKeys) ->
     if isArray modelKeys
-      
+      if modelKeys.length
+        _fork requestModelsByKeys, modelKeys     
+      else
+        _fork requestModels 
     else
-      renderable _.requestModels, (models, go) ->
-        go null, H2O.ModelsOutput _, models
+      _fork requestModels
+
+  requestModel = (modelKey, go) ->
+    _.requestModel modelKey, (error, model) ->
+      if error then go error else go null, extendModel model
 
   getModel = (modelKey) ->
     switch typeOf modelKey
       when 'String'
-        renderable _.requestModel, modelKey, (model, go) ->
-          go null, H2O.ModelOutput _, model
+        _fork requestModel, modelKey
       else
         assist getModel
 

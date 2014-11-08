@@ -67,7 +67,7 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
   tooltip = (d) ->
     tip = ''
     for column in columns
-      tip += "#{column.name}: #{if Flow.Data.isDiscrete column.type then column.domain[d[column.name]] else d[column.name]}\n"
+      tip += "#{column.name}: #{if column.type is Flow.Data.Enum then column.domain[d[column.name]] else d[column.name]}\n"
     tip.trim()
 
   bar = viz.selectAll '.bar'
@@ -246,11 +246,11 @@ plot = (_config, go) ->
         #XXX formatting
         value = row[column.name]
         switch column.type
-          when Flow.Data.StringEnum
+          when Flow.Data.Enum
             td if value is null then '-' else escape column.domain[value]
           when Flow.Data.Integer, Flow.Data.Real
             tdr if value is null then '-' else value
-          when Flow.Data.RealArray
+          when Flow.Data.Array
             td if value is null then '-' else value.join ', '
           else
             td if value is null then '-' else value

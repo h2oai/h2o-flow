@@ -100,6 +100,7 @@ _join = (args, go) ->
           go null, _results
       return
   return
+
 # Like _.compose, but async. 
 # Equivalent to caolan/async.waterfall()
 pipe = (tasks) ->

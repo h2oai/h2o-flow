@@ -1,9 +1,12 @@
 H2O.Proxy = (_) ->
   doGet = (path, go) ->
+    debug 'GET', path
     $.getJSON(path)
       .done (data, status, xhr) ->
+        debug '  OK', path
         go null, data
       .fail (xhr, status, error) ->
+        debug '  ***FAIL***', path
         message = if xhr.responseJSON?.errmsg
           xhr.responseJSON.errmsg
         else if status is 0
@@ -13,10 +16,13 @@ H2O.Proxy = (_) ->
         go new Flow.Error message, new Flow.Error "Error calling GET #{path}"
 
   doPost = (path, opts, go) ->
+    debug 'POST', path
     $.post(path, opts)
       .done (data, status, xhr) ->
+        debug '  OK', path
         go null, data
       .fail (xhr, status, error) ->
+        debug '  ***FAIL***', path
         message = if xhr.responseJSON?.errmsg
           xhr.responseJSON.errmsg
         else if status is 0
@@ -119,19 +125,31 @@ H2O.Proxy = (_) ->
       delete_on_done: deleteOnDone
     requestWithOpts '/Parse.json', opts, go
 
+  hackInModelAlgo = (model) ->
+    prefix = head model.key.split '__'
+    model.algo = if prefix is 'DeepLearningModel'
+      'deeplearning'
+    else if prefix is 'K-meansModel'
+      'kmeans'
+    else if prefix is 'GLMModel'
+      'glm'
+    else
+      'unknown'
+    model
+
   requestModels = (go, opts) ->
     requestWithOpts '/3/Models.json', opts, (error, result) ->
       if error
         go error, result
       else
-        go error, result.models
+        go error, map result.models, hackInModelAlgo
 
   requestModel = (key, go) ->
     doGet "/3/Models.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go error, result
       else
-        go error, head result.models
+        go error, hackInModelAlgo head result.models
 
   requestModelBuilders = (algo, go) ->
     doGet "/2/ModelBuilders.json/#{algo}", go
