@@ -205,7 +205,7 @@ H2O.Routines = (_) ->
       columns: columns
       rows: rows
       meta:
-        inspect: "inspect 'parameters', getModels #{stringify modelKeys}"
+        origin: "getModels #{stringify modelKeys}"
 
   getModelParameters = (model) -> ->
     parameters = model.parameters
@@ -230,7 +230,7 @@ H2O.Routines = (_) ->
       columns: columns
       rows: rows
       meta:
-        inspect: "inspect 'parameters', getModel #{stringify model.key}"
+        origin: "getModel #{stringify model.key}"
 
   extendKMeansModel = (model) ->
     inspect_ model,
@@ -351,7 +351,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'metrics', predict #{stringify model.key}, #{stringify frame.key.name}"
+          origin: "predict #{stringify model.key}, #{stringify frame.key.name}"
 
     getMetrics = ->
       
@@ -401,7 +401,7 @@ H2O.Routines = (_) ->
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'scores', predict #{stringify model.key}, #{stringify frame.key.name}"
+          origin: "predict #{stringify model.key}, #{stringify frame.key.name}"
     
     render_ modelMetrics, -> H2O.PredictOutput _, modelMetrics
     inspect_ modelMetrics,
@@ -409,10 +409,7 @@ H2O.Routines = (_) ->
       metrics: getMetrics
 
   extendFrame = (frameKey, frame) ->
-    __getColumns = null
     getColumns = ->
-      return __getColumns if __getColumns
-
       schema = extensionSchemas.frame.columns
       Row = Flow.Data.createCompiledPrototype schema.attributeNames
       rows = for column in frame.columns
@@ -429,18 +426,15 @@ H2O.Routines = (_) ->
               row[attr] = column[attr] 
         row
 
-      __getColumns = Flow.Data.Table
+      Flow.Data.Table
         name: 'columns'
         description: 'A list of columns in the H2O Frame.'
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: "inspect 'columns', getFrame #{stringify frameKey}"
+          origin: "getFrame #{stringify frameKey}"
 
-    __getData = null
     getData = ->
-      return __getData if __getData
-
       frameColumns = frame.columns
       columns = for column in frameColumns
         #XXX format functions
@@ -478,17 +472,13 @@ H2O.Routines = (_) ->
               row[column.name] = value
         row
       
-      __getData = Flow.Data.Table
+      Flow.Data.Table
         name: 'data'
         description: 'A partial list of rows in the H2O Frame.'
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'data', getFrame #{stringify frameKey}"
-
-    __getMins = null
-
-    __getMaxs = null
+          origin: "getFrame #{stringify frameKey}"
 
     inspect_ frame,
       columns: getColumns
@@ -498,10 +488,7 @@ H2O.Routines = (_) ->
     column = head frame.columns
     rowCount = frame.rows
 
-    __getPercentiles = null
     getPercentiles = ->
-      return __getPercentiles if __getPercentiles
-      
       percentiles = frame.default_pctiles
       percentileValues = column.pctiles
 
@@ -520,19 +507,16 @@ H2O.Routines = (_) ->
         row.value = percentileValues[i]
         row
 
-      __getPercentiles = Flow.Data.Table
+      Flow.Data.Table
         name: 'percentiles'
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'percentiles', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
 
-    __getDistribution = null
     getDistribution = ->
-      return __getDistribution if __getDistribution
-
       distributionDataType = if column.type is 'int' then Flow.Data.Integer else Flow.Data.Real
       
       schema = if column.type is 'int' then extensionSchemas.column.integerDistribution else extensionSchemas.column.realDistribution
@@ -566,18 +550,15 @@ H2O.Routines = (_) ->
           row.count = count
           rows.push row
 
-      __getDistribution = Flow.Data.Table
+      Flow.Data.Table
         name: 'distribution'
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         columns: schema.attributes
         rows: rows
         meta:
-          inspect: "inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
-    __getCharacteristics = null
     getCharacteristics = ->
-      return __getCharacteristics if __getCharacteristics
-
       { missing, zeros, pinfs, ninfs } = column
       other = rowCount - missing - zeros - pinfs - ninfs
 
@@ -602,13 +583,13 @@ H2O.Routines = (_) ->
         count: count
         percent: 100 * count / rowCount
 
-      __getCharacteristics = Flow.Data.Table
+      Flow.Data.Table
         name: 'characteristics'
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
             title: 'Characteristics for #{frameKey} : #{column.label}'
@@ -618,10 +599,7 @@ H2O.Routines = (_) ->
             color: 'characteristic'
           """
 
-    __getSummary = null
     getSummary = ->
-      return __getSummary if __getSummary
-
       columns = [
         name: 'mean'
         type: Flow.Data.Real
@@ -655,18 +633,15 @@ H2O.Routines = (_) ->
         q3: q3
         outliers: outliers
 
-      __getSummary = Flow.Data.Table
+      Flow.Data.Table
         name: 'summary'
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: [ row ]
         meta:
-          inspect: "inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
-    __getDomain = null
     getDomain = ->
-      return __getDomain if __getDomain
-
       levels = map column.bins, (count, index) -> count: count, index: index
 
       #TODO sort table in-place when sorting is implemented
@@ -697,13 +672,13 @@ H2O.Routines = (_) ->
 
       countColumn.domain = Flow.Data.computeRange rows, 'count'
       
-      __getDomain = Flow.Data.Table
+      Flow.Data.Table
         name: 'domain'
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
         columns: columns
         rows: rows
         meta:
-          inspect: "inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
           plot: """
           plot
             title: 'Domain for #{frameKey} : #{column.label}'
