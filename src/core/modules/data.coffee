@@ -36,7 +36,7 @@ createCompiledPrototype = (attrs) ->
   prototypeName = nextPrototypeName()
   _prototypeCache[cacheKey] = (new Function "function #{prototypeName}(#{params.join ','}){#{inits.join ''}} return #{prototypeName};")()
 
-compile = (columns) ->
+createRecordConstructor = (columns) ->
   createCompiledPrototype (column.label for column in columns)
 
 createTable = (opts) ->
@@ -128,7 +128,7 @@ createNumericVariable = (_label, _domain, _format, _read) ->
   self
 
 createVariable = (_label, _type, _domain, _format, _read) ->
-  if _type is TReal
+  if _type is TReal or _type is TInteger
     createNumericVariable _label, _domain, _format, _read
   else
     createAbstractVariable _label, _type, _domain, _format, _read
@@ -175,8 +175,7 @@ Flow.Data =
       'd'
     else 
       't'
-  Record: createCompiledPrototype
-  compile: compile
+  Record: createRecordConstructor
   computeRange: computeRange
   combineRanges: combineRanges
   includeZeroInRange: includeZeroInRange

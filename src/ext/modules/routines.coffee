@@ -120,49 +120,6 @@ H2O.Routines = (_) ->
       type: 'text'
       data: data
 
-  extensionSchemaConfig =
-    column:
-      integerDistribution: [
-        [ 'intervalStart', TInteger ]
-        [ 'intervalEnd', TInteger ]
-        [ 'count', TInteger ]
-      ]
-      realDistribution: [
-        [ 'intervalStart', TReal ]
-        [ 'intervalEnd', TReal ]
-        [ 'count', TInteger ]
-      ]
-    frame:
-      columns: [
-        [ 'label', TString ]
-        [ 'missing', TInteger ]
-        [ 'zeros', TInteger ]
-        [ 'pinfs', TInteger ]
-        [ 'ninfs', TInteger ]
-        [ 'min', TReal ]
-        [ 'max', TReal ]
-        [ 'mean', TReal ]
-        [ 'sigma', TReal ]
-        [ 'type', TString ]
-        [ 'domain', TInteger ]
-        #[ 'data', TArray ]
-        #[ 'str_data', TArray ]
-        [ 'precision', TReal ]
-      ]
-
-  extensionSchemas = {}
-  for groupName, group of extensionSchemaConfig
-    extensionSchemas[groupName] = schemas = {}
-    for schemaName, tuples of group
-      attributes = for tuple in tuples
-        [ label, type ] = tuple
-        label: label
-        type: type
-
-      schemas[schemaName] =
-        attributes: attributes
-        attributeNames: map attributes, (attribute) -> attribute.label
-
   extendFrames = (frames) ->
     render_ frames, -> H2O.FramesOutput _, frames
     frames
@@ -180,11 +137,11 @@ H2O.Routines = (_) ->
         when 'string[]'
           Flow.Data.Variable parameter.label, TArray
         when 'boolean'
-          Flow.Data.Variable parameter.label, Flow.Data.Boolean
+          Flow.Data.Variable parameter.label, TBoolean
         else
           Flow.Data.Variable parameter.label, TObject
 
-    Record = Flow.Data.compile columns
+    Record = Flow.Data.Record columns
 
     rows = new Array models.length
     for model, i in models
@@ -216,7 +173,7 @@ H2O.Routines = (_) ->
       Flow.Data.Variable 'default_value', TObject
     ]
 
-    Record = Flow.Data.compile columns
+    Record = Flow.Data.Record columns
     rows = new Array parameters.length
     for parameter, i in parameters
       rows[i] = row = new Record()
@@ -290,22 +247,22 @@ H2O.Routines = (_) ->
     inspectScores = ->
       columns = [
         thresholdsColumn = Flow.Data.Variable 'threshold', TReal
-        f1Column = Flow.Data.Variable 'F1', TReal
-        f2Column = Flow.Data.Variable 'F2', TReal
-        f05Column = Flow.Data.Variable 'F0point5', TReal
-        accuracyColumn = Flow.Data.Variable 'accuracy', TReal
-        errorColumn = Flow.Data.Variable 'errorr', TReal
-        precisionColumn = Flow.Data.Variable 'precision', TReal
-        recallColumn = Flow.Data.Variable 'recall', TReal
-        specificityColumn = Flow.Data.Variable 'specificity', TReal
-        mccColumn = Flow.Data.Variable 'mcc', TReal
-        mpceColumn = Flow.Data.Variable 'max_per_class_error', TReal
-        cmColumn = Flow.Data.Variable 'confusion_matrices', TObject
-        tprColumn = Flow.Data.Variable 'TPR', TReal
-        fprColumn = Flow.Data.Variable 'FPR', TReal
+        Flow.Data.Variable 'F1', TReal
+        Flow.Data.Variable 'F2', TReal
+        Flow.Data.Variable 'F0point5', TReal
+        Flow.Data.Variable 'accuracy', TReal
+        Flow.Data.Variable 'errorr', TReal
+        Flow.Data.Variable 'precision', TReal
+        Flow.Data.Variable 'recall', TReal
+        Flow.Data.Variable 'specificity', TReal
+        Flow.Data.Variable 'mcc', TReal
+        Flow.Data.Variable 'max_per_class_error', TReal
+        Flow.Data.Variable 'confusion_matrices', TObject
+        Flow.Data.Variable 'TPR', TReal
+        Flow.Data.Variable 'FPR', TReal
       ]
 
-      Record = Flow.Data.Record (column.label for column in columns)
+      Record = Flow.Data.Record columns
       rows = for i in [ 0 ... auc.thresholds.length ]
         row = new Record()
         row.threshold = read auc.thresholds[i]
@@ -333,31 +290,28 @@ H2O.Routines = (_) ->
           origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
 
     inspectMetrics = ->
-      
-      [ criteriaDomain, criteriaData ] = Flow.Data.factor auc.threshold_criteria
-
       columns = [
-        criteriaColumn = Flow.Data.Variable 'criteria', TFactor, criteriaDomain
-        thresholdColumn = Flow.Data.Variable 'threshold', TReal
-        f1Column = Flow.Data.Variable 'F1', TReal
-        f2Column = Flow.Data.Variable 'F2', TReal
-        f05Column = Flow.Data.Variable 'F0point5', TReal
-        accuracyColumn = Flow.Data.Variable 'accuracy', TReal
-        errorColumn = Flow.Data.Variable 'error', TReal
-        precisionColumn = Flow.Data.Variable 'precision', TReal
-        recallColumn = Flow.Data.Variable 'recall', TReal
-        specificityColumn = Flow.Data.Variable 'specificity', TReal
-        mccColumn = Flow.Data.Variable 'mcc', TReal
-        mpceColumn = Flow.Data.Variable 'max_per_class_error', TReal
-        cmColumn = Flow.Data.Variable 'confusion_matrix', TObject
-        tprColumn = Flow.Data.Variable 'TPR', TReal
-        fprColumn = Flow.Data.Variable 'FPR', TReal
+        criteriaColumn = Flow.Data.Factor 'criteria'
+        Flow.Data.Variable 'threshold', TReal
+        Flow.Data.Variable 'F1', TReal
+        Flow.Data.Variable 'F2', TReal
+        Flow.Data.Variable 'F0point5', TReal
+        Flow.Data.Variable 'accuracy', TReal
+        Flow.Data.Variable 'error', TReal
+        Flow.Data.Variable 'precision', TReal
+        Flow.Data.Variable 'recall', TReal
+        Flow.Data.Variable 'specificity', TReal
+        Flow.Data.Variable 'mcc', TReal
+        Flow.Data.Variable 'max_per_class_error', TReal
+        Flow.Data.Variable 'confusion_matrix', TObject
+        Flow.Data.Variable 'TPR', TReal
+        Flow.Data.Variable 'FPR', TReal
       ]
 
-      Record = Flow.Data.Record (column.label for column in columns)
+      Record = Flow.Data.Record columns
       rows = for i in [ 0 ... auc.threshold_criteria.length ]
         row = new Record()
-        row.criteria = criteriaData[i]
+        row.criteria = criteriaColumn.read auc.threshold_criteria[i]
         row.threshold = read auc.threshold_for_criteria[i]
         row.F1 = read auc.F1_for_criteria[i]
         row.F2 = read auc.F2_for_criteria[i]
@@ -389,26 +343,41 @@ H2O.Routines = (_) ->
 
   extendFrame = (frameKey, frame) ->
     inspectColumns = ->
-      schema = extensionSchemas.frame.columns
-      Record = Flow.Data.Record schema.attributeNames
+      variables = [
+        Flow.Data.Variable 'label', TString
+        Flow.Data.Variable 'missing', TInteger
+        Flow.Data.Variable 'zeros', TInteger
+        Flow.Data.Variable 'pinfs', TInteger
+        Flow.Data.Variable 'ninfs', TInteger
+        Flow.Data.Variable 'min', TReal
+        Flow.Data.Variable 'max', TReal
+        Flow.Data.Variable 'mean', TReal
+        Flow.Data.Variable 'sigma', TReal
+        Flow.Data.Variable 'type', TString
+        Flow.Data.Variable 'cardinality', TInteger
+        Flow.Data.Variable 'precision', TReal
+      ]
+
+      Record = Flow.Data.Record variables
       rows = for column in frame.columns
         row = new Record()
-        for attr in schema.attributeNames
-          switch attr
+        for variable in variables
+          label = variable.label
+          switch label
             when 'min'
-              row[attr] = head column.mins
+              row[label] = head column.mins
             when 'max'
-              row[attr] = head column.maxs
-            when 'domain'
-              row[attr] = if domain = column[attr] then domain.length else null
+              row[label] = head column.maxs
+            when 'cardinality'
+              row[label] = if domain = column.domain then domain.length else null
             else
-              row[attr] = column[attr] 
+              row[label] = column[label] 
         row
 
       Flow.Data.Table
         label: 'columns'
         description: 'A list of columns in the H2O Frame.'
-        columns: schema.attributes
+        columns: variables
         rows: rows
         meta:
           origin: "getFrame #{stringify frameKey}"
@@ -437,7 +406,7 @@ H2O.Routines = (_) ->
           else
             throw new Error "Invalid column type #{column.type} found in frame #{frameKey}."
       columnNames = (column.label for column in columns)
-      Record = Flow.Data.Record columnNames
+      Record = Flow.Data.Record columns
       rowCount = (head frame.columns).data.length
       rows = for i in [0 ... rowCount]
         row = new Record()
@@ -479,7 +448,7 @@ H2O.Routines = (_) ->
         type: TReal #TODO depends on type of column?
       ]
 
-      Record = Flow.Data.Record map columns, (column) -> column.label
+      Record = Flow.Data.Record columns
       rows = for percentile, i in percentiles
         row = new Record()
         row.percentile = percentile
@@ -497,9 +466,13 @@ H2O.Routines = (_) ->
 
     inspectDistribution = ->
       distributionDataType = if column.type is 'int' then TInteger else TReal
-      
-      schema = if column.type is 'int' then extensionSchemas.column.integerDistribution else extensionSchemas.column.realDistribution
-      Record = Flow.Data.Record schema.attributeNames
+      variables = [
+        Flow.Data.Variable 'intervalStart', TReal
+        Flow.Data.Variable 'intervalEnd', TReal
+        Flow.Data.Variable 'count', TInteger
+      ]
+
+      Record = Flow.Data.Record variables
       
       minBinCount = 32
       { base, stride, bins } = column
@@ -532,7 +505,7 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'distribution'
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
-        columns: schema.attributes
+        columns: variables
         rows: rows
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -641,7 +614,7 @@ H2O.Routines = (_) ->
 
       columns = [ labelColumn, countColumn, percentColumn ]
 
-      Record = Flow.Data.Record map columns, (column) -> column.label
+      Record = Flow.Data.Record columns
       rows = for level in sortedLevels
         row = new Record()
         row.label = level.index
