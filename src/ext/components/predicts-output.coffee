@@ -1,5 +1,5 @@
 H2O.PredictsOutput = (_, modelKey, frameKey, predictions) ->
-  { frame, model } = predictions
+  debug predictions
 
   inspect = ->
   

@@ -249,7 +249,7 @@ H2O.Routines = (_) ->
     Record = Flow.Data.Record variables
 
     rows = []
-    rows.push new Record 'model', model.key
+    rows.push new Record 'key', model.key
     rows.push new Record 'frame', frame.key.name
     rows.push new Record 'model_category', prediction.model_category
     rows.push new Record 'duration_in_ms', prediction.duration_in_ms
@@ -266,8 +266,75 @@ H2O.Routines = (_) ->
       meta:
         origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
 
+  inspectMetrics = (modelKey, frameKey, predictions) -> ->
+    variables = [
+      criteriaVariable = Flow.Data.Factor 'criteria'
+      Flow.Data.Variable 'threshold', TReal
+      Flow.Data.Variable 'F1', TReal
+      Flow.Data.Variable 'F2', TReal
+      Flow.Data.Variable 'F0point5', TReal
+      Flow.Data.Variable 'accuracy', TReal
+      Flow.Data.Variable 'error', TReal
+      Flow.Data.Variable 'precision', TReal
+      Flow.Data.Variable 'recall', TReal
+      Flow.Data.Variable 'specificity', TReal
+      Flow.Data.Variable 'mcc', TReal
+      Flow.Data.Variable 'max_per_class_error', TReal
+      Flow.Data.Variable 'confusion_matrix', TObject
+      Flow.Data.Variable 'TPR', TReal
+      Flow.Data.Variable 'FPR', TReal
+      Flow.Data.Variable 'key', TString
+      Flow.Data.Variable 'model', TString
+      Flow.Data.Variable 'frame', TString
+    ]
+
+    Record = Flow.Data.Record variables
+
+    rows = []
+    for prediction in predictions
+      { frame, model, auc } = prediction
+      for i in [ 0 ... auc.threshold_criteria.length ]
+        rows.push new Record(
+          criteriaVariable.read auc.threshold_criteria[i]
+          read auc.threshold_for_criteria[i]
+          read auc.F1_for_criteria[i]
+          read auc.F2_for_criteria[i]
+          read auc.F0point5_for_criteria[i]
+          read auc.accuracy_for_criteria[i]
+          read auc.error_for_criteria[i]
+          read auc.precision_for_criteria[i]
+          read auc.recall_for_criteria[i]
+          read auc.specificity_for_criteria[i]
+          read auc.mcc_for_criteria[i]
+          read auc.max_per_class_error_for_criteria[i]
+          cm = auc.confusion_matrix_for_criteria[i] 
+          computeTruePositiveRate cm
+          computeFalsePositiveRate cm
+          model.key + ' on ' + frame.key.name
+          model.key
+          frame.key.name
+        )
+
+    origin = if modelKey and frameKey
+      "getPrediction #{stringify modelKey}, #{stringify frameKey}"
+    else if modelKey
+      "getPredictions #{stringify modelKey}"
+    else if frameKey
+      "getPredictions null, #{stringify frameKey}"
+    else
+      "getPredictions()"
+
+    Flow.Data.Table
+      label: 'metrics'
+      description: "Metrics for the selected predictions"
+      variables: variables
+      rows: rows
+      meta:
+        origin: origin
+
   inspectPredictions = (modelKey, frameKey, predictions) -> ->
     variables = [
+      Flow.Data.Variable 'key', TString
       Flow.Data.Variable 'model', TString
       Flow.Data.Variable 'frame', TString
       Flow.Data.Variable 'model_category', TString
@@ -283,15 +350,17 @@ H2O.Routines = (_) ->
     rows = new Array predictions.length
     for prediction, i in predictions
       { frame, model, auc } = prediction
-      rows[i] = row = new Record()
-      row.model = model.key
-      row.frame = frame.key.name
-      row.model_category = prediction.model_category
-      row.duration_in_ms = prediction.duration_in_ms
-      row.scoring_time = prediction.scoring_time
-      row.AUC = auc.AUC
-      row.Gini = auc.Gini
-      row.threshold_criterion = auc.threshold_criterion
+      rows[i] = row = new Record(
+        model.key + ' on ' + frame.key.name
+        model.key
+        frame.key.name
+        prediction.model_category
+        prediction.duration_in_ms
+        prediction.scoring_time
+        auc.AUC
+        auc.Gini
+        auc.threshold_criterion
+      )
 
     Flow.Data.Table
       label: 'predictions'
@@ -305,107 +374,80 @@ H2O.Routines = (_) ->
     render_ predictions, -> H2O.PredictsOutput _, modelKey, frameKey, predictions
     inspect_ predictions,
       predictions: inspectPredictions modelKey, frameKey, predictions
+      metrics: inspectMetrics modelKey, frameKey, predictions
+      scores: inspectScores modelKey, frameKey, predictions
 
-  extendPrediction = (prediction) ->
-    { frame, model, auc } = prediction
+  inspectScores = (modelKey, frameKey, predictions) -> ->
 
-    inspectScores = ->
-      variables = [
-        Flow.Data.Variable 'thresholds', TReal
-        Flow.Data.Variable 'F1', TReal
-        Flow.Data.Variable 'F2', TReal
-        Flow.Data.Variable 'F0point5', TReal
-        Flow.Data.Variable 'accuracy', TReal
-        Flow.Data.Variable 'errorr', TReal
-        Flow.Data.Variable 'precision', TReal
-        Flow.Data.Variable 'recall', TReal
-        Flow.Data.Variable 'specificity', TReal
-        Flow.Data.Variable 'mcc', TReal
-        Flow.Data.Variable 'max_per_class_error', TReal
-        Flow.Data.Variable 'confusion_matrices', TObject
-        Flow.Data.Variable 'TPR', TReal
-        Flow.Data.Variable 'FPR', TReal
-      ]
+    variables = [
+      Flow.Data.Variable 'thresholds', TReal
+      Flow.Data.Variable 'F1', TReal
+      Flow.Data.Variable 'F2', TReal
+      Flow.Data.Variable 'F0point5', TReal
+      Flow.Data.Variable 'accuracy', TReal
+      Flow.Data.Variable 'errorr', TReal
+      Flow.Data.Variable 'precision', TReal
+      Flow.Data.Variable 'recall', TReal
+      Flow.Data.Variable 'specificity', TReal
+      Flow.Data.Variable 'mcc', TReal
+      Flow.Data.Variable 'max_per_class_error', TReal
+      Flow.Data.Variable 'confusion_matrices', TObject
+      Flow.Data.Variable 'TPR', TReal
+      Flow.Data.Variable 'FPR', TReal
+      Flow.Data.Variable 'key', TString
+      Flow.Data.Variable 'model', TString
+      Flow.Data.Variable 'frame', TString
+    ]
 
-      Record = Flow.Data.Record variables
-      rows = for i in [ 0 ... auc.thresholds.length ]
-        row = new Record()
-        row.thresholds = read auc.thresholds[i]
-        row.F1 = read auc.F1[i]
-        row.F2 = read auc.F2[i]
-        row.F0point5 = read auc.F0point5[i]
-        row.accuracy = read auc.accuracy[i]
-        row.errorr = read auc.errorr[i]
-        row.precision = read auc.precision[i]
-        row.recall = read auc.recall[i]
-        row.specificity = read auc.specificity[i]
-        row.mcc = read auc.mcc[i]
-        row.max_per_class_error = read auc.max_per_class_error[i]
-        row.confusion_matrices = cm = auc.confusion_matrices[i]
-        row.TPR = computeTruePositiveRate cm
-        row.FPR = computeFalsePositiveRate cm
-        row
+    Record = Flow.Data.Record variables
+    rows = []
+    for prediction in predictions
+      { frame, model, auc } = prediction
+      for i in [ 0 ... auc.thresholds.length ]
+        rows.push new Record(
+          read auc.thresholds[i]
+          read auc.F1[i]
+          read auc.F2[i]
+          read auc.F0point5[i]
+          read auc.accuracy[i]
+          read auc.errorr[i]
+          read auc.precision[i]
+          read auc.recall[i]
+          read auc.specificity[i]
+          read auc.mcc[i]
+          read auc.max_per_class_error[i]
+          cm = auc.confusion_matrices[i]
+          computeTruePositiveRate cm
+          computeFalsePositiveRate cm
+          model.key + ' on ' + frame.key.name
+          model.key
+          frame.key.name
+        )
 
-      Flow.Data.Table
-        label: 'metrics'
-        description: "Metrics for model '#{model.key}' on frame '#{frame.key.name}'"
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
+    #XXX duplicated in inspectMetrics
+    origin = if modelKey and frameKey
+      "getPrediction #{stringify modelKey}, #{stringify frameKey}"
+    else if modelKey
+      "getPredictions #{stringify modelKey}"
+    else if frameKey
+      "getPredictions null, #{stringify frameKey}"
+    else
+      "getPredictions()"
 
-    inspectMetrics = ->
-      variables = [
-        criteriavariable = Flow.Data.Factor 'criteria'
-        Flow.Data.Variable 'threshold', TReal
-        Flow.Data.Variable 'F1', TReal
-        Flow.Data.Variable 'F2', TReal
-        Flow.Data.Variable 'F0point5', TReal
-        Flow.Data.Variable 'accuracy', TReal
-        Flow.Data.Variable 'error', TReal
-        Flow.Data.Variable 'precision', TReal
-        Flow.Data.Variable 'recall', TReal
-        Flow.Data.Variable 'specificity', TReal
-        Flow.Data.Variable 'mcc', TReal
-        Flow.Data.Variable 'max_per_class_error', TReal
-        Flow.Data.Variable 'confusion_matrix', TObject
-        Flow.Data.Variable 'TPR', TReal
-        Flow.Data.Variable 'FPR', TReal
-      ]
-
-      Record = Flow.Data.Record variables
-      rows = for i in [ 0 ... auc.threshold_criteria.length ]
-        row = new Record()
-        row.criteria = criteriavariable.read auc.threshold_criteria[i]
-        row.threshold = read auc.threshold_for_criteria[i]
-        row.F1 = read auc.F1_for_criteria[i]
-        row.F2 = read auc.F2_for_criteria[i]
-        row.F0point5 = read auc.F0point5_for_criteria[i]
-        row.accuracy = read auc.accuracy_for_criteria[i]
-        row.error = read auc.error_for_criteria[i]
-        row.precision = read auc.precision_for_criteria[i]
-        row.recall = read auc.recall_for_criteria[i]
-        row.specificity = read auc.specificity_for_criteria[i]
-        row.mcc = read auc.mcc_for_criteria[i]
-        row.max_per_class_error = read auc.max_per_class_error_for_criteria[i]
-        row.confusion_matrix = cm = auc.confusion_matrix_for_criteria[i] 
-        row.TPR = computeTruePositiveRate cm
-        row.FPR = computeFalsePositiveRate cm
-        row
-
-      Flow.Data.Table
-        label: 'scores'
-        description: "Scores for model '#{prediction.model.key}' on frame '#{prediction.frame.key.name}'"
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
+    Flow.Data.Table
+      label: 'scores'
+      description: "Scores for the selected predictions"
+      variables: variables
+      rows: rows
+      meta:
+        origin: origin
     
+  extendPrediction = (modelKey, frameKey, prediction) ->
     render_ prediction, -> H2O.PredictOutput _, prediction
     inspect_ prediction,
       prediction: inspectPrediction prediction
-      scores: inspectScores
-      metrics: inspectMetrics
+      scores: inspectScores modelKey, frameKey, [ prediction ]
+      metrics: inspectMetrics modelKey, frameKey, [ prediction ]
 
   extendFrame = (frameKey, frame) ->
     inspectColumns = ->
@@ -826,7 +868,7 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        go null, extendPrediction prediction
+        go null, extendPrediction modelKey, frameKey, prediction
 
   predict = (modelKey, frameKey) ->
     if modelKey and frameKey
@@ -840,7 +882,7 @@ H2O.Routines = (_) ->
         go error
       else
         if modelKey and frameKey
-          go null, extendPrediction head predictions
+          go null, extendPrediction modelKey, frameKey, head predictions
         else
           go null, extendPredictions modelKey, frameKey, predictions
 
