@@ -8,12 +8,18 @@ _assistance =
   getModels:
     description: 'Get a list of models in H<sub>2</sub>O'
     icon: 'cubes'
+  getPredictions: 
+    description: 'Get a list of predictions in H<sub>2</sub>O'
+    icon: 'bolt'
   getJobs:
     description: 'Get a list of jobs running in H<sub>2</sub>O'
     icon: 'tasks'
   buildModel:
     description: 'Build a model'
     icon: 'cube'
+  predict:
+    description: 'Make a prediction'
+    icon: 'bolt'
 
 H2O.Routines = (_) ->
 
@@ -233,20 +239,46 @@ H2O.Routines = (_) ->
   read = (value) -> if value is 'NaN' then null else value
 
   extendPredictions = (predictions) ->
-    
 
   extendPrediction = (prediction) ->
     { frame, model, auc } = prediction
 
-    #threshold_criterion scalar
-    #AUC scalar
-    #Gini scalar
+    inspectPrediction = ->
+      variables = [
+        Flow.Data.Variable 'model', TString
+        Flow.Data.Variable 'frame', TString
+        Flow.Data.Variable 'model_category', TString
+        Flow.Data.Variable 'duration_in_ms', TInteger
+        Flow.Data.Variable 'scoring_time', TInteger
+        Flow.Data.Variable 'AUC', TReal
+        Flow.Data.Variable 'Gini', TReal
+        Flow.Data.Variable 'threshold_criterion', TString
+      ]
 
-    #actual_domain 2
+      Record = Flow.Data.Record variables
+      row = new Record()
+      row.model = model.key
+      row.frame = frame.key.name
+      row.model_category = prediction.model_category
+      row.duration_in_ms = prediction.duration_in_ms
+      row.scoring_time = prediction.scoring_time
+      row.AUC = auc.AUC
+      row.Gini = auc.Gini
+      row.threshold_criterion = auc.threshold_criterion
+
+      rows = [ row ]
+
+      Flow.Data.Table
+        label: 'prediction'
+        description: "Prediction for model '#{model.key}' on frame '#{frame.key.name}'"
+        variables: variables
+        rows: rows
+        meta:
+          origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
 
     inspectScores = ->
       variables = [
-        thresholdsvariable = Flow.Data.Variable 'threshold', TReal
+        Flow.Data.Variable 'thresholds', TReal
         Flow.Data.Variable 'F1', TReal
         Flow.Data.Variable 'F2', TReal
         Flow.Data.Variable 'F0point5', TReal
@@ -265,7 +297,7 @@ H2O.Routines = (_) ->
       Record = Flow.Data.Record variables
       rows = for i in [ 0 ... auc.thresholds.length ]
         row = new Record()
-        row.threshold = read auc.thresholds[i]
+        row.thresholds = read auc.thresholds[i]
         row.F1 = read auc.F1[i]
         row.F2 = read auc.F2[i]
         row.F0point5 = read auc.F0point5[i]
@@ -338,6 +370,7 @@ H2O.Routines = (_) ->
     
     render_ prediction, -> H2O.PredictOutput _, prediction
     inspect_ prediction,
+      prediction: inspectPrediction
       scores: inspectScores
       metrics: inspectMetrics
 
@@ -782,7 +815,7 @@ H2O.Routines = (_) ->
     if modelKey and frameKey
       _fork requestPredictions, modelKey, frameKey
     else
-      assist requestPredictions, modelKey, frameKey
+      assist getPrediction, modelKey, frameKey
 
   getPredictions = (opts={}) ->
     { frame:frameKey, model:modelKey } = opts
@@ -805,7 +838,7 @@ H2O.Routines = (_) ->
           proceed H2O.ImportFilesInput
         when buildModel
           proceed H2O.ModelInput, args
-        when predict
+        when predict, getPrediction
           proceed H2O.PredictInput, args
         else
           proceed H2O.NoAssistView

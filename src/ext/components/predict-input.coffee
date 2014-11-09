@@ -26,7 +26,6 @@ H2O.PredictInput = (_, modelKey, frameKey) ->
   predict = ->
     _.insertAndExecuteCell 'cs', "predict #{stringify _modelKey()}, #{stringify _frameKey()}"
 
-
   exception: _exception
   hasModel: _hasModel
   hasFrame: _hasFrame
