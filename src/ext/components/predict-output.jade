@@ -2,8 +2,17 @@
   +subtitle('Prediction', 'bolt')
 
   table.flow-form
-    tr
-      th(width='1')
-        label Actions:
-      td
-        +button('Inspect', 'list', 'inspect')
+    tbody
+      // ko with:predictionTable
+      // ko foreach:rows
+      tr
+        th(data-bind='text:parameter')
+        td(data-bind='text:value')
+      // /ko
+      // /ko
+      tr
+        th(width='1')
+          label Actions:
+        td
+          +button('Inspect', 'list', 'inspect')
+
