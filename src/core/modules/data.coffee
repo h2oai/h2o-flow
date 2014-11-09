@@ -116,7 +116,7 @@ createAbstractVariable = (_label, _type, _domain, _format, _read) ->
   type: _type
   domain: _domain or []
   format: _format or identity
-  read: _read or identity
+  read: _read
 
 createNumericVariable = (_label, _domain, _format, _read) ->
   self = createAbstractVariable _label, TReal, _domain or [ Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY], _format, _read

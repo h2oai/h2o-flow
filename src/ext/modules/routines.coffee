@@ -435,11 +435,8 @@ H2O.Routines = (_) ->
       percentileValues = column.pctiles
 
       columns = [
-        label: 'percentile'
-        type: TReal
-      ,
-        label: 'value'
-        type: TReal #TODO depends on type of column?
+        Flow.Data.Variable 'percentile', TReal
+        Flow.Data.Variable 'value', TReal #TODO depends on type of column?
       ]
 
       Record = Flow.Data.Record columns
@@ -589,35 +586,23 @@ H2O.Routines = (_) ->
 
     inspectDomain = ->
       levels = map column.bins, (count, index) -> count: count, index: index
-
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
-      labelColumn = 
-        label: 'label'
-        type: TFactor
-        domain: column.domain
-      countColumn = 
-        label: 'count'
-        type: TInteger
-        domain: null
-      percentColumn =
-        label: 'percent'
-        type: TReal
-        domain: [ 0, 100 ]
-
-      columns = [ labelColumn, countColumn, percentColumn ]
+      columns = [
+        Flow.Data.Factor 'label', column.domain
+        countVariable = Flow.Data.Variable 'count', TInteger
+        Flow.Data.Variable 'percent', TInteger, [ 0, 100 ]
+      ]
 
       Record = Flow.Data.Record columns
       rows = for level in sortedLevels
         row = new Record()
         row.label = level.index
-        row.count = level.count
+        row.count = countVariable.read level.count
         row.percent = 100 * level.count / rowCount
         row
 
-      countColumn.domain = Flow.Data.computeRange rows, 'count'
-      
       Flow.Data.Table
         label: 'domain'
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
