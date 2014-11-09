@@ -388,24 +388,18 @@ H2O.Routines = (_) ->
         #XXX format functions
         switch column.type
           when 'int'
-            label: column.label
-            type: TInteger
+            Flow.Data.Variable column.label, TInteger
           when 'real'
-            label: column.label
-            type: TReal
+            Flow.Data.Variable column.label, TReal
           when 'enum'
-            label: column.label
-            type: TFactor
-            domain: column.domain
+            Flow.Data.Factor column.label, column.domain
           when 'uuid', 'string'
-            label: column.label
-            type: TString
+            Flow.Data.Variable column.label, TString
           when 'time'
-            label: column.label
-            type: TDate
+            Flow.Data.Variable column.label, TDate
           else
-            throw new Error "Invalid column type #{column.type} found in frame #{frameKey}."
-      columnNames = (column.label for column in columns)
+            Flow.Data.Variable column.label, TObject
+
       Record = Flow.Data.Record columns
       rowCount = (head frame.columns).data.length
       rows = for i in [0 ... rowCount]
