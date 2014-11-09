@@ -128,7 +128,7 @@ H2O.Routines = (_) ->
   inspectMultimodelParameters = (models) -> ->
     leader = head models
     parameters = leader.parameters
-    columns = for parameter in parameters
+    variables = for parameter in parameters
       switch parameter.type
         when 'enum', 'Frame', 'string', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
           Flow.Data.Factor parameter.label
@@ -141,15 +141,15 @@ H2O.Routines = (_) ->
         else
           Flow.Data.Variable parameter.label, TObject
 
-    Record = Flow.Data.Record columns
+    Record = Flow.Data.Record variables
 
     rows = new Array models.length
     for model, i in models
       rows[i] = row = new Record()
       for parameter, j in model.parameters
-        column = columns[j]
-        row[column.label] = if column.type is TFactor
-          column.read parameter.actual_value
+        variable = variables[j]
+        row[variable.label] = if variable.type is TFactor
+          variable.read parameter.actual_value
         else
           parameter.actual_value
 
@@ -158,14 +158,14 @@ H2O.Routines = (_) ->
     Flow.Data.Table
       label: 'parameters'
       description: "Parameters for models #{modelKeys.join ', '}"
-      columns: columns
+      variables: variables
       rows: rows
       meta:
         origin: "getModels #{stringify modelKeys}"
 
   inspectModelParameters = (model) -> ->
     parameters = model.parameters
-    columns = [
+    variables = [
       Flow.Data.Variable 'label', TString
       Flow.Data.Variable 'type', TString
       Flow.Data.Variable 'level', TString
@@ -173,17 +173,17 @@ H2O.Routines = (_) ->
       Flow.Data.Variable 'default_value', TObject
     ]
 
-    Record = Flow.Data.Record columns
+    Record = Flow.Data.Record variables
     rows = new Array parameters.length
     for parameter, i in parameters
       rows[i] = row = new Record()
-      for column in columns
-        row[column.label] = parameter[column.label]
+      for variable in variables
+        row[variable.label] = parameter[variable.label]
 
     Flow.Data.Table
       label: 'parameters'
       description: "Parameters for model '#{model.key}'" #TODO frame key
-      columns: columns
+      variables: variables
       rows: rows
       meta:
         origin: "getModel #{stringify model.key}"
@@ -245,8 +245,8 @@ H2O.Routines = (_) ->
     #actual_domain 2
 
     inspectScores = ->
-      columns = [
-        thresholdsColumn = Flow.Data.Variable 'threshold', TReal
+      variables = [
+        thresholdsvariable = Flow.Data.Variable 'threshold', TReal
         Flow.Data.Variable 'F1', TReal
         Flow.Data.Variable 'F2', TReal
         Flow.Data.Variable 'F0point5', TReal
@@ -262,7 +262,7 @@ H2O.Routines = (_) ->
         Flow.Data.Variable 'FPR', TReal
       ]
 
-      Record = Flow.Data.Record columns
+      Record = Flow.Data.Record variables
       rows = for i in [ 0 ... auc.thresholds.length ]
         row = new Record()
         row.threshold = read auc.thresholds[i]
@@ -284,14 +284,14 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'metrics'
         description: "Metrics for model '#{model.key}' on frame '#{frame.key.name}'"
-        columns: columns
+        variables: variables
         rows: rows
         meta:
           origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
 
     inspectMetrics = ->
-      columns = [
-        criteriaColumn = Flow.Data.Factor 'criteria'
+      variables = [
+        criteriavariable = Flow.Data.Factor 'criteria'
         Flow.Data.Variable 'threshold', TReal
         Flow.Data.Variable 'F1', TReal
         Flow.Data.Variable 'F2', TReal
@@ -308,10 +308,10 @@ H2O.Routines = (_) ->
         Flow.Data.Variable 'FPR', TReal
       ]
 
-      Record = Flow.Data.Record columns
+      Record = Flow.Data.Record variables
       rows = for i in [ 0 ... auc.threshold_criteria.length ]
         row = new Record()
-        row.criteria = criteriaColumn.read auc.threshold_criteria[i]
+        row.criteria = criteriavariable.read auc.threshold_criteria[i]
         row.threshold = read auc.threshold_for_criteria[i]
         row.F1 = read auc.F1_for_criteria[i]
         row.F2 = read auc.F2_for_criteria[i]
@@ -331,7 +331,7 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'scores'
         description: "Scores for model '#{prediction.model.key}' on frame '#{prediction.frame.key.name}'"
-        columns: columns
+        variables: variables
         rows: rows
         meta:
           origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
@@ -377,14 +377,14 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'columns'
         description: 'A list of columns in the H2O Frame.'
-        columns: variables
+        variables: variables
         rows: rows
         meta:
           origin: "getFrame #{stringify frameKey}"
 
     inspectData = ->
       frameColumns = frame.columns
-      columns = for column in frameColumns
+      variables = for column in frameColumns
         #XXX format functions
         switch column.type
           when 'int'
@@ -400,24 +400,24 @@ H2O.Routines = (_) ->
           else
             Flow.Data.Variable column.label, TObject
 
-      Record = Flow.Data.Record columns
+      Record = Flow.Data.Record variables
       rowCount = (head frame.columns).data.length
       rows = for i in [0 ... rowCount]
         row = new Record()
-        for column, j in columns
+        for variable, j in variables
           value = frameColumns[j].data[i]
-          switch column.type
+          switch variable.type
             when TInteger, TReal
               #TODO handle +-Inf
-              row[column.label] = if value is 'NaN' then null else value
+              row[variable.label] = if value is 'NaN' then null else value
             else
-              row[column.label] = value
+              row[variable.label] = value
         row
       
       Flow.Data.Table
         label: 'data'
         description: 'A partial list of rows in the H2O Frame.'
-        columns: columns
+        variables: variables
         rows: rows
         meta:
           origin: "getFrame #{stringify frameKey}"
@@ -434,12 +434,12 @@ H2O.Routines = (_) ->
       percentiles = frame.default_pctiles
       percentileValues = column.pctiles
 
-      columns = [
+      variables = [
         Flow.Data.Variable 'percentile', TReal
-        Flow.Data.Variable 'value', TReal #TODO depends on type of column?
+        Flow.Data.Variable 'value', TReal #TODO depends on type of variable?
       ]
 
-      Record = Flow.Data.Record columns
+      Record = Flow.Data.Record variables
       rows = for percentile, i in percentiles
         row = new Record()
         row.percentile = percentile
@@ -449,7 +449,7 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'percentiles'
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
-        columns: columns
+        variables: variables
         rows: rows
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -496,7 +496,7 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'distribution'
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
-        columns: variables
+        variables: variables
         rows: rows
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -507,7 +507,7 @@ H2O.Routines = (_) ->
 
       [ domain, characteristics ] = Flow.Data.factor [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
 
-      columns = [
+      variables = [
         label: 'characteristic'
         type: TFactor
         domain: domain
@@ -529,7 +529,7 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'characteristics'
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
-        columns: columns
+        variables: variables
         rows: rows
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -543,7 +543,7 @@ H2O.Routines = (_) ->
           """
 
     inspectSummary = ->
-      columns = [
+      variables = [
         label: 'mean'
         type: TReal
       ,
@@ -579,7 +579,7 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'summary'
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
-        columns: columns
+        variables: variables
         rows: [ row ]
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -589,13 +589,13 @@ H2O.Routines = (_) ->
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
-      columns = [
+      variables = [
         Flow.Data.Factor 'label', column.domain
         countVariable = Flow.Data.Variable 'count', TInteger
         Flow.Data.Variable 'percent', TInteger, [ 0, 100 ]
       ]
 
-      Record = Flow.Data.Record columns
+      Record = Flow.Data.Record variables
       rows = for level in sortedLevels
         row = new Record()
         row.label = level.index
@@ -606,7 +606,7 @@ H2O.Routines = (_) ->
       Flow.Data.Table
         label: 'domain'
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
-        columns: columns
+        variables: variables
         rows: rows
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"

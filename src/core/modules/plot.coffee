@@ -20,13 +20,13 @@ createAxis = (scale, opts) ->
   axis
 
 renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
-  { schema, columns, rows } = table
+  { schema, variables, rows } = table
 
-  columnX1 = table.schema[attrX1]
-  columnX2 = table.schema[attrX2]
-  columnColor = table.schema[attrColor]
+  variableX1 = table.schema[attrX1]
+  variableX2 = table.schema[attrX2]
+  variableColor = table.schema[attrColor]
 
-  domainX = Flow.Data.combineRanges columnX1.domain, columnX2.domain
+  domainX = Flow.Data.combineRanges variableX1.domain, variableX2.domain
   availableWidth = 450
   availableHeight = 16 + 30
   
@@ -44,7 +44,7 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
     .range [ 0, width ]
 
   scaleColor = d3.scale.ordinal()
-    .domain columnColor.domain
+    .domain variableColor.domain
     .range d3.scale.category10().range()
 
   axisX = createAxis scaleX, 
@@ -66,8 +66,8 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
 
   tooltip = (d) ->
     tip = ''
-    for column in columns
-      tip += "#{column.label}: #{if column.type is TFactor then column.domain[d[column.label]] else d[column.label]}\n"
+    for variable in variables
+      tip += "#{variable.label}: #{if variable.type is TFactor then variable.domain[d[variable.label]] else d[variable.label]}\n"
     tip.trim()
 
   bar = viz.selectAll '.bar'
@@ -78,13 +78,13 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
     .attr 'x', (d) -> scaleX d[attrX1]
     .attr 'width', (d) -> scaleX d[attrX2] - d[attrX1]
     .attr 'height', height
-    .style 'fill', (d) -> scaleColor columnColor.domain[d[attrColor]]
+    .style 'fill', (d) -> scaleColor variableColor.domain[d[attrColor]]
     .append 'title'
       .text tooltip
 
   [ legends, legend, swatch, label ] = Flow.HTML.template '.flow-legend', 'span.flow-legend-item', "+span.flow-legend-swatch style='background:{0}'", '=span.flow-legend-label'
 
-  items = for d in columnColor.domain
+  items = for d in variableColor.domain
     legend [
       swatch '', scaleColor d
       label d
@@ -101,26 +101,26 @@ renderD3StackedBar = (title, table, attrX1, attrX2, attrColor) ->
   el
 
 renderD3BarChart = (title, table, attrX, attrY) ->
-  { schema, columns, rows } = table
+  { schema, variables, rows } = table
 
-  columnX = schema[attrX]
-  columnY = schema[attrY]
+  variableX = schema[attrX]
+  variableY = schema[attrY]
 
-  interpretationX = Flow.Data.computeColumnInterpretation columnX.type
-  interpretationY = Flow.Data.computeColumnInterpretation columnY.type
+  interpretationX = Flow.Data.computevariableInterpretation variableX.type
+  interpretationY = Flow.Data.computevariableInterpretation variableY.type
   interpretationXY = interpretationX + interpretationY
 
   domainX = if interpretationX is 'c'
-    Flow.Data.includeZeroInRange columnX.domain
+    Flow.Data.includeZeroInRange variableX.domain
   else
     for row in rows
-      columnX.domain[row[attrX]]
+      variableX.domain[row[attrX]]
 
   domainY = if interpretationY is 'c'
-    Flow.Data.includeZeroInRange columnY.domain 
+    Flow.Data.includeZeroInRange variableY.domain 
   else 
     for row in rows
-      columnY.domain[row[attrY]]
+      variableY.domain[row[attrY]]
 
   availableWidth = if interpretationX is 'c' then 500 else domainX.length * 20
   availableHeight = if interpretationY is 'c' then 500 else domainY.length * 20
@@ -151,13 +151,13 @@ renderD3BarChart = (title, table, attrX, attrY) ->
     orient: 'left'
 
   if interpretationXY is 'dc'
-    positionX = (d) -> scaleX columnX.domain[d[attrX]]
+    positionX = (d) -> scaleX variableX.domain[d[attrX]]
     positionY = (d) -> scaleY d[attrY]
     widthX = scaleX.rangeBand()
     heightY = (d) -> height - scaleY d[attrY]
   else #XXX 'cc', 'dd' not handled
     positionX = (d) -> scaleX 0
-    positionY = (d) -> scaleY columnY.domain[d[attrY]]
+    positionY = (d) -> scaleY variableY.domain[d[attrY]]
     widthX = (d) -> scaleX d[attrX]
     heightY = scaleY.rangeBand()
 
@@ -187,7 +187,7 @@ renderD3BarChart = (title, table, attrX, attrY) ->
       .attr 'y', 6
       .attr 'dy', '.71em'
       .style 'text-anchor', 'end'
-      .text columnY.label
+      .text variableY.label
 
   viz
     .selectAll '.bar'
@@ -238,16 +238,16 @@ plot = (_config, go) ->
   renderText = (config, go) ->
     [ grid, h4, p, table, thead, tbody, tr, th, td, tdr ] = Flow.HTML.template '.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=td.rt'
     
-    ths = for column in config.data.columns
-      th escape column.label
+    ths = for variable in config.data.variables
+      th escape variable.label
 
     trs = for row in config.data.rows
-      tds = for column in config.data.columns
+      tds = for variable in config.data.variables
         #XXX formatting
-        value = row[column.label]
-        switch column.type
+        value = row[variable.label]
+        switch variable.type
           when TFactor
-            td if value is null then '-' else escape column.domain[value]
+            td if value is null then '-' else escape variable.domain[value]
           when TInteger, TReal
             tdr if value is null then '-' else value
           when TArray
@@ -285,10 +285,10 @@ plot = (_config, go) ->
 stack = (attr) ->
   self = (table) ->
     type = table.schema[attr].type
-    [ startColumn, endColumn ] = table.expand type, type
+    [ startVariable, endVariable ] = table.expand type, type
 
-    start = startColumn.label
-    end = endColumn.label
+    start = startVariable.label
+    end = endVariable.label
 
     n = 0 
     p = 0
@@ -301,8 +301,8 @@ stack = (attr) ->
         row[start] = n
         row[end] = n = n + value
 
-    startColumn.domain = [ n, p ]
-    endColumn.domain = [ n, p ]
+    startVariable.domain = [ n, p ]
+    endVariable.domain = [ n, p ]
     
     [ start, end ]
     

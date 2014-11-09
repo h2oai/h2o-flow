@@ -17,6 +17,9 @@ H2O.ModelOutput = (_, _model) ->
   predict = ->
     _.insertAndExecuteCell 'cs', "predict #{stringify _model.key}"
 
+  inspect = ->
+    _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.key}"
+
   key: _model.key
   inputParameters: _inputParameters
   isExpanded: _isExpanded

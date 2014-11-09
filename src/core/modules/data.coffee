@@ -36,15 +36,15 @@ createCompiledPrototype = (attrs) ->
   prototypeName = nextPrototypeName()
   _prototypeCache[cacheKey] = (new Function "function #{prototypeName}(#{params.join ','}){#{inits.join ''}} return #{prototypeName};")()
 
-createRecordConstructor = (columns) ->
-  createCompiledPrototype (column.label for column in columns)
+createRecordConstructor = (variables) ->
+  createCompiledPrototype (variable.label for variable in variables)
 
 createTable = (opts) ->
-  { label, description, columns, rows, meta } = opts
+  { label, description, variables, rows, meta } = opts
   description = 'No description available.' unless description
 
   schema = {}
-  schema[column.label] = column for column in columns
+  schema[variable.label] = variable for variable in variables
 
   fill = (i, go) ->
     _fill i, (error, result) ->
@@ -59,7 +59,7 @@ createTable = (opts) ->
   
   expand = (types...) ->
     for type in types
-      label = uniqueId '__flow_column_'
+      label = uniqueId '__flow_variable_'
       schema[label] =
         label: label
         type: type
@@ -67,7 +67,7 @@ createTable = (opts) ->
   label: label
   description: description
   schema: schema
-  columns: columns
+  variables: variables
   rows: rows
   meta: meta
   fill: fill

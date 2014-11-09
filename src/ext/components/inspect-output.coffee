@@ -7,7 +7,7 @@ H2O.InspectOutput = (_, _table) ->
     _.insertAndExecuteCell 'cs', _table.meta.plot
 
   label: _table.label
-  columns: _table.columns
+  variables: _table.variables
   view: view
   canPlot: if _table.meta.plot then yes else no
   plot: plot

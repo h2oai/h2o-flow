@@ -11,7 +11,7 @@ H2O.InspectsOutput = (_, _tables) ->
 
     label: table.label
     description: table.description
-    columns: table.columns
+    variables: table.variables
     inspect: inspect
     grid: grid
     canPlot: if table.meta.plot then yes else no
