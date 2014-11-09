@@ -238,25 +238,52 @@ H2O.Routines = (_) ->
 
   read = (value) -> if value is 'NaN' then null else value
 
-  extendPredictions = (predictions) ->
-
-  extendPrediction = (prediction) ->
+  inspectPrediction = (prediction) -> ->
     { frame, model, auc } = prediction
 
-    inspectPrediction = ->
-      variables = [
-        Flow.Data.Variable 'model', TString
-        Flow.Data.Variable 'frame', TString
-        Flow.Data.Variable 'model_category', TString
-        Flow.Data.Variable 'duration_in_ms', TInteger
-        Flow.Data.Variable 'scoring_time', TInteger
-        Flow.Data.Variable 'AUC', TReal
-        Flow.Data.Variable 'Gini', TReal
-        Flow.Data.Variable 'threshold_criterion', TString
-      ]
+    variables = [
+      Flow.Data.Variable 'parameter', TString
+      Flow.Data.Variable 'value', TObject
+    ]
 
-      Record = Flow.Data.Record variables
-      row = new Record()
+    Record = Flow.Data.Record variables
+
+    rows = []
+    rows.push new Record 'model', model.key
+    rows.push new Record 'frame', frame.key.name
+    rows.push new Record 'model_category', prediction.model_category
+    rows.push new Record 'duration_in_ms', prediction.duration_in_ms
+    rows.push new Record 'scoring_time', prediction.scoring_time
+    rows.push new Record 'AUC', auc.AUC
+    rows.push new Record 'Gini', auc.Gini
+    rows.push new Record 'threshold_criterion', auc.threshold_criterion
+
+    Flow.Data.Table
+      label: 'prediction'
+      description: "Prediction output for model '#{model.key}' on frame '#{frame.key.name}'"
+      variables: variables
+      rows: rows
+      meta:
+        origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
+
+  inspectPredictions = (modelKey, frameKey, predictions) -> ->
+    variables = [
+      Flow.Data.Variable 'model', TString
+      Flow.Data.Variable 'frame', TString
+      Flow.Data.Variable 'model_category', TString
+      Flow.Data.Variable 'duration_in_ms', TInteger
+      Flow.Data.Variable 'scoring_time', TInteger
+      Flow.Data.Variable 'AUC', TReal
+      Flow.Data.Variable 'Gini', TReal
+      Flow.Data.Variable 'threshold_criterion', TString
+    ]
+
+    Record = Flow.Data.Record variables
+    
+    rows = new Array predictions.length
+    for prediction, i in predictions
+      { frame, model, auc } = prediction
+      rows[i] = row = new Record()
       row.model = model.key
       row.frame = frame.key.name
       row.model_category = prediction.model_category
@@ -266,15 +293,21 @@ H2O.Routines = (_) ->
       row.Gini = auc.Gini
       row.threshold_criterion = auc.threshold_criterion
 
-      rows = [ row ]
+    Flow.Data.Table
+      label: 'predictions'
+      description: "Prediction output for selected predictions."
+      variables: variables
+      rows: rows
+      meta:
+        origin: if modelKey or frameKey then "getPredictions #{if modelKey then stringify modelKey else null}, #{if frameKey then stringify frameKey else null}" else "getPredictions()"
 
-      Flow.Data.Table
-        label: 'prediction'
-        description: "Prediction for model '#{model.key}' on frame '#{frame.key.name}'"
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
+  extendPredictions = (modelKey, frameKey, predictions) ->
+    render_ predictions, -> H2O.PredictsOutput _, modelKey, frameKey, predictions
+    inspect_ predictions,
+      predictions: inspectPredictions modelKey, frameKey, predictions
+
+  extendPrediction = (prediction) ->
+    { frame, model, auc } = prediction
 
     inspectScores = ->
       variables = [
@@ -370,7 +403,7 @@ H2O.Routines = (_) ->
     
     render_ prediction, -> H2O.PredictOutput _, prediction
     inspect_ prediction,
-      prediction: inspectPrediction
+      prediction: inspectPrediction prediction
       scores: inspectScores
       metrics: inspectMetrics
 
@@ -809,7 +842,7 @@ H2O.Routines = (_) ->
         if modelKey and frameKey
           go null, extendPrediction head predictions
         else
-          go null, extendPredictions predictions
+          go null, extendPredictions modelKey, frameKey, predictions
 
   getPrediction = (modelKey, frameKey) ->
     if modelKey and frameKey
