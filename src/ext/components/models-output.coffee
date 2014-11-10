@@ -8,6 +8,7 @@ H2O.ModelsOutput = (_, _models) ->
     _isCheckingAll = yes
     for view in _modelViews()
       view.isChecked checkAll
+    _canCompareModels checkAll
     _isCheckingAll = no
     return
 
@@ -32,7 +33,6 @@ H2O.ModelsOutput = (_, _models) ->
     inspect = ->
       _.insertAndExecuteCell 'cs', "inspect getModel #{stringify model.key}"
 
-
     key: model.key
     isChecked: _isChecked
     predict: predict
@@ -47,6 +47,11 @@ H2O.ModelsOutput = (_, _models) ->
     keys = (view.key for view in _modelViews() when view.isChecked())
     _.insertAndExecuteCell 'cs', "inspect getModels #{stringify keys}"
 
+  inspectAll = ->
+    keys = (view.key for view in _modelViews())
+    #TODO use table origin
+    _.insertAndExecuteCell 'cs', "inspect getModels #{stringify keys}"
+
   initialize = (models) ->
     _modelViews map models, createModelView
 
@@ -58,5 +63,6 @@ H2O.ModelsOutput = (_, _models) ->
   compareModels: compareModels
   canCompareModels: _canCompareModels
   checkAllModels: _checkAllModels
+  inspect: inspectAll
   template: 'flow-models-output'
 

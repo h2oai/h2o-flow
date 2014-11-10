@@ -1,10 +1,36 @@
 .flow-widget
   +subtitle('Predictions', 'bolt')
+
+  // ko ifnot:hasPredictions
+  blockquote Your H<sub>2</sub>O cloud has no predictions.
+  .flow-panel
+    +button('Make a prediction&hellip;', 'bolt', 'predict')
+  // /ko
   
+  // ko if:hasPredictions
   table.flow-form
     tbody
       tr
-        th(width='1')
-          label Actions:
+        th(width='1' style='font-size:inherit')
+          input(type='checkbox' title='Select or deselect all' data-bind="checked:checkAllPredictions")
+        th(width='1') &nbsp;
+        th Model
+        th Frame
+        th.flow-right Actions
+    tbody
+      // ko foreach:predictionViews
+      tr
         td
+          input(type='checkbox' data-bind="checked:isChecked")
+        td
+          +fa('bolt')
+        td(data-bind='text:modelKey')
+        td(data-bind='text:frameKey')
+        td.flow-right 
+          +button('View', 'bolt', 'view')
           +button('Inspect', 'list', 'inspect')
+      // /ko
+  .flow-panel
+    +button('Compare selected predictions&hellip;', 'area-chart', 'comparePredictions', 'canComparePredictions')
+    +button('Inspect', 'list', 'inspect')
+  // /ko
