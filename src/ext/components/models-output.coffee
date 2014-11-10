@@ -34,6 +34,7 @@ H2O.ModelsOutput = (_, _models) ->
       _.insertAndExecuteCell 'cs', "inspect getModel #{stringify model.key}"
 
     key: model.key
+    algo: model.algo
     isChecked: _isChecked
     predict: predict
     clone: clone

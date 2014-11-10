@@ -125,31 +125,19 @@ H2O.Proxy = (_) ->
       delete_on_done: deleteOnDone
     requestWithOpts '/Parse.json', opts, go
 
-  hackInModelAlgo = (model) ->
-    prefix = head model.key.split '__'
-    model.algo = if prefix is 'DeepLearningModel'
-      'deeplearning'
-    else if prefix is 'K-meansModel'
-      'kmeans'
-    else if prefix is 'GLMModel'
-      'glm'
-    else
-      'unknown'
-    model
-
   requestModels = (go, opts) ->
     requestWithOpts '/3/Models.json', opts, (error, result) ->
       if error
         go error, result
       else
-        go error, map result.models, hackInModelAlgo
+        go error, result.models
 
   requestModel = (key, go) ->
     doGet "/3/Models.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go error, result
       else
-        go error, hackInModelAlgo head result.models
+        go error, head result.models
 
   requestModelBuilders = (go) ->
     doGet "/2/ModelBuilders.json", go

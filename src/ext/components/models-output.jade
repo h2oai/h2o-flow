@@ -15,6 +15,7 @@
           input(type='checkbox' title='Select or deselect all' data-bind="checked:checkAllModels")
         th(width='1') &nbsp;
         th Key
+        th Algorithm
         th.flow-right  Actions
     tbody
       // ko foreach:modelViews
@@ -25,6 +26,7 @@
           i.fa.fa-cube
         td
           +link('@key', 'view')
+        td(data-bind='text:algo')
         td.flow-right 
           +button('Predict', 'bolt', 'predict')
           +button('Clone', 'copy', 'clone')

@@ -21,6 +21,7 @@ H2O.ModelOutput = (_, _model) ->
     _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.key}"
 
   key: _model.key
+  algo: _model.algo
   inputParameters: _inputParameters
   isExpanded: _isExpanded
   toggle: toggle
