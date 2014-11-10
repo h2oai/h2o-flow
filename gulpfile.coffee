@@ -55,6 +55,7 @@ config =
       'lib/coffeescript/extras/coffee-script.js'
       'lib/bootstrap/dist/js/bootstrap.js'
       'lib/d3/d3.js'
+      'lib/vega/vega.js'
       'lib/marked/lib/marked.js'
       'lib/knockoutjs/dist/knockout.debug.js'
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
