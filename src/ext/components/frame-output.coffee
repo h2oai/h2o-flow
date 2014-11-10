@@ -1,40 +1,13 @@
-significantDigitsBeforeDecimal = (value) -> 1 + Math.floor Math.log(Math.abs value) / Math.LN10
-
-formatToSignificantDigits = (digits, value) ->
-  if value is 0
-    0
-  else
-    sd = significantDigitsBeforeDecimal value
-    if sd >= digits
-      value.toFixed 0
-    else
-      magnitude = Math.pow 10, digits - sd
-      Math.round(value * magnitude) / magnitude
-
-formatTime = d3.time.format '%Y-%m-%d %H:%M:%S' unless exports?
-formatDateTime = (time) -> if time then formatTime new Date time else '-'
-
-formatReal = do ->
-  __formatFunctions = {}
-  getFormatFunction = (precision) ->
-    if precision is -1
-      identity
-    else
-      __formatFunctions[precision] or __formatFunctions[precision] = d3.format ".#{precision}f"
-
-  (precision, value) ->
-    (getFormatFunction precision) value
-
 H2O.FrameOutput = (_, _frame) ->
   createMinMaxRow = (attribute, columns) ->
     map columns, (column) ->
       switch column.type
         when 'time'
-          formatDateTime head column[attribute]
+          Flow.Format.Date head column[attribute]
         when 'real'
-          formatReal column.precision, head column[attribute]
+          (Flow.Format.Real column.precision) head column[attribute]
         when 'int'
-          formatToSignificantDigits 6, head column[attribute]
+          Flow.Format.Digits 6, head column[attribute]
         else
           '-'
 
@@ -42,11 +15,11 @@ H2O.FrameOutput = (_, _frame) ->
     map columns, (column) ->
       switch column.type
         when 'time'
-          formatDateTime column.mean
+          Flow.Format.Date column.mean
         when 'real'
-          formatReal column.precision, column.mean
+          (Flow.Format.Real column.precision) column.mean
         when 'int'
-          formatToSignificantDigits 6, column.mean
+          Flow.Format.Digits 6, column.mean
         else
           '-'
 
@@ -54,7 +27,7 @@ H2O.FrameOutput = (_, _frame) ->
     map columns, (column) ->
       switch column.type
         when 'time', 'real', 'int'
-          formatToSignificantDigits 6, column.sigma
+          Flow.Format.Digits 6, column.sigma
         else
           '-'
 
@@ -95,14 +68,14 @@ H2O.FrameOutput = (_, _frame) ->
         when 'enum'
           column.domain[column.data[index]]
         when 'time'
-          formatDateTime column.data[index]
+          Flow.Format.Date column.data[index]
         else
           value = column.data[index]
           if value is 'NaN'
             '-'
           else
             if column.type is 'real'
-              formatReal column.precision, value
+              (Flow.Format.Real column.precision) value
             else
               value
 
