@@ -21,6 +21,25 @@ _assistance =
     description: 'Make a prediction'
     icon: 'bolt'
 
+formulateGetPredictionsOrigin = (opts) ->
+  if isArray opts
+    sanitizedOpts = for opt in opts
+      sanitizedOpt = {}
+      sanitizedOpt.model = opt.model if opt.model
+      sanitizedOpt.frame = opt.frame if opt.frame
+      sanitizedOpt
+    "getPredictions #{stringify sanitizedOpts}"
+  else
+    { model: modelKey, frame: frameKey } = opts
+    if modelKey and frameKey
+      "getPredictions model: #{stringify modelKey}, frame: #{stringify frameKey}"
+    else if modelKey
+      "getPredictions model: #{stringify modelKey}"
+    else if frameKey
+      "getPredictions frame: #{stringify frameKey}"
+    else
+      "getPredictions()"
+
 H2O.Routines = (_) ->
 
   #TODO move these into Flow.Async
@@ -266,7 +285,7 @@ H2O.Routines = (_) ->
       meta:
         origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
 
-  inspectMetrics = (modelKey, frameKey, predictions) -> ->
+  inspectMetrics = (opts, predictions) -> ->
     variables = [
       criteriaVariable = Flow.Data.Factor 'criteria'
       Flow.Data.Variable 'threshold', TReal
@@ -315,24 +334,15 @@ H2O.Routines = (_) ->
           frame.key.name
         )
 
-    origin = if modelKey and frameKey
-      "getPrediction #{stringify modelKey}, #{stringify frameKey}"
-    else if modelKey
-      "getPredictions #{stringify modelKey}"
-    else if frameKey
-      "getPredictions null, #{stringify frameKey}"
-    else
-      "getPredictions()"
-
     Flow.Data.Table
       label: 'metrics'
       description: "Metrics for the selected predictions"
       variables: variables
       rows: rows
       meta:
-        origin: origin
+        origin: formulateGetPredictionsOrigin opts
 
-  inspectPredictions = (modelKey, frameKey, predictions) -> ->
+  inspectPredictions = (opts, predictions) -> ->
     variables = [
       Flow.Data.Variable 'key', TString
       Flow.Data.Variable 'model', TString
@@ -368,16 +378,16 @@ H2O.Routines = (_) ->
       variables: variables
       rows: rows
       meta:
-        origin: if modelKey or frameKey then "getPredictions #{if modelKey then stringify modelKey else null}, #{if frameKey then stringify frameKey else null}" else "getPredictions()"
+        origin: formulateGetPredictionsOrigin opts
 
-  extendPredictions = (modelKey, frameKey, predictions) ->
-    render_ predictions, -> H2O.PredictsOutput _, modelKey, frameKey, predictions
+  extendPredictions = (opts, predictions) ->
+    render_ predictions, -> H2O.PredictsOutput _, opts, predictions
     inspect_ predictions,
-      predictions: inspectPredictions modelKey, frameKey, predictions
-      metrics: inspectMetrics modelKey, frameKey, predictions
-      scores: inspectScores modelKey, frameKey, predictions
+      predictions: inspectPredictions opts, predictions
+      metrics: inspectMetrics opts, predictions
+      scores: inspectScores opts, predictions
 
-  inspectScores = (modelKey, frameKey, predictions) -> ->
+  inspectScores = (opts, predictions) -> ->
 
     variables = [
       Flow.Data.Variable 'thresholds', TReal
@@ -424,30 +434,20 @@ H2O.Routines = (_) ->
           frame.key.name
         )
 
-    #XXX duplicated in inspectMetrics
-    origin = if modelKey and frameKey
-      "getPrediction #{stringify modelKey}, #{stringify frameKey}"
-    else if modelKey
-      "getPredictions #{stringify modelKey}"
-    else if frameKey
-      "getPredictions null, #{stringify frameKey}"
-    else
-      "getPredictions()"
-
     Flow.Data.Table
       label: 'scores'
       description: "Scores for the selected predictions"
       variables: variables
       rows: rows
       meta:
-        origin: origin
+        origin: formulateGetPredictionsOrigin opts
     
   extendPrediction = (modelKey, frameKey, prediction) ->
     render_ prediction, -> H2O.PredictOutput _, prediction
     inspect_ prediction,
       prediction: inspectPrediction prediction
-      scores: inspectScores modelKey, frameKey, [ prediction ]
-      metrics: inspectMetrics modelKey, frameKey, [ prediction ]
+      scores: inspectScores { model: modelKey, frame: frameKey }, [ prediction ]
+      metrics: inspectMetrics { model: modelKey, frame: frameKey }, [ prediction ]
 
   extendFrame = (frameKey, frame) ->
     inspectColumns = ->
@@ -876,25 +876,40 @@ H2O.Routines = (_) ->
     else
       assist predict, modelKey, frameKey
 
-  requestPredictions = (modelKey, frameKey, go) ->
-    _.requestPredictions modelKey, frameKey, (error, predictions) ->
+  requestPrediction = (modelKey, frameKey, go) ->
+    _.requestPrediction modelKey, frameKey, (error, prediction) ->
       if error
         go error
       else
-        if modelKey and frameKey
-          go null, extendPrediction modelKey, frameKey, head predictions
+        go null, extendPrediction modelKey, frameKey, prediction
+
+  requestPredictions = (opts, go) ->
+    if isArray opts
+      futures = for opt in opts
+        _fork _.requestPredictions, opt.modelKey, opt.frameKey
+      Flow.Async.join futures, (error, predictions) ->
+        if error
+          go error
         else
-          go null, extendPredictions modelKey, frameKey, predictions
+          # De-dupe predictions
+          uniquePredictions = values indexBy (flatten predictions, yes), (prediction) -> prediction.model.key + prediction.frame.key.name
+          go null, extendPredictions opts, uniquePredictions
+    else
+      { model: modelKey, frame: frameKey } = opts
+      _.requestPredictions modelKey, frameKey, (error, predictions) ->
+        if error
+          go error
+        else
+          go null, extendPredictions opts, predictions
 
   getPrediction = (modelKey, frameKey) ->
     if modelKey and frameKey
-      _fork requestPredictions, modelKey, frameKey
+      _fork requestPrediction, modelKey, frameKey
     else
       assist getPrediction, modelKey, frameKey
 
   getPredictions = (opts={}) ->
-    { frame:frameKey, model:modelKey } = opts
-    _fork requestPredictions, modelKey, frameKey 
+    _fork requestPredictions, opts 
 
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status

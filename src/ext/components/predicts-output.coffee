@@ -1,4 +1,4 @@
-H2O.PredictsOutput = (_, modelKey, frameKey, _predictions) ->
+H2O.PredictsOutput = (_, opts, _predictions) ->
 
   _predictionViews = signal []
   _checkAllPredictions = signal no
@@ -39,7 +39,7 @@ H2O.PredictsOutput = (_, modelKey, frameKey, _predictions) ->
 
   comparePredictions = ->
     keys = ( { model: view.modelKey, frame: view.frameKey } for view in _predictionViews() when view.isChecked())
-    _.insertAndExecuteCell 'cs', "inspect getPredictions #{stringify keys}"
+    _.insertAndExecuteCell 'cs', "getPredictions #{stringify keys}"
 
   inspectAll = ->
     _.insertAndExecuteCell 'cs', "inspect #{_predictionTable.meta.origin}"
