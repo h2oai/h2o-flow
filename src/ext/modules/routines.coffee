@@ -449,90 +449,94 @@ H2O.Routines = (_) ->
       scores: inspectScores { model: modelKey, frame: frameKey }, [ prediction ]
       metrics: inspectMetrics { model: modelKey, frame: frameKey }, [ prediction ]
 
-  extendFrame = (frameKey, frame) ->
-    inspectColumns = ->
-      variables = [
-        Flow.Data.Variable 'label', TString
-        Flow.Data.Variable 'missing', TNumber
-        Flow.Data.Variable 'zeros', TNumber
-        Flow.Data.Variable 'pinfs', TNumber
-        Flow.Data.Variable 'ninfs', TNumber
-        Flow.Data.Variable 'min', TNumber
-        Flow.Data.Variable 'max', TNumber
-        Flow.Data.Variable 'mean', TNumber
-        Flow.Data.Variable 'sigma', TNumber
-        Flow.Data.Variable 'type', TString
-        Flow.Data.Variable 'cardinality', TNumber
-        Flow.Data.Variable 'precision', TNumber
-      ]
+  inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
+    variables = [
+      Flow.Data.Variable 'label', TString
+      Flow.Data.Variable 'missing', TNumber
+      Flow.Data.Variable 'zeros', TNumber
+      Flow.Data.Variable 'pinfs', TNumber
+      Flow.Data.Variable 'ninfs', TNumber
+      Flow.Data.Variable 'min', TNumber
+      Flow.Data.Variable 'max', TNumber
+      Flow.Data.Variable 'mean', TNumber
+      Flow.Data.Variable 'sigma', TNumber
+      Flow.Data.Variable 'type', TString
+      Flow.Data.Variable 'cardinality', TNumber
+      Flow.Data.Variable 'precision', TNumber
+    ]
 
-      Record = Flow.Data.Record variables
-      rows = for column in frame.columns
-        row = new Record()
-        for variable in variables
-          label = variable.label
-          switch label
-            when 'min'
-              row[label] = head column.mins
-            when 'max'
-              row[label] = head column.maxs
-            when 'cardinality'
-              row[label] = if domain = column.domain then domain.length else null
-            else
-              row[label] = column[label] 
-        row
-
-      Flow.Data.Table
-        label: 'columns'
-        description: 'A list of columns in the H2O Frame.'
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getFrame #{stringify frameKey}"
-
-    inspectData = ->
-      frameColumns = frame.columns
-      variables = for column in frameColumns
-        #XXX format functions
-        switch column.type
-          when 'int'
-            Flow.Data.Variable column.label, TNumber
-          when 'real'
-            Flow.Data.Variable column.label, TNumber
-          when 'enum'
-            Flow.Data.Factor column.label, column.domain
-          when 'uuid', 'string'
-            Flow.Data.Variable column.label, TString
-          when 'time'
-            Flow.Data.Variable column.label, TDate
+    Record = Flow.Data.Record variables
+    rows = for column in frameColumns
+      row = new Record()
+      for variable in variables
+        label = variable.label
+        switch label
+          when 'min'
+            row[label] = head column.mins
+          when 'max'
+            row[label] = head column.maxs
+          when 'cardinality'
+            row[label] = if domain = column.domain then domain.length else null
           else
-            Flow.Data.Variable column.label, TObject
+            row[label] = column[label] 
+      row
 
-      Record = Flow.Data.Record variables
-      rowCount = (head frame.columns).data.length
-      rows = for i in [0 ... rowCount]
-        row = new Record()
-        for variable, j in variables
-          value = frameColumns[j].data[i]
-          switch variable.type
-            when TNumber, TNumber
-              #TODO handle +-Inf
-              row[variable.label] = if value is 'NaN' then null else value
-            else
-              row[variable.label] = value
-        row
-      
-      Flow.Data.Table
-        label: 'data'
-        description: 'A partial list of rows in the H2O Frame.'
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getFrame #{stringify frameKey}"
+    Flow.Data.Table
+      label: tableLabel
+      description: "A list of #{tableLabel} in the H2O Frame."
+      variables: variables
+      rows: rows
+      meta:
+        origin: "getFrame #{stringify frameKey}"
 
-    inspect_ frame,
-      columns: inspectColumns
-      data: inspectData
+  inspectFrameData = (frameKey, frame) -> ->
+    frameColumns = frame.columns
+    variables = for column in frameColumns
+      #XXX format functions
+      switch column.type
+        when 'int'
+          Flow.Data.Variable column.label, TNumber
+        when 'real'
+          Flow.Data.Variable column.label, TNumber
+        when 'enum'
+          Flow.Data.Factor column.label, column.domain
+        when 'uuid', 'string'
+          Flow.Data.Variable column.label, TString
+        when 'time'
+          Flow.Data.Variable column.label, TDate
+        else
+          Flow.Data.Variable column.label, TObject
+
+    Record = Flow.Data.Record variables
+    rowCount = (head frameColumns).data.length
+    rows = for i in [0 ... rowCount]
+      row = new Record()
+      for variable, j in variables
+        value = frameColumns[j].data[i]
+        switch variable.type
+          when TNumber, TNumber
+            #TODO handle +-Inf
+            row[variable.label] = if value is 'NaN' then null else value
+          else
+            row[variable.label] = value
+      row
+    
+    Flow.Data.Table
+      label: 'data'
+      description: 'A partial list of rows in the H2O Frame.'
+      variables: variables
+      rows: rows
+      meta:
+        origin: "getFrame #{stringify frameKey}"
+
+  extendFrame = (frameKey, frame) ->
+    inspections =
+      columns: inspectFrameColumns 'columns', frameKey, frame, frame.columns
+      data: inspectFrameData frameKey, frame
+
+    enumColumns = (column for column in frame.columns when column.type is 'enum')
+    inspections.factors = inspectFrameColumns 'factors', frameKey, frame, enumColumns if enumColumns.length > 0
+    inspect_ frame, inspections
 
   extendColumnSummary = (frameKey, frame, columnName) ->
     column = head frame.columns
