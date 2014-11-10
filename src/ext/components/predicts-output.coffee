@@ -7,7 +7,7 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
   _isCheckingAll = no
   react _checkAllPredictions, (checkAll) ->
     _isCheckingAll = yes
-    for view in _modelViews()
+    for view in _predictionViews()
       view.isChecked checkAll
     _canComparePredictions checkAll
     _isCheckingAll = no
