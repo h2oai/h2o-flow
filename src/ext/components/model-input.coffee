@@ -159,7 +159,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
 H2O.ModelInput = (_, _algo, _opts) ->
   _exception = signal null
-  _algorithms = [ 'kmeans', 'deeplearning', 'glm', 'gbm' ]
+  _algorithms = signal []
   _algorithm = signal _algo
   _canCreateModel = lift _algorithm, (algorithm) -> if algorithm then yes else no
 
@@ -185,18 +185,20 @@ H2O.ModelInput = (_, _algo, _opts) ->
         return go()
 
   do ->
-    frameKey = _opts?.training_frame
-    act _algorithm, (algorithm) ->
-      if algorithm
-        _.requestModelBuilders algorithm, (error, result) ->
-          if error
-            _exception Flow.Failure new Flow.Error 'Error fetching model builder', error
-          else
-            parameters = result.model_builders[algorithm].parameters
-            populateFramesAndColumns frameKey, algorithm, parameters, ->
-              _modelForm H2O.ModelBuilderForm _, algorithm, parameters
-      else
-        _modelForm null
+    _.requestModelBuilders (error, result) ->
+      _algorithms (key for key in keys(result.model_builders) when key isnt 'example')
+      frameKey = _opts?.training_frame
+      act _algorithm, (algorithm) ->
+        if algorithm
+          _.requestModelBuilder algorithm, (error, result) ->
+            if error
+              _exception Flow.Failure new Flow.Error 'Error fetching model builder', error
+            else
+              parameters = result.model_builders[algorithm].parameters
+              populateFramesAndColumns frameKey, algorithm, parameters, ->
+                _modelForm H2O.ModelBuilderForm _, algorithm, parameters
+        else
+          _modelForm null
 
   createModel = -> _modelForm().createModel()
 

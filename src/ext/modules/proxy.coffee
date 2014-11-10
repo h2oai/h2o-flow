@@ -151,7 +151,10 @@ H2O.Proxy = (_) ->
       else
         go error, hackInModelAlgo head result.models
 
-  requestModelBuilders = (algo, go) ->
+  requestModelBuilders = (go) ->
+    doGet "/2/ModelBuilders.json", go
+
+  requestModelBuilder = (algo, go) ->
     doGet "/2/ModelBuilders.json/#{algo}", go
 
   requestModelInputValidation = (algo, parameters, go) ->
@@ -216,6 +219,7 @@ H2O.Proxy = (_) ->
   link _.requestParseFiles, requestParseFiles
   link _.requestModels, requestModels
   link _.requestModel, requestModel
+  link _.requestModelBuilder, requestModelBuilder
   link _.requestModelBuilders, requestModelBuilders
   link _.requestModelBuild, requestModelBuild
   link _.requestModelInputValidation, requestModelInputValidation

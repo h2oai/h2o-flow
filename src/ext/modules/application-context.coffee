@@ -8,6 +8,7 @@ H2O.ApplicationContext = (_) ->
   _.requestFrames = do slot
   _.requestFrame = do slot
   _.requestColumnSummary = do slot
+  _.requestModelBuilder = do slot
   _.requestModelBuilders = do slot
   _.requestModelBuild = do slot
   _.requestModelInputValidation = do slot
