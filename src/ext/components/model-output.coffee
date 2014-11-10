@@ -26,5 +26,6 @@ H2O.ModelOutput = (_, _model) ->
   toggle: toggle
   cloneModel: cloneModel
   predict: predict
+  inspect: inspect
   template: 'flow-model-output'
 

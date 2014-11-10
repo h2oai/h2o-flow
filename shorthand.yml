@@ -448,12 +448,6 @@ TBoolean:
 TString:
   type: qualify
   object: Flow
-TReal:
-  type: qualify
-  object: Flow
-TInteger:
-  type: qualify
-  object: Flow
 TNumber:
   type: qualify
   object: Flow

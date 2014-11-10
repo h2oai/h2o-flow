@@ -248,7 +248,7 @@ plot = (_config, go) ->
         switch variable.type
           when TFactor
             td if value is null then '-' else escape variable.domain[value]
-          when TInteger, TReal
+          when TNumber
             tdr if value is null then '-' else value
           when TArray
             td if value is null then '-' else value.join ', '

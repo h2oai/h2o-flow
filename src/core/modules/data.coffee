@@ -119,7 +119,7 @@ createAbstractVariable = (_label, _type, _domain, _format, _read) ->
   read: _read
 
 createNumericVariable = (_label, _domain, _format, _read) ->
-  self = createAbstractVariable _label, TReal, _domain or [ Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY], _format, _read
+  self = createAbstractVariable _label, TNumber, _domain or [ Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY], _format, _read
   unless self.read
     self.read = (datum) ->
       self.domain[0] = datum if datum < self.domain[0]
@@ -128,7 +128,7 @@ createNumericVariable = (_label, _domain, _format, _read) ->
   self
 
 createVariable = (_label, _type, _domain, _format, _read) ->
-  if _type is TReal or _type is TInteger
+  if _type is TNumber
     createNumericVariable _label, _domain, _format, _read
   else
     createAbstractVariable _label, _type, _domain, _format, _read
@@ -168,8 +168,7 @@ Flow.Data =
   Variable: createVariable
   Factor: createFactor
   computeColumnInterpretation: (type) ->
-    #XXX switch to TInteger
-    if type is TReal or type is TInteger
+    if type is TNumber
       'c'
     else if type is TFactor
       'd'

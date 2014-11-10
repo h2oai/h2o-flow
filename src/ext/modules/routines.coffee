@@ -158,7 +158,7 @@ H2O.Routines = (_) ->
         when 'enum', 'Frame', 'string', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
           Flow.Data.Factor parameter.label
         when 'byte', 'short', 'int', 'long', 'float', 'double'
-          Flow.Data.Variable parameter.label, TReal
+          Flow.Data.Variable parameter.label, TNumber
         when 'string[]'
           Flow.Data.Variable parameter.label, TArray
         when 'boolean'
@@ -288,20 +288,20 @@ H2O.Routines = (_) ->
   inspectMetrics = (opts, predictions) -> ->
     variables = [
       criteriaVariable = Flow.Data.Factor 'criteria'
-      Flow.Data.Variable 'threshold', TReal
-      Flow.Data.Variable 'F1', TReal
-      Flow.Data.Variable 'F2', TReal
-      Flow.Data.Variable 'F0point5', TReal
-      Flow.Data.Variable 'accuracy', TReal
-      Flow.Data.Variable 'error', TReal
-      Flow.Data.Variable 'precision', TReal
-      Flow.Data.Variable 'recall', TReal
-      Flow.Data.Variable 'specificity', TReal
-      Flow.Data.Variable 'mcc', TReal
-      Flow.Data.Variable 'max_per_class_error', TReal
+      Flow.Data.Variable 'threshold', TNumber
+      Flow.Data.Variable 'F1', TNumber
+      Flow.Data.Variable 'F2', TNumber
+      Flow.Data.Variable 'F0point5', TNumber
+      Flow.Data.Variable 'accuracy', TNumber
+      Flow.Data.Variable 'error', TNumber
+      Flow.Data.Variable 'precision', TNumber
+      Flow.Data.Variable 'recall', TNumber
+      Flow.Data.Variable 'specificity', TNumber
+      Flow.Data.Variable 'mcc', TNumber
+      Flow.Data.Variable 'max_per_class_error', TNumber
       Flow.Data.Variable 'confusion_matrix', TObject
-      Flow.Data.Variable 'TPR', TReal
-      Flow.Data.Variable 'FPR', TReal
+      Flow.Data.Variable 'TPR', TNumber
+      Flow.Data.Variable 'FPR', TNumber
       Flow.Data.Variable 'key', TString
       Flow.Data.Variable 'model', TString
       Flow.Data.Variable 'frame', TString
@@ -348,10 +348,10 @@ H2O.Routines = (_) ->
       Flow.Data.Variable 'model', TString
       Flow.Data.Variable 'frame', TString
       Flow.Data.Variable 'model_category', TString
-      Flow.Data.Variable 'duration_in_ms', TInteger
-      Flow.Data.Variable 'scoring_time', TInteger
-      Flow.Data.Variable 'AUC', TReal
-      Flow.Data.Variable 'Gini', TReal
+      Flow.Data.Variable 'duration_in_ms', TNumber
+      Flow.Data.Variable 'scoring_time', TNumber
+      Flow.Data.Variable 'AUC', TNumber
+      Flow.Data.Variable 'Gini', TNumber
       Flow.Data.Variable 'threshold_criterion', TString
     ]
 
@@ -390,20 +390,20 @@ H2O.Routines = (_) ->
   inspectScores = (opts, predictions) -> ->
 
     variables = [
-      Flow.Data.Variable 'thresholds', TReal
-      Flow.Data.Variable 'F1', TReal
-      Flow.Data.Variable 'F2', TReal
-      Flow.Data.Variable 'F0point5', TReal
-      Flow.Data.Variable 'accuracy', TReal
-      Flow.Data.Variable 'errorr', TReal
-      Flow.Data.Variable 'precision', TReal
-      Flow.Data.Variable 'recall', TReal
-      Flow.Data.Variable 'specificity', TReal
-      Flow.Data.Variable 'mcc', TReal
-      Flow.Data.Variable 'max_per_class_error', TReal
+      Flow.Data.Variable 'thresholds', TNumber
+      Flow.Data.Variable 'F1', TNumber
+      Flow.Data.Variable 'F2', TNumber
+      Flow.Data.Variable 'F0point5', TNumber
+      Flow.Data.Variable 'accuracy', TNumber
+      Flow.Data.Variable 'errorr', TNumber
+      Flow.Data.Variable 'precision', TNumber
+      Flow.Data.Variable 'recall', TNumber
+      Flow.Data.Variable 'specificity', TNumber
+      Flow.Data.Variable 'mcc', TNumber
+      Flow.Data.Variable 'max_per_class_error', TNumber
       Flow.Data.Variable 'confusion_matrices', TObject
-      Flow.Data.Variable 'TPR', TReal
-      Flow.Data.Variable 'FPR', TReal
+      Flow.Data.Variable 'TPR', TNumber
+      Flow.Data.Variable 'FPR', TNumber
       Flow.Data.Variable 'key', TString
       Flow.Data.Variable 'model', TString
       Flow.Data.Variable 'frame', TString
@@ -453,17 +453,17 @@ H2O.Routines = (_) ->
     inspectColumns = ->
       variables = [
         Flow.Data.Variable 'label', TString
-        Flow.Data.Variable 'missing', TInteger
-        Flow.Data.Variable 'zeros', TInteger
-        Flow.Data.Variable 'pinfs', TInteger
-        Flow.Data.Variable 'ninfs', TInteger
-        Flow.Data.Variable 'min', TReal
-        Flow.Data.Variable 'max', TReal
-        Flow.Data.Variable 'mean', TReal
-        Flow.Data.Variable 'sigma', TReal
+        Flow.Data.Variable 'missing', TNumber
+        Flow.Data.Variable 'zeros', TNumber
+        Flow.Data.Variable 'pinfs', TNumber
+        Flow.Data.Variable 'ninfs', TNumber
+        Flow.Data.Variable 'min', TNumber
+        Flow.Data.Variable 'max', TNumber
+        Flow.Data.Variable 'mean', TNumber
+        Flow.Data.Variable 'sigma', TNumber
         Flow.Data.Variable 'type', TString
-        Flow.Data.Variable 'cardinality', TInteger
-        Flow.Data.Variable 'precision', TReal
+        Flow.Data.Variable 'cardinality', TNumber
+        Flow.Data.Variable 'precision', TNumber
       ]
 
       Record = Flow.Data.Record variables
@@ -496,9 +496,9 @@ H2O.Routines = (_) ->
         #XXX format functions
         switch column.type
           when 'int'
-            Flow.Data.Variable column.label, TInteger
+            Flow.Data.Variable column.label, TNumber
           when 'real'
-            Flow.Data.Variable column.label, TReal
+            Flow.Data.Variable column.label, TNumber
           when 'enum'
             Flow.Data.Factor column.label, column.domain
           when 'uuid', 'string'
@@ -515,7 +515,7 @@ H2O.Routines = (_) ->
         for variable, j in variables
           value = frameColumns[j].data[i]
           switch variable.type
-            when TInteger, TReal
+            when TNumber, TNumber
               #TODO handle +-Inf
               row[variable.label] = if value is 'NaN' then null else value
             else
@@ -543,8 +543,8 @@ H2O.Routines = (_) ->
       percentileValues = column.pctiles
 
       variables = [
-        Flow.Data.Variable 'percentile', TReal
-        Flow.Data.Variable 'value', TReal #TODO depends on type of variable?
+        Flow.Data.Variable 'percentile', TNumber
+        Flow.Data.Variable 'value', TNumber #TODO depends on type of variable?
       ]
 
       Record = Flow.Data.Record variables
@@ -564,11 +564,11 @@ H2O.Routines = (_) ->
 
 
     inspectDistribution = ->
-      distributionDataType = if column.type is 'int' then TInteger else TReal
+      distributionDataType = if column.type is 'int' then TNumber else TNumber
       variables = [
-        Flow.Data.Variable 'intervalStart', TReal
-        Flow.Data.Variable 'intervalEnd', TReal
-        Flow.Data.Variable 'count', TInteger
+        Flow.Data.Variable 'intervalStart', TNumber
+        Flow.Data.Variable 'intervalEnd', TNumber
+        Flow.Data.Variable 'count', TNumber
       ]
 
       Record = Flow.Data.Record variables
@@ -621,11 +621,11 @@ H2O.Routines = (_) ->
         domain: domain
       ,
         label: 'count'
-        type: TInteger
+        type: TNumber
         domain: [ 0, rowCount ]
       ,
         label: 'percent'
-        type: TReal
+        type: TNumber
         domain: [ 0, 100 ]
       ]
 
@@ -653,16 +653,16 @@ H2O.Routines = (_) ->
     inspectSummary = ->
       variables = [
         label: 'mean'
-        type: TReal
+        type: TNumber
       ,
         label: 'q1'
-        type: TReal
+        type: TNumber
       ,
         label: 'q2'
-        type: TReal
+        type: TNumber
       ,
         label: 'q3'
-        type: TReal
+        type: TNumber
       ,
         label: 'outliers'
         type: TArray
@@ -699,8 +699,8 @@ H2O.Routines = (_) ->
 
       variables = [
         Flow.Data.Factor 'label', column.domain
-        countVariable = Flow.Data.Variable 'count', TInteger
-        Flow.Data.Variable 'percent', TInteger, [ 0, 100 ]
+        countVariable = Flow.Data.Variable 'count', TNumber
+        Flow.Data.Variable 'percent', TNumber, [ 0, 100 ]
       ]
 
       Record = Flow.Data.Record variables
