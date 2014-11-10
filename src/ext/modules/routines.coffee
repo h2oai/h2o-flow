@@ -886,7 +886,8 @@ H2O.Routines = (_) ->
   requestPredictions = (opts, go) ->
     if isArray opts
       futures = for opt in opts
-        _fork _.requestPredictions, opt.modelKey, opt.frameKey
+        { model: modelKey, frame: frameKey } = opt
+        _fork _.requestPredictions, modelKey, frameKey
       Flow.Async.join futures, (error, predictions) ->
         if error
           go error

@@ -179,7 +179,17 @@ H2O.Proxy = (_) ->
       if error
         _go error
       else
-        _go null, result.model_metrics
+        #
+        # TODO workaround for a filtering bug in the API
+        # 
+        predictions = for prediction in result.model_metrics
+          if modelKey and prediction.model.key isnt modelKey
+            null
+          else if frameKey and prediction.frame.key.name isnt frameKey
+            null
+          else
+            prediction
+        _go null, (prediction for prediction in predictions when prediction)
 
     if modelKey and frameKey
       doGet "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", go
