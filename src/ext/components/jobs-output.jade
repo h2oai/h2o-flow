@@ -1,7 +1,6 @@
 .flow-widget
-  h3.flow-hint
-    i.fa.fa-tasks
-    | Jobs
+  +subtitle('Jobs', 'tasks')
+
   // ko if:exception
   div(data-bind="template: { name:'flow-failure', data:exception }")
   // /ko
@@ -9,12 +8,15 @@
   table.flow-form
     thead
       tr
+        th &nbsp;
         th Key
         th Description
         th Status
     tbody
       // ko foreach:jobViews
       tr
+        td
+          +fa('tasks')
         td
           a(href='#' data-bind='text:job.key.name, click:view')
         td(data-bind='text:job.description')
