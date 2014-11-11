@@ -1,11 +1,31 @@
+toSize = (bytes) ->
+  sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  return '0 Byte' if bytes is 0
+  i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)))
+  Math.round(bytes / Math.pow(1024, i), 2) + sizes[i]
+
 H2O.FramesOutput = (_, _frames) ->
-  toSize = (bytes) ->
-    sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-    return '0 Byte' if bytes is 0
-    i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)))
-    Math.round(bytes / Math.pow(1024, i), 2) + sizes[i]
+  _frameViews = signal []
+  _checkAllFrames = signal no
+  _canCompareFrames = signal no
+
+  _isCheckingAll = no
+  react _checkAllFrames, (checkAll) ->
+    _isCheckingAll = yes
+    for view in _frameViews()
+      view.isChecked checkAll
+    _canCompareFrames checkAll
+    _isCheckingAll = no
+    return
 
   createFrameView = (frame) ->
+    _isChecked = signal no
+
+    react _isChecked, ->
+      return if _isCheckingAll
+      checkedViews = (view for view in _frameViews() when view.isChecked())
+      _canCompareFrames checkedViews.length > 0
+
     columnLabels = head (map frame.columns, (column) -> column.label), 15
     description = 'Columns: ' + (columnLabels.join ', ') + if frame.columns.length > columnLabels.length then "... (#{frame.columns.length - columnLabels.length} more columns)" else ''
 
@@ -14,6 +34,9 @@ H2O.FramesOutput = (_, _frames) ->
         _.insertAndExecuteCell 'cs', "setupParse [ #{stringify frame.key.name } ]"
       else
         _.insertAndExecuteCell 'cs', "getFrame #{stringify frame.key.name}"
+
+    predict = ->
+      _.insertAndExecuteCell 'cs', "predict null, #{stringify frame.key.name}"
 
     inspectColumns = ->
       _.insertAndExecuteCell 'cs', "grid inspect 'columns', getFrame #{stringify frame.key.name}"
@@ -28,12 +51,14 @@ H2O.FramesOutput = (_, _frames) ->
       _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify frame.key.name}"
 
     key: frame.key.name
+    isChecked: _isChecked
     description: description
     size: toSize frame.byteSize
     rowCount: frame.rows
     columnCount: frame.columns.length
     isText: frame.isText
     view: view
+    predict: predict
     inspectColumns: inspectColumns
     inspectData: inspectData
     inspect: inspect
@@ -42,8 +67,17 @@ H2O.FramesOutput = (_, _frames) ->
   importFiles = ->
     _.insertAndExecuteCell 'cs', 'importFiles'
 
-  frameViews: map _frames, createFrameView
+  predictOnFrames = ->
+    selectedKeys = (view.key for view in _frameViews() when view.isChecked())
+    _.insertAndExecuteCell 'cs', "predict null, #{stringify selectedKeys}"
+
+  _frameViews map _frames, createFrameView
+
+  frameViews: _frameViews
   hasFrames: _frames.length > 0
   importFiles: importFiles
+  predictOnFrames: predictOnFrames
+  canCompareFrames: _canCompareFrames
+  checkAllFrames: _checkAllFrames
   template: 'flow-frames-output'
 

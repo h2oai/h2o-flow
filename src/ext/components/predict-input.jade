@@ -6,21 +6,21 @@
       th
         label Model:
       td
-        // ko if:hasModel
-        span(data-bind='text:model')
+        // ko if:hasModels
+        span(data-bind='text:selectedModelsCaption')
         // /ko
-        // ko ifnot:hasModel
-        select(data-bind="options:models, value:model, optionsCaption:'(Select)'")
+        // ko ifnot:hasModels
+        select(data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'")
         // /ko
     tr
       th
         label Frame:
       td
-        // ko if:hasFrame
-        span(data-bind='text:frame')
+        // ko if:hasFrames
+        span(data-bind='text:selectedFramesCaption')
         // /ko
-        // ko ifnot:hasFrame
-        select(data-bind="options:frames, value:frame, optionsCaption:'(Select)'")
+        // ko ifnot:hasFrames
+        select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
         // /ko
     tr
       th

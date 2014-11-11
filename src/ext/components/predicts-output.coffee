@@ -38,8 +38,8 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
   _predictionTable = _.inspect 'predictions', _predictions
 
   comparePredictions = ->
-    keys = ( { model: view.modelKey, frame: view.frameKey } for view in _predictionViews() when view.isChecked())
-    _.insertAndExecuteCell 'cs', "getPredictions #{stringify keys}"
+    selectedKeys = ( { model: view.modelKey, frame: view.frameKey } for view in _predictionViews() when view.isChecked())
+    _.insertAndExecuteCell 'cs', "getPredictions #{stringify selectedKeys}"
 
   inspectAll = ->
     _.insertAndExecuteCell 'cs', "inspect #{_predictionTable.meta.origin}"

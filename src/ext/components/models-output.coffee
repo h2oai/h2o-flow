@@ -44,14 +44,19 @@ H2O.ModelsOutput = (_, _models) ->
   buildModel = ->
     _.insertAndExecuteCell 'cs', 'buildModel'
 
+  getSelectedModelKeys = ->
+    (view.key for view in _modelViews() when view.isChecked())
+
   compareModels = ->
-    keys = (view.key for view in _modelViews() when view.isChecked())
-    _.insertAndExecuteCell 'cs', "inspect getModels #{stringify keys}"
+    _.insertAndExecuteCell 'cs', "inspect getModels #{stringify getSelectedModelKeys()}"
+
+  predictUsingModels = ->
+    _.insertAndExecuteCell 'cs', "predict #{stringify getSelectedModelKeys()}"
 
   inspectAll = ->
-    keys = (view.key for view in _modelViews())
+    allKeys = (view.key for view in _modelViews())
     #TODO use table origin
-    _.insertAndExecuteCell 'cs', "inspect getModels #{stringify keys}"
+    _.insertAndExecuteCell 'cs', "inspect getModels #{stringify allKeys}"
 
   initialize = (models) ->
     _modelViews map models, createModelView
@@ -62,6 +67,7 @@ H2O.ModelsOutput = (_, _models) ->
   hasModels: _models.length > 0
   buildModel: buildModel
   compareModels: compareModels
+  predictUsingModels: predictUsingModels
   canCompareModels: _canCompareModels
   checkAllModels: _checkAllModels
   inspect: inspectAll

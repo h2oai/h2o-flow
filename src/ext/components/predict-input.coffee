@@ -1,22 +1,28 @@
-H2O.PredictInput = (_, modelKey, frameKey) ->
+H2O.PredictInput = (_, _modelArg, _frameArg) ->
+  _selectedModels = if _modelArg then (if isArray _modelArg then _modelArg else [ _modelArg ]) else []
+  _selectedFrames = if _frameArg then (if isArray _frameArg then _frameArg else [ _frameArg ]) else []
+
+  _selectedModelsCaption = join _selectedModels, ', '
+  _selectedFramesCaption = join _selectedFrames, ', '
   _exception = signal null
-  _frameKey = signal frameKey
-  _hasFrame = if frameKey then yes else no
-  _modelKey = signal modelKey
-  _hasModel = if modelKey then yes else no
-  _canPredict = lift _frameKey, _modelKey, (frameKey, modelKey) -> frameKey and modelKey
+  _selectedFrame = signal null
+  _selectedModel = signal null
+  _hasFrames = if _selectedFrames.length then yes else no
+  _hasModels = if _selectedModels.length then yes else no
+  _canPredict = lift _selectedFrame, _selectedModel, (frame, model) ->
+    frame and model or _hasFrames and model or _hasModels and frame
 
   _frames = signals []
   _models = signals []
 
-  unless _hasFrame
+  unless _hasFrames
     _.requestFrames (error, frames) ->
       if error
         _exception new Flow.Error 'Error fetching frame list.', error
       else
         _frames (frame.key.name for frame in frames)
 
-  unless _hasModel
+  unless _hasModels
     _.requestModels (error, models) ->
       if error
         _exception new Flow.Error 'Error fetching model list.', error
@@ -24,14 +30,26 @@ H2O.PredictInput = (_, modelKey, frameKey) ->
         _models (model.key for model in models)
 
   predict = ->
-    _.insertAndExecuteCell 'cs', "predict #{stringify _modelKey()}, #{stringify _frameKey()}"
+    if _hasFrames
+      frameArg = if _selectedFrames.length > 1 then _selectedFrames else head _selectedFrames
+      modelArg = _selectedModel()
+    else if _hasModels
+      modelArg = if _selectedModels.length > 1 then _selectedModels else head _selectedModels
+      frameArg = _selectedFrame()
+    else
+      modelArg = _selectedModel()
+      frameArg = _selectedFrame()
+
+    _.insertAndExecuteCell 'cs', "predict #{stringify modelArg}, #{stringify frameArg}"
 
   exception: _exception
-  hasModel: _hasModel
-  hasFrame: _hasFrame
+  hasModels: _hasModels
+  hasFrames: _hasFrames
   canPredict: _canPredict
-  frame: _frameKey
-  model: _modelKey
+  selectedFramesCaption: _selectedFramesCaption
+  selectedModelsCaption: _selectedModelsCaption
+  selectedFrame: _selectedFrame
+  selectedModel: _selectedModel
   frames: _frames
   models: _models
   predict: predict

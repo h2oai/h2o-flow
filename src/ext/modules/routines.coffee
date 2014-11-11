@@ -785,7 +785,7 @@ H2O.Routines = (_) ->
       if error then go error else go null, extendModels models
 
   requestModelsByKeys = (modelKeys, go) ->
-    futures = for key in modelKeys
+    futures = map modelKeys, (key) ->
       _fork _.requestModel, key
     Flow.Async.join futures, (error, models) ->
       if error then go error else go null, extendModels models
@@ -873,11 +873,31 @@ H2O.Routines = (_) ->
       else
         go null, extendPrediction modelKey, frameKey, prediction
 
-  predict = (modelKey, frameKey) ->
-    if modelKey and frameKey
-      _fork requestPredict, modelKey, frameKey
+  requestPredicts = (opts, go) ->
+    futures = map opts, (opt) ->
+      { model: modelKey, frame: frameKey } = opt
+      _fork _.requestPredict, modelKey, frameKey
+
+    Flow.Async.join futures, (error, predictions) ->
+      if error
+        go error
+      else
+        go null, extendPredictions opts, predictions
+
+  predict = (model, frame) ->
+    if model and frame
+      if (isString model) and (isString frame)
+        _fork requestPredict, model, frame
+      else
+        model = [ model ] if isString model
+        frame = [ frame ] if isString frame
+        opts = []
+        for modelKey in model
+          for frameKey in frame
+            opts.push model: modelKey, frame: frameKey
+        _fork requestPredicts, opts
     else
-      assist predict, modelKey, frameKey
+      assist predict, model, frame
 
   requestPrediction = (modelKey, frameKey, go) ->
     _.requestPrediction modelKey, frameKey, (error, prediction) ->
@@ -888,7 +908,7 @@ H2O.Routines = (_) ->
 
   requestPredictions = (opts, go) ->
     if isArray opts
-      futures = for opt in opts
+      futures = map opts, (opt) ->
         { model: modelKey, frame: frameKey } = opt
         _fork _.requestPredictions, modelKey, frameKey
       Flow.Async.join futures, (error, predictions) ->
