@@ -16,7 +16,7 @@
         th(width='1') &nbsp;
         th Key
         th Algorithm
-        th.flow-right  Actions
+        th.flow-right Actions
     tbody
       // ko foreach:modelViews
       tr
@@ -28,8 +28,8 @@
           +link('@key', 'view')
         td(data-bind='text:algo')
         td.flow-right 
-          +button('Predict', 'bolt', 'predict')
-          +button('Clone', 'copy', 'clone')
+          +button('Predict&hellip;', 'bolt', 'predict')
+          +button('Clone&hellip;', 'copy', 'clone')
           +button('Inspect', 'list', 'inspect')
       // /ko
   .flow-panel
