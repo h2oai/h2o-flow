@@ -1,0 +1,29 @@
+.flow-widget
+  +subtitle('Plot', 'bar-chart')
+
+  table.flow-form
+    tr
+      th(width='1')
+        label Type:
+      td
+        select(data-bind="options:types, value:type, optionsCaption:'(Select)'")
+    tr
+      th
+        label X-Axis:
+      td
+        select(data-bind="options:variables, value:x, optionsCaption:'(Select)'")
+    tr
+      th
+        label Y-Axis:
+      td
+        select(data-bind="options:variables, value:y, optionsCaption:'(Select)'")
+    tr
+      th
+        label Color By:
+      td
+        select(data-bind="options:variables, value:color, optionsCaption:'(Select)'")
+    tr
+      th
+        label Actions:
+      td
+        +button('Plot', 'bar-chart', 'plot', 'canPlot')

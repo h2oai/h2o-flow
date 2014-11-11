@@ -3,6 +3,14 @@
 # Rendering loops should use (row[attr] for row in rows) - not (attr(row) for row in rows) - avoids 1 func call per attr per row. This also implies that attrs should be passed around as strings, not functions.
 #
 
+computeDomain = (table, variableName) ->
+  levels = {}
+  for row in table.rows
+    value = row[variableName]
+    unless level = levels[value]
+      levels[value] = yes
+  keys levels
+
 createOrdinalBandScale = (domain, range) ->
   d3.scale.ordinal()
     .domain domain
@@ -208,33 +216,6 @@ renderD3BarChart = (title, table, attrX, attrY) ->
   el
 
 plot = (_config, go) ->
-  #
-  # syntax for stacked bar charts
-  # data for box plots
-  # mean, q1, q2, q3, min, max, outliers...
-  # plot
-  #   type: 'schema'
-  #   data: xxx
-  #   x:
-  #     mean: 'mean'
-  #     q1: 'q1'
-  #     q2: 'q2'
-  #     q3: 'q3'
-  #     outliers: 'outliers'
-
-  renderSchema2 = (config, go) ->
-    config.data
-
-  # TODO characteristics, histogram, boxplot
-  renderInterval2 = (config, go) ->
-    #XXX Does not handle all cases - rework
-    if config.x and not config.y
-      [ attrX1, attrX2 ] = config.x config.data
-      el = renderD3StackedBar config.title, config.data, attrX1, attrX2, config.color
-    else
-      el = renderD3BarChart config.title, config.data, config.x, config.y
-    go null, Flow.HTML.render 'div', el
-
   renderText = (config, go) ->
     [ grid, h4, p, table, thead, tbody, tr, th, thr, td, tdr ] = Flow.HTML.template '.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt'
     
@@ -296,14 +277,21 @@ plot = (_config, go) ->
 
     spec = {}
 
-    spec.width = width or 300
-    spec.height = height or 300
+    scaleTypeX = if variableX.type is TNumber then 'linear' else 'ordinal'
+    scaleTypeY = if variableY.type is TNumber then 'linear' else 'ordinal'
+
+    if scaleTypeX is 'ordinal'
+      domainX = computeDomain data, variableX.label
+
+    if scaleTypeY is 'ordinal'
+      domainY = computeDomain data, variableY.label
+
+    spec.width = if width then width else if scaleTypeX is 'linear' then 300 else 20 * domainX.length
+    spec.height = if height then height else if scaleTypeY is 'linear' then 300 else 15 * domainY.length
     spec.data = [
       name: 'table'
     ]
 
-    scaleTypeX = if variableX.type is TNumber then 'linear' else 'ordinal'
-    scaleTypeY = if variableY.type is TNumber then 'linear' else 'ordinal'
     spec.scales = [
       name: 'x'
       type: scaleTypeX

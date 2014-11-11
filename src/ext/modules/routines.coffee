@@ -121,6 +121,7 @@ H2O.Routines = (_) ->
         go null, plot
 
   _plot = (config, go) ->
+    #XXX clean up - duplicated in plot() for plot inputs
     if config.data
       if _isFuture config.data
         config.data (error, data) ->
@@ -134,9 +135,28 @@ H2O.Routines = (_) ->
     else
       go new Flow.Error "Cannot plot(): missing 'data'."
 
+  _plotInput = (config, go) ->
+    if config.data
+      if _isFuture config.data
+        config.data (error, data) ->
+          if error
+            go new Flow.Error 'Error evaluating data for plot().', error
+          else
+            config.data = data
+            go null, config
+      else
+        go null, config
+    else
+      go new Flow.Error "Cannot plot(): missing 'data'."
+
   plot = (config) ->
-    renderable _plot, config, (plot, go) ->
-      go null, H2O.PlotOutput _, plot
+    configKeys = keys config
+    if (configKeys.length is 1) and 'data' is head configKeys
+      renderable _plotInput, config, (config, go) ->
+        go null, H2O.PlotInput _, config
+    else
+      renderable _plot, config, (plot, go) ->
+        go null, H2O.PlotOutput _, plot
 
   plot.stack = Flow.Plot.stack
 
@@ -701,7 +721,7 @@ H2O.Routines = (_) ->
       sortedLevels = sortBy levels, (level) -> -level.count
 
       variables = [
-        Flow.Data.Factor 'label', column.domain
+        Flow.Data.Variable 'label', TString
         countVariable = Flow.Data.Variable 'count', TNumber
         Flow.Data.Variable 'percent', TNumber, [ 0, 100 ]
       ]
@@ -709,7 +729,7 @@ H2O.Routines = (_) ->
       Record = Flow.Data.Record variables
       rows = for level in sortedLevels
         row = new Record()
-        row.label = level.index
+        row.label = column.domain[level.index]
         row.count = countVariable.read level.count
         row.percent = 100 * level.count / rowCount
         row
