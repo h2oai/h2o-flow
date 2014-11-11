@@ -222,11 +222,11 @@ plot = (_config, go) ->
   #     q3: 'q3'
   #     outliers: 'outliers'
 
-  renderSchema = (config, go) ->
+  renderSchema2 = (config, go) ->
     config.data
 
   # TODO characteristics, histogram, boxplot
-  renderInterval = (config, go) ->
+  renderInterval2 = (config, go) ->
     #XXX Does not handle all cases - rework
     if config.x and not config.y
       [ attrX1, attrX2 ] = config.x config.data
@@ -236,10 +236,14 @@ plot = (_config, go) ->
     go null, Flow.HTML.render 'div', el
 
   renderText = (config, go) ->
-    [ grid, h4, p, table, thead, tbody, tr, th, td, tdr ] = Flow.HTML.template '.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=td.rt'
+    [ grid, h4, p, table, thead, tbody, tr, th, thr, td, tdr ] = Flow.HTML.template '.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt'
     
     ths = for variable in config.data.variables
-      th escape variable.label
+      switch variable.type
+        when TNumber
+          thr escape variable.label
+        else
+          th escape variable.label
 
     trs = for row in config.data.rows
       tds = for variable in config.data.variables
@@ -266,13 +270,109 @@ plot = (_config, go) ->
         ]
       ]
 
+  createVegaPointSpec = (config, go) ->
+    { width, height, x, y, color } = config
+
+    width: width
+    height: height
+    data: [
+      name: 'table'
+    ]
+    scales: [
+      name: 'x'
+      nice: yes
+      domain:
+        data: 'table'
+        field: "data.#{x}"
+      range: 'width'
+    ,
+      name: 'y'
+      nice: yes
+      domain:
+        data: 'table'
+        field: "data.#{y}"
+      range: 'height'
+    ,
+      name: 'color'
+      type: 'ordinal'
+      domain:
+        data: 'table'
+        field: "data.#{color}"
+      range: 'category20'
+    ]
+    axes: [
+      type: 'x'
+      scale: 'x'
+      title: x
+    ,
+      type: 'y'
+      scale: 'y'
+      title: y
+    ]
+    marks: [
+      type: 'symbol'
+      from:
+        data: 'table'
+      properties:
+        enter:
+          x:
+            scale: 'x'
+            field: "data.#{x}"
+          y:
+            scale: 'y'
+            field: "data.#{y}"
+          fill:
+            scale: 'color'
+            field: "data.#{color}"
+    ]
+
+  renderPoint = (config, go) ->
+    x = config.data.schema[config.x]?.label
+    y = config.data.schema[config.y]?.label
+    color = config.data.schema[config.color]?.label
+
+    return go new Flow.Error "Invalid 'x' field: #{config.x}" unless x
+    return go new Flow.Error "Invalid 'y' field: #{config.y}" unless y
+    return go new Flow.Error "Invalid 'color' field: #{config.color}" unless color
+
+    spec = createVegaPointSpec 
+      width: 400
+      height: 400
+      x: config.data.schema[config.x].label
+      y: config.data.schema[config.y].label
+      color: config.data.schema[config.color].label
+
+    go null, Flow.HTML.render 'div', el = document.createElement 'div'
+    vg.parse.spec spec, (ctor) ->
+      chart = ctor
+        el: el
+        data:
+          table: config.data.rows
+      chart.update()
+    return
+
+  renderLine = (config, go) ->
+
+  renderInterval = (config, go) ->
+
+  renderSchema = (config, go) ->
+
   initialize = (config) ->
     try
       switch config.type
+        when 'point'
+          renderPoint config, go
+        when 'line'
+          renderLine config, go
+        #when 'area'
         when 'interval'
           renderInterval config, go
+        #when 'path'
         when 'schema'
           renderSchema config, go
+        #when 'polygon'
+        #when 'contour'
+        #when 'edge'
         when 'text'
           renderText config, go
         else
