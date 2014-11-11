@@ -156,7 +156,7 @@ H2O.Routines = (_) ->
     variables = for parameter in parameters
       switch parameter.type
         when 'enum', 'Frame', 'string', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-          Flow.Data.Factor parameter.label
+          Flow.Data.Variable parameter.label, TString
         when 'byte', 'short', 'int', 'long', 'float', 'double'
           Flow.Data.Variable parameter.label, TNumber
         when 'string[]'
@@ -173,10 +173,7 @@ H2O.Routines = (_) ->
       rows[i] = row = new Record()
       for parameter, j in model.parameters
         variable = variables[j]
-        row[variable.label] = if variable.type is TFactor
-          variable.read parameter.actual_value
-        else
-          parameter.actual_value
+        row[variable.label] = parameter.actual_value
 
     modelKeys = (model.key for model in models)
 
@@ -287,7 +284,7 @@ H2O.Routines = (_) ->
 
   inspectMetrics = (opts, predictions) -> ->
     variables = [
-      criteriaVariable = Flow.Data.Factor 'criteria'
+      Flow.Data.Variable 'criteria', TString
       Flow.Data.Variable 'threshold', TNumber
       Flow.Data.Variable 'F1', TNumber
       Flow.Data.Variable 'F2', TNumber
@@ -314,7 +311,7 @@ H2O.Routines = (_) ->
       { frame, model, auc } = prediction
       for i in [ 0 ... auc.threshold_criteria.length ]
         rows.push new Record(
-          criteriaVariable.read auc.threshold_criteria[i]
+          auc.threshold_criteria[i]
           read auc.threshold_for_criteria[i]
           read auc.F1_for_criteria[i]
           read auc.F2_for_criteria[i]
@@ -617,12 +614,12 @@ H2O.Routines = (_) ->
       { missing, zeros, pinfs, ninfs } = column
       other = rowCount - missing - zeros - pinfs - ninfs
 
-      [ domain, characteristics ] = Flow.Data.factor [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
-
       variables = [
+        label: 'label'
+        type: TString
+      ,
         label: 'characteristic'
-        type: TFactor
-        domain: domain
+        type: TString
       ,
         label: 'count'
         type: TNumber
@@ -633,7 +630,9 @@ H2O.Routines = (_) ->
         domain: [ 0, 100 ]
       ]
 
+      characteristics = [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
       rows = for count, i in [ missing, ninfs, zeros, pinfs, other ]
+        label: column.label
         characteristic: characteristics[i]
         count: count
         percent: 100 * count / rowCount

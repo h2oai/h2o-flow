@@ -270,37 +270,65 @@ plot = (_config, go) ->
         ]
       ]
 
-  createVegaPointSpec = (config, go) ->
-    { width, height, x, y, color } = config
+  renderUsingVega = (config, go) ->
+    { width, height, type, data, x, y, color } = config
 
-    width: width
-    height: height
-    data: [
+    if isFunction x
+      [ transformX, x ] = x()
+      transformX.point = "data.#{y}"
+
+    variableX = data.schema[x]
+
+    if isFunction y
+      [ transformY, y ] = y()
+      transformY.point = "data.#{x}"
+
+    variableY = data.schema[y]
+
+    variableColor = data.schema[color]
+
+    return go new Flow.Error "Invalid 'x' variable: '#{x}'" unless variableX
+    return go new Flow.Error "Invalid 'y' variable: '#{y}'" unless variableY
+    if color
+      return go new Flow.Error "Invalid 'color' variable: '#{color}'" unless variableColor
+
+      return go new Flow.Error "Encoding numeric variables into mark color is not supported." if variableColor.type is TNumber
+
+    spec = {}
+
+    spec.width = width or 300
+    spec.height = height or 300
+    spec.data = [
       name: 'table'
     ]
-    scales: [
+
+    scaleTypeX = if variableX.type is TNumber then 'linear' else 'ordinal'
+    scaleTypeY = if variableY.type is TNumber then 'linear' else 'ordinal'
+    spec.scales = [
       name: 'x'
-      nice: yes
+      type: scaleTypeX
       domain:
         data: 'table'
         field: "data.#{x}"
       range: 'width'
+      nice: yes
     ,
       name: 'y'
-      nice: yes
+      type: scaleTypeY
       domain:
         data: 'table'
         field: "data.#{y}"
       range: 'height'
-    ,
-      name: 'color'
-      type: 'ordinal'
-      domain:
-        data: 'table'
-        field: "data.#{color}"
-      range: 'category20'
+      nice: yes
     ]
-    axes: [
+
+    if color
+      spec.scales.push
+        name: 'color'
+        type: 'ordinal'
+        range: 'category20'
+
+    spec.axes = [
       type: 'x'
       scale: 'x'
       title: x
@@ -309,24 +337,246 @@ plot = (_config, go) ->
       scale: 'y'
       title: y
     ]
-    marks: [
-      type: 'symbol'
-      from:
-        data: 'table'
-      properties:
-        enter:
-          x:
+
+    if type is 'point'
+      mark =
+        type: 'symbol'
+        from:
+          data: 'table'
+        properties:
+          enter: 
+            x: 
+              scale: 'x'
+              field: "data.#{x}"
+            y:
+              scale: 'y'
+              field: "data.#{y}"
+            stroke:
+              value: 'steelblue'
+            strokeWidth:
+              value: 1.5
+    else if type is 'line'
+      if color
+        mark =
+          type: 'group'
+          from:
+            data: 'table'
+            transform: [
+              type: 'facet'
+              keys: [
+                "data.#{color}"
+              ]
+            ]
+          marks: [
+            type: 'line'
+            properties:
+              enter:
+                x: 
+                  scale: 'x'
+                  field: "data.#{x}"
+                y:
+                  scale: 'y'
+                  field: "data.#{y}"
+                stroke:
+                  scale: 'color'
+                  field: "data.#{color}"
+                strokeWidth:
+                  value: 1.5
+          ]
+      else
+        mark =
+          type: 'line'
+          from:
+            data: 'table'
+          properties:
+            enter:
+              x: 
+                scale: 'x'
+                field: "data.#{x}"
+              y:
+                scale: 'y'
+                field: "data.#{y}"
+              stroke:
+                value: 'steelblue'
+              strokeWidth:
+                value: 1.5
+    else if type is 'area'
+      if scaleTypeX is 'ordinal' and scaleTypeY is 'linear'
+        enter =
+          x: 
             scale: 'x'
             field: "data.#{x}"
           y:
             scale: 'y'
             field: "data.#{y}"
+          y2:
+            scale: 'y'
+            value: 0
           fill:
-            scale: 'color'
-            field: "data.#{color}"
-    ]
+            value: 'steelblue'
+      else if scaleTypeX is 'linear' and scaleTypeY is 'ordinal'
+        enter =
+          x:
+            scale: 'x'
+            field: "data.#{x}"
+          x2:
+            scale: 'x'
+            value: 0
+          y: 
+            scale: 'y'
+            field: "data.#{y}"
+          fill:
+            value: 'steelblue'
+      else if scaleTypeX is 'linear' and scaleTypeY is 'linear'
+        enter =
+          x: 
+            scale: 'x'
+            field: "data.#{x}"
+          y:
+            scale: 'y'
+            field: "data.#{y}"
+          y2:
+            scale: 'y'
+            value: 0
+          fill:
+            value: 'steelblue'
+      else
+        return go new Flow.Error 'Not implemented' #XXX
+      mark =
+        type: 'area'
+        from:
+          data: 'table'
+        properties:
+          enter: enter
+    else if type is 'interval'
+      if scaleTypeX is 'ordinal' and scaleTypeY is 'linear'
+        if color
+          mark =
+            type: 'group'
+            from:
+              data: 'table'
+              transform: [
+                type: 'facet'
+                keys: [ "data.#{color}" ]
+              ,
+                transformY
+              ]
+            marks: [
+              type: 'rect'
+              properties:
+                enter:
+                  x:
+                    scale: 'x'
+                    field: "data.#{x}"
+                  width:
+                    scale: 'x'
+                    band: yes
+                    offset: -1
+                  y:
+                    scale: 'y'
+                    field: 'y'
+                  y2:
+                    scale: 'y'
+                    field: 'y2'
+                  fill:
+                    scale: 'color'
+                    field: "data.#{color}"
+            ]
+        else
+          mark =
+            type: 'rect'
+            from:
+              data: 'table'
+            properties:
+              enter:
+                x:
+                  scale: 'x'
+                  field: "data.#{x}"
+                width:
+                  scale: 'x'
+                  band: yes
+                  offset: -1
+                y:
+                  scale: 'y'
+                  field: "data.#{y}"
+                y2:
+                  scale: 'y'
+                  value: 0
+                fill:
+                  value: 'steelblue'
+      else if scaleTypeX is 'linear' and scaleTypeY is 'ordinal'
+        if color
+          mark =
+            type: 'group'
+            from:
+              data: 'table'
+              transform: [
+                type: 'facet'
+                keys: [ "data.#{color}" ]
+              ,
+                transformX
+              ]
+            marks: [
+              type: 'rect'
+              properties:
+                enter:
+                  x:
+                    scale: 'x'
+                    field: 'y'
+                  x2:
+                    scale: 'x'
+                    field: 'y2' 
+                  y:
+                    scale: 'y'
+                    field: "data.#{y}"
+                  height:
+                    scale: 'y'
+                    band: yes
+                    offset: -1
+                  fill:
+                    scale: 'color'
+                    field: "data.#{color}"
+            ]
+        else
+          mark =
+            type: 'rect'
+            from:
+              data: 'table'
+            properties:
+              enter:
+                x:
+                  scale: 'x'
+                  field: "data.#{x}"
+                x2:
+                  scale: 'x'
+                  value: 0
+                y:
+                  scale: 'y'
+                  field: "data.#{y}"
+                height:
+                  scale: 'y'
+                  band: yes
+                  offset: -1
+                fill:
+                  value: 'steelblue'
+      else if scaleTypeX is 'linear' and scaleTypeY is 'linear'
+        return go new Flow.Error 'Not implemented' #XXX
+      else
+        return go new Flow.Error 'Not implemented' #XXX
 
-  renderPoint = (config, go) ->
+
+    spec.marks = [ mark ]
+
+    go null, Flow.HTML.render 'div', el = document.createElement 'div'
+    vg.parse.spec spec, (ctor) ->
+      chart = ctor
+        el: el
+        data:
+          table: data.rows
+      chart.update()
+    return
+
+  renderPoint__old = (config, go) ->
     x = config.data.schema[config.x]?.label
     y = config.data.schema[config.y]?.label
     color = config.data.schema[config.color]?.label
@@ -360,29 +610,26 @@ plot = (_config, go) ->
   initialize = (config) ->
     try
       switch config.type
-        when 'point'
-          renderPoint config, go
-        when 'line'
-          renderLine config, go
-        #when 'area'
-        when 'interval'
-          renderInterval config, go
-        #when 'path'
+        when 'point', 'line', 'area', 'interval'
+          renderUsingVega config, go
         when 'schema'
-          renderSchema config, go
-        #when 'polygon'
-        #when 'contour'
-        #when 'edge'
+          go new Flow.Error "Not implemented: #{config.type}" #XXX
         when 'text'
           renderText config, go
         else
-          go new Error 'Not implemented'
+          go new Flow.Error "Invalid mark type: #{config.type}"
     catch error
       go new Flow.Error 'Error creating plot.', error
 
   initialize _config
 
 stack = (attr) ->
+  return ->
+    transform =
+      type: 'stack'
+      height: "data.#{attr}"
+    [ transform, attr ]
+    
   self = (table) ->
     type = table.schema[attr].type
     [ startVariable, endVariable ] = table.expand type, type

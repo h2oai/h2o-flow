@@ -59,10 +59,9 @@ createTable = (opts) ->
   
   expand = (types...) ->
     for type in types
+      #TODO attach to prototype
       label = uniqueId '__flow_variable_'
-      schema[label] =
-        label: label
-        type: type
+      schema[label] = createNumericVariable label
 
   label: label
   description: description
