@@ -286,8 +286,8 @@ plot = (_config, go) ->
     if scaleTypeY is 'ordinal'
       domainY = computeDomain data, variableY.label
 
-    spec.width = if width then width else if scaleTypeX is 'linear' then 300 else 20 * domainX.length
-    spec.height = if height then height else if scaleTypeY is 'linear' then 300 else 15 * domainY.length
+    spec.width = if width then width else if scaleTypeX is 'linear' then 250 else 20 * domainX.length
+    spec.height = if height then height else if scaleTypeY is 'linear' then 250 else 15 * domainY.length
     spec.data = [
       name: 'table'
     ]
@@ -552,7 +552,6 @@ plot = (_config, go) ->
       else
         return go new Flow.Error 'Not implemented' #XXX
 
-
     spec.marks = [ mark ]
 
     go null, Flow.HTML.render 'div', el = document.createElement 'div'
@@ -563,37 +562,6 @@ plot = (_config, go) ->
           table: data.rows
       chart.update()
     return
-
-  renderPoint__old = (config, go) ->
-    x = config.data.schema[config.x]?.label
-    y = config.data.schema[config.y]?.label
-    color = config.data.schema[config.color]?.label
-
-    return go new Flow.Error "Invalid 'x' field: #{config.x}" unless x
-    return go new Flow.Error "Invalid 'y' field: #{config.y}" unless y
-    return go new Flow.Error "Invalid 'color' field: #{config.color}" unless color
-
-    spec = createVegaPointSpec 
-      width: 400
-      height: 400
-      x: config.data.schema[config.x].label
-      y: config.data.schema[config.y].label
-      color: config.data.schema[config.color].label
-
-    go null, Flow.HTML.render 'div', el = document.createElement 'div'
-    vg.parse.spec spec, (ctor) ->
-      chart = ctor
-        el: el
-        data:
-          table: config.data.rows
-      chart.update()
-    return
-
-  renderLine = (config, go) ->
-
-  renderInterval = (config, go) ->
-
-  renderSchema = (config, go) ->
 
   initialize = (config) ->
     try
