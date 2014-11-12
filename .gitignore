@@ -5,5 +5,5 @@ lib
 build
 *.swp
 *.log
-
+.gradle
 
