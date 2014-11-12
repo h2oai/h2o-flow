@@ -8,4 +8,4 @@ release {
 }
 
 // Upload artifacts after release
-createReleaseTag.dependsOn { subprojects.uploadArchives }
+createReleaseTag.dependsOn uploadArchives
