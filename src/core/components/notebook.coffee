@@ -15,6 +15,8 @@ Flow.Notebook = (_, _renderers) ->
   _selectedCellIndex = -1
   _clipboardCell = null
   _lastDeletedCell = null
+  _areInputsHidden = signal no
+  _areOutputsHidden = signal no
 
   createCell = (type='cs', input='') ->
     Flow.Cell _, _renderers, type, input
@@ -179,8 +181,17 @@ Flow.Notebook = (_, _renderers) ->
     debug 'saveFlow'
     no
 
+  toggleInput = ->
+    _selectedCell.toggleInput()
+
   toggleOutput = ->
     _selectedCell.toggleOutput()
+
+  toggleAllInputs = ->
+    _areInputsHidden not _areInputsHidden()
+
+  toggleAllOutputs = ->
+    _areOutputsHidden not _areOutputsHidden()
 
   selectNextCell = ->
     cells = _cells()
@@ -207,9 +218,6 @@ Flow.Notebook = (_, _renderers) ->
   printPreview = notImplemented
   pasteCellandReplace = notImplemented
   mergeCellAbove = notImplemented
-  toggleInput = notImplemented
-  toggleAllInputs = notImplemented
-  toggleAllOutputs = notImplemented
   switchToPresentationMode = notImplemented 
   runAllCells = notImplemented
   clearCell = notImplemented
@@ -268,11 +276,11 @@ Flow.Notebook = (_, _renderers) ->
     ]
   ,
     createMenu 'View', [
-      createMenuItem 'Toggle Input', toggleInput, yes
+      createMenuItem 'Toggle Input', toggleInput
       createMenuItem 'Toggle Output', toggleOutput
       menuDivider
-      createMenuItem 'Toggle All Inputs', toggleAllInputs, yes
-      createMenuItem 'Toggle All Outputs', toggleAllOutputs, yes
+      createMenuItem 'Toggle All Inputs', toggleAllInputs
+      createMenuItem 'Toggle All Outputs', toggleAllOutputs
       menuDivider
       createMenuItem 'Presentation Mode', switchToPresentationMode, yes
     ]
@@ -447,6 +455,8 @@ Flow.Notebook = (_, _renderers) ->
   menus: _menus
   toolbar: _toolbar
   cells: _cells
+  areInputsHidden: _areInputsHidden
+  areOutputsHidden: _areOutputsHidden
   shortcutsHelp:
     normalMode: normalModeKeyboardShortcutsHelp
     editMode: editModeKeyboardShortcutsHelp

@@ -1,23 +1,24 @@
 .flow-cell(data-bind="click:select, css:{ 'flow-cell-selected':isSelected, 'flow-cell-active':isActive, 'flow-cell-ready':isReady, 'flow-cell-busy':isBusy, 'flow-cell-error':hasError }")
   .flow-cell-type(data-bind="text:type")
-  .flow-cell-input(data-bind="visible:hasInput, css:{ 'flow-cell-has-output':hasOutput }")
-    table(style='width:100%')
-      tbody
-        tr
-          td 
-            textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_cursorPosition, autoResize:input")
-          td(style='width:20px;text-align:right;vertical-align:top')
-            // ko ifnot:isBusy
-            // ko if:hasError
-            i.fa.fa-exclamation-circle(style='color:red' title='Error')
-            // /ko
-            // ko ifnot:hasError
-            i.fa.fa-terminal(title='Waiting for input')
-            // /ko
-            // /ko
-            // ko if:isBusy
-            i.fa.fa-cog.fa-spin(title='Computing...')
-            // /ko
+  .flow-cell-input(data-bind="visible:isInputVisible")
+    .flow-cell-code(data-bind="visible:hasInput, css:{ 'flow-cell-has-output':hasOutput }")
+      table(style='width:100%')
+        tbody
+          tr
+            td 
+              textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_cursorPosition, autoResize:input")
+            td(style='width:20px;text-align:right;vertical-align:top')
+              // ko ifnot:isBusy
+              // ko if:hasError
+              i.fa.fa-exclamation-circle(style='color:red' title='Error')
+              // /ko
+              // ko ifnot:hasError
+              i.fa.fa-terminal(title='Waiting for input')
+              // /ko
+              // /ko
+              // ko if:isBusy
+              i.fa.fa-cog.fa-spin(title='Computing...')
+              // /ko
   .flow-cell-output(data-bind='visible:isOutputVisible')
     // ko if:result
     .flow-cell-result(data-bind='template:{ name: templateOf, data:result }')

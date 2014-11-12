@@ -135,7 +135,7 @@ th
     background flow-color-yellow
     padding 1px 3px
     text-align center
-  .flow-cell-input
+  .flow-cell-code
     textarea
       color #333
       width 100%
@@ -157,7 +157,7 @@ th
     .flow-cell-type
       background flow-color-orange
       color #fff
-    .flow-cell-input
+    .flow-cell-code
       textarea
         background flow-color-yellow-lt
   &.flow-cell-busy
@@ -170,6 +170,14 @@ th
     .flow-cell-type
       background red
       color #fff
+
+.flow-hide-inputs
+  .flow-cell-input
+    display none
+
+.flow-hide-outputs
+  .flow-cell-output
+    display none
   
 // 
 // Styles that apply only to html cells 
