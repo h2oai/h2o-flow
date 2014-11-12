@@ -597,10 +597,9 @@ H2O.Routines = (_) ->
 
 
     inspectDistribution = ->
-      distributionDataType = if column.type is 'int' then TNumber else TNumber
       variables = [
-        Flow.Data.Variable 'intervalStart', TNumber
-        Flow.Data.Variable 'intervalEnd', TNumber
+        Flow.Data.Variable 'interval', TString
+        Flow.Data.Variable 'width', TNumber
         Flow.Data.Variable 'count', TNumber
       ]
 
@@ -622,15 +621,15 @@ H2O.Routines = (_) ->
             count += bins[binIndex]
 
           row = new Record()
-          row.intervalStart = base + i * interval
-          row.intervalEnd = row.intervalStart + interval
+          row.interval = base + i * interval
+          row.width = interval
           row.count = count
           rows.push row
       else
         for count, i in bins
           row = new Record()
-          row.intervalStart = base + i * stride
-          row.intervalEnd = row.intervalStart + stride
+          row.interval = base + i * stride
+          row.width = stride
           row.count = count
           rows.push row
 
@@ -641,6 +640,13 @@ H2O.Routines = (_) ->
         rows: rows
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+          plot: """
+          plot
+            data: inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+            type: 'interval'
+            x: 'interval'
+            y: 'count'
+          """
 
     inspectCharacteristics = ->
       { missing, zeros, pinfs, ninfs } = column

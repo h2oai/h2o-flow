@@ -191,9 +191,6 @@ H2O.Proxy = (_) ->
     else
       doGet "/3/ModelMetrics.json", go
 
-
-
-
   link _.requestInspect, requestInspect
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
