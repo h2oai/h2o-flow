@@ -20,3 +20,4 @@ H2O.ApplicationContext = (_) ->
   _.requestJobs = do slot
   _.requestJob = do slot
   _.inspect = do slot
+  _.plot = do slot

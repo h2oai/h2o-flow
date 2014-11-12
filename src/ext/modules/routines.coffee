@@ -358,6 +358,10 @@ H2O.Routines = (_) ->
       rows: rows
       meta:
         origin: formulateGetPredictionsOrigin opts
+        plot: """
+        plot
+          data: inspect 'metrics', #{formulateGetPredictionsOrigin opts}
+        """
 
   inspectPredictions = (opts, predictions) -> ->
     variables = [
@@ -396,6 +400,10 @@ H2O.Routines = (_) ->
       rows: rows
       meta:
         origin: formulateGetPredictionsOrigin opts
+        plot: """
+        plot
+          data: inspect 'predictions', #{formulateGetPredictionsOrigin opts}
+        """
 
   extendPredictions = (opts, predictions) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
@@ -458,6 +466,10 @@ H2O.Routines = (_) ->
       rows: rows
       meta:
         origin: formulateGetPredictionsOrigin opts
+        plot: """
+        plot
+          data: inspect 'scores', #{formulateGetPredictionsOrigin opts}
+        """
     
   extendPrediction = (modelKey, frameKey, prediction) ->
     render_ prediction, -> H2O.PredictOutput _, prediction
@@ -976,6 +988,7 @@ H2O.Routines = (_) ->
 
   link _.ready, ->
     link _.inspect, inspect
+    link _.plot, __plot
 
   # fork/join 
   fork: _fork
