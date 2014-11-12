@@ -38,12 +38,6 @@ H2O.FramesOutput = (_, _frames) ->
     predict = ->
       _.insertAndExecuteCell 'cs', "predict null, #{stringify frame.key.name}"
 
-    inspectColumns = ->
-      _.insertAndExecuteCell 'cs', "grid inspect 'columns', getFrame #{stringify frame.key.name}"
-
-    inspectData = ->
-      _.insertAndExecuteCell 'cs', "grid inspect 'data', getFrame #{stringify frame.key.name}"
-
     inspect = ->
       _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify frame.key.name}"
 
@@ -59,8 +53,6 @@ H2O.FramesOutput = (_, _frames) ->
     isText: frame.isText
     view: view
     predict: predict
-    inspectColumns: inspectColumns
-    inspectData: inspectData
     inspect: inspect
     createModel: createModel
 

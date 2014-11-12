@@ -750,19 +750,15 @@ H2O.Routines = (_) ->
             y: 'label'
           """
 
-    switch column.type
-      when 'int', 'real'
-        inspect_ frame,
-          characteristics: inspectCharacteristics
-          summary: inspectSummary
-          distribution: inspectDistribution
-          percentiles: inspectPercentiles
-      else
-        inspect_ frame,
-          characteristics: inspectCharacteristics
-          domain: inspectDomain
-          percentiles: inspectPercentiles
+    inspections =
+      characteristics: inspectCharacteristics
+    if column.type is 'int' or column.type is 'real'
+      inspections.summary = inspectSummary
+      inspections.distribution = inspectDistribution
+    else
+      inspections.domain = inspectDomain
 
+    inspect_ frame, inspections
 
   requestFrame = (frameKey, go) ->
     _.requestFrame frameKey, (error, frame) ->

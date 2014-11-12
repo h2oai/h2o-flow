@@ -1,118 +1,53 @@
 H2O.FrameOutput = (_, _frame) ->
-  createMinMaxRow = (attribute, columns) ->
-    map columns, (column) ->
-      switch column.type
-        when 'time'
-          Flow.Format.Date head column[attribute]
-        when 'real'
-          (Flow.Format.Real column.precision) head column[attribute]
-        when 'int'
-          Flow.Format.Digits 6, head column[attribute]
+  createGrid = (data) ->
+    [ grid, table, thead, tbody, tr, th, thr, td, tdr, action ] = Flow.HTML.template '.grid', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt', "+a data-action='summary' data-index='{0}' class='action' href='#'"
+    
+    ths = for variable in data.variables
+      switch variable.type
+        when TNumber
+          thr escape variable.label
         else
-          '-'
+          th escape variable.label
 
-  createMeanRow = (columns) ->
-    map columns, (column) ->
-      switch column.type
-        when 'time'
-          Flow.Format.Date column.mean
-        when 'real'
-          (Flow.Format.Real column.precision) column.mean
-        when 'int'
-          Flow.Format.Digits 6, column.mean
-        else
-          '-'
+    ths.push th 'Actions'
 
-  createSigmaRow = (columns) ->
-    map columns, (column) ->
-      switch column.type
-        when 'time', 'real', 'int'
-          Flow.Format.Digits 6, column.sigma
-        else
-          '-'
-
-  createCardinalityRow = (columns) ->
-    map columns, (column) ->
-      switch column.type
-        when 'enum'
-          column.domain.length
-        else
-          '-'
-
-  createPlainRow = (attribute, columns) ->
-    map columns, (column) -> column[attribute]
-
-  createMissingsRow = (columns) ->
-    map columns, (column) ->
-      if column.missing is 0 then '-' else column.missing
-
-  createInfRow = (attribute, columns) ->
-    map columns, (column) ->
-      switch column.type
-        when 'real', 'int'
-          if column[attribute] is 0 then '-' else column[attribute]
-        else
-          '-'
-
-  createSummaryRow = (frameKey, columns) ->
-    map columns, (column) ->
-      displaySummary: ->
-        _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify frameKey}, #{stringify column.label}"
-
-  createDataRow = (offset, index, columns) ->
-    header: "Row #{offset + index + 1}"
-    cells: map columns, (column) ->
-      switch column.type
-        when 'uuid', 'string'
-          column.str_data[index] or '-'
-        when 'enum'
-          column.domain[column.data[index]]
-        when 'time'
-          Flow.Format.Date column.data[index]
-        else
-          value = column.data[index]
-          if value is 'NaN'
-            '-'
+    trs = for row, rowIndex in data.rows
+      tds = for variable in data.variables
+        #XXX formatting
+        value = row[variable.label]
+        switch variable.type
+          when TFactor
+            td if value is null then '-' else escape variable.domain[value]
+          when TNumber
+            tdr if value is null then '-' else value
+          when TArray
+            td if value is null then '-' else value.join ', '
           else
-            if column.type is 'real'
-              (Flow.Format.Real column.precision) value
-            else
-              value
+            td if value is null then '-' else value
+      tds.push td action 'Summary...', rowIndex
+      tr tds
 
-  createDataRows = (offset, rowCount, columns) ->
-    rows = []
-    for index in [0 ... rowCount]
-      rows.push createDataRow offset, index, columns
-    rows
+    el = Flow.HTML.render 'div',
+      grid [
+        table [
+          thead tr ths
+          tbody trs
+        ]
+      ]
 
-  createFrameTable = (offset, rowCount, columns) ->
-    hasMissings = hasZeros = hasPinfs = hasNinfs = hasEnums = no
-    for column in columns
-      hasMissings = yes if not hasMissings and column.missing > 0
-      hasZeros = yes if not hasZeros and column.zeros > 0
-      hasPinfs = yes if not hasPinfs and column.pinfs > 0
-      hasNinfs = yes if not hasNinfs and column.ninfs > 0
-      hasEnums = yes if not hasEnums and column.type is 'enum'
+    $('a.action', el).click ->
+      $link = $ @
+      action = $link.attr 'data-action'
+      index = parseInt ($link.attr 'data-index'), 10
+      switch action
+        when 'summary'
+          if index >= 0
+            row = data.rows[index]
+            if row
+              _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify _frame.key.name}, #{stringify row.label}"
+      return no
 
-    header: createPlainRow 'label', columns
-    typeRow: createPlainRow 'type', columns
-    minRow: createMinMaxRow 'mins', columns
-    maxRow: createMinMaxRow 'maxs', columns
-    meanRow: createMeanRow columns
-    sigmaRow: createSigmaRow columns
-    cardinalityRow: if hasEnums then createCardinalityRow columns else null
-    missingsRow: if hasMissings then createMissingsRow columns else null
-    zerosRow: if hasZeros then createInfRow 'zeros', columns else null
-    pinfsRow: if hasPinfs then createInfRow 'pinfs', columns else null
-    ninfsRow: if hasNinfs then createInfRow 'ninfs', columns else null
-    summaryRow: createSummaryRow _frame.key.name, columns
-    #summaryRows: createSummaryRows columns
-    hasMissings: hasMissings
-    hasZeros: hasZeros
-    hasPinfs: hasPinfs
-    hasNinfs: hasNinfs
-    hasEnums: hasEnums
-    dataRows: createDataRows offset, rowCount, columns
+    el
 
   createModel = ->
     _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify _frame.key.name}"
@@ -120,14 +55,19 @@ H2O.FrameOutput = (_, _frame) ->
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify _frame.key.name}"
 
-  data: _frame
+  inspectData = ->
+    _.insertAndExecuteCell 'cs', "grid inspect 'data', getFrame #{stringify _frame.key.name}"
+
+  predict = ->
+    _.insertAndExecuteCell 'cs', "predict null, #{stringify _frame.key.name}"
+
+  _grid = createGrid _.inspect 'columns', _frame
+
   key: _frame.key.name
-  timestamp: _frame.creation_epoch_time_millis
-  title: _frame.key.name
-  columns: _frame.column_names
-  table: createFrameTable _frame.off, _frame.len, _frame.columns
-  dispose: ->
+  grid: _grid
   inspect: inspect
   createModel: createModel
+  inspectData: inspectData
+  predict: predict
   template: 'flow-frame-output'
 
