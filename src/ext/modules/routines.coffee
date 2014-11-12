@@ -66,8 +66,6 @@ H2O.Routines = (_) ->
 
   gui[name] = f for name, f of Flow.Gui
 
-  help = -> proceed H2O.Help
-
   flow_ = (raw) ->
     raw._flow_ or raw._flow_ = _cache_: {}
 
@@ -1020,7 +1018,6 @@ H2O.Routines = (_) ->
   #
   # Meta
   assist: assist
-  help: help
   #
   # GUI
   gui: gui

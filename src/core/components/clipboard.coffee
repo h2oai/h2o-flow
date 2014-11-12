@@ -1,4 +1,5 @@
 SystemClips = [
+  'assist'
   'importFiles'
   'getFrames'
   'getModels'
