@@ -7,10 +7,10 @@ table
       td(width='1')
         span(data-bind='text:type')
       td
-        pre.flow-pointer(data-bind='text:input, click:insert')
+        pre.flow-pointer(data-bind='text:input, attr:{title:input}, click:insert')
       // ko if:canRemove
       td(width='1')
-        i.fa.fa-trash.flow-pointer(data-bind='click:remove')
+        i.fa.fa-trash-o.flow-pointer(data-bind='click:remove')
       // /ko
     // /ko
 
