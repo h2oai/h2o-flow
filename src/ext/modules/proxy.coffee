@@ -152,7 +152,7 @@ H2O.Proxy = (_) ->
     doPost "/2/ModelBuilders.json/#{algo}", parameters, go
 
   requestPredict = (modelKey, frameKey, go) ->
-    doPost "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, (error, result) ->
+    doPost "/3/Predictions.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, (error, result) ->
       if error
         go error
       else
