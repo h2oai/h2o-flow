@@ -25,6 +25,8 @@
     span(data-bind='text:trashClipCount')
   // ko if:hasTrashClips
   div(data-bind="template:{ name:'flow-clips', data:trashClips }")
+  div(style='margin-top:10px')
+    +button('Empty Trash', 'trash', 'emptyTrash')
   // /ko
   // ko ifnot:hasTrashClips
   p Trash is empty. Cells that you cut or delete from your notebook appear here.

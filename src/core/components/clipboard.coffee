@@ -37,12 +37,18 @@ Flow.Clipboard = (_) ->
       remove: remove
       canRemove: _canRemove
 
+  addClip = (list, type, input) ->
+    list.push createClip list, type, input
+
   removeClip = (list, clip) ->
     if list is _userClips
       _userClips.remove clip
       _trashClips.push createClip _trashClips, clip.type, clip.input
     else
       _trashClips.remove clip
+
+  emptyTrash = ->
+    _trashClips.removeAll()
 
   initialize = ->
     _systemClips map SystemClips, (input) -> 
@@ -53,9 +59,9 @@ Flow.Clipboard = (_) ->
         input = input.trim()
         if input
           if category is 'user'
-            _userClips.push createClip _userClips, type, input
+            addClip _userClips, type, input
           else
-            _trashClips.push createClip _trashClips, type, input
+            addClip _trashClips, type, input
 
   initialize()
 
@@ -67,5 +73,6 @@ Flow.Clipboard = (_) ->
   trashClips: _trashClips
   trashClipCount: _trashClipCount
   hasTrashClips: _hasTrashClips
+  emptyTrash: emptyTrash
 
 

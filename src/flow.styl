@@ -108,6 +108,7 @@ flow-box-padding-right = 0px
 flow-header-height = 100px
 flow-footer-height = 30px
 flow-sidebar-width = 300px
+flow-sidebar-header-height = 31px
 
 //TODO table.table is used in frame output
 //TODO alert is used in flow-failure
@@ -192,7 +193,6 @@ label
     overflow auto
   .flow-box-sidebar
     dock-right(flow-sidebar-width)
-    overflow auto
     box-sizing border-box
     border-left 1px solid #ddd
   .flow-box-footer
@@ -498,19 +498,31 @@ table
     margin-right 3px
 
 .flow-sidebar
-  padding 10px
-  .flow-tabs
-    border-bottom 1px solid flow-color-yellow-dk
-  .flow-tab
-    display inline-block
-    height 21px
-    line-height 21px
-    width 50%
-    text-align center
-    smallcaps()
-    &.active
-      color black
-      background flow-color-yellow
+  dock()
+  .flow-sidebar-header
+    dock-top(flow-sidebar-header-height + 2px)
+    overflow hidden
+    padding 10px 10px 0 10px
+    .flow-tabs
+      border-bottom 1px solid flow-color-yellow-dk
+    .flow-tab
+      display inline-block
+      height flow-sidebar-header-height - 10px
+      line-height flow-sidebar-header-height - 10px
+      width 50%
+      text-align center
+      smallcaps()
+      &:hover
+        background #f1f2f3
+      &.active
+        color black
+        background flow-color-yellow
+  .flow-sidebar-body
+    dock(flow-sidebar-header-height + 2px)
+    overflow auto
+    > div
+      padding 10px
+
 
 .flow-clipboard
   p
