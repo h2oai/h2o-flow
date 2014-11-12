@@ -208,6 +208,9 @@ Flow.Notebook = (_, _renderers) ->
   displayKeyboardShortcuts = ->
     $('#keyboardShortcutsDialog').modal()
 
+  goToWebsite = (url) -> ->
+    window.open url, '_blank'
+
   notImplemented = -> # noop
   createNewFile = notImplemented
   openFile = notImplemented
@@ -223,7 +226,6 @@ Flow.Notebook = (_, _renderers) ->
   clearCell = notImplemented
   clearAllCells = notImplemented
   startTour = notImplemented
-  goToWebsite = (url) -> notImplemented
 
   #
   # Top menu bar
@@ -314,8 +316,8 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Tour', startTour, yes
       createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
       menuDivider
-      createMenuItem 'H2O Documentation', (goToWebsite 'http://docs.0xdata.com/'), yes
-      createMenuItem '0xdata.com', (goToWebsite 'http://0xdata.com/'), yes
+      createMenuItem 'H2O Documentation', goToWebsite 'http://docs.h2o.ai/'
+      createMenuItem 'h2o.ai', goToWebsite 'http://h2o.ai/'
     ]
   ]
 
