@@ -670,6 +670,7 @@ H2O.Routines = (_) ->
             type: 'interval'
             data: inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}
             x: plot.stack 'count'
+            y: 'label'
             color: 'characteristic'
           """
 
