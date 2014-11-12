@@ -56,8 +56,10 @@ Total time: 9.644 secs
 
 Change h2o-dev/build.gradle so that the **_h2oFlowVersion_** matches what you just published, and that you have enabled the **_mavenLocal_** repository.
 
+`$ cd ../h2o-dev`  
+`$ git diff`  
+
 ```
-$ git diff
 diff --git a/build.gradle b/build.gradle
 index f02ee23..a141222 100644
 --- a/build.gradle
@@ -82,6 +84,11 @@ index f02ee23..a141222 100644
      // to all projects
 ```
 
+`$ ./gradlew build -x test`  
+
+```
+[... lots of output ...]
+```
 
 ---
 
