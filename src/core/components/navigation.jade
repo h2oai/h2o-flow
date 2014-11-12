@@ -1,10 +1,5 @@
-.flow-navigation
-  nav.navbar.navbar-default(role='navigation')
-    .container-fluid
-      .flow-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
+nav.navbar.navbar-default(role='navigation')
   .container-fluid
-    .flow-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px")
-    .flow-hint(style='padding:5px 0;margin-bottom:10px')
-      i.fa.fa-lightbulb-o
-      | Type <code><a href='#' data-bind='click:executeHelp'>help</a></code> <kbd>ctrl</kbd> <kbd>enter</kbd> for help. Type <code><a href='#' data-bind='click:executeAssist'>assist</a></code> <kbd>ctrl</kbd> <kbd>enter</kbd> to dive into H<sub>2</sub>O. Press <kbd>h</kbd> for keyboard shortcuts. 
-
+    .flow-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
+.container-fluid
+  .flow-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px")

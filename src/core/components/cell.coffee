@@ -40,6 +40,9 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   # TODO
   activate = -> _isActive yes
 
+  clip = ->
+    _.saveClip 'user', _type(), _input()
+
   execute = (go) ->
     input = _input().trim()
     unless input
@@ -97,6 +100,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     select: select
     activate: activate
     execute: execute
+    clip: clip
     _cursorPosition: _cursorPosition
     cursorPosition: -> _cursorPosition.read()
     templateOf: (view) -> view.template

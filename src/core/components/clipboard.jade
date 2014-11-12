@@ -1,0 +1,31 @@
+.flow-clipboard
+  h4
+    | My Clips 
+    span(data-bind='text:userClipCount')
+  // ko if:hasUserClips
+  div(data-bind="template:{ name:'flow-clips', data:userClips }")
+  // /ko
+  // ko ifnot:hasUserClips
+  p
+    | You have no clips. To save a clip into this list, click a cell's 
+    i.fa.fa-heart-o
+    | &nbsp;button.
+    br
+    br
+    | Click on a clip to insert it into your notebook. Click the 
+    i.fa.fa-play-circle
+    | &nbsp;button to insert and execute the clip.
+  // /ko
+  h4
+    | System 
+    span(data-bind='text:systemClipCount')
+  div(data-bind="template:{ name:'flow-clips', data:systemClips }")
+  h4
+    | Trash 
+    span(data-bind='text:trashClipCount')
+  // ko if:hasTrashClips
+  div(data-bind="template:{ name:'flow-clips', data:trashClips }")
+  // /ko
+  // ko ifnot:hasTrashClips
+  p Trash is empty. Cells that you cut or delete from your notebook appear here.
+  // /ko

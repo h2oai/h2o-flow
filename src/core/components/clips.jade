@@ -1,0 +1,16 @@
+table
+  tbody
+    // ko foreach:$data
+    tr
+      td(width='1')
+        i.fa.fa-play-circle.flow-pointer(data-bind='click:execute')
+      td(width='1')
+        span(data-bind='text:type')
+      td
+        pre.flow-pointer(data-bind='text:input, click:insert')
+      // ko if:canRemove
+      td(width='1')
+        i.fa.fa-trash.flow-pointer(data-bind='click:remove')
+      // /ko
+    // /ko
+

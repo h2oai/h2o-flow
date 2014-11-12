@@ -1,5 +1,8 @@
 .flow-failure
-  h4(data-bind='text:message')
+  h4
+    i.fa.fa-exclamation-circle 
+    | &nbsp; 
+    span(data-bind='text:message')
 
   // ko if: causes && causes.length
   .flow-margin-after 

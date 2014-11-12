@@ -17,6 +17,9 @@ Flow.Notebook = (_, _renderers) ->
   _lastDeletedCell = null
   _areInputsHidden = signal no
   _areOutputsHidden = signal no
+  _isSidebarHidden = signal no
+  _status = Flow.Status _
+  _sidebar = Flow.Sidebar _
 
   createCell = (type='cs', input='') ->
     Flow.Cell _, _renderers, type, input
@@ -83,12 +86,13 @@ Flow.Notebook = (_, _renderers) ->
     if cells.length > 1
       if _selectedCellIndex is cells.length - 1
         #TODO call dispose() on this cell
-        splice _cells, _selectedCellIndex, 1
+        removedCell = head splice _cells, _selectedCellIndex, 1
         selectCell cells[_selectedCellIndex - 1]
       else
         #TODO call dispose() on this cell
-        splice _cells, _selectedCellIndex, 1
+        removedCell = head splice _cells, _selectedCellIndex, 1
         selectCell cells[_selectedCellIndex]
+      _.saveClip 'trash', removedCell.type(), removedCell.input() if removedCell
     return
     
   insertCell = (index, cell) ->
@@ -96,24 +100,30 @@ Flow.Notebook = (_, _renderers) ->
     selectCell cell
     cell
 
-  insertCellAbove = (cell) ->
+  insertAbove = (cell) ->
     insertCell _selectedCellIndex, cell
 
-  insertCellBelow = (cell) ->
+  insertBelow = (cell) ->
     insertCell _selectedCellIndex + 1, cell
 
+  insertCellAbove = (type, input) ->
+    insertAbove createCell type, input
+
+  insertCellBelow = (type, input) ->
+    insertBelow createCell type, input
+
   insertNewCellAbove = ->
-    insertCellAbove createCell 'cs'
+    insertAbove createCell 'cs'
 
   insertNewCellBelow = ->
-    insertCellBelow createCell 'cs'
+    insertBelow createCell 'cs'
 
   insertCellAboveAndRun = (type, input) ->
-    cell = insertCellAbove createCell type, input
+    cell = insertAbove createCell type, input
     cell.execute()
 
   insertCellBelowAndRun = (type, input) ->
-    cell = insertCellBelow createCell type, input
+    cell = insertBelow createCell type, input
     cell.execute()
 
   moveCellDown = ->
@@ -193,6 +203,13 @@ Flow.Notebook = (_, _renderers) ->
   toggleAllOutputs = ->
     _areOutputsHidden not _areOutputsHidden()
 
+  toggleSidebar = ->
+    _isSidebarHidden not _isSidebarHidden()
+
+  showClipboard = ->
+    _isSidebarHidden no
+    _.showClipboard()
+
   selectNextCell = ->
     cells = _cells()
     unless _selectedCellIndex is cells.length - 1
@@ -207,6 +224,10 @@ Flow.Notebook = (_, _renderers) ->
 
   displayKeyboardShortcuts = ->
     $('#keyboardShortcutsDialog').modal()
+
+  showHelp = ->
+    _isSidebarHidden no
+    _.showHelp()
 
   goToWebsite = (url) -> ->
     window.open url, '_blank'
@@ -284,6 +305,9 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Toggle All Inputs', toggleAllInputs
       createMenuItem 'Toggle All Outputs', toggleAllOutputs
       menuDivider
+      createMenuItem 'Toggle Sidebar', toggleSidebar
+      createMenuItem 'Clipboard', showClipboard
+      menuDivider
       createMenuItem 'Presentation Mode', switchToPresentationMode, yes
     ]
   ,
@@ -314,6 +338,7 @@ Flow.Notebook = (_, _renderers) ->
   ,
     createMenu 'Help', [
       createMenuItem 'Tour', startTour, yes
+      createMenuItem 'Contents', showHelp
       createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
       menuDivider
       createMenuItem 'H2O Documentation', goToWebsite 'http://docs.h2o.ai/'
@@ -447,18 +472,20 @@ Flow.Notebook = (_, _renderers) ->
     link _.selectCell, selectCell
     link _.insertAndExecuteCell, (type, input) ->
       defer insertCellBelowAndRun, type, input
+    link _.insertCell, (type, input) ->
+      defer insertCellBelow, type, input
+
 
   link _.ready, initialize
 
-  #XXX externalize
-  executeHelp: -> _.insertAndExecuteCell 'cs', 'help'
-  #XXX externalize
-  executeAssist: -> _.insertAndExecuteCell 'cs', 'assist'
   menus: _menus
+  sidebar: _sidebar
+  status: _status
   toolbar: _toolbar
   cells: _cells
   areInputsHidden: _areInputsHidden
   areOutputsHidden: _areOutputsHidden
+  isSidebarHidden: _isSidebarHidden
   shortcutsHelp:
     normalMode: normalModeKeyboardShortcutsHelp
     editMode: editModeKeyboardShortcutsHelp

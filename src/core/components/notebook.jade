@@ -1,8 +1,21 @@
 // ko with:view
-include navigation.jade
-
-.container-fluid
-  .flow-repl(data-bind="css:{ 'flow-hide-inputs':areInputsHidden, 'flow-hide-outputs':areOutputsHidden }, template:{ name:templateOf, foreach:cells }")
+.flow-box
+  .flow-box-body(data-bind="css:{ 'flow-hide-sidebar':isSidebarHidden }")
+    .flow-box-notebook
+      .container-fluid
+        .flow-repl(data-bind="css:{ 'flow-hide-inputs':areInputsHidden, 'flow-hide-outputs':areOutputsHidden }, template:{ name:templateOf, foreach:cells }")
+    .flow-box-sidebar
+      // ko with:sidebar
+      include sidebar.jade
+      // /ko
+  .flow-box-footer
+    // ko with:status
+    include status.jade
+    // /ko
+  //- This is at the bottom so that menus are not clipped.
+  //- Could have been done using CSS z-index, but those can get hairy.
+  .flow-box-header
+    include navigation.jade
 
 include keyboard-help-dialog.jade    
 // /ko
@@ -19,6 +32,21 @@ script(type="text/html" id="flow-toolbar")
 
 script(type="text/html" id="flow-navbar")
   include navbar.jade
+
+script(type="text/html" id="flow-status")
+  include status.jade
+
+script(type="text/html" id="flow-sidebar")
+  include sidebar.jade
+
+script(type="text/html" id="flow-clipboard")
+  include clipboard.jade
+
+script(type="text/html" id="flow-clips")
+  include clips.jade
+
+script(type="text/html" id="flow-help")
+  include help.jade
 
 script(type="text/html" id="flow-h1")
   include h1.jade

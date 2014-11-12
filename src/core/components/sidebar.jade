@@ -1,0 +1,8 @@
+.flow-sidebar
+  .flow-tabs.flow-pointer
+    span.flow-tab(data-bind="css:{'active':isHelpMode}, click:switchToHelp") Help
+    span.flow-tab(data-bind="css:{'active':isClipboardMode}, click:switchToClipboard") Clipboard
+
+  div(data-bind="template:{ name:'flow-help', data:help}, visible:isHelpMode")
+  div(data-bind="template:{ name:'flow-clipboard', data:clipboard}, visible:isClipboardMode")
+

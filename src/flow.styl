@@ -25,6 +25,90 @@ smallcaps()
   font-size 10px
   letter-spacing 1px
 
+block()
+  position absolute
+  display block
+
+text-block(height, right=0, left=0)
+  block()
+  left left
+  right right
+  height height
+  line-height height
+
+size(width, height=width)
+  width width
+  height height
+
+// These mixins turn elements into absolutely position block elements.
+// The arguments are always in CSS order: top, right, bottom, left
+//    unless they have widths or heights defined, in which case those
+//    arguments go first.
+dock(top=0, right=0, bottom=0, left=0)
+  block()
+  top top
+  right right
+  bottom bottom
+  left left
+
+dock-top(height, top=0, right=0, left=0)
+  block()
+  top top
+  right right
+  left left
+  height height
+
+dock-bottom(height, right=0, bottom=0, left=0)
+  block()
+  right right
+  bottom bottom
+  left left
+  height height
+
+dock-left(width, top=0, bottom=0, left=0)
+  block()
+  top top
+  bottom bottom
+  left left
+  width width
+
+dock-right(width, top=0, right=0, bottom=0)
+  block()
+  top top
+  right right
+  bottom bottom
+  width width
+
+dock-top-left(width, height, top=0, left=0)
+  block()
+  top top
+  left left
+  size(width, height)
+
+dock-bottom-left(width, height, bottom=0, left=0)
+  block()
+  bottom bottom
+  left left
+  size(width, height)
+
+dock-top-right(width, height, top=0, right=0)
+  block()
+  top top
+  right right
+  size(width, height)
+
+dock-bottom-right(width, height, right=0, bottom=0)
+  block()
+  right right
+  bottom bottom
+  size(width, height)
+
+flow-box-padding-left = 50px
+flow-box-padding-right = 0px
+flow-header-height = 100px
+flow-footer-height = 30px
+flow-sidebar-width = 300px
+
 //TODO table.table is used in frame output
 //TODO alert is used in flow-failure
 
@@ -74,8 +158,13 @@ label
     margin-right 6px
 
 .container-fluid
-  padding-left 50px
-  padding-right 50px
+  padding-left 0
+  padding-right 0
+.flow-box-notebook
+  .container-fluid
+    padding-left flow-box-padding-left
+    padding-right 20px
+    padding-top 10px
 
 .navbar-default
   background none
@@ -88,6 +177,36 @@ label
     > .open
       > a, > a:hover, > a:focus
         background-color flow-color-yellow
+
+.flow-box
+  dock()
+  .flow-box-header
+    dock-top(flow-header-height, 0, flow-box-padding-right, flow-box-padding-left)
+    overflow visible
+    box-sizing border-box
+    border-bottom 1px solid #ddd
+  .flow-box-body
+    dock(flow-header-height, 0, flow-footer-height, 0)
+  .flow-box-notebook
+    dock(0, flow-sidebar-width, 0, 0)
+    overflow auto
+  .flow-box-sidebar
+    dock-right(flow-sidebar-width)
+    overflow auto
+    box-sizing border-box
+    border-left 1px solid #ddd
+  .flow-box-footer
+    dock-bottom(flow-footer-height, flow-box-padding-right, 0, flow-box-padding-left)
+    overflow hidden
+    line-height flow-footer-height
+    box-sizing border-box
+    border-top 1px solid #ddd
+  .flow-box-body
+    &.flow-hide-sidebar
+      .flow-box-sidebar
+        display none
+      .flow-box-notebook
+        right 0
 
 .navbar-brand
   background url(unquote('data:image/png;base64,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')) 15px center no-repeat
@@ -145,6 +264,12 @@ th
       monospace()
       background url(unquote('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAKElEQVQImWN89+4dAwODoKAgAwMDE5z1/v17xv///0NYUBkIS1BQEAB7Uw7Oc/qzUwAAAABJRU5ErkJggg=='))
       padding 5px 10px
+    .flow-cell-actions
+      width 20px
+      text-align right
+      vertical-align top
+      .fa-heart-o:hover
+        color red
     &.flow-cell-has-output
       textarea
         border-left 2px solid tomorrow-blue
@@ -368,6 +493,50 @@ table
     width 10px
     height 10px
     margin-right 3px
+
+.flow-sidebar
+  padding 10px
+  .flow-tabs
+    border-bottom 1px solid flow-color-yellow-dk
+  .flow-tab
+    display inline-block
+    height 21px
+    line-height 21px
+    width 50%
+    text-align center
+    smallcaps()
+    &.active
+      color black
+      background flow-color-yellow
+
+.flow-clipboard
+  p
+    padding 10px
+    border 1px dashed #ddd
+  table
+    width 100%
+  tr:hover
+    background #f1f2f3
+  td
+    border-bottom 1px solid #ddd
+    padding 1px 3px
+    vertical-align top
+    span
+      background flow-color-yellow
+      text-transform uppercase
+      font-size 10px
+      padding 1px 3px
+  pre
+    font-size 85%
+    background none
+    padding 0
+    margin 0
+    &:hover
+      color tomorrow-aqua
+  .fa-play-circle:hover
+    color tomorrow-aqua
+  .fa-play-trash:hover
+    color red
 
 .twitter-typeahead
   width 97%
