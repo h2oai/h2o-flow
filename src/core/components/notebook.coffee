@@ -188,7 +188,7 @@ Flow.Notebook = (_, _renderers) ->
     if _selectedCell.isActive()
       input = _selectedCell.input()
       if input.length > 1
-        cursorPosition = _selectedCell.cursorPosition()
+        cursorPosition = _selectedCell.getCursorPosition()
         if 0 < cursorPosition < input.length - 1
           left = substr input, 0, cursorPosition
           right = substr input, cursorPosition

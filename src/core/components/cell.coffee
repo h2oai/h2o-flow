@@ -15,13 +15,10 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   _isInputVisible = signal yes
   _isOutputVisible = signal yes
 
-  # This is a shim.
-  # The ko 'cursorPosition' custom binding attaches a action() method to this.
-  _cursorPosition = {}
-
-  # This is a shim.
-  # The ko 'autoResize' custom binding attaches a action() method to this.
-  _autoResize = {}
+  # This is a shim for ko binding handlers to attach methods to
+  # The ko 'cursorPosition' custom binding attaches a getCursortPosition() method to this.
+  # The ko 'autoResize' custom binding attaches an autoResize() method to this.
+  _actions = {}
 
   # select and display input when activated
   act _isActive, (isActive) ->
@@ -105,10 +102,9 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     activate: activate
     execute: execute
     clip: clip
-    _cursorPosition: _cursorPosition
-    cursorPosition: -> _cursorPosition.action()
-    _autoResize: _autoResize
-    autoResize: -> _autoResize.action()
+    _actions: _actions
+    getCursorPosition: -> _actions.getCursorPosition()
+    autoResize: -> _actions.autoResize()
     templateOf: (view) -> view.template
     template: 'flow-cell'
 
