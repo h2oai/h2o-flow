@@ -35,7 +35,8 @@ H2O.FrameOutput = (_, _frame) ->
         ]
       ]
 
-    $('a.action', el).click ->
+    $('a.action', el).click (e) ->
+      e.preventDefault()
       $link = $ @
       action = $link.attr 'data-action'
       index = parseInt ($link.attr 'data-index'), 10
@@ -44,8 +45,7 @@ H2O.FrameOutput = (_, _frame) ->
           if index >= 0
             row = data.rows[index]
             if row
-              _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify _frame.key.name}, #{stringify row.label}"
-      return no
+              _.insertAndExecuteCell 'cs', "inspect getColumnSummary #{stringify _frame.key.name}, #{stringify row.label}"
 
     el
 
