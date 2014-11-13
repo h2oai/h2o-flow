@@ -10,6 +10,11 @@ Flow.Renderers = (_, _sandbox) ->
   raw: -> Flow.Raw _
 
 Flow.Notebook = (_, _renderers) ->
+  _id = signal ''
+  _title = signal 'Untitled Notebook'
+  _createdDate = signal new Date()
+  _modifiedDate = signal new Date()
+
   _cells = signals []
   _selectedCell = null
   _selectedCellIndex = -1
@@ -20,6 +25,28 @@ Flow.Notebook = (_, _renderers) ->
   _isSidebarHidden = signal no
   _status = Flow.Status _
   _sidebar = Flow.Sidebar _
+
+  serialize = ->
+    cells = for cell in _cells()
+      type: cell.type()
+      input: cell.input()
+
+    title: _title()
+    cells: cells
+    createdDate: _createdDate().getTime()
+    modifiedDate: (new Date()).getTime()
+
+  deserialize = (id, doc) ->
+    _id id
+    _title doc.title
+    _createdDate new Date doc.createdDate
+    _modifiedDate new Date doc.modifiedDate
+
+    cells = for cell in doc.cells
+      createCell cell.type, cell.input
+    _cells cells
+    selectCell head cells
+    return
 
   createCell = (type='cs', input='') ->
     Flow.Cell _, _renderers, type, input
@@ -187,9 +214,12 @@ Flow.Notebook = (_, _renderers) ->
     _selectedCell.execute -> selectNextCell()
     no
 
-  saveFlow = ->
-    debug 'saveFlow'
-    no
+  saveFile = ->
+    _.storeNotebook _id(), serialize(), (error, id) ->
+      if error
+        debug error
+      else
+        _id id
 
   toggleInput = ->
     _selectedCell.toggleInput()
@@ -237,8 +267,6 @@ Flow.Notebook = (_, _renderers) ->
   openFile = notImplemented
   copyFile = notImplemented
   renameFile = notImplemented
-  saveAndCheckpoint = notImplemented
-  revertToCheckpoint = notImplemented
   printPreview = notImplemented
   pasteCellandReplace = notImplemented
   mergeCellAbove = notImplemented
@@ -268,12 +296,10 @@ Flow.Notebook = (_, _renderers) ->
     createMenu 'File', [
       createMenuItem 'New', createNewFile, yes
       createMenuItem 'Open...', openFile, yes
+      createMenuItem 'Save', saveFile
       menuDivider
-      createMenuItem 'Make a Copy', copyFile, yes
+      createMenuItem 'Save As...', copyFile, yes
       createMenuItem 'Rename...', renameFile, yes
-      createMenuItem 'Save and Checkpoint...', saveAndCheckpoint, yes
-      menuDivider
-      createMenuItem 'Revert to Checkpoint...', revertToCheckpoint, yes
       menuDivider
       createMenuItem 'Print Preview', printPreview, yes
     ]
@@ -354,7 +380,7 @@ Flow.Notebook = (_, _renderers) ->
 
   _toolbar = [
     [
-      createTool 'save', 'Save', saveAndCheckpoint, yes
+      createTool 'save', 'Save', saveFile
     ]
   ,
     [
@@ -408,8 +434,8 @@ Flow.Notebook = (_, _renderers) ->
     [ 'z', 'undo last delete', undoLastDelete ]
     [ 'd d', 'delete cell (press twice)', deleteCell ]
     [ 'shift+m', 'merge cell below', mergeCellBelow ]
-    [ 's', 'save notebook', saveFlow ]
-    #[ 'mod+s', 'save notebook', saveFlow ]
+    [ 's', 'save notebook', saveFile ]
+    #[ 'mod+s', 'save notebook', saveFile ]
     # [ 'l', 'toggle line numbers' ]
     [ 'o', 'toggle output', toggleOutput ]
     # [ 'shift+o', 'toggle output scrolling' ]
@@ -443,7 +469,7 @@ Flow.Notebook = (_, _renderers) ->
     [ 'ctrl+enter', 'run cell', runCell ]
     [ 'alt+enter', 'run cell, insert below', runCellAndInsertBelow ]
     [ 'ctrl+shift+-', 'split cell', splitCell ]
-    [ 'mod+s', 'save notebook', saveFlow ]
+    [ 'mod+s', 'save notebook', saveFile ]
   ]
   
   toKeyboardHelp = (shortcut) ->
@@ -469,12 +495,15 @@ Flow.Notebook = (_, _renderers) ->
    
     insertNewCellBelow()
 
+    link _.loadNotebook, deserialize
+
     link _.selectCell, selectCell
+
     link _.insertAndExecuteCell, (type, input) ->
       defer insertCellBelowAndRun, type, input
+
     link _.insertCell, (type, input) ->
       defer insertCellBelow, type, input
-
 
   link _.ready, initialize
 

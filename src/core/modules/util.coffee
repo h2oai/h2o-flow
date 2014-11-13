@@ -8,6 +8,10 @@ describeCount = (count, singular, plural) ->
     else
       "#{count} #{plural}"
 
+fromNow = (date) -> (moment date).fromNow()
+
 Flow.Util =
   describeCount: describeCount
+  fromNow: fromNow
+
 

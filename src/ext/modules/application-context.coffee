@@ -1,4 +1,6 @@
 H2O.ApplicationContext = (_) ->
+  _.requestGet = do slot
+  _.requestPost = do slot
   _.requestFileGlob = do slot
   _.requestImportFile = do slot
   _.requestImportFiles = do slot
@@ -19,5 +21,9 @@ H2O.ApplicationContext = (_) ->
   _.requestModel = do slot
   _.requestJobs = do slot
   _.requestJob = do slot
+  _.requestObjects = do slot
+  _.requestObject = do slot
+  _.requestDeleteObject = do slot
+  _.requestPutObject = do slot
   _.inspect = do slot
   _.plot = do slot

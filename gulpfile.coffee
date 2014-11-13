@@ -44,9 +44,11 @@ config =
     deploy: process.env.FLOW_DEPLOY_DIR or process.env.npm_config_output or './build'
   lib:
     js: [
+      'lib/node-uuid/uuid.js'
       'lib/stacktrace-js/stacktrace.js'
       'lib/jquery/dist/jquery.js'
       'lib/jquery-textrange/jquery-textrange.js'
+      'lib/momentjs/min/moment.min.js'
       'lib/mousetrap/mousetrap.js'
       'lib/mousetrap/plugins/global-bind/mousetrap-global-bind.js'
       'lib/lodash/dist/lodash.js'

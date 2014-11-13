@@ -46,8 +46,10 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
 
   plotPredictions = ->
     _.insertAndExecuteCell 'cs', _predictionsTable.meta.plot
+
   plotScores = ->
     _.insertAndExecuteCell 'cs', _scoresTable.meta.plot
+
   plotMetrics = ->
     _.insertAndExecuteCell 'cs', _metricsTable.meta.plot
 
