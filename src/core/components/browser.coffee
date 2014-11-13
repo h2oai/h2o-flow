@@ -17,6 +17,7 @@ Flow.Browser = (_) ->
           _docs.remove self
 
     self =
+      id: id
       title: _title
       doc: doc
       date: _date
@@ -30,6 +31,9 @@ Flow.Browser = (_) ->
         if error
           go error
         else
+          for source, index in _docs() when source.id is id
+            break
+          _docs.splice index, 1, createDocView [ 'notebook', id, doc ]
           go null, id
     else
       id = uuid()

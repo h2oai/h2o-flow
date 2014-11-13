@@ -2,8 +2,8 @@
   // ko foreach:$data
   .btn-group
     // ko foreach:$data
-    button.btn.btn-default.flow-toolbar-button(type='button' data-bind='attr:{ title:label }')
-      i(data-bind="attr:{ 'class':icon }, click:action")
+    button.btn.btn-default.flow-toolbar-button(type='button' data-bind='attr:{ title:label }, click:action')
+      i(data-bind="attr:{ 'class':icon }")
     // /ko
   // /ko
 

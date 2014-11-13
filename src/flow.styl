@@ -15,6 +15,7 @@ flow-color-yellow = #FAF185
 flow-color-yellow-dk = #F6E76A
 flow-color-yellow-lt = #FBF3B5
 flow-color-orange = #F5A623
+flow-color-link = #428bca
 
 monospace()
   font-family 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace
@@ -105,7 +106,7 @@ dock-bottom-right(width, height, right=0, bottom=0)
 
 flow-box-padding-left = 50px
 flow-box-padding-right = 0px
-flow-header-height = 100px
+flow-header-height = 125px
 flow-footer-height = 30px
 flow-sidebar-width = 300px
 flow-sidebar-header-height = 31px
@@ -460,6 +461,25 @@ table
   padding 2px 7px
   border-radius 2px
 
+.flow-titlebar
+  height 32px
+  span
+    font-size 120%
+    font-weight 300
+  input
+    width 90%
+  .fa
+    margin-left 5px
+  .fa-pencil
+    display none
+  &:hover
+    span
+      color flow-color-link
+    .fa-pencil
+      display inline
+  
+
+
 //TODO move to failure.styl
 .flow-failure
   border-top 1px dotted #ccc
@@ -563,9 +583,9 @@ table
     max-width 200px
     overflow ellipsis
     &:hover
-      color tomorrow-aqua
+      color flow-color-link
   .fa-play-circle:hover
-    color tomorrow-aqua
+    color flow-color-link
   .fa-trash-o:hover
     color red
 

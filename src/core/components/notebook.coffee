@@ -11,9 +11,15 @@ Flow.Renderers = (_, _sandbox) ->
 
 Flow.Notebook = (_, _renderers) ->
   _id = signal ''
-  _title = signal 'Untitled Notebook'
+  _title = signal 'Untitled Flow'
   _createdDate = signal new Date()
   _modifiedDate = signal new Date()
+
+  _isEditingTitle = signal no
+  editTitle = ->
+    _isEditingTitle yes
+  saveTitle = ->
+    _isEditingTitle no
 
   _cells = signals []
   _selectedCell = null
@@ -507,6 +513,10 @@ Flow.Notebook = (_, _renderers) ->
 
   link _.ready, initialize
 
+  title: _title
+  isEditingTitle: _isEditingTitle
+  editTitle: editTitle
+  saveTitle: saveTitle
   menus: _menus
   sidebar: _sidebar
   status: _status
