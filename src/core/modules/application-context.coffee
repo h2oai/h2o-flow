@@ -4,6 +4,9 @@ Flow.ApplicationContext = (_) ->
   _.insertCell = do slot
   _.insertAndExecuteCell = do slot
   _.showHelp = do slot
+  _.showBrowser = do slot
   _.showClipboard = do slot
   _.saveClip = do slot
+  _.loadNotebook = do slot
+  _.storeNotebook = do slot
 
