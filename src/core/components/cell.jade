@@ -6,7 +6,7 @@
         tbody
           tr
             td 
-              textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_cursorPosition, autoResize:input")
+              textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_cursorPosition, autoResize:_autoResize")
             td.flow-cell-actions
               i.fa.fa-heart-o.flow-pointer(title='Save to clipboard' data-bind='click:clip')
   .flow-cell-output(data-bind='visible:isOutputVisible')

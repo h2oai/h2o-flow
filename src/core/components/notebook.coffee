@@ -234,7 +234,17 @@ Flow.Notebook = (_, _renderers) ->
     _selectedCell.toggleOutput()
 
   toggleAllInputs = ->
-    _areInputsHidden not _areInputsHidden()
+    wereHidden = _areInputsHidden()
+    _areInputsHidden not wereHidden
+    #
+    # If cells are generate while inputs are hidden, the input boxes
+    #   do not resize to fit contents. So explicitly ask all cells 
+    #   to resize themselves.
+    #
+    if wereHidden
+      for cell in _cells()
+        cell.autoResize()
+    return
 
   toggleAllOutputs = ->
     _areOutputsHidden not _areOutputsHidden()

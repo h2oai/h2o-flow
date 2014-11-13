@@ -54,19 +54,21 @@ ko.bindingHandlers.cursorPosition =
   init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
     if arg = ko.unwrap valueAccessor()
       # Bit of a hack. Attaches a method to the bound object that returns the cursor position. Uses dwieeb/jquery-textrange.
-      arg.read = -> $(element).textrange 'get', 'position'
+      arg.action = -> $(element).textrange 'get', 'position'
     return
 
 ko.bindingHandlers.autoResize =
   update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
-    resize = -> defer ->
-      $el
-        .css 'height', 'auto'
-        .height element.scrollHeight
+    if arg = ko.unwrap valueAccessor()
+      # Bit of a hack. Attaches a method to the bound object that resizes the element to fit its content.
+      arg.action = resize = -> defer ->
+        $el
+          .css 'height', 'auto'
+          .height element.scrollHeight
 
-    $el = $(element).on 'input', resize
+      $el = $(element).on 'input', resize
 
-    resize()
+      resize()
     return
 
 ko.bindingHandlers.dom =
