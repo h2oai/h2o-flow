@@ -33,7 +33,7 @@ createDropdownControl = (parameter) ->
   control.defaultValue = parameter.default_value
   control
 
-createListControl = (parameter) ->
+createListControl__old = (parameter) ->
   _value = signal parameter.actual_value or []
   _selection = lift _value, (items) ->
     caption = "#{Flow.Util.describeCount items.length, 'column'} selected"
@@ -45,6 +45,73 @@ createListControl = (parameter) ->
   control.value = _value
   control.selection = _selection
   control.defaultValue = parameter.default_value
+  control
+
+createListControl = (parameter) ->
+  _searchTerm = signal ''
+
+  createValueView = (value) ->
+    _isVisible = signal yes
+    _isAvailable = signal yes
+
+    include = ->
+      self.isAvailable no
+      _selectedValues.push self
+
+    exclude = ->
+      self.isAvailable yes
+      _selectedValues.remove self
+
+    self =
+      value: value
+      include: include
+      exclude: exclude
+      isVisible: _isVisible
+      isAvailable: _isAvailable
+
+  _values = signals parameter.values
+  _availableValues = lift _values, (vals) -> map vals, createValueView
+  _views = {}
+  for view in _availableValues()
+    _views[view.value] = view
+
+  _selectedValues = signals map parameter.actual_value, (selectedValue) ->
+    view = _views[selectedValue]
+    view.isAvailable no
+    view
+
+  _value = lift _selectedValues, (views) ->
+    for view in views
+      view.value
+
+  includeAll = ->
+    for view in _availableValues() when view.isVisible()
+      view.include()
+    return
+
+  excludeAll = ->
+    selectedValues = copy _selectedValues()
+    for view in selectedValues
+      view.exclude()
+    return
+  
+  _search = ->
+    for view in _availableValues()
+      term = _searchTerm().trim()
+      view.isVisible term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
+    return
+
+  react _searchTerm, throttle _search, 500
+
+  control = createControl 'list', parameter
+  control.values = _values
+  control.availableValues = _availableValues
+  control.selectedValues = _selectedValues
+  control.value = _value
+  control.searchTerm = _searchTerm
+  control.defaultValue = parameter.default_value
+  control.includeAll = includeAll
+  control.excludeAll = excludeAll
   control
 
 createCheckboxControl = (parameter) ->

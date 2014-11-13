@@ -2,11 +2,33 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
   th
     label(data-bind='text:label')
   td
-    select(data-bind="options:values, selectedOptions:value", multiple='true', size='5', style='min-width:150px')
+    div(style='height:25px')
+      input.flow-textbox(type='text' placeholder='Search...' data-bind="value:searchTerm, valueUpdate:'afterkeydown'")
+    div(style='margin-bottom:5px;height:200px;overflow:auto;border:1px dotted #ccc')
+      table
+        tbody
+          // ko foreach:availableValues
+          tr(data-bind='visible:isVisible')
+            td
+              i.fa.fa-plus.flow-pointer(title='Add' data-bind='click:include, visible:isAvailable')
+            td(data-bind='text:value')
+          // /ko
+    div
+      +button('Add all', 'plus', 'includeAll')
   td
-    span(data-bind='text:description')
-    br
-    span(data-bind='text:selection')
+    div(style='height:25px') Selected:
+    div(style='margin-bottom:5px;height:200px;overflow:auto;border:1px dotted #ccc')
+      table
+        tbody
+          // ko foreach:selectedValues
+          tr
+            td
+              i.fa.fa-remove.flow-pointer(title='Remove' data-bind='click:exclude')
+            td(data-bind='text:value')
+          // /ko
+    div
+      +button('Clear All', 'remove', 'excludeAll')
+
 tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage")
   th &nbsp;
   td(colspan='2' data-bind='text:message')
