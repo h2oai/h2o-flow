@@ -36,11 +36,13 @@ createDropdownControl = (parameter) ->
   control
 
 createListControl = (parameter) ->
-  _searchTerm = signal ''
+  _availableSearchTerm = signal ''
+  _selectedSearchTerm = signal ''
 
   createValueView = (value) ->
-    _isVisible = signal yes
     _isAvailable = signal yes
+    _canInclude = signal yes
+    _canExclude = signal yes
 
     include = ->
       self.isAvailable no
@@ -54,7 +56,8 @@ createListControl = (parameter) ->
       value: value
       include: include
       exclude: exclude
-      isVisible: _isVisible
+      canInclude: _canInclude
+      canExclude: _canExclude
       isAvailable: _isAvailable
 
   _values = signals parameter.values
@@ -73,7 +76,7 @@ createListControl = (parameter) ->
       view.value
 
   includeAll = ->
-    for view in _availableValues() when view.isVisible()
+    for view in _availableValues() when view.canInclude() and view.isAvailable()
       view.include()
     return
 
@@ -83,20 +86,28 @@ createListControl = (parameter) ->
       view.exclude()
     return
   
-  _search = ->
+  _searchAvailable = ->
     for view in _availableValues()
-      term = _searchTerm().trim()
-      view.isVisible term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
+      term = _availableSearchTerm().trim()
+      view.canInclude term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
     return
 
-  react _searchTerm, throttle _search, 500
+  _searchSelected = ->
+    for view in _availableValues()
+      term = _selectedSearchTerm().trim()
+      view.canExclude term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
+    return
+
+  react _availableSearchTerm, throttle _searchAvailable, 500
+  react _selectedSearchTerm, throttle _searchSelected, 500
 
   control = createControl 'list', parameter
   control.values = _values
   control.availableValues = _availableValues
   control.selectedValues = _selectedValues
   control.value = _value
-  control.searchTerm = _searchTerm
+  control.availableSearchTerm = _availableSearchTerm
+  control.selectedSearchTerm = _selectedSearchTerm
   control.defaultValue = parameter.default_value
   control.includeAll = includeAll
   control.excludeAll = excludeAll
