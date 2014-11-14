@@ -564,6 +564,7 @@ H2O.Routines = (_) ->
     enumColumns = (column for column in frame.columns when column.type is 'enum')
     inspections.factors = inspectFrameColumns 'factors', frameKey, frame, enumColumns if enumColumns.length > 0
     inspect_ frame, inspections
+    render_ frame, -> H2O.FrameOutput _, frame
 
   extendColumnSummary = (frameKey, frame, columnName) ->
     column = head frame.columns
@@ -776,6 +777,7 @@ H2O.Routines = (_) ->
       inspections.domain = inspectDomain
 
     inspect_ frame, inspections
+    render_ frame, -> go null, H2O.ColumnSummaryOutput _, frameKey, frame, columnName
 
   requestFrame = (frameKey, go) ->
     _.requestFrame frameKey, (error, frame) ->
@@ -804,14 +806,12 @@ H2O.Routines = (_) ->
   getFrame = (frameKey) ->
     switch typeOf frameKey
       when 'String'
-        renderable requestFrame, frameKey, (frame, go) ->
-          go null, H2O.FrameOutput _, frame
+        _fork requestFrame, frameKey
       else
         assist getFrame
 
   getColumnSummary = (frameKey, columnName) ->
-    renderable requestColumnSummary, frameKey, columnName, (frame, go) ->
-      go null, H2O.ColumnSummaryOutput _, frameKey, frame, columnName
+    _fork requestColumnSummary, frameKey, columnName
 
   requestModels = (go) ->
     _.requestModels (error, models) ->
