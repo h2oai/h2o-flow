@@ -105,6 +105,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     _actions: _actions
     getCursorPosition: -> _actions.getCursorPosition()
     autoResize: -> _actions.autoResize()
+    scrollIntoView: -> _actions.scrollIntoView()
     templateOf: (view) -> view.template
     template: 'flow-cell'
 

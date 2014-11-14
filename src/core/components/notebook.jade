@@ -2,8 +2,7 @@
 .flow-box
   .flow-box-body(data-bind="css:{ 'flow-hide-sidebar':isSidebarHidden }")
     .flow-box-notebook
-      .container-fluid
-        .flow-repl(data-bind="css:{ 'flow-hide-inputs':areInputsHidden, 'flow-hide-outputs':areOutputsHidden }, template:{ name:templateOf, foreach:cells }")
+      .container-fluid.flow-repl(data-bind="css:{ 'flow-hide-inputs':areInputsHidden, 'flow-hide-outputs':areOutputsHidden }, template:{ name:templateOf, foreach:cells }")
     .flow-box-sidebar
       // ko with:sidebar
       include sidebar.jade

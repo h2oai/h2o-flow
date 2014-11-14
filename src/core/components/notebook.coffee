@@ -76,6 +76,7 @@ Flow.Notebook = (_, _renderers) ->
     _selectedCell.isSelected yes
     _selectedCellIndex = _cells.indexOf _selectedCell
     checkConsistency()
+    defer _selectedCell.scrollIntoView
     _selectedCell
 
   cloneCell = (cell) ->
@@ -154,10 +155,12 @@ Flow.Notebook = (_, _renderers) ->
   insertCellAboveAndRun = (type, input) ->
     cell = insertAbove createCell type, input
     cell.execute()
+    cell
 
   insertCellBelowAndRun = (type, input) ->
     cell = insertBelow createCell type, input
     cell.execute()
+    cell
 
   moveCellDown = ->
     cells = _cells()

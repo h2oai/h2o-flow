@@ -1,4 +1,4 @@
-.flow-cell(data-bind="click:select, css:{ 'flow-cell-selected':isSelected, 'flow-cell-active':isActive, 'flow-cell-ready':isReady, 'flow-cell-busy':isBusy, 'flow-cell-error':hasError }")
+.flow-cell(data-bind="click:select, css:{ 'flow-cell-selected':isSelected, 'flow-cell-active':isActive, 'flow-cell-ready':isReady, 'flow-cell-busy':isBusy, 'flow-cell-error':hasError }, scrollIntoView:_actions")
   .flow-cell-type(data-bind="text:type")
   .flow-cell-input(data-bind="visible:isInputVisible")
     .flow-cell-code(data-bind="visible:hasInput, css:{ 'flow-cell-has-output':hasOutput }")

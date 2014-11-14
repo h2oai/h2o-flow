@@ -58,7 +58,7 @@ ko.bindingHandlers.cursorPosition =
     return
 
 ko.bindingHandlers.autoResize =
-  update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
     if arg = ko.unwrap valueAccessor()
       # Bit of a hack. Attaches a method to the bound object that resizes the element to fit its content.
       arg.autoResize = resize = -> defer ->
@@ -69,6 +69,25 @@ ko.bindingHandlers.autoResize =
       $el = $(element).on 'input', resize
 
       resize()
+    return
+
+ko.bindingHandlers.scrollIntoView =
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    if arg = ko.unwrap valueAccessor()
+      # Bit of a hack. Attaches a method to the bound object that scrolls the cell into view
+      $el = $ element
+      $viewport = $el.closest '.flow-box-notebook'
+      arg.scrollIntoView = ->
+        # height hidden by the top of the viewport
+        position = $viewport.scrollTop()
+        # position().top is the distance between the top of the element
+        #  and the top of the viewport, so add hidden height to it.
+        top = $el.position().top + position
+        height = $viewport.height()
+        # scroll if element is outside the viewport
+        if top - 20 < position or top + 20 > position + height 
+          $viewport.animate { scrollTop: top }, 'fast'
+
     return
 
 ko.bindingHandlers.dom =
