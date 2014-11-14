@@ -974,6 +974,15 @@ H2O.Routines = (_) ->
       .done onDone
       .fail onFail
 
+  dumpFuture = (result, go) ->
+    go null, render_ (result or {}), -> Flow.ObjectBrowser 'dump', result
+
+  dump = (f) ->
+    if f?.isFuture
+      _fork dumpFuture, f
+    else
+      Flow.Async.async -> f 
+
   assist = (func, args...) ->
     if func is undefined
       _fork proceed, H2O.Assist, [ _assistance ]
@@ -1009,6 +1018,7 @@ H2O.Routines = (_) ->
   merge: merge
   #
   # Generic
+  dump: dump
   inspect: inspect
   plot: plot
   grid: grid
