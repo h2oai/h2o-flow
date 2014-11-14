@@ -1,12 +1,12 @@
 H2O.Proxy = (_) ->
   doGet = (path, go) ->
-    debug 'GET', path
+    _.status 'server', 'request', path
     $.getJSON(path)
       .done (data, status, xhr) ->
-        debug '  OK', path
+        _.status 'server', 'response', path
         go null, data
       .fail (xhr, status, error) ->
-        debug '  ***FAIL***', path
+        _.status 'server', 'error', path
         message = if xhr.responseJSON?.errmsg
           xhr.responseJSON.errmsg
         else if status is 0
@@ -16,13 +16,13 @@ H2O.Proxy = (_) ->
         go new Flow.Error message, new Flow.Error "Error calling GET #{path}"
 
   doPost = (path, opts, go) ->
-    debug 'POST', path
+    _.status 'server', 'request', path
     $.post(path, opts)
       .done (data, status, xhr) ->
-        debug '  OK', path
+        _.status 'server', 'response', path
         go null, data
       .fail (xhr, status, error) ->
-        debug '  ***FAIL***', path
+        _.status 'server', 'error', path
         message = if xhr.responseJSON?.errmsg
           xhr.responseJSON.errmsg
         else if status is 0

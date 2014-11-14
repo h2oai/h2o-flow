@@ -594,6 +594,23 @@ table
   pre
     max-width 240px
 
+.flow-status-bar
+  padding-right 10px
+  font-size 80%
+  table
+    width 100%
+  td
+    padding 0 5px
+  .fa-cog
+    display none
+  &.busy
+    background flow-color-yellow
+    .fa-cog
+      display inline
+    .fa-circle
+      display none
+
+
 .twitter-typeahead
   width 97%
 

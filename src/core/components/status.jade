@@ -1,0 +1,10 @@
+.flow-status-bar(data-bind="css:{ 'busy':isBusy }")
+  table
+    tbody
+      tr
+        td(width='1')
+          i.fa.fa-circle(style='color:#1d9d74')
+          i.fa.fa-cog.fa-spin
+        td(data-bind='text:message')
+        td(width='1') Connections:
+        td.flow-right(width='1' data-bind='text:connections')
