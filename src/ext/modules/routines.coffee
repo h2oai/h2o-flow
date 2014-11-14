@@ -41,7 +41,6 @@ formulateGetPredictionsOrigin = (opts) ->
       "getPredictions()"
 
 H2O.Routines = (_) ->
-
   #TODO move these into Flow.Async
   _fork = (f, args...) -> Flow.Async.fork f, args
   _join = (args..., go) -> Flow.Async.join args, Flow.Async.applicate go
@@ -51,11 +50,10 @@ H2O.Routines = (_) ->
   _async = Flow.Async.async
   _get = Flow.Async.get
 
-  renderable = Flow.Async.renderable #XXX obsolete
+  proceed = (func, args, go) ->
+    go null, render_ {}, -> apply func, null, [_].concat args or []
 
-  proceed = (func, args) ->
-    renderable Flow.Async.noop, (ignore, go) ->
-      go null, apply func, null, [_].concat args or []
+  renderable = Flow.Async.renderable #XXX obsolete
 
   form = (controls, go) ->
     go null, signals controls or []
@@ -978,17 +976,17 @@ H2O.Routines = (_) ->
 
   assist = (func, args...) ->
     if func is undefined
-      proceed H2O.Assist, [ _assistance ]
+      _fork proceed, H2O.Assist, [ _assistance ]
     else
       switch func
         when importFiles
-          proceed H2O.ImportFilesInput
+          _fork proceed, H2O.ImportFilesInput, []
         when buildModel
-          proceed H2O.ModelInput, args
+          _fork proceed, H2O.ModelInput, args
         when predict, getPrediction
-          proceed H2O.PredictInput, args
+          _fork proceed, H2O.PredictInput, args
         else
-          proceed H2O.NoAssistView
+          _fork proceed, H2O.NoAssistView, []
 
   link _.ready, ->
     link _.inspect, inspect

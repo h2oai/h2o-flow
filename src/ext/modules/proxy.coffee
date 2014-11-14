@@ -1,35 +1,32 @@
 H2O.Proxy = (_) ->
-  doGet = (path, go) ->
+  
+  http = (path, opts, go) ->
     _.status 'server', 'request', path
-    $.getJSON(path)
-      .done (data, status, xhr) ->
-        _.status 'server', 'response', path
-        go null, data
-      .fail (xhr, status, error) ->
-        _.status 'server', 'error', path
-        message = if xhr.responseJSON?.errmsg
-          xhr.responseJSON.errmsg
-        else if status is 0
-          'Could not connect to H2O'
-        else
-          'Unknown error'
-        go new Flow.Error message, new Flow.Error "Error calling GET #{path}"
 
-  doPost = (path, opts, go) ->
-    _.status 'server', 'request', path
-    $.post(path, opts)
-      .done (data, status, xhr) ->
-        _.status 'server', 'response', path
+    req = if opts then $.post path, opts else $.getJSON path
+
+    req.done (data, status, xhr) ->
+      _.status 'server', 'response', path
+
+      try
         go null, data
-      .fail (xhr, status, error) ->
-        _.status 'server', 'error', path
-        message = if xhr.responseJSON?.errmsg
-          xhr.responseJSON.errmsg
-        else if status is 0
-          'Could not connect to H2O'
-        else
-          'Unknown error'
-        go new Flow.Error message, new Flow.Error "Error calling POST #{path} with opts #{JSON.stringify opts}"
+      catch error
+        go new Flow.Error (if opts then "Error processing POST #{path}" else "Error processing GET #{path}"), error
+
+    req.fail (xhr, status, error) ->
+      _.status 'server', 'error', path
+
+      message = if xhr.responseJSON?.errmsg
+        xhr.responseJSON.errmsg
+      else if status is 0
+        'Could not connect to H2O'
+      else
+        'Unknown error'
+
+      go new Flow.Error message, new Flow.Error if opts then "Error calling POST #{path} with opts #{JSON.stringify opts}" else "Error calling GET #{path}"
+
+  doGet = (path, go) -> http path, null, go
+  doPost = http
 
   mapWithKey = (obj, f) ->
     result = []

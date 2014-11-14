@@ -253,7 +253,8 @@ H2O.ModelInput = (_, _algo, _opts) ->
 
   do ->
     _.requestModelBuilders (error, result) ->
-      _algorithms (key for key in keys(result.model_builders) when key isnt 'example')
+      modelBuilders = if error then [] else result.model_builders
+      _algorithms (key for key in keys modelBuilders when key isnt 'example')
       frameKey = _opts?.training_frame
       act _algorithm, (algorithm) ->
         if algorithm
