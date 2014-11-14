@@ -233,6 +233,14 @@ H2O.ModelInput = (_, _algo, _opts) ->
   _modelForm = signal null
 
   populateFramesAndColumns = (frameKey, algorithm, parameters, go) ->
+
+    #
+    # Force classification.
+    #
+    classificationParameter = findParameter parameters, 'do_classification'
+    if classificationParameter
+      classificationParameter.actual_value = classificationParameter.default_value = "true"
+
     # Fetch frame list; pick column names from training frame
     _.requestFrames (error, frames) ->
       if error
