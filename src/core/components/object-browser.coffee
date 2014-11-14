@@ -15,7 +15,7 @@ previewObject = (object) ->
   count = 0
   previews = []
   ellipsis = ''
-  for key, value of object
+  for key, value of object when key isnt '_flow_'
     previews.push "#{key}: #{preview value}"
     if ++count is 5
       ellipsis = ', ...'
@@ -44,7 +44,7 @@ Flow.ObjectBrowserElement = (key, object) ->
     return unless _canExpand
     if _expansions() is null
       expansions = []
-      for key, value of object
+      for key, value of object when key isnt '_flow_'
         expansions.push Flow.ObjectBrowserElement key, value
       _expansions expansions
     _isExpanded not _isExpanded()
