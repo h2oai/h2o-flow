@@ -2,6 +2,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   _guid = do uniqueId
   _type = signal type
   _render = lift _type, (type) -> _renderers[type] _guid
+  _isCode = lift _render, (render) -> render.isCode
   _isSelected = signal no
   _isActive = signal no
   _hasError = signal no
@@ -25,7 +26,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     if isActive
       _.selectCell self
       _hasInput yes
-      _outputs [] unless _render().isCode
+      _outputs [] unless _isCode()
     return
 
   # deactivate when deselected
@@ -80,6 +81,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   self =
     guid: _guid
     type: _type
+    isCode: _isCode
     isSelected: _isSelected
     isActive: _isActive
     hasError: _hasError
