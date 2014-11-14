@@ -35,20 +35,6 @@ createDropdownControl = (parameter) ->
   control.defaultValue = parameter.default_value
   control
 
-createListControl__old = (parameter) ->
-  _value = signal parameter.actual_value or []
-  _selection = lift _value, (items) ->
-    caption = "#{Flow.Util.describeCount items.length, 'column'} selected"
-    caption += ": #{items.join ', '}" if items.length > 0
-    "(#{caption})"
-
-  control = createControl 'list', parameter
-  control.values = signals parameter.values
-  control.value = _value
-  control.selection = _selection
-  control.defaultValue = parameter.default_value
-  control
-
 createListControl = (parameter) ->
   _searchTerm = signal ''
 
@@ -267,7 +253,7 @@ H2O.ModelInput = (_, _algo, _opts) ->
     #
     classificationParameter = findParameter parameters, 'do_classification'
     if classificationParameter
-      classificationParameter.actual_value = classificationParameter.default_value = "true"
+      classificationParameter.actual_value = "true"
 
     # Fetch frame list; pick column names from training frame
     _.requestFrames (error, frames) ->
