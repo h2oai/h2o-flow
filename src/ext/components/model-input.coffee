@@ -75,6 +75,9 @@ createListControl = (parameter) ->
     for view in views
       view.value
 
+  _availableValuesCaption = signal "0 items hidden"
+  _selectedValuesCaption = signal "0 items hidden"
+
   includeAll = ->
     for view in _availableValues() when view.canInclude() and view.isAvailable()
       view.include()
@@ -87,15 +90,27 @@ createListControl = (parameter) ->
     return
   
   _searchAvailable = ->
+    hiddenCount = 0
     for view in _availableValues()
       term = _availableSearchTerm().trim()
-      view.canInclude term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
+      if term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
+        view.canInclude yes
+      else
+        view.canInclude no
+        hiddenCount++
+    _availableValuesCaption "#{hiddenCount} items hidden"
     return
 
   _searchSelected = ->
+    hiddenCount = 0
     for view in _availableValues()
       term = _selectedSearchTerm().trim()
-      view.canExclude term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
+      if term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
+        view.canExclude yes
+      else
+        view.canExclude no
+        hiddenCount++ if not view.isAvailable()
+    _selectedValuesCaption "#{hiddenCount} items hidden"
     return
 
   react _availableSearchTerm, throttle _searchAvailable, 500
@@ -108,6 +123,8 @@ createListControl = (parameter) ->
   control.value = _value
   control.availableSearchTerm = _availableSearchTerm
   control.selectedSearchTerm = _selectedSearchTerm
+  control.availableValuesCaption = _availableValuesCaption
+  control.selectedValuesCaption = _selectedValuesCaption
   control.defaultValue = parameter.default_value
   control.includeAll = includeAll
   control.excludeAll = excludeAll
