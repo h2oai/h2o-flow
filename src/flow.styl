@@ -527,7 +527,7 @@ table
       display inline-block
       height flow-sidebar-header-height - 10px
       line-height flow-sidebar-header-height - 10px
-      width 33.3%
+      width 25%
       text-align center
       smallcaps()
       &:hover
@@ -556,7 +556,7 @@ table
   .fa-trash-o:hover
     color red
 
-.flow-clipboard
+.flow-clipboard, .flow-outline
   p
     padding 10px
     border 1px dashed #ddd
@@ -573,6 +573,9 @@ table
       text-transform uppercase
       font-size 10px
       padding 1px 3px
+      &.active
+        background flow-color-orange
+        color #fff
   pre
     font-size 85%
     background none

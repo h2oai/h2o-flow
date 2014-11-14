@@ -1,12 +1,14 @@
 .flow-sidebar
   .flow-sidebar-header
     .flow-tabs.flow-pointer
-      span.flow-tab(data-bind="css:{'active':isHelpMode}, click:switchToHelp") Help
+      span.flow-tab(data-bind="css:{'active':isOutlineMode}, click:switchToOutline") Outline
       span.flow-tab(data-bind="css:{'active':isBrowserMode}, click:switchToBrowser") Files
-      span.flow-tab(data-bind="css:{'active':isClipboardMode}, click:switchToClipboard") Clipboard
+      span.flow-tab(data-bind="css:{'active':isClipboardMode}, click:switchToClipboard") Clips
+      span.flow-tab(data-bind="css:{'active':isHelpMode}, click:switchToHelp") Help
 
   .flow-sidebar-body
-    div(data-bind="template:{ name:'flow-help', data:help}, visible:isHelpMode")
-    div(data-bind="template:{ name:'flow-clipboard', data:clipboard}, visible:isClipboardMode")
+    div(data-bind="template:{ name:'flow-outline', data:outline}, visible:isOutlineMode")
     div(data-bind="template:{ name:'flow-browser', data:browser}, visible:isBrowserMode")
+    div(data-bind="template:{ name:'flow-clipboard', data:clipboard}, visible:isClipboardMode")
+    div(data-bind="template:{ name:'flow-help', data:help}, visible:isHelpMode")
 

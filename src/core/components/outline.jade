@@ -1,0 +1,13 @@
+.flow-outline
+  h4 Outline
+
+  table
+    tbody
+      // ko foreach:cells
+      tr.flow-pointer(data-bind='click:select')
+        td.flow-right(width='1')
+          span(data-bind="text:type, css:{'active':isSelected}")
+        td
+          pre(data-bind='text:input, attr:{title:input}')
+      // /ko
+

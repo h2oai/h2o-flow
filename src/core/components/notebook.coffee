@@ -30,7 +30,8 @@ Flow.Notebook = (_, _renderers) ->
   _areOutputsHidden = signal no
   _isSidebarHidden = signal no
   _status = Flow.Status _
-  _sidebar = Flow.Sidebar _
+  _sidebar = Flow.Sidebar _, _cells
+
 
   serialize = ->
     cells = for cell in _cells()
@@ -255,6 +256,14 @@ Flow.Notebook = (_, _renderers) ->
   toggleSidebar = ->
     _isSidebarHidden not _isSidebarHidden()
 
+  showBrowser = ->
+    _isSidebarHidden no
+    _.showBrowser()
+
+  showOutline = ->
+    _isSidebarHidden no
+    _.showOutline()
+
   showClipboard = ->
     _isSidebarHidden no
     _.showClipboard()
@@ -351,6 +360,8 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Toggle All Outputs', toggleAllOutputs
       menuDivider
       createMenuItem 'Toggle Sidebar', toggleSidebar
+      createMenuItem 'Outline', showOutline
+      createMenuItem 'Files', showBrowser
       createMenuItem 'Clipboard', showClipboard
       menuDivider
       createMenuItem 'Presentation Mode', switchToPresentationMode, yes

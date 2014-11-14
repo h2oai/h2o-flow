@@ -1,9 +1,9 @@
-Flow.Sidebar = (_) ->
+Flow.Sidebar = (_, cells) ->
   _mode = signal 'help'
 
-  _help = Flow.Help _
-  _isHelpMode = lift _mode, (mode) -> mode is 'help'
-  switchToHelp = -> _mode 'help'
+  _outline = Flow.Outline _, cells
+  _isOutlineMode = lift _mode, (mode) -> mode is 'outline'
+  switchToOutline = -> _mode 'outline'
 
   _browser = Flow.Browser _
   _isBrowserMode = lift _mode, (mode) -> mode is 'browser'
@@ -12,6 +12,10 @@ Flow.Sidebar = (_) ->
   _clipboard = Flow.Clipboard _
   _isClipboardMode = lift _mode, (mode) -> mode is 'clipboard'
   switchToClipboard = -> _mode 'clipboard'
+
+  _help = Flow.Help _
+  _isHelpMode = lift _mode, (mode) -> mode is 'help'
+  switchToHelp = -> _mode 'help'
 
   link _.ready, ->
     link _.showHelp, ->
@@ -23,12 +27,18 @@ Flow.Sidebar = (_) ->
     link _.showBrowser, ->
       switchToBrowser()
 
-  help: _help
-  isHelpMode: _isHelpMode
-  switchToHelp: switchToHelp
+    link _.showOutline, ->
+      switchToOutline()
+
+  outline: _outline
+  isOutlineMode: _isOutlineMode
+  switchToOutline: switchToOutline
   browser: _browser
   isBrowserMode: _isBrowserMode
   switchToBrowser: switchToBrowser
   clipboard: _clipboard
   isClipboardMode: _isClipboardMode
   switchToClipboard: switchToClipboard
+  help: _help
+  isHelpMode: _isHelpMode
+  switchToHelp: switchToHelp
