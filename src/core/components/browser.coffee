@@ -1,5 +1,9 @@
 Flow.Browser = (_) ->
   _docs = signals []
+
+  _sortedDocs = lift _docs, (docs) ->
+    sortBy docs, (doc) -> -doc.date().getTime()
+
   _hasDocs = lift _docs, (docs) -> docs.length > 0
 
   createDocView = ([ type, id, doc ]) ->
@@ -13,6 +17,7 @@ Flow.Browser = (_) ->
     purge = ->
       _.requestDeleteObject type, id, (error) ->
         if error
+          debug error
         else
           _docs.remove self
 
@@ -57,6 +62,6 @@ Flow.Browser = (_) ->
 
   link _.storeNotebook, storeNotebook
 
-  docs: _docs
+  docs: _sortedDocs
   hasDocs: _hasDocs
   loadNotebooks: loadNotebooks
