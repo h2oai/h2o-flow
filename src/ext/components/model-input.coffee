@@ -115,6 +115,7 @@ createListControl = (parameter) ->
 
   react _availableSearchTerm, throttle _searchAvailable, 500
   react _selectedSearchTerm, throttle _searchSelected, 500
+  react _selectedValues, throttle _searchSelected, 500
 
   control = createControl 'list', parameter
   control.values = _values
