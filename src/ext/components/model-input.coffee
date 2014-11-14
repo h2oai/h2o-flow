@@ -4,17 +4,19 @@ createControl = (kind, parameter) ->
   _hasInfo = signal no
   _message = signal ''
   _hasMessage = lift _message, (message) -> if message then yes else no
+  _isVisible = signal yes
 
   kind: kind
   name: parameter.name
   label: parameter.label
   description: parameter.help
-  required: parameter.required
+  isRequired: parameter.required
   hasError: _hasError
   hasWarning: _hasWarning
   hasInfo: _hasInfo
   message: _message
   hasMessage: _hasMessage
+  isVisible: _isVisible
 
 createTextboxControl = (parameter) ->
   _value = signal parameter.actual_value
@@ -144,10 +146,10 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   _exception = signal null
 
   _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
-  _controls = map [ 'critical', 'secondary', 'expert' ], (type) ->
+  _controlGroups = map [ 'critical', 'secondary', 'expert' ], (type) ->
     filter (map _parametersByLevel[type], createControlFromParameter), (a) -> if a then yes else no
 
-  [ criticalControls, secondaryControls, expertControls ] = _controls
+  [ criticalControls, secondaryControls, expertControls ] = _controlGroups
 
   _form = flatten [ 
     kind: 'group'
@@ -165,6 +167,12 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   ,
     expertControls
   ]
+
+  findControl = (name) ->
+    for controls in _controlGroups
+      for control in controls when control.name is name
+        return control
+    return
 
   parameterTemplateOf = (control) -> "flow-#{control.kind}-model-parameter"
 
@@ -185,12 +193,12 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                   ignoredColumnsParameter.values columnLabels
           return
 
-  collectParameters = (collectAll=no) ->
+  collectParameters = (includeUnchangedParameters=no) ->
     parameters = {}
-    for controls in _controls
+    for controls in _controlGroups
       for control in controls
         value = control.value()
-        if collectAll or (control.defaultValue isnt value)
+        if includeUnchangedParameters or (control.defaultValue isnt value)
           switch control.kind
             when 'dropdown'
               if value
@@ -202,22 +210,42 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
               parameters[control.name] = value
     parameters
 
+  performValidations = (checkForErrors, go) ->
+    _exception null
+    parameters = collectParameters yes
+    _.requestModelInputValidation _algorithm, parameters, (error, modelBuilder) ->
+      if error
+        _exception Flow.Failure new Flow.Error 'Error fetching initial model builder state', error
+      else
+        hasErrors = no
+        for validation in modelBuilder.validation_messages
+          control = findControl validation.field_name
+          if control
+            if validation.message_type is 'HIDE'
+              control.isVisible no
+            else if not checkForErrors
+              switch validation.message_type
+                when 'INFO'
+                  control.isVisible yes
+                  control.message validation.message
+                when 'WARN'
+                  control.isVisible yes
+                  control.message validation.message
+                when 'ERROR'
+                  control.isVisible yes
+                  control.hasError yes
+                  control.message validation.message
+                  hasErrors = yes
+        go() unless hasErrors
+
   createModel = ->
     _exception null
-    
-#     parameters = collectParameters yes
-#     _.requestModelInputValidation _algorithm, parameters, (error, result) ->
-#       debug error
-#       debug result
-#       return
-#       if error
-#       else
-#         _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
-# 
-#     return
+    performValidations no, ->
+      parameters = collectParameters no
+      _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
 
-    parameters = collectParameters no
-    _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
+  # Kick off validations (minus error checking) to get hidden parameters
+  performValidations yes, ->
 
   form: _form
   exception: _exception

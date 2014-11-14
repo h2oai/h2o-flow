@@ -1,6 +1,7 @@
-tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}")
+tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:isVisible")
   th
     label(data-bind='text:label')
+    span(data-bind='visible:isRequired') *
   td
     input.flow-textbox(type='text' data-bind='value:value')
   td
