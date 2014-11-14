@@ -975,7 +975,9 @@ H2O.Routines = (_) ->
       .fail onFail
 
   dumpFuture = (result, go) ->
-    go null, render_ (result or {}), -> Flow.ObjectBrowser 'dump', result
+    debug result
+    go null, render_ (result or {}), ->
+      Flow.ObjectBrowser 'dump', result
 
   dump = (f) ->
     if f?.isFuture
