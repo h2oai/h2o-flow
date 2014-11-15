@@ -23,7 +23,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
           if error
             output.error new Flow.Error 'Error evaluating cell', error
           else
-            if ft.render
+            if ft.render #XXX obsolete
               ft.render result, (error, result) ->
                 if error
                   output.error new Flow.Error 'Error rendering output', error

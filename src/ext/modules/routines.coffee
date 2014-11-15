@@ -105,6 +105,7 @@ H2O.Routines = (_) ->
     return unless inspectors = root.inspect
     return cached if cached = root._cache_[ key = "inspect_#{attr}" ]
     return unless f = inspectors[attr]
+    return unless isFunction f
     root._cache_[key] = inspection = f()
     render_ inspection, -> H2O.InspectOutput _, inspection
     inspection
@@ -226,9 +227,82 @@ H2O.Routines = (_) ->
       meta:
         origin: "getModel #{stringify model.key}"
 
+  inspectKMeansModelOutput = (model) -> ->
+    output = model.output
+    variables = [
+      Flow.Data.Variable 'parameter', TString
+      Flow.Data.Variable 'value', TObject
+    ]
+
+    Record = Flow.Data.Record variables
+    attrs = [ 'iters', 'mse', 'ncats' ]
+    rows = new Array attrs.length
+    for attr, i in attrs
+      rows[i] = new Record attr, output[attr]
+
+    Flow.Data.Table
+      label: 'output'
+      description: "Output for k-means model '#{model.key}'"
+      variables: variables
+      rows: rows
+      meta:
+        origin: "getModel #{stringify model.key}"
+
+  inspectKMeansModelClusterDetails = (model) -> ->
+    output = model.output
+    variables = [
+      Flow.Data.Variable 'cluster', TNumber
+      Flow.Data.Variable 'rows', TNumber
+      Flow.Data.Variable 'mses', TNumber
+    ]
+    Record = Flow.Data.Record variables
+    rows = new Array output.clusters.length
+    for cluster, i in output.clusters
+      rows[i] = new Record i, output.rows[i], output.mses[i]
+
+    Flow.Data.Table
+      label: 'cluster_details'
+      description: "Clusters for k-means model '#{model.key}'"
+      variables: variables
+      rows: rows
+      meta:
+        origin: "getModel #{stringify model.key}"
+
+  inspectKMeansModelClusters = (model) -> ->
+    output = model.output
+    { clusters, domains, names } = output
+    variables = [
+      Flow.Data.Variable 'names', TNumber
+    ]
+    for i in [ 0 ... clusters.length ]
+      variables.push Flow.Data.Variable "#{i}", TObject
+
+    Record = Flow.Data.Record variables
+    cluster0 = head clusters
+    rows = new Array cluster0.length
+    for i in [ 0 ... cluster0.length ]
+      rows[i] = row = new Record names[i]
+      for cluster, j in clusters
+        row["#{j}"] = if domain = domains[i] 
+          domain[cluster[i]]
+        else
+          cluster[i]
+
+    Flow.Data.Table
+      label: 'clusters'
+      description: "Clusters for k-means model '#{model.key}'"
+      variables: variables
+      rows: rows
+      meta:
+        origin: "getModel #{stringify model.key}"
+
+
   extendKMeansModel = (model) ->
     inspect_ model,
       parameters: inspectModelParameters model
+      output: inspectKMeansModelOutput model
+      clusters: inspectKMeansModelClusters model
+      cluster_details: inspectKMeansModelClusterDetails model
 
   extendDeepLearningModel = (model) ->
     inspect_ model,
