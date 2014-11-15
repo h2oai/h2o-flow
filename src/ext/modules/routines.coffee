@@ -21,6 +21,31 @@ _assistance =
     description: 'Make a prediction'
     icon: 'bolt'
 
+computeTruePositiveRate = (cm) ->
+  [[tn, fp], [fn, tp]] = cm
+  tp / (tp + fn)
+  
+computeFalsePositiveRate = (cm) ->
+  [[tn, fp], [fn, tp]] = cm
+  fp / (fp + tn)
+
+formatConfusionMatrix = (cm) ->
+  [[tn, fp], [fn, tp]] = cm
+  [ table, tbody, tr, td ] = Flow.HTML.template 'table.flow-matrix', 'tbody', 'tr', '=td'
+
+  table [ 
+    tbody [
+      tr [
+        td tn
+        td fp
+      ]
+      tr [
+        td fn
+        td tp
+      ]
+    ]
+  ]
+
 formulateGetPredictionsOrigin = (opts) ->
   if isArray opts
     sanitizedOpts = for opt in opts
@@ -334,14 +359,6 @@ H2O.Routines = (_) ->
 
     render_ models, -> H2O.ModelsOutput _, models
 
-  computeTruePositiveRate = (cm) ->
-    [[tn, fp], [fn, tp]] = cm
-    tp / (tp + fn)
-    
-  computeFalsePositiveRate = (cm) ->
-    [[tn, fp], [fn, tp]] = cm
-    fp / (fp + tn)
-
   read = (value) -> if value is 'NaN' then null else value
 
   inspectPrediction = (prediction) -> ->
@@ -386,7 +403,7 @@ H2O.Routines = (_) ->
       Flow.Data.Variable 'specificity', TNumber
       Flow.Data.Variable 'mcc', TNumber
       Flow.Data.Variable 'max_per_class_error', TNumber
-      Flow.Data.Variable 'confusion_matrix', TObject
+      Flow.Data.Variable 'confusion_matrix', TObject, null, formatConfusionMatrix
       Flow.Data.Variable 'TPR', TNumber
       Flow.Data.Variable 'FPR', TNumber
       Flow.Data.Variable 'key', TString
@@ -496,7 +513,7 @@ H2O.Routines = (_) ->
       Flow.Data.Variable 'specificity', TNumber
       Flow.Data.Variable 'mcc', TNumber
       Flow.Data.Variable 'max_per_class_error', TNumber
-      Flow.Data.Variable 'confusion_matrices', TObject
+      Flow.Data.Variable 'confusion_matrices', TObject, null, formatConfusionMatrix
       Flow.Data.Variable 'TPR', TNumber
       Flow.Data.Variable 'FPR', TNumber
       Flow.Data.Variable 'key', TString

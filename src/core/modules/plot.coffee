@@ -237,6 +237,8 @@ plot = (_config, go) ->
             tdr if value is null then '-' else value
           when TArray
             td if value is null then '-' else value.join ', '
+          when TObject
+            td if value is null then '-' else variable.format value
           else
             td if value is null then '-' else value
       tr tds
