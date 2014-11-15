@@ -18,6 +18,8 @@ H2O.Proxy = (_) ->
 
       message = if xhr.responseJSON?.errmsg
         xhr.responseJSON.errmsg
+      else if error?.message
+        error.message
       else if status is 0
         'Could not connect to H2O'
       else
