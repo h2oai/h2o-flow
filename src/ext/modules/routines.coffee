@@ -333,6 +333,10 @@ H2O.Routines = (_) ->
     inspect_ model,
       parameters: inspectModelParameters model
   
+  extendGBMModel = (model) ->
+    inspect_ model,
+      parameters: inspectModelParameters model
+
   extendGLMModel = (model) ->
     inspect_ model,
       parameters: inspectModelParameters model
@@ -343,6 +347,8 @@ H2O.Routines = (_) ->
         extendKMeansModel model
       when 'deeplearning'
         extendDeepLearningModel model
+      when 'gbm'
+        extendGBMModel model
       when 'glm'
         extendGLMModel model
 
