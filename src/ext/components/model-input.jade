@@ -19,10 +19,15 @@
   // /ko
 
   table.flow-form(data-bind='template: { name: parameterTemplateOf, foreach:form }')
+
   // /ko
 
   .flow-panel
     button.flow-button(type='button' data-bind="click:createModel, enable:canCreateModel")
       i.fa.fa-tasks
       | Build Model
+    // ko with:modelForm
+    span(style='margin-left:10px; color:red' data-bind='visible:hasValidationFailures, text:validationFailureMessage')
+    // /ko
+
 

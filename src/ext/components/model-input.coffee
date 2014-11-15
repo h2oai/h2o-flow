@@ -159,6 +159,8 @@ findParameter = (parameters, name) ->
 
 H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   _exception = signal null
+  _validationFailureMessage = signal ''
+  _hasValidationFailures = lift _validationFailureMessage, isTruthy
 
   _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
   _controlGroups = map [ 'critical', 'secondary', 'expert' ], (type) ->
@@ -191,8 +193,9 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
   parameterTemplateOf = (control) -> "flow-#{control.kind}-model-parameter"
 
+  findFormField = (name) -> find _form, (field) -> field.name is name
+
   do ->
-    findFormField = (name) -> find _form, (field) -> field.name is name
     [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter ] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns' ], findFormField
 
     if trainingFrameParameter
@@ -228,6 +231,15 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   performValidations = (checkForErrors, go) ->
     _exception null
     parameters = collectParameters yes
+    trainingFrameParameter = findFormField 'training_frame'
+    responseColumnParameter = findFormField 'response_column'
+    if trainingFrameParameter and not parameters.training_frame
+      return _validationFailureMessage 'Please specify a training frame.'
+    if responseColumnParameter and not parameters.response_column
+      return _validationFailureMessage 'Please specify a response column.'
+    _validationFailureMessage ''
+    return go()
+
     _.requestModelInputValidation _algorithm, parameters, (error, modelBuilder) ->
       if error
         _exception Flow.Failure new Flow.Error 'Error fetching initial model builder state', error
@@ -260,12 +272,14 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
       _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
 
   # Kick off validations (minus error checking) to get hidden parameters
-  performValidations yes, ->
+  # performValidations yes, ->
 
   form: _form
   exception: _exception
   parameterTemplateOf: parameterTemplateOf
   createModel: createModel
+  hasValidationFailures: _hasValidationFailures
+  validationFailureMessage: _validationFailureMessage
 
 H2O.ModelInput = (_, _algo, _opts) ->
   _exception = signal null
