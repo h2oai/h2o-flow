@@ -8,7 +8,7 @@
             td 
               textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_actions, autoResize:_actions")
             td.flow-cell-actions
-              i.fa.fa-heart-o.flow-pointer(title='Save to clipboard' data-bind='click:clip')
+              i.fa.fa-paperclip.flow-pointer(title='Save to clipboard' data-bind='click:clip')
   .flow-cell-output(data-bind="css:{ 'flow-hide-output': isOutputHidden }")
     // ko if:result
     .flow-cell-result(data-bind='template:{ name: templateOf, data:result }')
