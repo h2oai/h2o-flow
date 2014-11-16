@@ -52,6 +52,11 @@ Flow.Notebook = (_, _renderers) ->
     cells = for cell in doc.cells
       createCell cell.type, cell.input
     _cells cells
+
+    # Execute all non-code cells (headings, markdown, etc.)
+    for cell in _cells()
+      cell.execute() unless cell.isCode() 
+
     selectCell head cells
     return
 
