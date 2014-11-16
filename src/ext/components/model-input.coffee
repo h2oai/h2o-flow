@@ -306,8 +306,7 @@ H2O.ModelInput = (_, _algo, _opts) ->
         trainingFrameParameter = findParameter parameters, 'training_frame'
         if trainingFrameParameter
 
-          # Show only parsed frames
-          trainingFrameParameter.values = (frame.key.name for frame in frames when not frame.isText)
+          trainingFrameParameter.values = (frame.key.name for frame in frames)
 
           if frameKey
             trainingFrameParameter.actual_value = frameKey

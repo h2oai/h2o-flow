@@ -991,7 +991,11 @@ H2O.Routines = (_) ->
   buildModel = (algo, opts) ->
     if algo and opts and keys(opts).length > 1
       renderable _.requestModelBuild, algo, opts, (result, go) ->
-        go null, H2O.JobOutput _, head result.jobs
+        if result.validation_error_count > 0
+          messages = (validation.message for validation in result.validation_messages)
+          go new Flow.Error "Model build failure: #{messages.join '; '}"
+        else
+          go null, H2O.JobOutput _, head result.jobs
     else
       assist buildModel, algo, opts
 

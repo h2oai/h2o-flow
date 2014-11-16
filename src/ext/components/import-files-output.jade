@@ -12,9 +12,8 @@
       tr.flow-actions
         th.flow-narrow Actions
         td.flow-wide
-          button.flow-button(type='button' data-bind="click:parse")
-            i.fa.fa-cog
-            | Parse these files&hellip;
+          +button('Parse these files&hellip;', 'cog', 'parse', 'canParse')
+          +button('Build a model&hellip;', 'cube', 'buildModel', 'canBuildModel')
       // /ko
 
 
