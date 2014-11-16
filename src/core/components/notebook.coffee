@@ -229,7 +229,7 @@ Flow.Notebook = (_, _renderers) ->
     _selectedCell.execute -> selectNextCell()
     no
 
-  saveFile = ->
+  saveNotebook = ->
     _.storeNotebook _id(), serialize(), (error, id) ->
       if error
         debug error
@@ -292,14 +292,30 @@ Flow.Notebook = (_, _renderers) ->
     _isSidebarHidden no
     _.showHelp()
 
+  createNotebook = ->
+    currentTime = (new Date()).getTime()
+
+    deserialize null,
+      title: 'Untitled Flow'
+      cells: [
+        type: 'cs'
+        input: ''
+      ]
+      createdDate: currentTime
+      modifiedDate: currentTime
+
+  duplicateNotebook = ->
+    doc = serialize()
+    doc.title = "Copy of #{doc.title}"
+    doc.createdDate = doc.modifiedDate
+
+    deserialize null, doc
+    saveNotebook()
+
   goToWebsite = (url) -> ->
     window.open url, '_blank'
 
   notImplemented = -> # noop
-  createNewFile = notImplemented
-  openFile = notImplemented
-  copyFile = notImplemented
-  renameFile = notImplemented
   printPreview = notImplemented
   pasteCellandReplace = notImplemented
   mergeCellAbove = notImplemented
@@ -326,13 +342,11 @@ Flow.Notebook = (_, _renderers) ->
   menuDivider = isAction: no
 
   _menus = [
-    createMenu 'File', [
-      createMenuItem 'New', createNewFile, yes
-      createMenuItem 'Open...', openFile, yes
-      createMenuItem 'Save', saveFile
+    createMenu 'Flow', [
+      createMenuItem 'New', createNotebook
+      createMenuItem 'Save', saveNotebook
       menuDivider
-      createMenuItem 'Save As...', copyFile, yes
-      createMenuItem 'Rename...', renameFile, yes
+      createMenuItem 'Duplicate', duplicateNotebook
       menuDivider
       createMenuItem 'Print Preview', printPreview, yes
     ]
@@ -415,7 +429,7 @@ Flow.Notebook = (_, _renderers) ->
 
   _toolbar = [
     [
-      createTool 'save', 'Save', saveFile
+      createTool 'save', 'Save', saveNotebook
     ]
   ,
     [
@@ -469,8 +483,8 @@ Flow.Notebook = (_, _renderers) ->
     [ 'z', 'undo last delete', undoLastDelete ]
     [ 'd d', 'delete cell (press twice)', deleteCell ]
     [ 'shift+m', 'merge cell below', mergeCellBelow ]
-    [ 's', 'save notebook', saveFile ]
-    #[ 'mod+s', 'save notebook', saveFile ]
+    [ 's', 'save notebook', saveNotebook ]
+    #[ 'mod+s', 'save notebook', saveNotebook ]
     # [ 'l', 'toggle line numbers' ]
     [ 'o', 'toggle output', toggleOutput ]
     # [ 'shift+o', 'toggle output scrolling' ]
@@ -504,7 +518,7 @@ Flow.Notebook = (_, _renderers) ->
     [ 'ctrl+enter', 'run cell', runCell ]
     [ 'alt+enter', 'run cell, insert below', runCellAndInsertBelow ]
     [ 'ctrl+shift+-', 'split cell', splitCell ]
-    [ 'mod+s', 'save notebook', saveFile ]
+    [ 'mod+s', 'save notebook', saveNotebook ]
   ]
   
   toKeyboardHelp = (shortcut) ->
