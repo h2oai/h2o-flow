@@ -1094,7 +1094,7 @@ H2O.Routines = (_) ->
         when predict, getPrediction
           _fork proceed, H2O.PredictInput, args
         else
-          _fork proceed, H2O.NoAssistView, []
+          _fork proceed, H2O.NoAssist, []
 
   link _.ready, ->
     link _.inspect, inspect

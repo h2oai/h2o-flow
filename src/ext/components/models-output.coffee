@@ -23,7 +23,7 @@ H2O.ModelsOutput = (_, _models) ->
     predict = ->
       _.insertAndExecuteCell 'cs', "predict #{stringify model.key}"
 
-    clone = ->
+    cloneModel = ->
       return alert 'Not implemented'
       _.insertAndExecuteCell 'cs', "cloneModel #{stringify model.key}"
 
@@ -37,7 +37,7 @@ H2O.ModelsOutput = (_, _models) ->
     algo: model.algo
     isChecked: _isChecked
     predict: predict
-    clone: clone
+    clone: cloneModel
     inspect: inspect
     view: view
 
