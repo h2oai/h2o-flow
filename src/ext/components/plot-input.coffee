@@ -32,8 +32,8 @@ H2O.PlotInput = (_, config) ->
   types: _types
   type: _type
   variables: _variables
-  x: _y
-  y: _x
+  x: _x
+  y: _y
   color: _color
   plot: plot
   canPlot: _canPlot

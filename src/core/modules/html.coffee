@@ -21,7 +21,7 @@ compile = (template, type) ->
   closeTag = "</#{name}>"
 
   if type is '='
-    (content) -> beginTag + content + closeTag
+    (content) -> beginTag + (content or '') + closeTag
   else if type is '+'
     (content, arg0) -> #TODO add more args as necessary
       tag = replace beginTag, '{0}', arg0
