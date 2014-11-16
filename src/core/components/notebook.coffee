@@ -74,7 +74,7 @@ Flow.Notebook = (_, _renderers) ->
     error "selected cell count = #{selectionCount}" if selectionCount isnt 1
     return
 
-  selectCell = (target) ->
+  selectCell = (target, scrollIntoView=yes) ->
     return if _selectedCell is target
     _selectedCell.isSelected no if _selectedCell
     _selectedCell = target
@@ -82,7 +82,7 @@ Flow.Notebook = (_, _renderers) ->
     _selectedCell.isSelected yes
     _selectedCellIndex = _cells.indexOf _selectedCell
     checkConsistency()
-    defer _selectedCell.scrollIntoView
+    defer _selectedCell.scrollIntoView if scrollIntoView
     _selectedCell
 
   cloneCell = (cell) ->

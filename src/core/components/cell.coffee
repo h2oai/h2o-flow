@@ -35,7 +35,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
 
   # tied to mouse-clicks on the cell
   select = ->
-    _.selectCell self
+    _.selectCell self, no # pass scrollIntoView=no, otherwise mouse actions like clicking on a form field will cause scrolling.
     return yes # Explicity return true, otherwise KO will prevent the mouseclick event from bubbling up
 
   # tied to mouse-double-clicks on html content
