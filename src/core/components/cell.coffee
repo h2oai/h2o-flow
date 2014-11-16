@@ -14,7 +14,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   _result = signal null
   _hasOutput = lift _outputs, (outputs) -> outputs.length > 0
   _isInputVisible = signal yes
-  _isOutputVisible = signal yes
+  _isOutputHidden = signal no
 
   # This is a shim for ko binding handlers to attach methods to
   # The ko 'cursorPosition' custom binding attaches a getCursortPosition() method to this.
@@ -94,12 +94,8 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     hasOutput: _hasOutput
     isInputVisible: _isInputVisible
     toggleInput: -> _isInputVisible not _isInputVisible()
-    showInput: -> _isInputVisible yes
-    hideInput: -> _isInputVisible no
-    isOutputVisible: _isOutputVisible
-    toggleOutput: -> _isOutputVisible not _isOutputVisible()
-    showOutput: -> _isOutputVisible yes
-    hideOutput: -> _isOutputVisible no
+    isOutputHidden: _isOutputHidden
+    toggleOutput: -> _isOutputHidden not _isOutputHidden()
     select: select
     activate: activate
     execute: execute
