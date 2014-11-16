@@ -202,7 +202,7 @@ H2O.Routines = (_) ->
         when 'byte', 'short', 'int', 'long', 'float', 'double'
           Flow.Data.Variable parameter.label, TNumber
         when 'string[]'
-          Flow.Data.Variable parameter.label, TArray
+          Flow.Data.Variable parameter.label, TString
         when 'boolean'
           Flow.Data.Variable parameter.label, TBoolean
         else
@@ -362,6 +362,7 @@ H2O.Routines = (_) ->
     if algos.length is 1
       inspect_ models,
         parameters: inspectMultimodelParameters models 
+
 
     render_ models, -> H2O.ModelsOutput _, models
 
