@@ -611,6 +611,10 @@ H2O.Routines = (_) ->
       rows: rows
       meta:
         origin: "getFrame #{stringify frameKey}"
+        plot: """
+        plot
+          data: inspect '#{tableLabel}', getFrame #{stringify frameKey}
+        """
 
   inspectFrameData = (frameKey, frame) -> ->
     frameColumns = frame.columns
