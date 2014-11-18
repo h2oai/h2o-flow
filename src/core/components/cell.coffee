@@ -38,6 +38,12 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     _.selectCell self, no # pass scrollIntoView=no, otherwise mouse actions like clicking on a form field will cause scrolling.
     return yes # Explicity return true, otherwise KO will prevent the mouseclick event from bubbling up
 
+  # tied to mouse-clicks in the outline view
+  navigate = ->
+    _.selectCell self
+    return yes # Explicity return true, otherwise KO will prevent the mouseclick event from bubbling up
+
+
   # tied to mouse-double-clicks on html content
   # TODO
   activate = -> _isActive yes
@@ -97,6 +103,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     isOutputHidden: _isOutputHidden
     toggleOutput: -> _isOutputHidden not _isOutputHidden()
     select: select
+    navigate: navigate
     activate: activate
     execute: execute
     clip: clip
