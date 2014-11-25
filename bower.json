@@ -1,12 +1,12 @@
 {
-  "name": "Steam",
+  "name": "H2O Flow",
   "version": "0.0.0",
-  "homepage": "https://github.com/0xdata/h2o",
+  "homepage": "https://github.com/h2oai/h2o-flow",
   "authors": [
-    "Prithvi Prabhu <prithvi@0xdata.com>"
+    "Prithvi Prabhu <prithvi@h2o.ai>"
   ],
-  "description": "H2O Web Client",
-  "main": "steam.js",
+  "description": "Interactive computational environment for H2O",
+  "main": "index.js",
   "moduleType": [
     "globals"
   ],
@@ -14,7 +14,7 @@
     "H2O",
     "Machine Learning"
   ],
-  "license": "Apache License Version 2.0",
+  "license": "MIT",
   "private": true,
   "ignore": [
     "**/.*",
