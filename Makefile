@@ -2,13 +2,13 @@ B=node_modules/.bin
 O=src/main/resources/www/steam
 
 default: 
-	$B/gulp
+	npm run build --output=../h2o-dev/h2o-web/src/main/resources/www/flow
 
 clean:
-	$B/gulp clean
+	npm run clean
 
 watch:
-	$B/gulp watch
+	npm run watch
 
 check:
 
