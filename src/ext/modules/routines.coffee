@@ -246,11 +246,11 @@ H2O.Routines = (_) ->
 
     Flow.Data.Table
       label: 'parameters'
-      description: "Parameters for model '#{model.key}'" #TODO frame key
+      description: "Parameters for model '#{model.key.name}'" #TODO frame key
       variables: variables
       rows: rows
       meta:
-        origin: "getModel #{stringify model.key}"
+        origin: "getModel #{stringify model.key.name}"
 
   inspectKMeansModelOutput = (model) -> ->
     output = model.output
@@ -267,11 +267,11 @@ H2O.Routines = (_) ->
 
     Flow.Data.Table
       label: 'output'
-      description: "Output for k-means model '#{model.key}'"
+      description: "Output for k-means model '#{model.key.name}'"
       variables: variables
       rows: rows
       meta:
-        origin: "getModel #{stringify model.key}"
+        origin: "getModel #{stringify model.key.name}"
 
   inspectKMeansModelClusterDetails = (model) -> ->
     output = model.output
@@ -287,11 +287,11 @@ H2O.Routines = (_) ->
 
     Flow.Data.Table
       label: 'cluster_details'
-      description: "Clusters for k-means model '#{model.key}'"
+      description: "Clusters for k-means model '#{model.key.name}'"
       variables: variables
       rows: rows
       meta:
-        origin: "getModel #{stringify model.key}"
+        origin: "getModel #{stringify model.key.name}"
 
   inspectKMeansModelClusters = (model) -> ->
     output = model.output
@@ -315,11 +315,11 @@ H2O.Routines = (_) ->
 
     Flow.Data.Table
       label: 'clusters'
-      description: "Clusters for k-means model '#{model.key}'"
+      description: "Clusters for k-means model '#{model.key.name}'"
       variables: variables
       rows: rows
       meta:
-        origin: "getModel #{stringify model.key}"
+        origin: "getModel #{stringify model.key.name}"
 
 
   extendKMeansModel = (model) ->
@@ -379,8 +379,8 @@ H2O.Routines = (_) ->
     Record = Flow.Data.Record variables
 
     rows = []
-    rows.push new Record 'key', model.key
-    rows.push new Record 'frame', frame.key.name
+    rows.push new Record 'key', model.name
+    rows.push new Record 'frame', frame.name
     rows.push new Record 'model_category', prediction.model_category
     rows.push new Record 'duration_in_ms', prediction.duration_in_ms
     rows.push new Record 'scoring_time', prediction.scoring_time
@@ -390,11 +390,11 @@ H2O.Routines = (_) ->
 
     Flow.Data.Table
       label: 'prediction'
-      description: "Prediction output for model '#{model.key}' on frame '#{frame.key.name}'"
+      description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
       variables: variables
       rows: rows
       meta:
-        origin: "getPrediction #{stringify model.key}, #{stringify frame.key.name}"
+        origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
   inspectMetrics = (opts, predictions) -> ->
     variables = [
@@ -440,9 +440,9 @@ H2O.Routines = (_) ->
           cm = auc.confusion_matrix_for_criteria[i] 
           computeTruePositiveRate cm
           computeFalsePositiveRate cm
-          model.key + ' on ' + frame.key.name
-          model.key
-          frame.key.name
+          model.name + ' on ' + frame.name
+          model.name
+          frame.name
         )
 
     Flow.Data.Table
@@ -476,8 +476,8 @@ H2O.Routines = (_) ->
     for prediction, i in predictions
       { frame, model, auc } = prediction
       rows[i] = row = new Record(
-        model.key + ' on ' + frame.key.name
-        model.key
+        model.key.name + ' on ' + frame.key.name
+        model.key.name
         frame.key.name
         prediction.model_category
         prediction.duration_in_ms
@@ -548,9 +548,9 @@ H2O.Routines = (_) ->
           cm = auc.confusion_matrices[i]
           computeTruePositiveRate cm
           computeFalsePositiveRate cm
-          model.key + ' on ' + frame.key.name
-          model.key
-          frame.key.name
+          model.name + ' on ' + frame.name
+          model.name
+          frame.name
         )
 
     Flow.Data.Table

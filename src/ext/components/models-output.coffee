@@ -21,19 +21,19 @@ H2O.ModelsOutput = (_, _models) ->
       _canCompareModels checkedViews.length > 1
 
     predict = ->
-      _.insertAndExecuteCell 'cs', "predict #{stringify model.key}"
+      _.insertAndExecuteCell 'cs', "predict #{stringify model.key.name}"
 
     cloneModel = ->
       return alert 'Not implemented'
-      _.insertAndExecuteCell 'cs', "cloneModel #{stringify model.key}"
+      _.insertAndExecuteCell 'cs', "cloneModel #{stringify model.key.name}"
 
     view = ->
-      _.insertAndExecuteCell 'cs', "getModel #{stringify model.key}"
+      _.insertAndExecuteCell 'cs', "getModel #{stringify model.key.name}"
 
     inspect = ->
-      _.insertAndExecuteCell 'cs', "inspect getModel #{stringify model.key}"
+      _.insertAndExecuteCell 'cs', "inspect getModel #{stringify model.key.name}"
 
-    key: model.key
+    key: model.key.name
     algo: model.algo
     isChecked: _isChecked
     predict: predict
