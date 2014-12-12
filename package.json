@@ -1,5 +1,5 @@
 {
-  "name": "H2O Flow",
+  "name": "h2o-flow",
   "version": "0.0.0",
   "description": "Interactive computational environment for H2O",
   "main": "index.js",
