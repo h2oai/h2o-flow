@@ -142,20 +142,17 @@ createCheckboxControl = (parameter) ->
 
 createControlFromParameter = (parameter) ->
   switch parameter.type
-    when 'enum', 'Frame', 'string'
+    when 'enum', 'Key<Frame>', 'Key<Model>', 'string'
       createDropdownControl parameter
     when 'string[]'
       createListControl parameter
     when 'boolean'
       createCheckboxControl parameter
-    when 'Key', 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+    when 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
       createTextboxControl parameter
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null
-
-findParameter = (parameters, name) ->
-  find parameters, (parameter) -> parameter.name is name
 
 H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   _exception = signal null
@@ -294,24 +291,25 @@ H2O.ModelInput = (_, _algo, _opts) ->
     #
     # Force classification.
     #
-    classificationParameter = findParameter parameters, 'do_classification'
+    classificationParameter = find parameters, (parameter) -> parameter.name is 'do_classification'
     if classificationParameter
-      classificationParameter.actual_value = "true"
+      classificationParameter.actual_value = 'true'
 
-    # Fetch frame list; pick column names from training frame
     _.requestFrames (error, frames) ->
       if error
         #TODO handle properly
       else
-        trainingFrameParameter = findParameter parameters, 'training_frame'
-        if trainingFrameParameter
+        frameKeys = (frame.key.name for frame in frames)
+        frameParameters = filter parameters, (parameter) -> parameter.type is 'Key<Frame>'
+        for parameter in frameParameters
+          parameter.values = frameKeys
 
-          trainingFrameParameter.values = (frame.key.name for frame in frames)
-
-          if frameKey
-            trainingFrameParameter.actual_value = frameKey
-          else
-            frameKey = trainingFrameParameter.actual_value
+          #TODO HACK
+          if parameter.name is 'training_frame'
+            if frameKey
+              parameter.actual_value = frameKey
+            else
+              frameKey = parameter.actual_value
 
         return go()
 
