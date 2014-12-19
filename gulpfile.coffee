@@ -53,7 +53,7 @@ config =
       'lib/mousetrap/plugins/global-bind/mousetrap-global-bind.js'
       'lib/lodash/dist/lodash.js'
       'lib/esprima/esprima.js'
-      'lib/escodegen/escodegen.browser.js'
+      'vendor/escodegen/escodegen.browser.js'
       'lib/coffeescript/extras/coffee-script.js'
       'lib/bootstrap/dist/js/bootstrap.js'
       'lib/d3/d3.js'
