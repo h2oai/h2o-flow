@@ -142,13 +142,13 @@ createCheckboxControl = (parameter) ->
 
 createControlFromParameter = (parameter) ->
   switch parameter.type
-    when 'enum', 'Key<Frame>', 'Key<Model>', 'string'
+    when 'enum', 'Key<Frame>', 'VecSpecifier'
       createDropdownControl parameter
     when 'string[]'
       createListControl parameter
     when 'boolean'
       createCheckboxControl parameter
-    when 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+    when 'Key<Model>', 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
       createTextboxControl parameter
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
