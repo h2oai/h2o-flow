@@ -213,7 +213,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
     for controls in _controlGroups
       for control in controls
         value = control.value()
-        if includeUnchangedParameters or (control.defaultValue isnt value)
+        if includeUnchangedParameters or control.isRequired or (control.defaultValue isnt value) 
           switch control.kind
             when 'dropdown'
               if value
