@@ -1,12 +1,12 @@
 {
-  "name": "H2O Flow",
-  "version": "0.0.0",
+  "name": "h2o-flow",
+  "version": "0.2.11",
   "homepage": "https://github.com/h2oai/h2o-flow",
   "authors": [
     "Prithvi Prabhu <prithvi@h2o.ai>"
   ],
   "description": "Interactive computational environment for H2O",
-  "main": "index.js",
+  "main": "build/index.html",
   "moduleType": [
     "globals"
   ],
@@ -15,13 +15,14 @@
     "Machine Learning"
   ],
   "license": "MIT",
-  "private": true,
   "ignore": [
     "**/.*",
-    "node_modules",
+    "build.gradle",
+    "gradle",
     "lib",
-    "test",
-    "tests"
+    "node_modules",
+    "src",
+    "tools"
   ],
   "dependencies": {
     "jquery": "~2.1.0",
