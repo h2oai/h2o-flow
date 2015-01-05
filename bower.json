@@ -17,8 +17,11 @@
   "license": "MIT",
   "ignore": [
     "**/.*",
-    "build.gradle",
-    "gradle",
+    "Makefile",
+    "coffeelint.json",
+    "gulpfile.coffee",
+    "package.json",
+    "shorthand.yml",
     "lib",
     "node_modules",
     "src",
