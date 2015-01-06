@@ -27,7 +27,8 @@
     "src",
     "tools"
   ],
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "jquery": "~2.1.0",
     "d3": "~3.5.2",
     "lodash": "~2.4.1",
@@ -48,6 +49,5 @@
     "stacktrace-js": "~0.6.2",
     "vega": "~1.4.2",
     "node-uuid": "~1.4.1"
-  },
-  "devDependencies": {}
+  }
 }
