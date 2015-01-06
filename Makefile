@@ -4,6 +4,9 @@ O=src/main/resources/www/steam
 default: 
 	npm run build --output=../h2o-dev/h2o-web/src/main/resources/www/flow
 
+build:
+	npm run build
+
 clean:
 	npm run clean
 
