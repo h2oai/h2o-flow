@@ -61,6 +61,9 @@ H2O.FrameOutput = (_, _frame) ->
   predict = ->
     _.insertAndExecuteCell 'cs', "predict null, #{stringify _frame.key.name}"
 
+  download = ->
+    window.open "/3/DownloadDataset?key=#{encodeURIComponent _frame.key.name}"
+
   _grid = createGrid _.inspect 'columns', _frame
 
   key: _frame.key.name
@@ -69,5 +72,6 @@ H2O.FrameOutput = (_, _frame) ->
   createModel: createModel
   inspectData: inspectData
   predict: predict
+  download: download
   template: 'flow-frame-output'
 
