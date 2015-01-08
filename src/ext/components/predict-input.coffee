@@ -27,7 +27,7 @@ H2O.PredictInput = (_, _modelArg, _frameArg) ->
       if error
         _exception new Flow.Error 'Error fetching model list.', error
       else
-        _models (model.key for model in models)
+        _models (model.key.name for model in models)
 
   predict = ->
     if _hasFrames

@@ -2,10 +2,20 @@ H2O.ModelOutput = (_, _model) ->
   _isExpanded = signal no
   
   _inputParameters = map _model.parameters, (parameter) ->
-    label: parameter.label
-    value: parameter.actual_value
-    help: parameter.help
-    isModified: parameter.default_value is parameter.actual_value
+    { type, default_value, actual_value, label, help } = parameter
+
+    value = switch type
+      when 'Key<Frame>'
+        if actual_value then actual_value.name else null
+      when 'VecSpecifier'
+        if actual_value then actual_value.column_name else null
+      else
+        actual_value
+
+    label: label
+    value: value
+    help: help
+    isModified: default_value is actual_value
 
   toggle = ->
     _isExpanded not _isExpanded()

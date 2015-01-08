@@ -124,19 +124,29 @@ H2O.Proxy = (_) ->
       delete_on_done: deleteOnDone
     requestWithOpts '/Parse.json', opts, go
 
+  patchUpModels = (models) ->
+    for model in models
+      for parameter in model.parameters
+        if parameter.type is 'Key<Frame>' or parameter.type is 'VecSpecifier'
+          if isString parameter.actual_value
+            try
+              debug parameter.actual_value = JSON.parse parameter.actual_value
+            catch parseError
+    models
+
   requestModels = (go, opts) ->
     requestWithOpts '/3/Models.json', opts, (error, result) ->
       if error
         go error, result
       else
-        go error, result.models
+        go error, patchUpModels result.models
 
   requestModel = (key, go) ->
     doGet "/3/Models.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go error, result
       else
-        go error, head result.models
+        go error, head patchUpModels result.models
 
   requestModelBuilders = (go) ->
     doGet "/2/ModelBuilders.json", go
