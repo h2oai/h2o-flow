@@ -62,7 +62,7 @@ H2O.FrameOutput = (_, _frame) ->
     _.insertAndExecuteCell 'cs', "predict null, #{stringify _frame.key.name}"
 
   download = ->
-    window.open "/3/DownloadDataset?key=#{encodeURIComponent _frame.key.name}"
+    window.open "/3/DownloadDataset?key=#{encodeURIComponent _frame.key.name}", '_blank'
 
   _grid = createGrid _.inspect 'columns', _frame
 

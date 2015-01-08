@@ -312,7 +312,7 @@ Flow.Notebook = (_, _renderers) ->
     deserialize null, doc
     saveNotebook()
 
-  goToWebsite = (url) -> ->
+  goToUrl = (url) -> ->
     window.open url, '_blank'
 
   notImplemented = -> # noop
@@ -411,13 +411,17 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Clear All', clearAllCells, yes
     ]
   ,
+    createMenu 'Admin', [
+      createMenuItem 'Download Logs', goToUrl '/Logs/download'
+    ]
+  ,
     createMenu 'Help', [
       createMenuItem 'Tour', startTour, yes
       createMenuItem 'Contents', showHelp
       createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
       menuDivider
-      createMenuItem 'H2O Documentation', goToWebsite 'http://docs.h2o.ai/'
-      createMenuItem 'h2o.ai', goToWebsite 'http://h2o.ai/'
+      createMenuItem 'H2O Documentation', goToUrl 'http://docs.h2o.ai/'
+      createMenuItem 'h2o.ai', goToUrl 'http://h2o.ai/'
     ]
   ]
 
