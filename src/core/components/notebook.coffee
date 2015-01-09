@@ -288,6 +288,9 @@ Flow.Notebook = (_, _renderers) ->
   displayKeyboardShortcuts = ->
     $('#keyboardShortcutsDialog').modal()
 
+  displayAbout = ->
+    $('#aboutDialog').modal()
+
   showHelp = ->
     _isSidebarHidden no
     _.showHelp()
@@ -422,6 +425,8 @@ Flow.Notebook = (_, _renderers) ->
       menuDivider
       createMenuItem 'H2O Documentation', goToUrl 'http://docs.h2o.ai/'
       createMenuItem 'h2o.ai', goToUrl 'http://h2o.ai/'
+      menuDivider
+      createMenuItem 'About', displayAbout
     ]
   ]
 

@@ -60,14 +60,14 @@ H2O.Proxy = (_) ->
         go null, result.frames
 
   requestFrame = (key, go) ->
-    doGet "/3/Frames/#{encodeURIComponent key}", (error, result) ->
+    doGet "/3/Frames.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go error
       else
         go null, head result.frames
 
   requestColumnSummary = (key, column, go) ->
-    doGet "/3/Frames/#{encodeURIComponent key}/columns/#{encodeURIComponent column}/summary", (error, result) ->
+    doGet "/3/Frames.json/#{encodeURIComponent key}/columns/#{encodeURIComponent column}/summary", (error, result) ->
       if error
         go error
       else

@@ -564,7 +564,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var checkConsistency, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editTitle, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveNotebook, saveTitle, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, splitCell, startTour, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _createdDate, _id, _isEditingTitle, _isSidebarHidden, _lastDeletedCell, _menus, _modifiedDate, _selectedCell, _selectedCellIndex, _sidebar, _status, _title, _toolbar;
+        var checkConsistency, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editTitle, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveNotebook, saveTitle, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, splitCell, startTour, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _createdDate, _id, _isEditingTitle, _isSidebarHidden, _lastDeletedCell, _menus, _modifiedDate, _selectedCell, _selectedCellIndex, _sidebar, _status, _title, _toolbar;
         _id = Flow.Dataflow.signal('');
         _title = Flow.Dataflow.signal('Untitled Flow');
         _createdDate = Flow.Dataflow.signal(new Date());
@@ -910,6 +910,9 @@
         displayKeyboardShortcuts = function () {
             return $('#keyboardShortcutsDialog').modal();
         };
+        displayAbout = function () {
+            return $('#aboutDialog').modal();
+        };
         showHelp = function () {
             _isSidebarHidden(false);
             return _.showHelp();
@@ -1040,7 +1043,9 @@
                 createMenuItem('Keyboard Shortcuts', displayKeyboardShortcuts),
                 menuDivider,
                 createMenuItem('H2O Documentation', goToUrl('http://docs.h2o.ai/')),
-                createMenuItem('h2o.ai', goToUrl('http://h2o.ai/'))
+                createMenuItem('h2o.ai', goToUrl('http://h2o.ai/')),
+                menuDivider,
+                createMenuItem('About', displayAbout)
             ])
         ];
         createTool = function (icon, label, action, isDisabled) {
@@ -2891,7 +2896,7 @@
         closeTag = '</' + name + '>';
         if (type === '=') {
             return function (content) {
-                return beginTag + (content || '') + closeTag;
+                return beginTag + (content !== null && content !== void 0 ? content : '') + closeTag;
             };
         } else if (type === '+') {
             return function (content, arg0) {
@@ -4112,7 +4117,7 @@
             });
         };
         requestFrame = function (key, go) {
-            return doGet('/3/Frames/' + encodeURIComponent(key), function (error, result) {
+            return doGet('/3/Frames.json/' + encodeURIComponent(key), function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4121,7 +4126,7 @@
             });
         };
         requestColumnSummary = function (key, column, go) {
-            return doGet('/3/Frames/' + encodeURIComponent(key) + '/columns/' + encodeURIComponent(column) + '/summary', function (error, result) {
+            return doGet('/3/Frames.json/' + encodeURIComponent(key) + '/columns/' + encodeURIComponent(column) + '/summary', function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
