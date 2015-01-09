@@ -252,6 +252,28 @@ H2O.Routines = (_) ->
       meta:
         origin: "getModel #{stringify model.key.name}"
 
+  inspectGBMModelOutput = (model) -> ->
+    output = model.output
+    variables = [
+      Flow.Data.Variable 'tree', TNumber
+      Flow.Data.Variable 'mse_train', TObject
+      Flow.Data.Variable 'mse_valid', TObject
+    ]
+
+    Record = Flow.Data.Record variables
+    rows = new Array output.mse_train.length
+    for mse_train, i in output.mse_train
+      rows[i] = new Record i, mse_train, output.mse_valid[i]
+
+    Flow.Data.Table
+      label: 'output'
+      description: "Output for GBM model '#{model.key.name}'"
+      variables: variables
+      rows: rows
+      meta:
+        origin: "getModel #{stringify model.key.name}"
+
+
   inspectKMeansModelOutput = (model) -> ->
     output = model.output
     variables = [
@@ -336,6 +358,7 @@ H2O.Routines = (_) ->
   extendGBMModel = (model) ->
     inspect_ model,
       parameters: inspectModelParameters model
+      output: inspectGBMModelOutput model
 
   extendGLMModel = (model) ->
     inspect_ model,

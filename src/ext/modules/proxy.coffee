@@ -131,7 +131,7 @@ H2O.Proxy = (_) ->
           when 'Key<Frame>', 'Key<Model>', 'VecSpecifier'
             if isString parameter.actual_value
               try
-                debug parameter.actual_value = JSON.parse parameter.actual_value
+                parameter.actual_value = JSON.parse parameter.actual_value
               catch parseError
     models
 
