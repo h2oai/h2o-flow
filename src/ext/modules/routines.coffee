@@ -585,7 +585,6 @@ H2O.Routines = (_) ->
       Flow.Data.Variable 'sigma', TNumber
       Flow.Data.Variable 'type', TString
       Flow.Data.Variable 'cardinality', TNumber
-      Flow.Data.Variable 'precision', TNumber
     ]
 
     Record = Flow.Data.Record variables
