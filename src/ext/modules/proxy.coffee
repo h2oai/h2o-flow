@@ -127,11 +127,12 @@ H2O.Proxy = (_) ->
   patchUpModels = (models) ->
     for model in models
       for parameter in model.parameters
-        if parameter.type is 'Key<Frame>' or parameter.type is 'VecSpecifier'
-          if isString parameter.actual_value
-            try
-              debug parameter.actual_value = JSON.parse parameter.actual_value
-            catch parseError
+        switch parameter.type
+          when 'Key<Frame>', 'Key<Model>', 'VecSpecifier'
+            if isString parameter.actual_value
+              try
+                debug parameter.actual_value = JSON.parse parameter.actual_value
+              catch parseError
     models
 
   requestModels = (go, opts) ->

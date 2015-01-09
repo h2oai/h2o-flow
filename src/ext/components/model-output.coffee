@@ -5,7 +5,7 @@ H2O.ModelOutput = (_, _model) ->
     { type, default_value, actual_value, label, help } = parameter
 
     value = switch type
-      when 'Key<Frame>'
+      when 'Key<Frame>', 'Key<Model>'
         if actual_value then actual_value.name else null
       when 'VecSpecifier'
         if actual_value then actual_value.column_name else null
