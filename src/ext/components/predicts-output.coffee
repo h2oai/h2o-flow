@@ -15,8 +15,8 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
     return
 
   createPredictionView = (prediction) ->
-    _modelKey = prediction.model.key
-    _frameKey = prediction.frame.key.name
+    _modelKey = prediction.model.name
+    _frameKey = prediction.frame.name
     _isChecked = signal no
 
     react _isChecked, ->

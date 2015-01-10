@@ -391,7 +391,33 @@ H2O.Routines = (_) ->
 
   read = (value) -> if value is 'NaN' then null else value
 
-  inspectPrediction = (prediction) -> ->
+  inspectRegressionPrediction = (prediction) -> ->
+    { frame, model, predictions } = prediction
+
+    variables = [
+      Flow.Data.Variable 'parameter', TString
+      Flow.Data.Variable 'value', TObject
+    ]
+
+    Record = Flow.Data.Record variables
+
+    rows = []
+    rows.push new Record 'key', model.name
+    rows.push new Record 'frame', frame.name
+    rows.push new Record 'model_category', prediction.model_category
+    rows.push new Record 'duration_in_ms', prediction.duration_in_ms
+    rows.push new Record 'scoring_time', prediction.scoring_time
+
+    Flow.Data.Table
+      label: 'prediction'
+      description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
+      variables: variables
+      rows: rows
+      meta:
+        origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+
+
+  inspectBinomialPrediction = (prediction) -> ->
     { frame, model, auc } = prediction
 
     variables = [
@@ -419,7 +445,7 @@ H2O.Routines = (_) ->
       meta:
         origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
-  inspectMetrics = (opts, predictions) -> ->
+  inspectBinomialMetrics = (opts, predictions) -> ->
     variables = [
       Flow.Data.Variable 'criteria', TString
       Flow.Data.Variable 'threshold', TNumber
@@ -480,7 +506,7 @@ H2O.Routines = (_) ->
           data: inspect 'metrics', #{formulateGetPredictionsOrigin opts}
         """
 
-  inspectPredictions = (opts, predictions) -> ->
+  inspectBinomialPredictions = (opts, predictions) -> ->
     variables = [
       Flow.Data.Variable 'key', TString
       Flow.Data.Variable 'model', TString
@@ -499,9 +525,9 @@ H2O.Routines = (_) ->
     for prediction, i in predictions
       { frame, model, auc } = prediction
       rows[i] = row = new Record(
-        model.key.name + ' on ' + frame.key.name
-        model.key.name
-        frame.key.name
+        model.name + ' on ' + frame.name
+        model.name
+        frame.name
         prediction.model_category
         prediction.duration_in_ms
         prediction.scoring_time
@@ -525,11 +551,11 @@ H2O.Routines = (_) ->
   extendPredictions = (opts, predictions) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
     inspect_ predictions,
-      predictions: inspectPredictions opts, predictions
-      metrics: inspectMetrics opts, predictions
-      scores: inspectScores opts, predictions
+      predictions: inspectBinomialPredictions opts, predictions
+      metrics: inspectBinomialMetrics opts, predictions
+      scores: inspectBinomialScores opts, predictions
 
-  inspectScores = (opts, predictions) -> ->
+  inspectBinomialScores = (opts, predictions) -> ->
 
     variables = [
       Flow.Data.Variable 'thresholds', TNumber
@@ -590,10 +616,15 @@ H2O.Routines = (_) ->
     
   extendPrediction = (modelKey, frameKey, prediction) ->
     render_ prediction, -> H2O.PredictOutput _, prediction
-    inspect_ prediction,
-      prediction: inspectPrediction prediction
-      scores: inspectScores { model: modelKey, frame: frameKey }, [ prediction ]
-      metrics: inspectMetrics { model: modelKey, frame: frameKey }, [ prediction ]
+    switch prediction.model_category
+      when 'Regression'
+        inspect_ prediction,
+          prediction: inspectRegressionPrediction prediction
+      else
+        inspect_ prediction,
+          prediction: inspectBinomialPrediction prediction
+          scores: inspectBinomialScores { model: modelKey, frame: frameKey }, [ prediction ]
+          metrics: inspectBinomialMetrics { model: modelKey, frame: frameKey }, [ prediction ]
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     variables = [
