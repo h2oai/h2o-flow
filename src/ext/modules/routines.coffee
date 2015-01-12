@@ -617,7 +617,7 @@ H2O.Routines = (_) ->
   extendPrediction = (modelKey, frameKey, prediction) ->
     render_ prediction, -> H2O.PredictOutput _, prediction
     switch prediction.model_category
-      when 'Regression'
+      when 'Regression', 'Multinomial'
         inspect_ prediction,
           prediction: inspectRegressionPrediction prediction
       else
