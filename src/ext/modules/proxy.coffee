@@ -213,6 +213,18 @@ H2O.Proxy = (_) ->
   requestPutObject = (type, id, obj, go) ->
     go null, Flow.LocalStorage.write type, id, obj
 
+  requestCloud = (go) ->
+    doGet '/3/Cloud.json', go
+
+  requestTimeline = (go) ->
+    doGet '/3/Timeline.json', go
+
+  requestRemoveAll = (go) ->
+    doGet '/3/RemoveAll.json', go
+
+  requestAbout = (go) ->
+    doGet '/3/About.json', go
+
   link _.requestGet, doGet
   link _.requestPost, doPost
   link _.requestInspect, requestInspect
@@ -239,4 +251,9 @@ H2O.Proxy = (_) ->
   link _.requestObject, requestObject
   link _.requestDeleteObject, requestDeleteObject
   link _.requestPutObject, requestPutObject
+  link _.requestCloud, requestCloud
+  link _.requestTimeline, requestTimeline
+  link _.requestRemoveAll, requestRemoveAll
+  link _.requestAbout, requestAbout
+
 

@@ -31,7 +31,7 @@ Flow.Notebook = (_, _renderers) ->
   _isSidebarHidden = signal no
   _status = Flow.Status _
   _sidebar = Flow.Sidebar _, _cells
-
+  _about = Flow.About _
 
   serialize = ->
     cells = for cell in _cells()
@@ -580,5 +580,6 @@ Flow.Notebook = (_, _renderers) ->
   shortcutsHelp:
     normalMode: normalModeKeyboardShortcutsHelp
     editMode: editModeKeyboardShortcutsHelp
+  about: _about
   templateOf: (view) -> view.template
 

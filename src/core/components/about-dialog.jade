@@ -1,13 +1,21 @@
 #aboutDialog.modal.fade(tabindex='-1', role='dialog', aria-labelledby='aboutDialogLabel', aria-hidden='true')
-  .modal-dialog
+  .modal-dialog.modal-sm
     .modal-content
       .modal-header
         button.close(type='button', data-dismiss='modal')
           span(aria-hidden='true') ×
           span.sr-only Close
-        h4#aboutDialogLabel.modal-title Flow v0.2.21
+        h4#aboutDialogLabel.modal-title About H<sub>2</sub>O Flow 
       .modal-body
-        
+        // ko with:about
+        table.flow-form
+          tbody
+            // ko foreach:properties
+            tr
+              th(data-bind='text:caption')
+              td(data-bind='text:value')
+            // /ko
+        // /ko
       .modal-footer
         button.btn.btn-default(type='button', data-dismiss='modal') Close
 
