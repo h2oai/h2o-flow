@@ -9,7 +9,7 @@ Flow.About = (_) ->
       unless error
         for { name, value } in response.entries
           _properties.push
-            caption: name
+            caption: 'H2O ' + name
             value: value
 
       _properties.push
