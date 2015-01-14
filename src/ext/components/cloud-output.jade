@@ -47,68 +47,25 @@
       thead
         tr
           th(style='text-align:left') Version
-          th Size
-          th Bad Nodes
           th Started
+          th Nodes (Used / All)
 
       tbody
         tr
           td(data-bind='text:version')
-          td(data-bind='text:size')
-          td(data-bind='text:badNodeCount')
           td(data-bind='text:uptime')
-
+          td(data-bind='text:nodeCounts')
   
   h4 Nodes
+  .flow-right.flow-margin-after 
+    // ko ifnot:isExpanded
+    +button('Show advanced', 'angle-double-down', 'toggleExpansion')
+    // /ko
+    // ko if:isExpanded
+    +button('Hide advanced', 'angle-double-up', 'toggleExpansion')
+    // /ko
 
-  .flow-plot
-    table
-      thead
-        tr
-          th &nbsp;
-          th Name
-          th Ping
-          th Cores
-          th Keys
-          th TCP
-          th FD
-          th PID
-          th Load
-          th Data (Used/Total)
-          th Data (% Cached)
-          th GC (Free / Total / Max)
-          th Disk (Free / Max)
-          th Disk (% Free)
-          th RPCs
-          //- th Threads
-          //- th Tasks
-      tbody
-        // ko foreach:nodes
-        tr
-          td
-            // ko if:isHealthy
-            i.fa.fa-check-circle.text-success
-            // /ko
-            // ko ifnot:isHealthy
-            i.fa.fa-exclamation-circle.text-danger
-            // /ko
-          td(data-bind='text:name')
-          td(data-bind='text:ping') Ping
-          td(data-bind='text:cores') Cores
-          td(data-bind='text:keys') Keys
-          td(data-bind='text:tcps') TCP
-          td(data-bind='text:fds') FD
-          td(data-bind='text:pid') PID
-          td(data-bind='text:load') Load
-          td(data-bind='text:data') Data (Used/Total)
-          td(data-bind='text:cachedData') Data (% Cached)
-          td(data-bind='text:memory') GC (Free / Total / Max)
-          td(data-bind='text:disk') Disk (Free / Max)
-          td(data-bind='text:freeDisk') Disk (% Free)
-          td(data-bind='text:rpcs') RPCs
-          //- td(data-bind='text:threads') Threads
-          //- td(data-bind='text:tasks') Tasks
-        // /ko
+  .flow-plot.flow-nowrap(data-bind='raw:nodes')
 
   .flow-panel
     button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")

@@ -2,12 +2,13 @@ H2O.CloudOutput = (_, _cloud) ->
   _isLive = signal no
   _isBusy = signal no
 
+  _isExpanded = signal no
+
   _name = do signal
   _size = do signal
   _uptime = do signal
   _version = do signal
-  _nodeCount = do signal
-  _badNodeCount = do signal
+  _nodeCounts = do signal
   _hasConsensus = do signal
   _isLocked = do signal
   _isHealthy = do signal
@@ -41,44 +42,113 @@ H2O.CloudOutput = (_, _cloud) ->
 
     s
     
-  createNode = (node) ->
-    isHealthy: node.healthy
-    name: node.h2o.node
-    ping: (moment new Date node.last_ping).fromNow()
-    cores: node.num_cpus
-    keys: node.num_keys
-    tcps: node.tcps_active
-    fds: if node.open_fds < 0 then '-' else node.open_fds
-    loadProgress: "#{Math.ceil node.sys_load}%"
-    load: format3f node.sys_load
-    dataProgress: "#{Math.ceil node.mem_value_size / node.total_value_size * 100}%"
-    data: "#{prettyPrintBytes node.mem_value_size} / #{prettyPrintBytes node.total_value_size}"
-    cachedData: if node.total_value_size is 0 then '-' else "#{Math.floor node.mem_value_size * 100 / node.total_value_size}%"
-    memoryProgress1: "#{Math.ceil (node.tot_mem - node.free_mem) / node.max_mem * 100}%"
-    memoryProgress2: "#{Math.ceil node.free_mem / node.max_mem * 100}%"
-    memory: "#{prettyPrintBytes node.free_mem} / #{prettyPrintBytes node.tot_mem} / #{prettyPrintBytes node.max_mem}"
-    diskProgress: "#{Math.ceil (node.max_disk - node.free_disk) / node.max_disk * 100}%"
-    disk: "#{prettyPrintBytes node.free_disk} / #{prettyPrintBytes node.max_disk}"
-    freeDisk: if node.max_disk is 0 then '' else "#{Math.floor node.free_disk * 100 / node.max_disk}%"
-    rpcs: node.rpcs_active
-    threads: formatThreads node.fjthrds
-    tasks: formatThreads node.fjqueue
-    pid: node.pid
 
-  updateCloud = (cloud) ->
+  sum = (nodes, attrOf) ->
+    total = 0
+    for node in nodes
+      total += attrOf node
+    total
+
+  avg = (nodes, attrOf) ->
+    (sum nodes, attrOf) / nodes.length
+
+  _headers = [
+    # [ Caption, show_always? ]
+    [ "&nbsp;", yes ]
+    [ "Name", yes ]
+    [ "Ping", yes ]
+    [ "Cores", yes ]
+    [ "Load", yes ]
+    [ "Data (Used/Total)", yes ]
+    [ "Data (% Cached)", yes ]
+    [ "GC (Free / Total / Max)", yes ]
+    [ "Disk (Free / Max)", yes ]
+    [ "Disk (% Free)", yes ]
+    [ "PID", no ]
+    [ "Keys", no ]
+    [ "TCP", no ]
+    [ "FD", no ]
+    [ "RPCs", no ]
+    [ "Threads", no ]
+    [ "Tasks", no ]
+  ]
+
+  createNodeRow = (node) ->
+    [
+      node.healthy
+      node.h2o.node
+      (moment new Date node.last_ping).fromNow()
+      node.num_cpus
+      format3f node.sys_load
+      "#{prettyPrintBytes node.mem_value_size} / #{prettyPrintBytes node.total_value_size}"
+      "#{Math.floor node.mem_value_size * 100 / node.total_value_size}%"
+      "#{prettyPrintBytes node.free_mem} / #{prettyPrintBytes node.tot_mem} / #{prettyPrintBytes node.max_mem}"
+      "#{prettyPrintBytes node.free_disk} / #{prettyPrintBytes node.max_disk}"
+      "#{Math.floor node.free_disk * 100 / node.max_disk}%"
+      node.pid
+      node.num_keys
+      node.tcps_active
+      node.open_fds
+      node.rpcs_active
+      formatThreads node.fjthrds
+      formatThreads node.fjqueue
+    ]
+
+  createTotalRow = (cloud) ->
+    nodes = cloud.nodes
+    [
+      cloud.cloud_healthy 
+      'TOTAL'
+      '-'
+      sum nodes, (node) -> node.num_cpus
+      format3f sum nodes, (node) -> node.sys_load
+      "#{prettyPrintBytes (sum nodes, (node) -> node.mem_value_size)} / #{prettyPrintBytes (sum nodes, (node) -> node.total_value_size)}"
+      "#{Math.floor (avg nodes, (node) -> node.mem_value_size * 100 / node.total_value_size)}%"
+      "#{prettyPrintBytes (sum nodes, (node) -> node.free_mem)} / #{prettyPrintBytes (sum nodes, (node) -> node.tot_mem)} / #{prettyPrintBytes (sum nodes, (node) -> node.max_mem)}"
+      "#{prettyPrintBytes (sum nodes, (node) -> node.free_disk)} / #{prettyPrintBytes (sum nodes, (node) -> node.max_disk)}"
+      "#{Math.floor (avg nodes, (node) -> node.free_disk * 100 / node.max_disk)}%"
+      '-'
+      sum nodes, (node) -> node.num_keys
+      sum nodes, (node) -> node.tcps_active
+      sum nodes, (node) -> node.open_fds
+      sum nodes, (node) -> node.rpcs_active
+      '-'
+      '-'
+    ]
+
+  createGrid = (cloud, isExpanded) ->
+    [ grid, table, thead, tbody, tr, th, td, success, danger] = Flow.HTML.template '.grid', 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=i.fa.fa-check-circle.text-success', '=i.fa.fa-exclamation-circle.text-danger'
+    nodeRows = map cloud.nodes, createNodeRow
+    nodeRows.push createTotalRow cloud
+
+    ths = for [ caption, showAlways ] in _headers when showAlways or isExpanded
+      th caption
+
+    trs = for row in nodeRows 
+      tds = for cell, i in row when _headers[i][1] or isExpanded
+        if i is 0
+          td if cell then success() else danger()
+        else
+          td cell
+      tr tds
+
+    Flow.HTML.render 'div',
+      grid [
+        table [
+          thead tr ths
+          tbody trs
+        ]
+      ]
+
+  updateCloud = (cloud, isExpanded) ->
     _name cloud.cloud_name
-
     _version cloud.version
     _hasConsensus cloud.consensus
-
     _uptime formatMilliseconds cloud.cloud_uptime_millis
-
-    _size cloud.cloud_size
-    _badNodeCount cloud.bad_nodes
+    _nodeCounts "#{cloud.cloud_size - cloud.bad_nodes} / #{cloud.cloud_size}"
     _isLocked cloud.locked
     _isHealthy cloud.cloud_healthy
-
-    _nodes map cloud.nodes, createNode
+    _nodes createGrid cloud, isExpanded
 
   toggleRefresh = ->
     _isLive not _isLive()
@@ -91,20 +161,25 @@ H2O.CloudOutput = (_, _cloud) ->
         _exception Flow.Failure new Flow.Error 'Error fetching cloud status', error
         _isLive no
       else
-        updateCloud cloud
+        updateCloud (_cloud = cloud), _isExpanded()
         delay refresh, 2000 if _isLive()
 
   act _isLive, (isLive) ->
     refresh() if isLive
 
-  updateCloud _cloud 
+  toggleExpansion = ->
+    _isExpanded not _isExpanded()
+
+  act _isExpanded, (isExpanded) ->
+    updateCloud _cloud, isExpanded
+
+  updateCloud _cloud, _isExpanded()
 
   name: _name
   size: _size
   uptime: _uptime
   version: _version
-  nodeCount: _nodeCount
-  badNodeCount: _badNodeCount
+  nodeCounts: _nodeCounts
   hasConsensus: _hasConsensus
   isLocked: _isLocked
   isHealthy: _isHealthy
@@ -113,5 +188,7 @@ H2O.CloudOutput = (_, _cloud) ->
   isBusy: _isBusy
   toggleRefresh: toggleRefresh
   refresh: refresh
+  isExpanded: _isExpanded
+  toggleExpansion: toggleExpansion
   template: 'flow-cloud-output'
 
