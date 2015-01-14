@@ -1,0 +1,129 @@
+.flow-widget.flow-cloud-output
+  h3.flow-hint
+    i.fa.fa-cloud
+    span(data-bind='text:name')
+
+  h4 Cloud Status
+
+  div
+    // ko if:isHealthy
+    .flow-hud
+      i.fa.fa-check-circle.text-success
+      span.flow-small-caps Healthy
+    // /ko
+
+    // ko ifnot:isHealthy
+    .flow-hud
+      i.fa.fa-exclamation-circle.text-danger
+      span.flow-small-caps.text-danger Not healthy
+    // /ko
+
+    // ko if:hasConsensus
+    .flow-hud
+      i.fa.fa-check-circle.text-success
+      span.flow-small-caps Consensus
+    // /ko
+
+    // ko ifnot:hasConsensus
+    .flow-hud
+      i.fa.fa-exclamation-circle.text-danger
+      span.flow-small-caps text-danger No consensus
+    // /ko
+
+    // ko if:isLocked
+    .flow-hud
+      i.fa.fa-lock.text-muted
+      span.flow-small-caps Locked
+    // /ko
+
+    // ko ifnot:isLocked
+    .flow-hud
+      i.fa.fa-unlock.text-muted
+      span.flow-small-caps Not locked
+    // /ko
+
+  .flow-plot
+    table
+      thead
+        tr
+          th(style='text-align:left') Version
+          th Size
+          th Bad Nodes
+          th Started
+
+      tbody
+        tr
+          td(data-bind='text:version')
+          td(data-bind='text:size')
+          td(data-bind='text:badNodeCount')
+          td(data-bind='text:uptime')
+
+  
+  h4 Nodes
+
+  .flow-plot
+    table
+      thead
+        tr
+          th &nbsp;
+          th Name
+          th Ping
+          th Cores
+          th Keys
+          th TCP
+          th FD
+          th PID
+          th Load
+          th Data (Used/Total)
+          th Data (% Cached)
+          th GC (Free / Total / Max)
+          th Disk (Free / Max)
+          th Disk (% Free)
+          th RPCs
+          //- th Threads
+          //- th Tasks
+      tbody
+        // ko foreach:nodes
+        tr
+          td
+            // ko if:isHealthy
+            i.fa.fa-check-circle.text-success
+            // /ko
+            // ko ifnot:isHealthy
+            i.fa.fa-exclamation-circle.text-danger
+            // /ko
+          td(data-bind='text:name')
+          td(data-bind='text:ping') Ping
+          td(data-bind='text:cores') Cores
+          td(data-bind='text:keys') Keys
+          td(data-bind='text:tcps') TCP
+          td(data-bind='text:fds') FD
+          td(data-bind='text:pid') PID
+          td(data-bind='text:load') Load
+          td(data-bind='text:data') Data (Used/Total)
+          td(data-bind='text:cachedData') Data (% Cached)
+          td(data-bind='text:memory') GC (Free / Total / Max)
+          td(data-bind='text:disk') Disk (Free / Max)
+          td(data-bind='text:freeDisk') Disk (% Free)
+          td(data-bind='text:rpcs') RPCs
+          //- td(data-bind='text:threads') Threads
+          //- td(data-bind='text:tasks') Tasks
+        // /ko
+
+  .flow-panel
+    button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
+      // ko if:isLive
+      i.fa.fa-refresh.fa-spin
+      | Stop
+      // /ko
+      // ko ifnot:isLive
+      i.fa.fa-refresh
+      | Refresh
+      // /ko
+
+
+
+
+
+
+

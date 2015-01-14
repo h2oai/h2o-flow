@@ -288,6 +288,9 @@ Flow.Notebook = (_, _renderers) ->
   displayKeyboardShortcuts = ->
     $('#keyboardShortcutsDialog').modal()
 
+  displayCloudStatus = ->
+    _.insertAndExecuteCell 'cs', 'getCloud'
+
   displayAbout = ->
     $('#aboutDialog').modal()
 
@@ -415,6 +418,7 @@ Flow.Notebook = (_, _renderers) ->
     ]
   ,
     createMenu 'Admin', [
+      createMenuItem 'Cloud', displayCloudStatus
       createMenuItem 'Download Logs', goToUrl '/Logs/download'
     ]
   ,

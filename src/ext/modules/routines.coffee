@@ -187,6 +187,9 @@ H2O.Routines = (_) ->
       type: 'text'
       data: data
 
+  extendCloud = (cloud) ->
+    render_ cloud, -> H2O.CloudOutput _, cloud
+
   extendFrames = (frames) ->
     render_ frames, -> H2O.FramesOutput _, frames
     frames
@@ -1125,6 +1128,16 @@ H2O.Routines = (_) ->
   getPredictions = (opts={}) ->
     _fork requestPredictions, opts 
 
+  requestCloud = (go) ->
+    _.requestCloud (error, cloud) ->
+      if error
+        go error
+      else
+        go null, extendCloud cloud
+
+  getCloud = ->
+    _fork requestCloud
+
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status
     onFail = (jqxhr, settings, error) -> go error #TODO use framework error
@@ -1209,4 +1222,5 @@ H2O.Routines = (_) ->
   predict: predict
   getPrediction: getPrediction
   getPredictions: getPredictions
+  getCloud: getCloud
 
