@@ -5,12 +5,16 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
   _canComparePredictions = signal no
   _rocCurve = signal null
 
+  arePredictionsComparable = (views) ->
+    return no if views.length is 0
+    every views, (view) -> view.modelCategory is 'Binomial'
+
   _isCheckingAll = no
   react _checkAllPredictions, (checkAll) ->
     _isCheckingAll = yes
     for view in _predictionViews()
       view.isChecked checkAll
-    _canComparePredictions checkAll
+    _canComparePredictions checkAll and arePredictionsComparable _predictionViews()
     _isCheckingAll = no
     return
 
@@ -22,7 +26,7 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
     react _isChecked, ->
       return if _isCheckingAll
       checkedViews = (view for view in _predictionViews() when view.isChecked())
-      _canComparePredictions checkedViews.length > 1
+      _canComparePredictions arePredictionsComparable checkedViews
 
     view = ->
       _.insertAndExecuteCell 'cs', "getPrediction #{stringify _modelKey}, #{stringify _frameKey}"
@@ -32,6 +36,7 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
 
     modelKey: _modelKey
     frameKey: _frameKey
+    modelCategory: prediction.model_category
     isChecked: _isChecked
     view: view
     inspect: inspect
@@ -61,15 +66,17 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
 
   initialize = (predictions) ->
     _predictionViews map predictions, createPredictionView
-    rocCurveConfig =
-      data: _.inspect 'scores', _predictions
-      type: 'line'
-      x: 'FPR'
-      y: 'TPR'
-      color: 'key'
-    _.plot rocCurveConfig, (error, el) ->
-      unless error
-        _rocCurve el
+
+#    TODO handle non-binomial models
+#    rocCurveConfig =
+#      data: _.inspect 'scores', _predictions
+#      type: 'line'
+#      x: 'FPR'
+#      y: 'TPR'
+#      color: 'key'
+#    _.plot rocCurveConfig, (error, el) ->
+#      unless error
+#        _rocCurve el
 
   initialize _predictions
   

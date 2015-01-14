@@ -520,9 +520,9 @@ H2O.Routines = (_) ->
       Flow.Data.Variable 'model_category', TString
       Flow.Data.Variable 'duration_in_ms', TNumber
       Flow.Data.Variable 'scoring_time', TNumber
-      Flow.Data.Variable 'AUC', TNumber
-      Flow.Data.Variable 'Gini', TNumber
-      Flow.Data.Variable 'threshold_criterion', TString
+      #Flow.Data.Variable 'AUC', TNumber
+      #Flow.Data.Variable 'Gini', TNumber
+      #Flow.Data.Variable 'threshold_criterion', TString
     ]
 
     Record = Flow.Data.Record variables
@@ -537,9 +537,9 @@ H2O.Routines = (_) ->
         prediction.model_category
         prediction.duration_in_ms
         prediction.scoring_time
-        auc.AUC
-        auc.Gini
-        auc.threshold_criterion
+        #auc.AUC
+        #auc.Gini
+        #auc.threshold_criterion
       )
 
     Flow.Data.Table
@@ -558,8 +558,8 @@ H2O.Routines = (_) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
     inspect_ predictions,
       predictions: inspectBinomialPredictions opts, predictions
-      metrics: inspectBinomialMetrics opts, predictions
-      scores: inspectBinomialScores opts, predictions
+      #metrics: inspectBinomialMetrics opts, predictions
+      #scores: inspectBinomialScores opts, predictions
 
   inspectBinomialScores = (opts, predictions) -> ->
 
