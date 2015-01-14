@@ -291,6 +291,9 @@ Flow.Notebook = (_, _renderers) ->
   displayCloudStatus = ->
     _.insertAndExecuteCell 'cs', 'getCloud'
 
+  displayTimeline = ->
+    _.insertAndExecuteCell 'cs', 'getTimeline'
+
   displayAbout = ->
     $('#aboutDialog').modal()
 
@@ -418,7 +421,8 @@ Flow.Notebook = (_, _renderers) ->
     ]
   ,
     createMenu 'Admin', [
-      createMenuItem 'Cloud', displayCloudStatus
+      createMenuItem 'Cloud Status', displayCloudStatus
+      createMenuItem 'Timeline', displayTimeline
       createMenuItem 'Download Logs', goToUrl '/Logs/download'
     ]
   ,

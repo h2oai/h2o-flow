@@ -1,0 +1,17 @@
+.flow-widget.flow-cloud-output
+  h3.flow-hint
+    i.fa.fa-cloud
+    span Timeline
+
+  .flow-panel
+    button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
+      // ko if:isLive
+      i.fa.fa-refresh.fa-spin
+      | Stop
+      // /ko
+      // ko ifnot:isLive
+      i.fa.fa-refresh
+      | Refresh
+      // /ko
+
+  .flow-plot(data-bind='raw:events')
