@@ -358,6 +358,13 @@ table.flow-form-ruled tr:first-child {
 .flow-center {
   text-align: center;
 }
+.flow-hud {
+  display: inline-block;
+  margin-right: 15px;
+}
+.flow-hud .fa {
+  margin-right: 5px;
+}
 .flow-button {
   cursor: pointer;
   -webkit-border-radius: 12px;
