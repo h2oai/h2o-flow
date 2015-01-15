@@ -74,7 +74,7 @@ H2O.Proxy = (_) ->
         go null, head result.frames
 
   requestJobs = (go) ->
-    doGet '/Jobs.json', (error, result) ->
+    doGet '/3/Jobs.json', (error, result) ->
       if error
         go new Flow.Error 'Error fetching jobs', error
       else
@@ -83,7 +83,7 @@ H2O.Proxy = (_) ->
   requestJob = (key, go) ->
     #opts = key: encodeURIComponent key
     #requestWithOpts '/Job.json', opts, go
-    doGet "/Jobs.json/#{encodeURIComponent key}", (error, result) ->
+    doGet "/3/Jobs.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go new Flow.Error "Error fetching job '#{key}'", error
       else
@@ -219,6 +219,12 @@ H2O.Proxy = (_) ->
   requestTimeline = (go) ->
     doGet '/3/Timeline.json', go
 
+  requestProfile = (depth, go) ->
+    doGet "/3/Profiler.json?depth=#{depth}", go
+
+  requestStackTrace = (go) ->
+    doGet '/3/JStack.json', go
+
   requestRemoveAll = (go) ->
     doGet '/3/RemoveAll.json', go
 
@@ -253,6 +259,8 @@ H2O.Proxy = (_) ->
   link _.requestPutObject, requestPutObject
   link _.requestCloud, requestCloud
   link _.requestTimeline, requestTimeline
+  link _.requestProfile, requestProfile
+  link _.requestStackTrace, requestStackTrace
   link _.requestRemoveAll, requestRemoveAll
   link _.requestAbout, requestAbout
 

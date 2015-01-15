@@ -1,0 +1,16 @@
+.flow-widget.flow-profile-output
+  h3.flow-hint
+    i.fa.fa-wrench
+    span Profiler
+
+  div
+    | Select Node: 
+    select(data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'")
+
+  // ko with:activeNode
+  h4(data-bind='text:caption')
+  pre(data-bind='text:stackTrace')
+  // /ko
+  // /ko
+
+

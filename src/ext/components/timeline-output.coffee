@@ -11,7 +11,7 @@ H2O.TimelineOutput = (_, _timeline) ->
     'Bytes'
   ]
 
-  _events = signal null
+  _data = signal null
   _timestamp = signal Date.now()
 
   createEvent = (event) ->
@@ -54,7 +54,7 @@ H2O.TimelineOutput = (_, _timeline) ->
     trs = for event in timeline.events
       tr (td cell for cell in createEvent event)
 
-    _events Flow.HTML.render 'div',
+    _data Flow.HTML.render 'div',
       grid [
         table [
           thead tr ths
@@ -81,9 +81,9 @@ H2O.TimelineOutput = (_, _timeline) ->
 
   updateTimeline _timeline 
 
+  data: _data
   isLive: _isLive
   isBusy: _isBusy
-  events: _events
   toggleRefresh: toggleRefresh
   refresh: refresh
   template: 'flow-timeline-output'

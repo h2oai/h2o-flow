@@ -193,6 +193,12 @@ H2O.Routines = (_) ->
   extendTimeline = (timeline) ->
     render_ timeline, -> H2O.TimelineOutput _, timeline
 
+  extendStackTrace = (stackTrace) ->
+    render_ stackTrace, -> H2O.StackTraceOutput _, stackTrace
+
+  extendProfile = (profile) ->
+    render_ profile, -> H2O.ProfileOutput _, profile
+
   extendFrames = (frames) ->
     render_ frames, -> H2O.FramesOutput _, frames
     frames
@@ -1151,6 +1157,27 @@ H2O.Routines = (_) ->
   getTimeline = ->
     _fork requestTimeline
 
+  requestStackTrace = (go) ->
+    _.requestStackTrace (error, stackTrace) ->
+      if error
+        go error
+      else
+        go null, extendStackTrace stackTrace
+
+  getStackTrace = ->
+    _fork requestStackTrace
+
+  requestProfile = (depth, go) ->
+    _.requestProfile depth, (error, profile) ->
+      if error
+        go error
+      else
+        go null, extendProfile profile
+
+  getProfile = (opts) ->
+    opts = depth: 10 unless opts
+    _fork requestProfile, opts.depth
+
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status
     onFail = (jqxhr, settings, error) -> go error #TODO use framework error
@@ -1237,4 +1264,6 @@ H2O.Routines = (_) ->
   getPredictions: getPredictions
   getCloud: getCloud
   getTimeline: getTimeline
+  getProfile: getProfile
+  getStackTrace: getStackTrace
 

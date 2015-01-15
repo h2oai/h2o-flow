@@ -288,11 +288,8 @@ Flow.Notebook = (_, _renderers) ->
   displayKeyboardShortcuts = ->
     $('#keyboardShortcutsDialog').modal()
 
-  displayCloudStatus = ->
-    _.insertAndExecuteCell 'cs', 'getCloud'
-
-  displayTimeline = ->
-    _.insertAndExecuteCell 'cs', 'getTimeline'
+  executeCommand = (command) -> ->
+    _.insertAndExecuteCell 'cs', command
 
   displayAbout = ->
     $('#aboutDialog').modal()
@@ -421,9 +418,11 @@ Flow.Notebook = (_, _renderers) ->
     ]
   ,
     createMenu 'Admin', [
-      createMenuItem 'Cloud Status', displayCloudStatus
-      createMenuItem 'Timeline', displayTimeline
+      createMenuItem 'Cloud Status', executeCommand 'getCloud'
       createMenuItem 'Download Logs', goToUrl '/Logs/download'
+      createMenuItem 'Profiler', executeCommand 'getProfile'
+      createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
+      createMenuItem 'Timeline', executeCommand 'getTimeline'
     ]
   ,
     createMenu 'Help', [

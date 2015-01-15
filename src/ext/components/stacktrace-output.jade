@@ -1,0 +1,18 @@
+.flow-widget.flow-stacktrace-output
+  h3.flow-hint
+    i.fa.fa-wrench
+    span Stack Trace
+
+  div
+    | Select Node: 
+    select(data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'")
+
+
+  // ko with:activeNode
+  h4(data-bind='text:timestamp')
+  // ko foreach:threads
+  h5(data-bind='text:title')
+  pre(data-bind='text:stackTrace')
+  // /ko
+  // /ko
+
