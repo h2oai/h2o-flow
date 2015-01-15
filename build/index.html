@@ -1692,7 +1692,7 @@
       <div class="flow-widget flow-profile-output">
         <h3 class="flow-hint"><i class="fa fa-wrench"></i><span>Profiler</span></h3>
         <div>Select Node: 
-          <select data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'"></select>
+          <select data-bind="options:nodes, optionsText:'name', value:activeNode"></select>
         </div>
         <!-- ko with:activeNode-->
         <h4 data-bind="text:caption"></h4>
@@ -1716,6 +1716,15 @@
         <pre data-bind="text:stackTrace"></pre>
         <!-- /ko-->
         <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-log-file-output">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-file-text-o"></i><span>Log</span></h3>
+        <div>Select Node: 
+          <select data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'"></select>
+        </div>
+        <pre data-bind="text:contents"></pre>
       </div>
     </script>
     <script src="js/flow-lib.js"></script>
