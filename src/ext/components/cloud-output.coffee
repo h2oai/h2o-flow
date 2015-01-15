@@ -1,4 +1,5 @@
 H2O.CloudOutput = (_, _cloud) ->
+  _exception = signal null #TODO Display in .jade
   _isLive = signal no
   _isBusy = signal no
 

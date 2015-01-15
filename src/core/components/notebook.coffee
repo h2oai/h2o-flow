@@ -419,8 +419,9 @@ Flow.Notebook = (_, _renderers) ->
   ,
     createMenu 'Admin', [
       createMenuItem 'Jobs', executeCommand 'getJobs'
-      createMenuItem 'Cloud Status', executeCommand 'getCloud'
-      createMenuItem 'Download Logs', goToUrl '/Logs/download'
+      createMenuItem 'Cluster Status', executeCommand 'getCloud'
+      createMenuItem 'Inspect Log', executeCommand 'getLogFile 0'
+      createMenuItem 'Download Log', goToUrl '/Logs/download'
       createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
       createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
       createMenuItem 'Timeline', executeCommand 'getTimeline'

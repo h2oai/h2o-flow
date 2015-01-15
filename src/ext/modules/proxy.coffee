@@ -237,6 +237,9 @@ H2O.Proxy = (_) ->
   requestRemoveAll = (go) ->
     doGet '/3/RemoveAll.json', go
 
+  requestLogFile = (nodeIndex, go) ->
+    doGet "/3/Logs.json/nodes/#{nodeIndex}/files/default", go
+
   requestAbout = (go) ->
     doGet '/3/About.json', go
 
@@ -272,6 +275,7 @@ H2O.Proxy = (_) ->
   link _.requestProfile, requestProfile
   link _.requestStackTrace, requestStackTrace
   link _.requestRemoveAll, requestRemoveAll
+  link _.requestLogFile, requestLogFile
   link _.requestAbout, requestAbout
 
 

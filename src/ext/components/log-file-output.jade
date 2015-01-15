@@ -1,0 +1,12 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-file-text-o
+    span Log
+
+  div
+    | Select Node: 
+    select(data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'")
+
+  pre(data-bind='text:contents')
+  
+
