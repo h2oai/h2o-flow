@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.23';
+    FLOW_VERSION = '0.2.24';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1074,7 +1074,7 @@
                 createMenuItem('Jobs', executeCommand('getJobs')),
                 createMenuItem('Cloud Status', executeCommand('getCloud')),
                 createMenuItem('Download Logs', goToUrl('/Logs/download')),
-                createMenuItem('Profiler', executeCommand('getProfile')),
+                createMenuItem('Profiler', executeCommand('getProfile depth: 10')),
                 createMenuItem('Stack Trace', executeCommand('getStackTrace')),
                 createMenuItem('Timeline', executeCommand('getTimeline'))
             ]),
@@ -4057,6 +4057,7 @@
         _.requestGet = Flow.Dataflow.slot();
         _.requestPost = Flow.Dataflow.slot();
         _.requestFileGlob = Flow.Dataflow.slot();
+        _.requestCreateFrame = Flow.Dataflow.slot();
         _.requestImportFile = Flow.Dataflow.slot();
         _.requestImportFiles = Flow.Dataflow.slot();
         _.requestParseFiles = Flow.Dataflow.slot();
@@ -4098,7 +4099,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doGet, doPost, encodeArray, http, mapWithKey, patchUpModels, requestAbout, requestCloud, requestColumnSummary, requestDeleteObject, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestStackTrace, requestTimeline, requestWithOpts;
+        var composePath, doGet, doPost, encodeArray, encodeObject, http, mapWithKey, patchUpModels, requestAbout, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestStackTrace, requestTimeline, requestWithOpts;
         http = function (path, opts, go) {
             var req;
             _.status('server', 'request', path);
@@ -4150,10 +4151,22 @@
         encodeArray = function (array) {
             return '[' + lodash.map(array, encodeURIComponent).join(',') + ']';
         };
+        encodeObject = function (source) {
+            var k, target, v;
+            target = {};
+            for (k in source) {
+                v = source[k];
+                target[k] = encodeURIComponent(v);
+            }
+            return target;
+        };
         requestInspect = function (key, go) {
             var opts;
             opts = { key: encodeURIComponent(key) };
             return requestWithOpts('/Inspect.json', opts, go);
+        };
+        requestCreateFrame = function (opts, go) {
+            return requestWithOpts('/2/CreateFrame.json', encodeObject(opts), go);
         };
         requestFrames = function (go) {
             return doGet('/3/Frames.json', function (error, result) {
@@ -4393,6 +4406,7 @@
         Flow.Dataflow.link(_.requestGet, doGet);
         Flow.Dataflow.link(_.requestPost, doPost);
         Flow.Dataflow.link(_.requestInspect, requestInspect);
+        Flow.Dataflow.link(_.requestCreateFrame, requestCreateFrame);
         Flow.Dataflow.link(_.requestFrames, requestFrames);
         Flow.Dataflow.link(_.requestFrame, requestFrame);
         Flow.Dataflow.link(_.requestColumnSummary, requestColumnSummary);
@@ -4515,7 +4529,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, buildModel, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendKMeansModel, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectKMeansModelClusterDetails, inspectKMeansModelClusters, inspectKMeansModelOutput, inspectModelParameters, inspectMultimodelParameters, inspectRegressionPrediction, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestFrame, requestFrames, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestStackTrace, requestTimeline, setupParse, __plot, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _plotInput, _ref;
+        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendKMeansModel, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectKMeansModelClusterDetails, inspectKMeansModelClusters, inspectKMeansModelOutput, inspectModelParameters, inspectMultimodelParameters, inspectRegressionPrediction, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestFrame, requestFrames, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestStackTrace, requestTimeline, setupParse, __plot, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _plotInput, _ref;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5624,6 +5638,22 @@
                 }
             });
         };
+        requestCreateFrame = function (opts, go) {
+            return _.requestCreateFrame(opts, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, result);
+                }
+            });
+        };
+        createFrame = function (opts) {
+            if (opts) {
+                return _fork(requestCreateFrame, opts);
+            } else {
+                return assist(createFrame);
+            }
+        };
         getFrames = function () {
             return _fork(requestFrames);
         };
@@ -5967,6 +5997,8 @@
                 case predict:
                 case getPrediction:
                     return _fork(proceed, H2O.PredictInput, args);
+                case createFrame:
+                    return _fork(proceed, H2O.CreateFrameInput, args);
                 default:
                     return _fork(proceed, H2O.NoAssist, []);
                 }
@@ -6002,6 +6034,7 @@
             importFiles: importFiles,
             setupParse: setupParse,
             parseRaw: parseRaw,
+            createFrame: createFrame,
             getFrames: getFrames,
             getFrame: getFrame,
             getColumnSummary: getColumnSummary,
@@ -6390,6 +6423,63 @@
             characteristicsPlot: _characteristicsPlot,
             inspect: inspect,
             template: 'flow-column-summary-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.CreateFrameInput = function (_) {
+        var createFrame, _binaryFraction, _categoricalFraction, _columns, _factors, _integerFraction, _integerRange, _key, _missingFraction, _randomize, _realRange, _responseFactors, _rows, _seed, _value;
+        _key = Flow.Dataflow.signal('');
+        _rows = Flow.Dataflow.signal(10000);
+        _columns = Flow.Dataflow.signal(100);
+        _seed = Flow.Dataflow.signal(7595850248774472000);
+        _randomize = Flow.Dataflow.signal(true);
+        _value = Flow.Dataflow.signal(0);
+        _realRange = Flow.Dataflow.signal(100);
+        _categoricalFraction = Flow.Dataflow.signal(0.1);
+        _factors = Flow.Dataflow.signal(5);
+        _integerFraction = Flow.Dataflow.signal(0.5);
+        _binaryFraction = Flow.Dataflow.signal(0.1);
+        _integerRange = Flow.Dataflow.signal(1);
+        _missingFraction = Flow.Dataflow.signal(0.01);
+        _responseFactors = Flow.Dataflow.signal(2);
+        createFrame = function () {
+            var opts;
+            opts = {
+                dest: _key(),
+                rows: _rows(),
+                cols: _columns(),
+                seed: _seed(),
+                randomize: _randomize(),
+                value: _value(),
+                real_range: _realRange(),
+                categorical_fraction: _categoricalFraction(),
+                factors: _factors(),
+                integer_fraction: _integerFraction(),
+                binary_fraction: _binaryFraction(),
+                integer_range: _integerRange(),
+                missing_fraction: _missingFraction(),
+                response_factors: _responseFactors()
+            };
+            return _.insertAndExecuteCell('cs', 'createFrame ' + Flow.Prelude.stringify(opts));
+        };
+        return {
+            key: _key,
+            rows: _rows,
+            columns: _columns,
+            seed: _seed,
+            randomize: _randomize,
+            value: _value,
+            realRange: _realRange,
+            categoricalFraction: _categoricalFraction,
+            factors: _factors,
+            integerFraction: _integerFraction,
+            binaryFraction: _binaryFraction,
+            integerRange: _integerRange,
+            missingFraction: _missingFraction,
+            responseFactors: _responseFactors,
+            createFrame: createFrame,
+            template: 'flow-create-frame-input'
         };
     };
 }.call(this));
@@ -8146,27 +8236,40 @@
 }.call(this));
 (function () {
     H2O.ProfileOutput = function (_, _profile) {
-        var createNode, i, stackTrace, _activeNode, _nodes;
+        var createNode, i, node, _activeNode, _nodes;
         _activeNode = Flow.Dataflow.signal(null);
-        createNode = function (index, count, stackTrace) {
-            var display, self;
+        createNode = function (node) {
+            var display, entries, entry, self;
             display = function () {
                 return _activeNode(self);
             };
+            entries = function () {
+                var _i, _len, _ref, _results;
+                _ref = node.entries;
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    entry = _ref[_i];
+                    _results.push({
+                        stacktrace: entry.stacktrace,
+                        caption: 'Count: ' + entry.count
+                    });
+                }
+                return _results;
+            }();
             return self = {
-                name: 'Node ' + index,
-                caption: 'Node ' + index + ' (Count: ' + count + ')',
-                stackTrace: stackTrace,
+                name: node.node_name,
+                caption: '' + node.node_name + ' at ' + new Date(node.timestamp),
+                entries: entries,
                 display: display
             };
         };
         _nodes = function () {
             var _i, _len, _ref, _results;
-            _ref = _profile.stacktraces;
+            _ref = _profile.nodes;
             _results = [];
             for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-                stackTrace = _ref[i];
-                _results.push(createNode(i, _profile.counts[i], stackTrace));
+                node = _ref[i];
+                _results.push(createNode(node));
             }
             return _results;
         }();
