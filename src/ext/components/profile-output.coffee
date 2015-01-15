@@ -1,17 +1,20 @@
 H2O.ProfileOutput = (_, _profile) ->
   _activeNode = signal null
 
-  createNode = (index, count, stackTrace) ->
+  createNode = (index, counts, stackTraces) ->
     display = -> _activeNode self
+
+    entries = for stackTrace, i in stackTraces
+      stackTrace: stackTrace
+      count: "Count: #{counts[i]}"
 
     self =
       name: "Node #{index}"
-      caption: "Node #{index} (Count: #{count})"
-      stackTrace: stackTrace
+      entries: entries 
       display: display
 
-  _nodes = for stackTrace, i in _profile.stacktraces
-    createNode i, _profile.counts[i], stackTrace 
+  _nodes = for stackTraces, i in _profile.stacktraces
+    createNode i, _profile.counts[i], stackTraces
 
   _activeNode head _nodes
 

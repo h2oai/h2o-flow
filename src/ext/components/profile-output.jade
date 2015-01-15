@@ -8,7 +8,9 @@
     select(data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'")
 
   // ko with:activeNode
-  h4(data-bind='text:caption')
+  h4(data-bind='text:name')
+  // ko foreach:entries
+  p(data-bind='text:count')
   pre(data-bind='text:stackTrace')
   // /ko
   // /ko
