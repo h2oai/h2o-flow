@@ -965,6 +965,19 @@ H2O.Routines = (_) ->
       else
         go null, extendFrames frames
 
+  requestCreateFrame = (opts, go) ->
+    _.requestCreateFrame opts, (error, result) ->
+      if error
+        go error
+      else
+        go null, result #XXX
+
+  createFrame = (opts) ->
+    if opts
+      _fork requestCreateFrame, opts
+    else
+      assist createFrame
+
   getFrames = ->
     _fork requestFrames  
 
@@ -1208,6 +1221,8 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.ModelInput, args
         when predict, getPrediction
           _fork proceed, H2O.PredictInput, args
+        when createFrame
+          _fork proceed, H2O.CreateFrameInput, args
         else
           _fork proceed, H2O.NoAssist, []
 
@@ -1253,6 +1268,7 @@ H2O.Routines = (_) ->
   importFiles: importFiles
   setupParse: setupParse
   parseRaw: parseRaw
+  createFrame: createFrame
   getFrames: getFrames
   getFrame: getFrame
   getColumnSummary: getColumnSummary

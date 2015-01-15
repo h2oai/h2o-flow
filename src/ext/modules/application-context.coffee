@@ -2,6 +2,7 @@ H2O.ApplicationContext = (_) ->
   _.requestGet = do slot
   _.requestPost = do slot
   _.requestFileGlob = do slot
+  _.requestCreateFrame = do slot
   _.requestImportFile = do slot
   _.requestImportFiles = do slot
   _.requestParseFiles = do slot

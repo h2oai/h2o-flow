@@ -1,0 +1,106 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-database
+    | Create a Frame
+
+  table.flow-form
+    tr
+      th
+        label Destination Key
+      td
+        input.flow-textbox(type='text' data-bind="value:key")
+      td (No description available)
+    tr
+      th
+        label Rows
+      td
+        input.flow-textbox(type='text' data-bind="value:rows")
+      td (No description available)
+        
+    tr
+      th
+        label Columns
+      td
+        input.flow-textbox(type='text' data-bind="value:columns")
+      td (No description available)
+        
+    tr
+      th
+        label Randomize
+      td
+        input(type='checkbox' data-bind="checked:randomize")
+      td (No description available)
+
+    tr
+      th
+        label Seed
+      td
+        input.flow-textbox(type='text' data-bind="value:seed")
+      td (No description available)
+        
+    tr
+      th
+        label Value
+      td
+        input.flow-textbox(type='text' data-bind="value:value")
+      td (No description available)
+
+    tr
+      th
+        label Factors
+      td
+        input.flow-textbox(type='text' data-bind="value:factors")
+      td (No description available)
+        
+    tr
+      th
+        label Categorical Fraction
+      td
+        input.flow-textbox(type='text' data-bind="value:categoricalFraction")
+      td (No description available)
+        
+    tr
+      th
+        label Integer Fraction
+      td
+        input.flow-textbox(type='text' data-bind="value:integerFraction")
+      td (No description available)
+        
+    tr
+      th
+        label Binary Fraction
+      td
+        input.flow-textbox(type='text' data-bind="value:binaryFraction")
+      td (No description available)
+        
+    tr
+      th
+        label Missing Fraction
+      td
+        input.flow-textbox(type='text' data-bind="value:missingFraction")
+      td (No description available)
+        
+    tr
+      th
+        label Response Factors
+      td
+        input.flow-textbox(type='text' data-bind="value:responseFactors")
+      td (No description available)
+        
+        
+    tr
+      th
+        label Real Range
+      td
+        input.flow-textbox(type='text' data-bind="value:realRange")
+      td (No description available)
+        
+    tr
+      th
+        label Integer Range
+      td
+        input.flow-textbox(type='text' data-bind="value:integerRange")
+      td (No description available)
+        
+  .flow-panel
+    +button('Create', 'database', 'createFrame')

@@ -48,9 +48,18 @@ H2O.Proxy = (_) ->
 
   encodeArray = (array) -> "[#{join (map array, encodeURIComponent), ','}]"
 
+  encodeObject = (source) ->
+    target = {}
+    for k, v of source
+      target[k] = encodeURIComponent v
+    target
+
   requestInspect = (key, go) ->
     opts = key: encodeURIComponent key
     requestWithOpts '/Inspect.json', opts, go
+
+  requestCreateFrame = (opts, go) ->
+    requestWithOpts '/2/CreateFrame.json', (encodeObject opts), go
 
   requestFrames = (go) ->
     doGet '/3/Frames.json', (error, result) ->
@@ -234,6 +243,7 @@ H2O.Proxy = (_) ->
   link _.requestGet, doGet
   link _.requestPost, doPost
   link _.requestInspect, requestInspect
+  link _.requestCreateFrame, requestCreateFrame
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
   link _.requestColumnSummary, requestColumnSummary
