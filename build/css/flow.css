@@ -275,7 +275,7 @@ th {
 }
 .flow-widget h4 {
   text-transform: uppercase;
-  font-size: 85%;
+  font-size: 75%;
   letter-spacing: 3px;
   border-bottom: 1px dotted #ccc;
   margin-top: 20px;
@@ -445,6 +445,10 @@ table.flow-form-ruled tr:first-child {
   padding: 15px;
   margin: 10px 0 20px 0;
   color: #f00;
+}
+.flow-nowrap th,
+.flow-nowrap td {
+  white-space: nowrap;
 }
 .flow-plot {
   overflow: auto;

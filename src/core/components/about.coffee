@@ -1,4 +1,4 @@
-FLOW_VERSION = '0.2.22'
+FLOW_VERSION = '0.2.23'
 
 Flow.About = (_) ->
   _properties = signals []

@@ -109,7 +109,7 @@
     </div>
     <!-- /ko-->
     <div id="aboutDialog" tabindex="-1" role="dialog" aria-labelledby="aboutDialogLabel" aria-hidden="true" class="modal fade">
-      <div class="modal-dialog modal-sm">
+      <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" data-dismiss="modal" class="close"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
@@ -1502,71 +1502,31 @@
             <thead>
               <tr>
                 <th style="text-align:left">Version</th>
-                <th>Size</th>
-                <th>Bad Nodes</th>
                 <th>Started</th>
+                <th>Nodes (Used / All)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td data-bind="text:version"></td>
-                <td data-bind="text:size"></td>
-                <td data-bind="text:badNodeCount"></td>
                 <td data-bind="text:uptime"></td>
+                <td data-bind="text:nodeCounts"></td>
               </tr>
             </tbody>
           </table>
         </div>
         <h4>Nodes</h4>
-        <div class="flow-plot">
-          <table>
-            <thead>
-              <tr>
-                <th>&nbsp;</th>
-                <th>Name</th>
-                <th>Ping</th>
-                <th>Cores</th>
-                <th>Keys</th>
-                <th>TCP</th>
-                <th>FD</th>
-                <th>PID</th>
-                <th>Load</th>
-                <th>Data (Used/Total)</th>
-                <th>Data (% Cached)</th>
-                <th>GC (Free / Total / Max)</th>
-                <th>Disk (Free / Max)</th>
-                <th>Disk (% Free)</th>
-                <th>RPCs</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- ko foreach:nodes-->
-              <tr>
-                <td>
-                  <!-- ko if:isHealthy--><i class="fa fa-check-circle text-success"></i>
-                  <!-- /ko-->
-                  <!-- ko ifnot:isHealthy--><i class="fa fa-exclamation-circle text-danger"></i>
-                  <!-- /ko-->
-                </td>
-                <td data-bind="text:name"></td>
-                <td data-bind="text:ping">Ping</td>
-                <td data-bind="text:cores">Cores</td>
-                <td data-bind="text:keys">Keys</td>
-                <td data-bind="text:tcps">TCP</td>
-                <td data-bind="text:fds">FD</td>
-                <td data-bind="text:pid">PID</td>
-                <td data-bind="text:load">Load</td>
-                <td data-bind="text:data">Data (Used/Total)</td>
-                <td data-bind="text:cachedData">Data (% Cached)</td>
-                <td data-bind="text:memory">GC (Free / Total / Max)</td>
-                <td data-bind="text:disk">Disk (Free / Max)</td>
-                <td data-bind="text:freeDisk">Disk (% Free)</td>
-                <td data-bind="text:rpcs">RPCs</td>
-              </tr>
-              <!-- /ko-->
-            </tbody>
-          </table>
+        <div class="flow-right flow-margin-after">
+          <!-- ko ifnot:isExpanded-->
+              <button type="button" data-bind="click:toggleExpansion" class="flow-button"><i class="fa fa-angle-double-down"></i><span>Show advanced</span>
+              </button>
+          <!-- /ko-->
+          <!-- ko if:isExpanded-->
+              <button type="button" data-bind="click:toggleExpansion" class="flow-button"><i class="fa fa-angle-double-up"></i><span>Hide advanced</span>
+              </button>
+          <!-- /ko-->
         </div>
+        <div data-bind="raw:nodes" class="flow-plot flow-nowrap"></div>
         <div class="flow-panel">
           <button type="button" data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }" class="flow-button">
             <!-- ko if:isLive--><i class="fa fa-refresh fa-spin"></i>Stop
@@ -1578,8 +1538,8 @@
       </div>
     </script>
     <script type="text/html" id="flow-timeline-output">
-      <div class="flow-widget flow-cloud-output">
-        <h3 class="flow-hint"><i class="fa fa-cloud"></i><span>Timeline</span></h3>
+      <div class="flow-widget flow-timeline-output">
+        <h3 class="flow-hint"><i class="fa fa-clock-o"></i><span>Timeline</span></h3>
         <div class="flow-panel">
           <button type="button" data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }" class="flow-button">
             <!-- ko if:isLive--><i class="fa fa-refresh fa-spin"></i>Stop
@@ -1588,7 +1548,35 @@
             <!-- /ko-->
           </button>
         </div>
-        <div data-bind="raw:events" class="flow-plot"></div>
+        <div data-bind="raw:data" class="flow-plot"></div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-profile-output">
+      <div class="flow-widget flow-profile-output">
+        <h3 class="flow-hint"><i class="fa fa-wrench"></i><span>Profiler</span></h3>
+        <div>Select Node: 
+          <select data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'"></select>
+        </div>
+        <!-- ko with:activeNode-->
+        <h4 data-bind="text:caption"></h4>
+        <pre data-bind="text:stackTrace"></pre>
+        <!-- /ko-->
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-stacktrace-output">
+      <div class="flow-widget flow-stacktrace-output">
+        <h3 class="flow-hint"><i class="fa fa-wrench"></i><span>Stack Trace</span></h3>
+        <div>Select Node: 
+          <select data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'"></select>
+        </div>
+        <!-- ko with:activeNode-->
+        <h4 data-bind="text:timestamp"></h4>
+        <!-- ko foreach:threads-->
+        <h5 data-bind="text:title"></h5>
+        <pre data-bind="text:stackTrace"></pre>
+        <!-- /ko-->
+        <!-- /ko-->
       </div>
     </script>
     <script src="js/flow-lib.js"></script>
