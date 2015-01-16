@@ -427,13 +427,17 @@ Flow.Notebook = (_, _renderers) ->
     ]
   ,
     createMenu 'Admin', [
-      createMenuItem 'Jobs', executeCommand 'getJobs'
       createMenuItem 'Cluster Status', executeCommand 'getCloud'
-      createMenuItem 'Performance Monitor', goToUrl '/perfbar.html'
-      createMenuItem 'Inspect Log', executeCommand 'getLogFile 0'
-      createMenuItem 'Download Log', goToUrl '/Logs/download'
-      createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
+      createMenuItem 'Jobs', executeCommand 'getJobs'
+      createMenuItem 'Water Meter (CPU meter)', goToUrl '/perfbar.html'
+      menuDivider
+      createMenuItem '(Logs)', ->
+      createMenuItem 'View Log', executeCommand 'getLogFile'
+      createMenuItem 'Download Logs', goToUrl '/Logs/download'
+      menuDivider
+      createMenuItem '(Advanced Debugging)', ->
       createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
+      createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
       createMenuItem 'Timeline', executeCommand 'getTimeline'
     ]
   ,
