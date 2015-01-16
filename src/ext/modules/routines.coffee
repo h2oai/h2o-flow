@@ -1190,7 +1190,7 @@ H2O.Routines = (_) ->
       else
         go null, extendLogFile nodeIndex, logFile
 
-  getLogFile = (nodeIndex=0) ->
+  getLogFile = (nodeIndex=-1) ->
     _fork requestLogFile, nodeIndex
 
   requestProfile = (depth, go) ->
