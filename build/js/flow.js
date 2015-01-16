@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.27';
+    FLOW_VERSION = '0.99.2';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1084,13 +1084,19 @@
                 createMenuItem('Clear All', clearAllCells, true)
             ]),
             createMenu('Admin', [
-                createMenuItem('Jobs', executeCommand('getJobs')),
                 createMenuItem('Cluster Status', executeCommand('getCloud')),
-                createMenuItem('Performance Monitor', goToUrl('/perfbar.html')),
-                createMenuItem('Inspect Log', executeCommand('getLogFile 0')),
-                createMenuItem('Download Log', goToUrl('/Logs/download')),
-                createMenuItem('Profiler', executeCommand('getProfile depth: 10')),
+                createMenuItem('Jobs', executeCommand('getJobs')),
+                createMenuItem('Water Meter (CPU meter)', goToUrl('/perfbar.html')),
+                menuDivider,
+                createMenuItem('(Logs)', function () {
+                }),
+                createMenuItem('View Log', executeCommand('getLogFile')),
+                createMenuItem('Download Logs', goToUrl('/Logs/download')),
+                menuDivider,
+                createMenuItem('(Advanced Debugging)', function () {
+                }),
                 createMenuItem('Stack Trace', executeCommand('getStackTrace')),
+                createMenuItem('Profiler', executeCommand('getProfile depth: 10')),
                 createMenuItem('Timeline', executeCommand('getTimeline'))
             ]),
             createMenu('Help', [
@@ -8430,7 +8436,7 @@
         };
         getLogFile = function (nodeIndex) {
             if (nodeIndex == null) {
-                nodeIndex = 0;
+                nodeIndex = -1;
             }
             return _fork(requestLogFile, nodeIndex);
         };
