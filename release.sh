@@ -11,5 +11,6 @@ sed -E "s/999\.999\.999/$FLOW_VERSION/" build/js/flow.js > build/js/flow.js.tmp 
 
 git add .
 git commit -m "Release $FLOW_VERSION"
+git push
 git tag -a $FLOW_VERSION -m "$FLOW_VERSION"
 git push --tags
