@@ -4,17 +4,23 @@ Flow.About = (_) ->
   _properties = signals []
 
   link _.ready, ->
-    _.requestAbout (error, response) ->
+    if Flow.Version
+      _properties Flow.Version
+    else
+      _.requestAbout (error, response) ->
+        properties = []
 
-      unless error
-        for { name, value } in response.entries
-          _properties.push
-            caption: 'H2O ' + name
-            value: value
+        unless error
+          for { name, value } in response.entries
+            properties.push
+              caption: 'H2O ' + name
+              value: value
 
-      _properties.push
-        caption: 'Flow version'
-        value: FLOW_VERSION
+        properties.push
+          caption: 'Flow version'
+          value: FLOW_VERSION
+
+        _properties Flow.Version = properties
 
   properties: _properties
 

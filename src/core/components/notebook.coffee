@@ -288,6 +288,15 @@ Flow.Notebook = (_, _renderers) ->
   displayKeyboardShortcuts = ->
     $('#keyboardShortcutsDialog').modal()
 
+  displayDocumentation = ->
+    hash = if Flow.Version
+      hashEntry = find Flow.Version, (entry) -> entry.caption is 'H2O Build git hash'
+      if hashEntry then hashEntry.value else 'master'
+    else
+      'master'
+
+    window.open "https://github.com/h2oai/h2o-dev/blob/#{hash}/h2o-docs/src/product/flow/README.md", '_blank'
+
   executeCommand = (command) -> ->
     _.insertAndExecuteCell 'cs', command
 
@@ -432,7 +441,7 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Contents', showHelp
       createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
       menuDivider
-      createMenuItem 'H2O Documentation', goToUrl 'http://docs.h2o.ai/'
+      createMenuItem 'H2O Documentation', displayDocumentation
       createMenuItem 'h2o.ai', goToUrl 'http://h2o.ai/'
       menuDivider
       createMenuItem 'About', displayAbout
