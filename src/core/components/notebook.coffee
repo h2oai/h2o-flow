@@ -429,6 +429,7 @@ Flow.Notebook = (_, _renderers) ->
     createMenu 'Admin', [
       createMenuItem 'Jobs', executeCommand 'getJobs'
       createMenuItem 'Cluster Status', executeCommand 'getCloud'
+      createMenuItem 'Performance Monitor', goToUrl '/perfbar.html'
       createMenuItem 'Inspect Log', executeCommand 'getLogFile 0'
       createMenuItem 'Download Log', goToUrl '/Logs/download'
       createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
