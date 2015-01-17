@@ -379,6 +379,9 @@ H2O.Routines = (_) ->
     inspect_ model,
       parameters: inspectModelParameters model
 
+  extendJob = (job) ->
+    render_ job, -> H2O.JobOutput _, job
+
   extendModel = (model) ->
     switch model.algo
       when 'kmeans'
@@ -973,7 +976,11 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        go null, result #XXX
+        _.requestJob result.key.name, (error, job) ->
+          if error
+            go error
+          else
+            go null, extendJob job
 
   createFrame = (opts) ->
     if opts
