@@ -348,13 +348,16 @@ Flow.Notebook = (_, _renderers) ->
     label: label
     items: items
 
+  createMenuHeader = (label) ->
+    label: label
+    action: null
+
   createMenuItem = (label, action, isDisabled=no) ->
     label: label
     action: action
-    isAction: yes
     isDisabled: isDisabled
 
-  menuDivider = isAction: no
+  menuDivider = label: null, action: null
 
   _menus = [
     createMenu 'Flow', [
@@ -431,11 +434,11 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Jobs', executeCommand 'getJobs'
       createMenuItem 'Water Meter (CPU meter)', goToUrl '/perfbar.html'
       menuDivider
-      createMenuItem '(Logs)', ->
+      createMenuHeader 'Logs'
       createMenuItem 'View Log', executeCommand 'getLogFile'
       createMenuItem 'Download Logs', goToUrl '/Logs/download'
       menuDivider
-      createMenuItem '(Advanced Debugging)', ->
+      createMenuHeader 'Advanced Debugging'
       createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
       createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
       createMenuItem 'Timeline', executeCommand 'getTimeline'

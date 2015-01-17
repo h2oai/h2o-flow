@@ -15,14 +15,25 @@
         span.caret
       ul.dropdown-menu(role='menu')
         // ko foreach:items
-        // ko if:isAction
+
+        // ko ifnot:action
+
+        // ko if:label
+        li.dropdown-header(data-bind='text:label')
+        // /ko
+
+        // ko ifnot:label
+        li.divider
+        // /ko
+
+        // /ko
+
+        // ko if:action
         li(data-bind="css:{ 'disabled':isDisabled }")
           a(href='#' data-bind='click:action') 
             span(data-bind='text:label')
         // /ko
-        // ko ifnot:isAction
-        li.divider
-        // /ko
+
         // /ko
     // /ko
 
