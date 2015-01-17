@@ -87,7 +87,6 @@
         input.flow-textbox(type='text' data-bind="value:responseFactors")
       td (No description available)
         
-        
     tr
       th
         label Real Range
@@ -101,6 +100,14 @@
       td
         input.flow-textbox(type='text' data-bind="value:integerRange")
       td (No description available)
+
+    tr
+      th
+        label Has Response?
+      td
+        input(type='checkbox' data-bind="checked:hasResponse")
+      td (No description available)
+
         
   .flow-panel
     +button('Create', 'database', 'createFrame')
