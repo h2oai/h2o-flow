@@ -11,2463 +11,8 @@
     }
 }.call(this));
 (function () {
-    Flow.ApplicationContext = function (_) {
-        _.ready = Flow.Dataflow.slots();
-        _.status = Flow.Dataflow.slot();
-        _.selectCell = Flow.Dataflow.slot();
-        _.insertCell = Flow.Dataflow.slot();
-        _.insertAndExecuteCell = Flow.Dataflow.slot();
-        _.showHelp = Flow.Dataflow.slot();
-        _.showOutline = Flow.Dataflow.slot();
-        _.showBrowser = Flow.Dataflow.slot();
-        _.showClipboard = Flow.Dataflow.slot();
-        _.saveClip = Flow.Dataflow.slot();
-        _.loadNotebook = Flow.Dataflow.slot();
-        return _.storeNotebook = Flow.Dataflow.slot();
-    };
-}.call(this));
-(function () {
-    Flow.Application = function (_, routines) {
-        var _notebook, _renderers, _routines, _sandbox;
-        Flow.ApplicationContext(_);
-        _routines = routines(_);
-        _sandbox = Flow.Sandbox(_, _routines);
-        _renderers = Flow.Renderers(_, _sandbox);
-        _notebook = Flow.Notebook(_, _renderers);
-        return {
-            context: _,
-            sandbox: _sandbox,
-            view: _notebook
-        };
-    };
-}.call(this));
-(function () {
-    var createBuffer, iterate, pipe, renderable, _applicate, _async, _find, _find$2, _find$3, _fork, _get, _isFuture, _join, _noop, __slice = [].slice;
-    createBuffer = function (array) {
-        var buffer, _array, _go;
-        _array = array || [];
-        _go = null;
-        buffer = function (element) {
-            if (element === void 0) {
-                return _array;
-            } else {
-                _array.push(element);
-                if (_go) {
-                    _go(element);
-                }
-                return element;
-            }
-        };
-        buffer.subscribe = function (go) {
-            return _go = go;
-        };
-        buffer.buffer = _array;
-        buffer.isBuffer = true;
-        return buffer;
-    };
-    _noop = function (go) {
-        return go(null);
-    };
-    _applicate = function (go) {
-        return function (error, args) {
-            if (lodash.isFunction(go)) {
-                return go.apply(null, [error].concat(args));
-            }
-        };
-    };
-    renderable = function () {
-        var args, f, ft, render, _i;
-        f = arguments[0], args = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), render = arguments[_i++];
-        ft = _fork(f, args);
-        ft.render = render;
-        return ft;
-    };
-    _fork = function (f, args) {
-        var self;
-        self = function (go) {
-            var canGo;
-            canGo = lodash.isFunction(go);
-            if (self.settled) {
-                if (self.rejected) {
-                    if (canGo) {
-                        return go(self.error);
-                    }
-                } else {
-                    if (canGo) {
-                        return go(null, self.result);
-                    }
-                }
-            } else {
-                return _join(args, function (error, args) {
-                    if (error) {
-                        self.error = error;
-                        self.fulfilled = false;
-                        self.rejected = true;
-                        if (canGo) {
-                            return go(error);
-                        }
-                    } else {
-                        return f.apply(null, args.concat(function (error, result) {
-                            if (error) {
-                                self.error = error;
-                                self.fulfilled = false;
-                                self.rejected = true;
-                                if (canGo) {
-                                    go(error);
-                                }
-                            } else {
-                                self.result = result;
-                                self.fulfilled = true;
-                                self.rejected = false;
-                                if (canGo) {
-                                    go(null, result);
-                                }
-                            }
-                            self.settled = true;
-                            return self.pending = false;
-                        }));
-                    }
-                });
-            }
-        };
-        self.method = f;
-        self.args = args;
-        self.fulfilled = false;
-        self.rejected = false;
-        self.settled = false;
-        self.pending = true;
-        self.isFuture = true;
-        return self;
-    };
-    _isFuture = function (a) {
-        if (a != null ? a.isFuture : void 0) {
-            return true;
-        } else {
-            return false;
-        }
-    };
-    _join = function (args, go) {
-        var arg, i, _actual, _i, _len, _results, _settled, _tasks;
-        if (args.length === 0) {
-            return go(null, []);
-        }
-        _tasks = [];
-        _results = [];
-        for (i = _i = 0, _len = args.length; _i < _len; i = ++_i) {
-            arg = args[i];
-            if (arg != null ? arg.isFuture : void 0) {
-                _tasks.push({
-                    future: arg,
-                    resultIndex: i
-                });
-            } else {
-                _results[i] = arg;
-            }
-        }
-        if (_tasks.length === 0) {
-            return go(null, _results);
-        }
-        _actual = 0;
-        _settled = false;
-        lodash.forEach(_tasks, function (task) {
-            return task.future.call(null, function (error, result) {
-                if (_settled) {
-                    return;
-                }
-                if (error) {
-                    _settled = true;
-                    go(new Flow.Error('Error evaluating future[' + task.resultIndex + ']', error));
-                } else {
-                    _results[task.resultIndex] = result;
-                    _actual++;
-                    if (_actual === _tasks.length) {
-                        _settled = true;
-                        go(null, _results);
-                    }
-                }
-            });
-        });
-    };
-    pipe = function (tasks) {
-        var next, _tasks;
-        _tasks = tasks.slice(0);
-        next = function (args, go) {
-            var task;
-            task = _tasks.shift();
-            if (task) {
-                return task.apply(null, args.concat(function () {
-                    var error, results;
-                    error = arguments[0], results = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-                    if (error) {
-                        return go(error);
-                    } else {
-                        return next(results, go);
-                    }
-                }));
-            } else {
-                return go.apply(null, [null].concat(args));
-            }
-        };
-        return function () {
-            var args, go, _i;
-            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
-            return next(args, go);
-        };
-    };
-    iterate = function (tasks) {
-        var next, _results, _tasks;
-        _tasks = tasks.slice(0);
-        _results = [];
-        next = function (go) {
-            var task;
-            task = _tasks.shift();
-            if (task) {
-                return task(function (error, result) {
-                    if (error) {
-                        _results.push([error]);
-                    } else {
-                        _results.push([
-                            null,
-                            result
-                        ]);
-                    }
-                    return next(go);
-                });
-            } else {
-                return go(null, _results);
-            }
-        };
-        return function (go) {
-            return next(go);
-        };
-    };
-    _async = function () {
-        var args, f, later;
-        f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-        later = function () {
-            var args, error, go, result, _i;
-            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
-            try {
-                result = f.apply(null, args);
-                return go(null, result);
-            } catch (_error) {
-                error = _error;
-                return go(error);
-            }
-        };
-        return _fork(later, args);
-    };
-    _find$3 = function (attr, prop, obj) {
-        var v, _i, _len;
-        if (_isFuture(obj)) {
-            return _async(_find$3, attr, prop, obj);
-        } else if (lodash.isArray(obj)) {
-            for (_i = 0, _len = obj.length; _i < _len; _i++) {
-                v = obj[_i];
-                if (v[attr] === prop) {
-                    return v;
-                }
-            }
-            return;
-        }
-    };
-    _find$2 = function (attr, obj) {
-        if (_isFuture(obj)) {
-            return _async(_find$2, attr, obj);
-        } else if (lodash.isString(attr)) {
-            if (lodash.isArray(obj)) {
-                return _find$3('name', attr, obj);
-            } else {
-                return obj[attr];
-            }
-        }
-    };
-    _find = function () {
-        var a, args, b, c, ta, tb, tc;
-        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        switch (args.length) {
-        case 3:
-            a = args[0], b = args[1], c = args[2];
-            ta = Flow.Prelude.typeOf(a);
-            tb = Flow.Prelude.typeOf(b);
-            tc = Flow.Prelude.typeOf(c);
-            if (ta === 'Array' && tb === 'String') {
-                return _find$3(b, c, a);
-            } else if (ta === 'String' && (tc = 'Array')) {
-                return _find$3(a, b, c);
-            }
-            break;
-        case 2:
-            a = args[0], b = args[1];
-            if (!a) {
-                return;
-            }
-            if (!b) {
-                return;
-            }
-            if (lodash.isString(b)) {
-                return _find$2(b, a);
-            } else if (lodash.isString(a)) {
-                return _find$2(a, b);
-            }
-        }
-    };
-    _get = function (attr, obj) {
-        if (_isFuture(obj)) {
-            return _async(_get, attr, obj);
-        } else if (lodash.isString(attr)) {
-            if (lodash.isArray(obj)) {
-                return _find$3('name', attr, obj);
-            } else {
-                return obj[attr];
-            }
-        }
-    };
-    Flow.Async = {
-        createBuffer: createBuffer,
-        noop: _noop,
-        applicate: _applicate,
-        renderable: renderable,
-        isFuture: _isFuture,
-        fork: _fork,
-        join: _join,
-        pipe: pipe,
-        iterate: iterate,
-        async: _async,
-        find: _find,
-        get: _get
-    };
-}.call(this));
-(function () {
-    Flow.CoffeescriptKernel = function () {
-        var coalesceScopes, compileCoffeescript, compileJavascript, createGlobalScope, createLocalScope, createRootScope, deleteAstNode, executeJavascript, generateJavascript, identifyDeclarations, parseDeclarations, parseJavascript, removeHoistedDeclarations, rewriteJavascript, safetyWrapCoffeescript, traverseJavascript, traverseJavascriptScoped;
-        safetyWrapCoffeescript = function (guid) {
-            return function (cs, go) {
-                var block, lines;
-                lines = cs.replace(/[\n\r]/g, '\n').split('\n');
-                block = lodash.map(lines, function (line) {
-                    return '  ' + line;
-                });
-                block.unshift('_h2o_results_[\'' + guid + '\'].result do ->');
-                return go(null, block.join('\n'));
-            };
-        };
-        compileCoffeescript = function (cs, go) {
-            var error;
-            try {
-                return go(null, CoffeeScript.compile(cs, { bare: true }));
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error compiling coffee-script', error));
-            }
-        };
-        parseJavascript = function (js, go) {
-            var error;
-            try {
-                return go(null, esprima.parse(js));
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error parsing javascript expression', error));
-            }
-        };
-        identifyDeclarations = function (node) {
-            var declaration;
-            if (!node) {
-                return null;
-            }
-            switch (node.type) {
-            case 'VariableDeclaration':
-                return function () {
-                    var _i, _len, _ref, _results;
-                    _ref = node.declarations;
-                    _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        declaration = _ref[_i];
-                        if (declaration.type === 'VariableDeclarator' && declaration.id.type === 'Identifier') {
-                            _results.push({
-                                name: declaration.id.name,
-                                object: '_h2o_context_'
-                            });
-                        }
-                    }
-                    return _results;
-                }();
-            case 'FunctionDeclaration':
-                if (node.id.type === 'Identifier') {
-                    return [{
-                            name: node.id.name,
-                            object: '_h2o_context_'
-                        }];
-                }
-                break;
-            case 'ForStatement':
-                return identifyDeclarations(node.init);
-            case 'ForInStatement':
-            case 'ForOfStatement':
-                return identifyDeclarations(node.left);
-            }
-            return null;
-        };
-        parseDeclarations = function (block) {
-            var declaration, declarations, identifiers, node, _i, _j, _len, _len1, _ref;
-            identifiers = [];
-            _ref = block.body;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                node = _ref[_i];
-                if (declarations = identifyDeclarations(node)) {
-                    for (_j = 0, _len1 = declarations.length; _j < _len1; _j++) {
-                        declaration = declarations[_j];
-                        identifiers.push(declaration);
-                    }
-                }
-            }
-            return lodash.indexBy(identifiers, function (identifier) {
-                return identifier.name;
-            });
-        };
-        traverseJavascript = function (parent, key, node, f) {
-            var child, i;
-            if (lodash.isArray(node)) {
-                i = node.length;
-                while (i--) {
-                    child = node[i];
-                    if (lodash.isObject(child)) {
-                        traverseJavascript(node, i, child, f);
-                        f(node, i, child);
-                    }
-                }
-            } else {
-                for (i in node) {
-                    child = node[i];
-                    if (lodash.isObject(child)) {
-                        traverseJavascript(node, i, child, f);
-                        f(node, i, child);
-                    }
-                }
-            }
-        };
-        deleteAstNode = function (parent, i) {
-            if (_.isArray(parent)) {
-                return parent.splice(i, 1);
-            } else if (lodash.isObject(parent)) {
-                return delete parent[i];
-            }
-        };
-        createLocalScope = function (node) {
-            var localScope, param, _i, _len, _ref;
-            localScope = parseDeclarations(node.body);
-            _ref = node.params;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                param = _ref[_i];
-                if (param.type === 'Identifier') {
-                    localScope[param.name] = {
-                        name: param.name,
-                        object: 'local'
-                    };
-                }
-            }
-            return localScope;
-        };
-        coalesceScopes = function (scopes) {
-            var currentScope, i, identifier, name, scope, _i, _len;
-            currentScope = {};
-            for (i = _i = 0, _len = scopes.length; _i < _len; i = ++_i) {
-                scope = scopes[i];
-                if (i === 0) {
-                    for (name in scope) {
-                        identifier = scope[name];
-                        currentScope[name] = identifier;
-                    }
-                } else {
-                    for (name in scope) {
-                        identifier = scope[name];
-                        currentScope[name] = null;
-                    }
-                }
-            }
-            return currentScope;
-        };
-        traverseJavascriptScoped = function (scopes, parentScope, parent, key, node, f) {
-            var child, currentScope, isNewScope;
-            isNewScope = node.type === 'FunctionExpression' || node.type === 'FunctionDeclaration';
-            if (isNewScope) {
-                scopes.push(createLocalScope(node));
-                currentScope = coalesceScopes(scopes);
-            } else {
-                currentScope = parentScope;
-            }
-            for (key in node) {
-                child = node[key];
-                if (lodash.isObject(child)) {
-                    traverseJavascriptScoped(scopes, currentScope, node, key, child, f);
-                    f(currentScope, node, key, child);
-                }
-            }
-            if (isNewScope) {
-                scopes.pop();
-            }
-        };
-        createRootScope = function (sandbox) {
-            return function (program, go) {
-                var error, name, rootScope;
-                try {
-                    rootScope = parseDeclarations(program.body[0].expression['arguments'][0].callee.body);
-                    for (name in sandbox.context) {
-                        rootScope[name] = {
-                            name: name,
-                            object: '_h2o_context_'
-                        };
-                    }
-                    return go(null, rootScope, program);
-                } catch (_error) {
-                    error = _error;
-                    return go(new Flow.Error('Error parsing root scope', error));
-                }
-            };
-        };
-        removeHoistedDeclarations = function (rootScope, program, go) {
-            var error;
-            try {
-                traverseJavascript(null, null, program, function (parent, key, node) {
-                    var declarations;
-                    if (node.type === 'VariableDeclaration') {
-                        declarations = node.declarations.filter(function (declaration) {
-                            return declaration.type === 'VariableDeclarator' && declaration.id.type === 'Identifier' && !rootScope[declaration.id.name];
-                        });
-                        if (declarations.length === 0) {
-                            return deleteAstNode(parent, key);
-                        } else {
-                            return node.declarations = declarations;
-                        }
-                    }
-                });
-                return go(null, rootScope, program);
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error rewriting javascript', error));
-            }
-        };
-        createGlobalScope = function (rootScope, routines) {
-            var globalScope, identifier, name;
-            globalScope = {};
-            for (name in rootScope) {
-                identifier = rootScope[name];
-                globalScope[name] = identifier;
-            }
-            for (name in routines) {
-                globalScope[name] = {
-                    name: name,
-                    object: 'h2o'
-                };
-            }
-            return globalScope;
-        };
-        rewriteJavascript = function (sandbox) {
-            return function (rootScope, program, go) {
-                var error, globalScope;
-                globalScope = createGlobalScope(rootScope, sandbox.routines);
-                try {
-                    traverseJavascriptScoped([globalScope], globalScope, null, null, program, function (globalScope, parent, key, node) {
-                        var identifier;
-                        if (node.type === 'Identifier') {
-                            if (parent.type === 'VariableDeclarator' && key === 'id') {
-                                return;
-                            }
-                            if (key === 'property') {
-                                return;
-                            }
-                            if (!(identifier = globalScope[node.name])) {
-                                return;
-                            }
-                            return parent[key] = {
-                                type: 'MemberExpression',
-                                computed: false,
-                                object: {
-                                    type: 'Identifier',
-                                    name: identifier.object
-                                },
-                                property: {
-                                    type: 'Identifier',
-                                    name: identifier.name
-                                }
-                            };
-                        }
-                    });
-                    return go(null, program);
-                } catch (_error) {
-                    error = _error;
-                    return go(new Flow.Error('Error rewriting javascript', error));
-                }
-            };
-        };
-        generateJavascript = function (program, go) {
-            var error;
-            try {
-                return go(null, escodegen.generate(program));
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error generating javascript', error));
-            }
-        };
-        compileJavascript = function (js, go) {
-            var closure, error;
-            try {
-                closure = new Function('h2o', '_h2o_context_', '_h2o_results_', 'print', js);
-                return go(null, closure);
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error compiling javascript', error));
-            }
-        };
-        executeJavascript = function (sandbox, print) {
-            return function (closure, go) {
-                var error;
-                try {
-                    return go(null, closure(sandbox.routines, sandbox.context, sandbox.results, print));
-                } catch (_error) {
-                    error = _error;
-                    return go(new Flow.Error('Error executing javascript', error));
-                }
-            };
-        };
-        return {
-            safetyWrapCoffeescript: safetyWrapCoffeescript,
-            compileCoffeescript: compileCoffeescript,
-            parseJavascript: parseJavascript,
-            createRootScope: createRootScope,
-            removeHoistedDeclarations: removeHoistedDeclarations,
-            rewriteJavascript: rewriteJavascript,
-            generateJavascript: generateJavascript,
-            compileJavascript: compileJavascript,
-            executeJavascript: executeJavascript
-        };
-    }();
-}.call(this));
-(function () {
-    var combineRanges, computeRange, createAbstractVariable, createCompiledPrototype, createFactor, createNumericVariable, createRecordConstructor, createTable, createVariable, factor, includeZeroInRange, nextPrototypeName, permute, _prototypeCache, _prototypeId, __slice = [].slice;
-    _prototypeId = 0;
-    nextPrototypeName = function () {
-        return 'Map' + ++_prototypeId;
-    };
-    _prototypeCache = {};
-    createCompiledPrototype = function (attrs) {
-        var attr, cacheKey, i, inits, params, proto, prototypeName;
-        cacheKey = attrs.join('\0');
-        if (proto = _prototypeCache[cacheKey]) {
-            return proto;
-        }
-        params = function () {
-            var _i, _ref, _results;
-            _results = [];
-            for (i = _i = 0, _ref = attrs.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-                _results.push('a' + i);
-            }
-            return _results;
-        }();
-        inits = function () {
-            var _i, _len, _results;
-            _results = [];
-            for (i = _i = 0, _len = attrs.length; _i < _len; i = ++_i) {
-                attr = attrs[i];
-                _results.push('this[' + JSON.stringify(attr) + ']=a' + i + ';');
-            }
-            return _results;
-        }();
-        prototypeName = nextPrototypeName();
-        return _prototypeCache[cacheKey] = new Function('function ' + prototypeName + '(' + params.join(',') + '){' + inits.join('') + '} return ' + prototypeName + ';')();
-    };
-    createRecordConstructor = function (variables) {
-        var variable;
-        return createCompiledPrototype(function () {
-            var _i, _len, _results;
-            _results = [];
-            for (_i = 0, _len = variables.length; _i < _len; _i++) {
-                variable = variables[_i];
-                _results.push(variable.label);
-            }
-            return _results;
-        }());
-    };
-    createTable = function (opts) {
-        var description, expand, fill, label, meta, rows, schema, variable, variables, _i, _len;
-        label = opts.label, description = opts.description, variables = opts.variables, rows = opts.rows, meta = opts.meta;
-        if (!description) {
-            description = 'No description available.';
-        }
-        schema = {};
-        for (_i = 0, _len = variables.length; _i < _len; _i++) {
-            variable = variables[_i];
-            schema[variable.label] = variable;
-        }
-        fill = function (i, go) {
-            _fill(i, function (error, result) {
-                var index, startIndex, value, _j, _len1;
-                if (error) {
-                    return go(error);
-                } else {
-                    startIndex = result.index, lodash.values = result.values;
-                    for (index = _j = 0, _len1 = lodash.values.length; _j < _len1; index = ++_j) {
-                        value = lodash.values[index];
-                        rows[startIndex + index] = lodash.values[index];
-                    }
-                    return go(null);
-                }
-            });
-        };
-        expand = function () {
-            var type, types, _j, _len1, _results;
-            types = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-            _results = [];
-            for (_j = 0, _len1 = types.length; _j < _len1; _j++) {
-                type = types[_j];
-                label = lodash.uniqueId('__flow_variable_');
-                _results.push(schema[label] = createNumericVariable(label));
-            }
-            return _results;
-        };
-        return {
-            label: label,
-            description: description,
-            schema: schema,
-            variables: variables,
-            rows: rows,
-            meta: meta,
-            fill: fill,
-            expand: expand,
-            _is_table_: true
-        };
-    };
-    includeZeroInRange = function (range) {
-        var hi, lo;
-        lo = range[0], hi = range[1];
-        if (lo > 0 && hi > 0) {
-            return [
-                0,
-                hi
-            ];
-        } else if (lo < 0 && hi < 0) {
-            return [
-                lo,
-                0
-            ];
-        } else {
-            return range;
-        }
-    };
-    combineRanges = function () {
-        var hi, lo, range, ranges, value, _i, _len;
-        ranges = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        lo = Number.POSITIVE_INFINITY;
-        hi = Number.NEGATIVE_INFINITY;
-        for (_i = 0, _len = ranges.length; _i < _len; _i++) {
-            range = ranges[_i];
-            if (lo > (value = range[0])) {
-                lo = value;
-            }
-            if (hi < (value = range[1])) {
-                hi = value;
-            }
-        }
-        return [
-            lo,
-            hi
-        ];
-    };
-    computeRange = function (rows, attr) {
-        var hi, lo, row, value, _i, _len;
-        if (rows.length) {
-            lo = Number.POSITIVE_INFINITY;
-            hi = Number.NEGATIVE_INFINITY;
-            for (_i = 0, _len = rows.length; _i < _len; _i++) {
-                row = rows[_i];
-                value = row[attr];
-                if (value < lo) {
-                    lo = value;
-                }
-                if (value > hi) {
-                    hi = value;
-                }
-            }
-            return [
-                lo,
-                hi
-            ];
-        } else {
-            return [
-                -1,
-                1
-            ];
-        }
-    };
-    permute = function (array, indices) {
-        var i, index, permuted, _i, _len;
-        permuted = new Array(array.length);
-        for (i = _i = 0, _len = indices.length; _i < _len; i = ++_i) {
-            index = indices[i];
-            permuted[i] = array[index];
-        }
-        return permuted;
-    };
-    createAbstractVariable = function (_label, _type, _domain, _format, _read) {
-        return {
-            label: _label,
-            type: _type,
-            domain: _domain || [],
-            format: _format || lodash.identity,
-            read: _read
-        };
-    };
-    createNumericVariable = function (_label, _domain, _format, _read) {
-        var self;
-        self = createAbstractVariable(_label, Flow.TNumber, _domain || [
-            Number.POSITIVE_INFINITY,
-            Number.NEGATIVE_INFINITY
-        ], _format, _read);
-        if (!self.read) {
-            self.read = function (datum) {
-                if (datum < self.domain[0]) {
-                    self.domain[0] = datum;
-                }
-                if (datum > self.domain[1]) {
-                    self.domain[1] = datum;
-                }
-                return datum;
-            };
-        }
-        return self;
-    };
-    createVariable = function (_label, _type, _domain, _format, _read) {
-        if (_type === Flow.TNumber) {
-            return createNumericVariable(_label, _domain, _format, _read);
-        } else {
-            return createAbstractVariable(_label, _type, _domain, _format, _read);
-        }
-    };
-    createFactor = function (_label, _domain, _format, _read) {
-        var level, self, _i, _id, _len, _levels, _ref;
-        self = createAbstractVariable(_label, Flow.TFactor, _domain || [], _format, _read);
-        _id = 0;
-        _levels = {};
-        if (self.domain.length) {
-            _ref = self.domain;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                level = _ref[_i];
-                _levels[level] = _id++;
-            }
-        }
-        if (!self.read) {
-            self.read = function (datum) {
-                var id;
-                level = datum === void 0 || datum === null ? 'null' : datum;
-                if (void 0 === (id = _levels[level])) {
-                    _levels[level] = id = _id++;
-                    self.domain.push(level);
-                }
-                return id;
-            };
-        }
-        return self;
-    };
-    factor = function (array) {
-        var data, domain, i, id, level, levels, _i, _id, _len;
-        _id = 0;
-        levels = {};
-        domain = [];
-        data = new Array(array.length);
-        for (i = _i = 0, _len = array.length; _i < _len; i = ++_i) {
-            level = array[i];
-            if (void 0 === (id = levels[level])) {
-                levels[level] = id = _id++;
-                domain.push(level);
-            }
-            data[i] = id;
-        }
-        return [
-            domain,
-            data
-        ];
-    };
-    Flow.Data = {
-        Table: createTable,
-        Variable: createVariable,
-        Factor: createFactor,
-        computeColumnInterpretation: function (type) {
-            if (type === Flow.TNumber) {
-                return 'c';
-            } else if (type === Flow.TFactor) {
-                return 'd';
-            } else {
-                return 't';
-            }
-        },
-        Record: createRecordConstructor,
-        computeRange: computeRange,
-        combineRanges: combineRanges,
-        includeZeroInRange: includeZeroInRange,
-        factor: factor,
-        permute: permute
-    };
-}.call(this));
-(function () {
-    var __slice = [].slice;
-    Flow.Dataflow = function () {
-        var createObservable, createObservableArray, createSignal, createSignals, createSlot, createSlots, isObservable, _act, _apply, _isSignal, _lift, _link, _merge, _react, _unlink;
-        createSlot = function () {
-            var arrow, self;
-            arrow = null;
-            self = function () {
-                var args;
-                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-                if (arrow) {
-                    return arrow.func.apply(null, args);
-                } else {
-                    return void 0;
-                }
-            };
-            self.subscribe = function (func) {
-                console.assert(lodash.isFunction(func));
-                if (arrow) {
-                    throw new Error('Cannot re-attach slot');
-                } else {
-                    return arrow = {
-                        func: func,
-                        dispose: function () {
-                            return arrow = null;
-                        }
-                    };
-                }
-            };
-            self.dispose = function () {
-                if (arrow) {
-                    return arrow.dispose();
-                }
-            };
-            return self;
-        };
-        createSlots = function () {
-            var arrows, self;
-            arrows = [];
-            self = function () {
-                var args;
-                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-                return lodash.map(arrows, function (arrow) {
-                    return arrow.func.apply(null, args);
-                });
-            };
-            self.subscribe = function (func) {
-                var arrow;
-                console.assert(lodash.isFunction(func));
-                arrows.push(arrow = {
-                    func: func,
-                    dispose: function () {
-                        return Flow.Prelude.remove(arrows, arrow);
-                    }
-                });
-                return arrow;
-            };
-            self.dispose = function () {
-                return lodash.forEach(Flow.Prelude.copy(arrows), function (arrow) {
-                    return arrow.dispose();
-                });
-            };
-            return self;
-        };
-        if (typeof ko !== 'undefined' && ko !== null) {
-            createObservable = ko.observable;
-            createObservableArray = ko.observableArray;
-            isObservable = ko.isObservable;
-        } else {
-            createObservable = function (initialValue) {
-                var arrows, currentValue, notifySubscribers, self;
-                arrows = [];
-                currentValue = initialValue;
-                notifySubscribers = function (arrows, newValue) {
-                    var arrow, _i, _len;
-                    for (_i = 0, _len = arrows.length; _i < _len; _i++) {
-                        arrow = arrows[_i];
-                        arrow.func(newValue);
-                    }
-                };
-                self = function (newValue) {
-                    var unchanged;
-                    if (arguments.length === 0) {
-                        return currentValue;
-                    } else {
-                        unchanged = self.equalityComparer ? self.equalityComparer(currentValue, newValue) : currentValue === newValue;
-                        if (!unchanged) {
-                            currentValue = newValue;
-                            return notifySubscribers(arrows, newValue);
-                        }
-                    }
-                };
-                self.subscribe = function (func) {
-                    var arrow;
-                    console.assert(lodash.isFunction(func));
-                    arrows.push(arrow = {
-                        func: func,
-                        dispose: function () {
-                            return Flow.Prelude.remove(arrows, arrow);
-                        }
-                    });
-                    return arrow;
-                };
-                self.__observable__ = true;
-                return self;
-            };
-            createObservableArray = createObservable;
-            isObservable = function (obj) {
-                if (obj.__observable__) {
-                    return true;
-                } else {
-                    return false;
-                }
-            };
-        }
-        createSignal = function (value, equalityComparer) {
-            var observable;
-            if (arguments.length === 0) {
-                return createSignal(void 0, Flow.Prelude.never);
-            } else {
-                observable = createObservable(value);
-                if (lodash.isFunction(equalityComparer)) {
-                    observable.equalityComparer = equalityComparer;
-                }
-                return observable;
-            }
-        };
-        _isSignal = isObservable;
-        createSignals = function (array) {
-            return createObservableArray(array || []);
-        };
-        _link = function (source, func) {
-            console.assert(lodash.isFunction(source, '[signal] is not a function'));
-            console.assert(lodash.isFunction(source.subscribe, '[signal] does not have a [dispose] method'));
-            console.assert(lodash.isFunction(func, '[func] is not a function'));
-            return source.subscribe(func);
-        };
-        _unlink = function (arrows) {
-            var arrow, _i, _len, _results;
-            if (lodash.isArray(arrows)) {
-                _results = [];
-                for (_i = 0, _len = arrows.length; _i < _len; _i++) {
-                    arrow = arrows[_i];
-                    console.assert(lodash.isFunction(arrow.dispose, '[arrow] does not have a [dispose] method'));
-                    _results.push(arrow.dispose());
-                }
-                return _results;
-            } else {
-                console.assert(lodash.isFunction(arrows.dispose, '[arrow] does not have a [dispose] method'));
-                return arrows.dispose();
-            }
-        };
-        _apply = function (sources, func) {
-            return func.apply(null, lodash.map(sources, function (source) {
-                return source();
-            }));
-        };
-        _act = function () {
-            var func, sources, _i;
-            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
-            _apply(sources, func);
-            return lodash.map(sources, function (source) {
-                return _link(source, function () {
-                    return _apply(sources, func);
-                });
-            });
-        };
-        _react = function () {
-            var func, sources, _i;
-            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
-            return lodash.map(sources, function (source) {
-                return _link(source, function () {
-                    return _apply(sources, func);
-                });
-            });
-        };
-        _lift = function () {
-            var evaluate, func, sources, target, _i;
-            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
-            evaluate = function () {
-                return _apply(sources, func);
-            };
-            target = createSignal(evaluate());
-            lodash.map(sources, function (source) {
-                return _link(source, function () {
-                    return target(evaluate());
-                });
-            });
-            return target;
-        };
-        _merge = function () {
-            var evaluate, func, sources, target, _i;
-            sources = 3 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 2) : (_i = 0, []), target = arguments[_i++], func = arguments[_i++];
-            evaluate = function () {
-                return _apply(sources, func);
-            };
-            target(evaluate());
-            return lodash.map(sources, function (source) {
-                return _link(source, function () {
-                    return target(evaluate());
-                });
-            });
-        };
-        return {
-            slot: createSlot,
-            slots: createSlots,
-            signal: createSignal,
-            signals: createSignals,
-            isSignal: _isSignal,
-            link: _link,
-            unlink: _unlink,
-            act: _act,
-            react: _react,
-            lift: _lift,
-            merge: _merge
-        };
-    }();
-}.call(this));
-(function () {
-    var FlowError, __hasProp = {}.hasOwnProperty, __extends = function (child, parent) {
-            for (var key in parent) {
-                if (__hasProp.call(parent, key))
-                    child[key] = parent[key];
-            }
-            function ctor() {
-                this.constructor = child;
-            }
-            ctor.prototype = parent.prototype;
-            child.prototype = new ctor();
-            child.__super__ = parent.prototype;
-            return child;
-        };
-    FlowError = function (_super) {
-        __extends(FlowError, _super);
-        function FlowError(message, cause) {
-            var error;
-            this.message = message;
-            this.cause = cause;
-            this.name = 'FlowError';
-            error = new Error();
-            if (error.stack) {
-                this.stack = error.stack;
-            } else {
-                this.stack = printStackTrace();
-            }
-        }
-        return FlowError;
-    }(Error);
-    Flow.Error = FlowError;
-}.call(this));
-(function () {
-    var Digits, formatDate, formatReal, formatTime, significantDigitsBeforeDecimal, __formatReal;
-    significantDigitsBeforeDecimal = function (value) {
-        return 1 + Math.floor(Math.log(Math.abs(value)) / Math.LN10);
-    };
-    Digits = function (digits, value) {
-        var magnitude, sd;
-        if (value === 0) {
-            return 0;
-        } else {
-            sd = significantDigitsBeforeDecimal(value);
-            if (sd >= digits) {
-                return value.toFixed(0);
-            } else {
-                magnitude = Math.pow(10, digits - sd);
-                return Math.round(value * magnitude) / magnitude;
-            }
-        }
-    };
-    if (typeof exports === 'undefined' || exports === null) {
-        formatTime = d3.time.format('%Y-%m-%d %H:%M:%S');
-    }
-    formatDate = function (time) {
-        if (time) {
-            return formatTime(new Date(time));
-        } else {
-            return '-';
-        }
-    };
-    __formatReal = {};
-    formatReal = function (precision) {
-        var cached, format;
-        format = (cached = __formatReal[precision]) ? cached : __formatReal[precision] = precision === -1 ? lodash.identity : d3.format('.' + precision + 'f');
-        return function (value) {
-            return format(value);
-        };
-    };
-    Flow.Format = {
-        Digits: Digits,
-        Real: formatReal,
-        Date: formatDate
-    };
-}.call(this));
-(function () {
-    var button, checkbox, content, control, dropdown, html, listbox, markdown, text, textarea, textbox, wrapArray, wrapValue;
-    wrapValue = function (value, init) {
-        if (value === void 0) {
-            return Flow.Dataflow.signal(init);
-        } else {
-            if (Flow.Dataflow.isSignal(value)) {
-                return value;
-            } else {
-                return Flow.Dataflow.signal(value);
-            }
-        }
-    };
-    wrapArray = function (elements) {
-        var element;
-        if (elements) {
-            if (Flow.Dataflow.isSignal(elements)) {
-                element = elements();
-                if (lodash.isArray(element)) {
-                    return elements;
-                } else {
-                    return Flow.Dataflow.signal([element]);
-                }
-            } else {
-                return Flow.Dataflow.signals(lodash.isArray(elements) ? elements : [elements]);
-            }
-        } else {
-            return Flow.Dataflow.signals([]);
-        }
-    };
-    control = function (type, opts) {
-        var guid;
-        if (!opts) {
-            opts = {};
-        }
-        guid = 'gui_' + lodash.uniqueId();
-        return {
-            type: type,
-            id: opts.id || guid,
-            label: Flow.Dataflow.signal(opts.label || ' '),
-            description: Flow.Dataflow.signal(opts.description || ' '),
-            visible: Flow.Dataflow.signal(opts.visible === false ? false : true),
-            disable: Flow.Dataflow.signal(opts.disable === true ? true : false),
-            template: 'flow-form-' + type,
-            templateOf: function (control) {
-                return control.template;
-            }
-        };
-    };
-    content = function (type, opts) {
-        var self;
-        self = control(type, opts);
-        self.value = wrapValue(opts.value, '');
-        return self;
-    };
-    text = function (opts) {
-        return content('text', opts);
-    };
-    html = function (opts) {
-        return content('html', opts);
-    };
-    markdown = function (opts) {
-        return content('markdown', opts);
-    };
-    checkbox = function (opts) {
-        var self;
-        self = control('checkbox', opts);
-        self.value = wrapValue(opts.value, opts.value ? true : false);
-        return self;
-    };
-    dropdown = function (opts) {
-        var self;
-        self = control('dropdown', opts);
-        self.options = opts.options || [];
-        self.value = wrapValue(opts.value);
-        self.caption = opts.caption || 'Choose...';
-        return self;
-    };
-    listbox = function (opts) {
-        var self;
-        self = control('listbox', opts);
-        self.options = opts.options || [];
-        self.values = wrapArray(opts.values);
-        return self;
-    };
-    textbox = function (opts) {
-        var self;
-        self = control('textbox', opts);
-        self.value = wrapValue(opts.value, '');
-        self.event = lodash.isString(opts.event) ? opts.event : null;
-        return self;
-    };
-    textarea = function (opts) {
-        var self;
-        self = control('textarea', opts);
-        self.value = wrapValue(opts.value, '');
-        self.event = lodash.isString(opts.event) ? opts.event : null;
-        self.rows = lodash.isNumber(opts.rows) ? opts.rows : 5;
-        return self;
-    };
-    button = function (opts) {
-        var self;
-        self = control('button', opts);
-        self.click = lodash.isFunction(opts.click) ? opts.click : lodash.noop;
-        return self;
-    };
-    Flow.Gui = {
-        text: text,
-        html: html,
-        markdown: markdown,
-        checkbox: checkbox,
-        dropdown: dropdown,
-        listbox: listbox,
-        textbox: textbox,
-        textarea: textarea,
-        button: button
-    };
-}.call(this));
-(function () {
-    var compile, _templateCache, __slice = [].slice;
-    compile = function (template, type) {
-        var attrs, beginTag, classes, closeTag, id, index, name, tmpl, _ref;
-        if (0 <= (index = template.indexOf(' '))) {
-            tmpl = template.substr(0, index);
-            attrs = template.substr(index);
-        } else {
-            tmpl = template;
-        }
-        _ref = tmpl.split(/\.+/g), name = _ref[0], classes = 2 <= _ref.length ? __slice.call(_ref, 1) : [];
-        if (0 === name.indexOf('#')) {
-            id = name.substr(1);
-            name = 'div';
-        }
-        if (name === '') {
-            name = 'div';
-        }
-        beginTag = '<' + name;
-        if (id) {
-            beginTag += ' id=\'' + id + '\'';
-        }
-        if (classes.length) {
-            beginTag += ' class=\'' + classes.join(' ') + '\'';
-        }
-        if (attrs) {
-            beginTag += attrs;
-        }
-        beginTag += '>';
-        closeTag = '</' + name + '>';
-        if (type === '=') {
-            return function (content) {
-                return beginTag + (content !== null && content !== void 0 ? content : '') + closeTag;
-            };
-        } else if (type === '+') {
-            return function (content, arg0) {
-                var tag;
-                tag = beginTag.replace('{0}', arg0);
-                return tag + content + closeTag;
-            };
-        } else {
-            return function (contents) {
-                return beginTag + contents.join('') + closeTag;
-            };
-        }
-    };
-    _templateCache = {};
-    Flow.HTML = {
-        template: function () {
-            var cached, template, templates, type, _i, _len, _results;
-            templates = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-            _results = [];
-            for (_i = 0, _len = templates.length; _i < _len; _i++) {
-                template = templates[_i];
-                if (cached = _templateCache[template]) {
-                    _results.push(cached);
-                } else {
-                    type = template.charAt(0);
-                    if (type === '=' || type === '+') {
-                        _results.push(_templateCache[template] = compile(template.substr(1), type));
-                    } else {
-                        _results.push(_templateCache[template] = compile(template));
-                    }
-                }
-            }
-            return _results;
-        },
-        render: function (name, html) {
-            var el;
-            el = document.createElement(name);
-            if (html) {
-                if (lodash.isString(html)) {
-                    el.innerHTML = html;
-                } else {
-                    el.appendChild(html);
-                }
-            }
-            return el;
-        }
-    };
-}.call(this));
-(function () {
-    if ((typeof window !== 'undefined' && window !== null ? window.ko : void 0) == null) {
-        return;
-    }
-    ko.bindingHandlers.raw = {
-        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $element, arg;
-            arg = ko.unwrap(valueAccessor());
-            if (arg) {
-                $element = $(element);
-                $element.empty();
-                $element.append(arg);
-            }
-        }
-    };
-    ko.bindingHandlers.markdown = {
-        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var data, error, html;
-            data = ko.unwrap(valueAccessor());
-            try {
-                html = marked(data || '');
-            } catch (_error) {
-                error = _error;
-                html = error.message || 'Error rendering markdown.';
-            }
-            return $(element).html(html);
-        }
-    };
-    ko.bindingHandlers.stringify = {
-        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var data;
-            data = ko.unwrap(valueAccessor());
-            return $(element).text(JSON.stringify(data, null, 2));
-        }
-    };
-    ko.bindingHandlers.enterKey = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $element, action;
-            if (action = ko.unwrap(valueAccessor())) {
-                if (lodash.isFunction(action)) {
-                    $element = $(element);
-                    $element.keydown(function (e) {
-                        if (e.which === 13) {
-                            action(viewModel);
-                        }
-                    });
-                } else {
-                    throw 'Enter key action is not a function';
-                }
-            }
-        }
-    };
-    ko.bindingHandlers.typeahead = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $element, action;
-            if (action = ko.unwrap(valueAccessor())) {
-                if (lodash.isFunction(action)) {
-                    $element = $(element);
-                    $element.typeahead(null, {
-                        displayKey: 'value',
-                        source: action
-                    });
-                } else {
-                    throw 'Typeahead action is not a function';
-                }
-            }
-        }
-    };
-    ko.bindingHandlers.cursorPosition = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var arg;
-            if (arg = ko.unwrap(valueAccessor())) {
-                arg.getCursorPosition = function () {
-                    return $(element).textrange('get', 'position');
-                };
-            }
-        }
-    };
-    ko.bindingHandlers.autoResize = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $el, arg, resize;
-            if (arg = ko.unwrap(valueAccessor())) {
-                arg.autoResize = resize = function () {
-                    return lodash.defer(function () {
-                        return $el.css('height', 'auto').height(element.scrollHeight);
-                    });
-                };
-                $el = $(element).on('input', resize);
-                resize();
-            }
-        }
-    };
-    ko.bindingHandlers.scrollIntoView = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $el, $viewport, arg;
-            if (arg = ko.unwrap(valueAccessor())) {
-                $el = $(element);
-                $viewport = $el.closest('.flow-box-notebook');
-                arg.scrollIntoView = function () {
-                    var height, position, top;
-                    position = $viewport.scrollTop();
-                    top = $el.position().top + position;
-                    height = $viewport.height();
-                    if (top - 20 < position || top + 20 > position + height) {
-                        return $viewport.animate({ scrollTop: top }, 'fast');
-                    }
-                };
-            }
-        }
-    };
-    ko.bindingHandlers.dom = {
-        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $element, arg;
-            arg = ko.unwrap(valueAccessor());
-            if (arg) {
-                $element = $(element);
-                $element.empty();
-                $element.append(arg);
-            }
-        }
-    };
-    ko.bindingHandlers.dump = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var object;
-            return object = ko.unwrap(valueAccessor());
-        }
-    };
-}.call(this));
-(function () {
-    var keyOf, list, purge, purgeAll, read, write, _ls;
-    _ls = window.localStorage;
-    keyOf = function (type, id) {
-        return '' + type + ':' + id;
-    };
-    list = function (type) {
-        var i, id, key, objs, t, _i, _ref, _ref1;
-        objs = [];
-        for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-            key = _ls.key(i);
-            _ref1 = key.split(':'), t = _ref1[0], id = _ref1[1];
-            if (type === t) {
-                objs.push([
-                    type,
-                    id,
-                    JSON.parse(_ls.getItem(key))
-                ]);
-            }
-        }
-        return objs;
-    };
-    read = function (type, id) {
-        var raw;
-        if (raw = _ls.getobj(keyOf(type, id))) {
-            return JSON.parse(raw);
-        } else {
-            return null;
-        }
-    };
-    write = function (type, id, obj) {
-        return _ls.setItem(keyOf(type, id), JSON.stringify(obj));
-    };
-    purge = function (type, id) {
-        if (id) {
-            return _ls.removeItem(keyOf(type, id));
-        } else {
-            return purgeAll(type);
-        }
-    };
-    purgeAll = function (type) {
-        var i, key, _i, _len;
-        lodash.keys = function () {
-            var _i, _ref, _results;
-            _results = [];
-            for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-                _results.push(_ls.key(i));
-            }
-            return _results;
-        }();
-        for (_i = 0, _len = lodash.keys.length; _i < _len; _i++) {
-            key = lodash.keys[_i];
-            if (type === lodash.head(key.split(':'))) {
-                _ls.removeItem(key);
-            }
-        }
-    };
-    Flow.LocalStorage = {
-        list: list,
-        read: read,
-        write: write,
-        purge: purge
-    };
-}.call(this));
-(function () {
-    if ((typeof window !== 'undefined' && window !== null ? window.marked : void 0) == null) {
-        return;
-    }
-    marked.setOptions({
-        smartypants: true,
-        highlight: function (code, lang) {
-            if (window.hljs) {
-                return window.hljs.highlightAuto(code, [lang]).value;
-            } else {
-                return code;
-            }
-        }
-    });
-}.call(this));
-(function () {
-    var computeDomain, createAxis, createLinearScale, createOrdinalBandScale, plot, renderD3BarChart, renderD3StackedBar, stack;
-    computeDomain = function (table, variableName) {
-        var level, levels, row, value, _i, _len, _ref;
-        levels = {};
-        _ref = table.rows;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            row = _ref[_i];
-            value = row[variableName];
-            if (!(level = levels[value])) {
-                levels[value] = true;
-            }
-        }
-        return lodash.keys(levels);
-    };
-    createOrdinalBandScale = function (domain, range) {
-        return d3.scale.ordinal().domain(domain).rangeRoundBands(range, 0.1);
-    };
-    createLinearScale = function (domain, range) {
-        return d3.scale.linear().domain(domain).range(range);
-    };
-    createAxis = function (scale, opts) {
-        var axis;
-        axis = d3.svg.axis().scale(scale);
-        if (opts.orient) {
-            axis.orient(opts.orient);
-        }
-        if (opts.ticks) {
-            axis.ticks(opts.ticks);
-        }
-        return axis;
-    };
-    renderD3StackedBar = function (title, table, attrX1, attrX2, attrColor) {
-        var availableHeight, availableWidth, axisX, bar, d, domainX, el, h4, height, items, label, legend, legendEl, legends, margin, rows, scaleColor, scaleX, schema, svg, svgAxisX, swatch, tooltip, variableColor, variableX1, variableX2, variables, viz, width, _ref;
-        schema = table.schema, variables = table.variables, rows = table.rows;
-        variableX1 = table.schema[attrX1];
-        variableX2 = table.schema[attrX2];
-        variableColor = table.schema[attrColor];
-        domainX = Flow.Data.combineRanges(variableX1.domain, variableX2.domain);
-        availableWidth = 450;
-        availableHeight = 16 + 30;
-        margin = {
-            top: 0,
-            right: 10,
-            bottom: 30,
-            left: 10
-        };
-        width = availableWidth - margin.left - margin.right;
-        height = availableHeight - margin.top - margin.bottom;
-        scaleX = d3.scale.linear().domain(domainX).range([
-            0,
-            width
-        ]);
-        scaleColor = d3.scale.ordinal().domain(variableColor.domain).range(d3.scale.category10().range());
-        axisX = createAxis(scaleX, { orient: 'bottom' });
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        viz = d3.select(svg).attr('class', 'plot').attr('width', availableWidth).attr('height', availableHeight).append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-        svgAxisX = viz.append('g').attr('class', 'axis').attr('transform', 'translate(0,' + height + ')').call(axisX);
-        tooltip = function (d) {
-            var tip, variable, _i, _len;
-            tip = '';
-            for (_i = 0, _len = variables.length; _i < _len; _i++) {
-                variable = variables[_i];
-                tip += '' + variable.label + ': ' + (variable.type === Flow.TFactor ? variable.domain[d[variable.label]] : d[variable.label]) + '\n';
-            }
-            return tip.trim();
-        };
-        bar = viz.selectAll('.bar').data(rows).enter().append('rect').attr('class', 'bar').attr('x', function (d) {
-            return scaleX(d[attrX1]);
-        }).attr('width', function (d) {
-            return scaleX(d[attrX2] - d[attrX1]);
-        }).attr('height', height).style('fill', function (d) {
-            return scaleColor(variableColor.domain[d[attrColor]]);
-        }).append('title').text(tooltip);
-        _ref = Flow.HTML.template('.flow-legend', 'span.flow-legend-item', '+span.flow-legend-swatch style=\'background:{0}\'', '=span.flow-legend-label'), legends = _ref[0], legend = _ref[1], swatch = _ref[2], label = _ref[3];
-        items = function () {
-            var _i, _len, _ref1, _results;
-            _ref1 = variableColor.domain;
-            _results = [];
-            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                d = _ref1[_i];
-                _results.push(legend([
-                    swatch('', scaleColor(d)),
-                    label(d)
-                ]));
-            }
-            return _results;
-        }();
-        legendEl = Flow.HTML.render('div', legends(items));
-        el = document.createElement('div');
-        if (title) {
-            h4 = Flow.HTML.template('=h4')[0];
-            el.appendChild(Flow.HTML.render('div', h4(lodash.escape(title))));
-        }
-        el.appendChild(svg);
-        el.appendChild(legendEl);
-        return el;
-    };
-    renderD3BarChart = function (title, table, attrX, attrY) {
-        var availableHeight, availableWidth, axisX, axisY, domainX, domainY, el, h4, height, heightY, interpretationX, interpretationXY, interpretationY, margin, positionX, positionY, row, rows, scaleX, scaleY, schema, svg, svgAxisX, svgAxisY, variableX, variableY, variables, viz, width, widthX;
-        schema = table.schema, variables = table.variables, rows = table.rows;
-        variableX = schema[attrX];
-        variableY = schema[attrY];
-        interpretationX = Flow.Data.computevariableInterpretation(variableX.type);
-        interpretationY = Flow.Data.computevariableInterpretation(variableY.type);
-        interpretationXY = interpretationX + interpretationY;
-        domainX = function () {
-            var _i, _len, _results;
-            if (interpretationX === 'c') {
-                return Flow.Data.includeZeroInRange(variableX.domain);
-            } else {
-                _results = [];
-                for (_i = 0, _len = rows.length; _i < _len; _i++) {
-                    row = rows[_i];
-                    _results.push(variableX.domain[row[attrX]]);
-                }
-                return _results;
-            }
-        }();
-        domainY = function () {
-            var _i, _len, _results;
-            if (interpretationY === 'c') {
-                return Flow.Data.includeZeroInRange(variableY.domain);
-            } else {
-                _results = [];
-                for (_i = 0, _len = rows.length; _i < _len; _i++) {
-                    row = rows[_i];
-                    _results.push(variableY.domain[row[attrY]]);
-                }
-                return _results;
-            }
-        }();
-        availableWidth = interpretationX === 'c' ? 500 : domainX.length * 20;
-        availableHeight = interpretationY === 'c' ? 500 : domainY.length * 20;
-        margin = {
-            top: 20,
-            right: 20,
-            bottom: 30,
-            left: 40
-        };
-        width = availableWidth - margin.left - margin.right;
-        height = availableHeight - margin.top - margin.bottom;
-        scaleX = interpretationX === 'd' ? createOrdinalBandScale(domainX, [
-            0,
-            width
-        ]) : createLinearScale(domainX, [
-            0,
-            width
-        ]);
-        scaleY = interpretationY === 'd' ? createOrdinalBandScale(domainY, [
-            0,
-            height
-        ]) : createLinearScale(domainY, [
-            height,
-            0
-        ]);
-        axisX = createAxis(scaleX, { orient: 'bottom' });
-        axisY = createAxis(scaleY, { orient: 'left' });
-        if (interpretationXY === 'dc') {
-            positionX = function (d) {
-                return scaleX(variableX.domain[d[attrX]]);
-            };
-            positionY = function (d) {
-                return scaleY(d[attrY]);
-            };
-            widthX = scaleX.rangeBand();
-            heightY = function (d) {
-                return height - scaleY(d[attrY]);
-            };
-        } else {
-            positionX = function (d) {
-                return scaleX(0);
-            };
-            positionY = function (d) {
-                return scaleY(variableY.domain[d[attrY]]);
-            };
-            widthX = function (d) {
-                return scaleX(d[attrX]);
-            };
-            heightY = scaleY.rangeBand();
-        }
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        viz = d3.select(svg).attr('class', 'plot').attr('width', availableWidth).attr('height', availableHeight).append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-        svgAxisX = viz.append('g').attr('class', 'axis').attr('transform', 'translate(0,' + height + ')').call(axisX);
-        svgAxisY = viz.append('g').attr('class', 'axis').call(axisY);
-        if (false) {
-            svgAxisY.append('text').attr('transform', 'rotate(-90)').attr('y', 6).attr('dy', '.71em').style('text-anchor', 'end').text(variableY.label);
-        }
-        viz.selectAll('.bar').data(rows).enter().append('rect').attr('class', 'bar').attr('x', positionX).attr('width', widthX).attr('y', positionY).attr('height', heightY);
-        el = document.createElement('div');
-        if (title) {
-            h4 = Flow.HTML.template('=h4')[0];
-            el.appendChild(Flow.HTML.render('div', h4(lodash.escape(title))));
-        }
-        el.appendChild(svg);
-        return el;
-    };
-    plot = function (_config, go) {
-        var initialize, renderText, renderUsingVega;
-        renderText = function (config, go) {
-            var grid, h4, p, row, table, tbody, td, tdr, tds, th, thead, thr, ths, tr, trs, value, variable, _ref;
-            _ref = Flow.HTML.template('.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt'), grid = _ref[0], h4 = _ref[1], p = _ref[2], table = _ref[3], thead = _ref[4], tbody = _ref[5], tr = _ref[6], th = _ref[7], thr = _ref[8], td = _ref[9], tdr = _ref[10];
-            ths = function () {
-                var _i, _len, _ref1, _results;
-                _ref1 = config.data.variables;
-                _results = [];
-                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                    variable = _ref1[_i];
-                    switch (variable.type) {
-                    case Flow.TNumber:
-                        _results.push(thr(lodash.escape(variable.label)));
-                        break;
-                    default:
-                        _results.push(th(lodash.escape(variable.label)));
-                    }
-                }
-                return _results;
-            }();
-            trs = function () {
-                var _i, _len, _ref1, _results;
-                _ref1 = config.data.rows;
-                _results = [];
-                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                    row = _ref1[_i];
-                    tds = function () {
-                        var _j, _len1, _ref2, _results1;
-                        _ref2 = config.data.variables;
-                        _results1 = [];
-                        for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
-                            variable = _ref2[_j];
-                            value = row[variable.label];
-                            switch (variable.type) {
-                            case Flow.TFactor:
-                                _results1.push(td(value === null ? '-' : lodash.escape(variable.domain[value])));
-                                break;
-                            case Flow.TNumber:
-                                _results1.push(tdr(value === null ? '-' : value));
-                                break;
-                            case Flow.TArray:
-                                _results1.push(td(value === null ? '-' : value.join(', ')));
-                                break;
-                            case Flow.TObject:
-                                _results1.push(td(value === null ? '-' : variable.format(value)));
-                                break;
-                            default:
-                                _results1.push(td(value === null ? '-' : value));
-                            }
-                        }
-                        return _results1;
-                    }();
-                    _results.push(tr(tds));
-                }
-                return _results;
-            }();
-            return go(null, Flow.HTML.render('div', grid([
-                h4(config.data.label),
-                p(config.data.description),
-                table([
-                    thead(tr(ths)),
-                    tbody(trs)
-                ])
-            ])));
-        };
-        renderUsingVega = function (config, go) {
-            var color, data, domainX, domainY, el, enter, height, mark, scaleTypeX, scaleTypeY, spec, transformX, transformY, type, variableColor, variableX, variableY, width, x, y, _ref, _ref1;
-            width = config.width, height = config.height, type = config.type, data = config.data, x = config.x, y = config.y, color = config.color;
-            if (lodash.isFunction(x)) {
-                _ref = x(), transformX = _ref[0], x = _ref[1];
-                transformX.point = 'data.' + y;
-            }
-            variableX = data.schema[x];
-            if (lodash.isFunction(y)) {
-                _ref1 = y(), transformY = _ref1[0], y = _ref1[1];
-                transformY.point = 'data.' + x;
-            }
-            variableY = data.schema[y];
-            variableColor = data.schema[color];
-            if (!variableX) {
-                return go(new Flow.Error('Invalid \'x\' variable: \'' + x + '\''));
-            }
-            if (!variableY) {
-                return go(new Flow.Error('Invalid \'y\' variable: \'' + y + '\''));
-            }
-            if (color) {
-                if (!variableColor) {
-                    return go(new Flow.Error('Invalid \'color\' variable: \'' + color + '\''));
-                }
-                if (variableColor.type === Flow.TNumber) {
-                    return go(new Flow.Error('Encoding numeric variables into mark color is not supported.'));
-                }
-            }
-            spec = {};
-            scaleTypeX = variableX.type === Flow.TNumber ? 'linear' : 'ordinal';
-            scaleTypeY = variableY.type === Flow.TNumber ? 'linear' : 'ordinal';
-            if (scaleTypeX === 'ordinal') {
-                domainX = computeDomain(data, variableX.label);
-            }
-            if (scaleTypeY === 'ordinal') {
-                domainY = computeDomain(data, variableY.label);
-            }
-            spec.width = width ? width : scaleTypeX === 'linear' ? 250 : 20 * domainX.length;
-            spec.height = height ? height : scaleTypeY === 'linear' ? 250 : 15 * domainY.length;
-            spec.data = [{ name: 'table' }];
-            spec.scales = [
-                {
-                    name: 'x',
-                    type: scaleTypeX,
-                    domain: {
-                        data: 'table',
-                        field: 'data.' + x
-                    },
-                    range: 'width',
-                    nice: true
-                },
-                {
-                    name: 'y',
-                    type: scaleTypeY,
-                    domain: {
-                        data: 'table',
-                        field: 'data.' + y
-                    },
-                    range: 'height',
-                    nice: true
-                }
-            ];
-            if (color) {
-                spec.scales.push({
-                    name: 'color',
-                    type: 'ordinal',
-                    range: 'category20'
-                });
-            }
-            spec.axes = [
-                {
-                    type: 'x',
-                    scale: 'x',
-                    title: x
-                },
-                {
-                    type: 'y',
-                    scale: 'y',
-                    title: y
-                }
-            ];
-            if (type === 'point') {
-                mark = {
-                    type: 'symbol',
-                    from: { data: 'table' },
-                    properties: {
-                        enter: {
-                            x: {
-                                scale: 'x',
-                                field: 'data.' + x
-                            },
-                            y: {
-                                scale: 'y',
-                                field: 'data.' + y
-                            },
-                            stroke: { value: 'steelblue' },
-                            strokeWidth: { value: 1.5 }
-                        }
-                    }
-                };
-            } else if (type === 'line') {
-                if (color) {
-                    mark = {
-                        type: 'group',
-                        from: {
-                            data: 'table',
-                            transform: [{
-                                    type: 'facet',
-                                    keys: ['data.' + color]
-                                }]
-                        },
-                        marks: [{
-                                type: 'line',
-                                properties: {
-                                    enter: {
-                                        x: {
-                                            scale: 'x',
-                                            field: 'data.' + x
-                                        },
-                                        y: {
-                                            scale: 'y',
-                                            field: 'data.' + y
-                                        },
-                                        stroke: {
-                                            scale: 'color',
-                                            field: 'data.' + color
-                                        },
-                                        strokeWidth: { value: 1.5 }
-                                    }
-                                }
-                            }]
-                    };
-                } else {
-                    mark = {
-                        type: 'line',
-                        from: { data: 'table' },
-                        properties: {
-                            enter: {
-                                x: {
-                                    scale: 'x',
-                                    field: 'data.' + x
-                                },
-                                y: {
-                                    scale: 'y',
-                                    field: 'data.' + y
-                                },
-                                stroke: { value: 'steelblue' },
-                                strokeWidth: { value: 1.5 }
-                            }
-                        }
-                    };
-                }
-            } else if (type === 'area') {
-                if (scaleTypeX === 'ordinal' && scaleTypeY === 'linear') {
-                    enter = {
-                        x: {
-                            scale: 'x',
-                            field: 'data.' + x
-                        },
-                        y: {
-                            scale: 'y',
-                            field: 'data.' + y
-                        },
-                        y2: {
-                            scale: 'y',
-                            value: 0
-                        },
-                        fill: { value: 'steelblue' }
-                    };
-                } else if (scaleTypeX === 'linear' && scaleTypeY === 'ordinal') {
-                    enter = {
-                        x: {
-                            scale: 'x',
-                            field: 'data.' + x
-                        },
-                        x2: {
-                            scale: 'x',
-                            value: 0
-                        },
-                        y: {
-                            scale: 'y',
-                            field: 'data.' + y
-                        },
-                        fill: { value: 'steelblue' }
-                    };
-                } else if (scaleTypeX === 'linear' && scaleTypeY === 'linear') {
-                    enter = {
-                        x: {
-                            scale: 'x',
-                            field: 'data.' + x
-                        },
-                        y: {
-                            scale: 'y',
-                            field: 'data.' + y
-                        },
-                        y2: {
-                            scale: 'y',
-                            value: 0
-                        },
-                        fill: { value: 'steelblue' }
-                    };
-                } else {
-                    return go(new Flow.Error('Not implemented'));
-                }
-                mark = {
-                    type: 'area',
-                    from: { data: 'table' },
-                    properties: { enter: enter }
-                };
-            } else if (type === 'interval') {
-                if (scaleTypeX === 'ordinal' && scaleTypeY === 'linear') {
-                    if (color) {
-                        mark = {
-                            type: 'group',
-                            from: {
-                                data: 'table',
-                                transform: [
-                                    {
-                                        type: 'facet',
-                                        keys: ['data.' + color]
-                                    },
-                                    transformY
-                                ]
-                            },
-                            marks: [{
-                                    type: 'rect',
-                                    properties: {
-                                        enter: {
-                                            x: {
-                                                scale: 'x',
-                                                field: 'data.' + x
-                                            },
-                                            width: {
-                                                scale: 'x',
-                                                band: true,
-                                                offset: -1
-                                            },
-                                            y: {
-                                                scale: 'y',
-                                                field: 'y'
-                                            },
-                                            y2: {
-                                                scale: 'y',
-                                                field: 'y2'
-                                            },
-                                            fill: {
-                                                scale: 'color',
-                                                field: 'data.' + color
-                                            }
-                                        }
-                                    }
-                                }]
-                        };
-                    } else {
-                        mark = {
-                            type: 'rect',
-                            from: { data: 'table' },
-                            properties: {
-                                enter: {
-                                    x: {
-                                        scale: 'x',
-                                        field: 'data.' + x
-                                    },
-                                    width: {
-                                        scale: 'x',
-                                        band: true,
-                                        offset: -1
-                                    },
-                                    y: {
-                                        scale: 'y',
-                                        field: 'data.' + y
-                                    },
-                                    y2: {
-                                        scale: 'y',
-                                        value: 0
-                                    },
-                                    fill: { value: 'steelblue' }
-                                }
-                            }
-                        };
-                    }
-                } else if (scaleTypeX === 'linear' && scaleTypeY === 'ordinal') {
-                    if (color) {
-                        mark = {
-                            type: 'group',
-                            from: {
-                                data: 'table',
-                                transform: [
-                                    {
-                                        type: 'facet',
-                                        keys: ['data.' + color]
-                                    },
-                                    transformX
-                                ]
-                            },
-                            marks: [{
-                                    type: 'rect',
-                                    properties: {
-                                        enter: {
-                                            x: {
-                                                scale: 'x',
-                                                field: 'y'
-                                            },
-                                            x2: {
-                                                scale: 'x',
-                                                field: 'y2'
-                                            },
-                                            y: {
-                                                scale: 'y',
-                                                field: 'data.' + y
-                                            },
-                                            height: {
-                                                scale: 'y',
-                                                band: true,
-                                                offset: -1
-                                            },
-                                            fill: {
-                                                scale: 'color',
-                                                field: 'data.' + color
-                                            }
-                                        }
-                                    }
-                                }]
-                        };
-                    } else {
-                        mark = {
-                            type: 'rect',
-                            from: { data: 'table' },
-                            properties: {
-                                enter: {
-                                    x: {
-                                        scale: 'x',
-                                        field: 'data.' + x
-                                    },
-                                    x2: {
-                                        scale: 'x',
-                                        value: 0
-                                    },
-                                    y: {
-                                        scale: 'y',
-                                        field: 'data.' + y
-                                    },
-                                    height: {
-                                        scale: 'y',
-                                        band: true,
-                                        offset: -1
-                                    },
-                                    fill: { value: 'steelblue' }
-                                }
-                            }
-                        };
-                    }
-                } else if (scaleTypeX === 'linear' && scaleTypeY === 'linear') {
-                    return go(new Flow.Error('Not implemented'));
-                } else {
-                    return go(new Flow.Error('Not implemented'));
-                }
-            }
-            spec.marks = [mark];
-            go(null, Flow.HTML.render('div', el = document.createElement('div')));
-            vg.parse.spec(spec, function (ctor) {
-                var chart;
-                chart = ctor({
-                    el: el,
-                    data: { table: data.rows }
-                });
-                return chart.update();
-            });
-        };
-        initialize = function (config) {
-            var error;
-            try {
-                switch (config.type) {
-                case 'point':
-                case 'line':
-                case 'area':
-                case 'interval':
-                    return renderUsingVega(config, go);
-                case 'schema':
-                    return go(new Flow.Error('Not implemented: ' + config.type));
-                case 'text':
-                    return renderText(config, go);
-                default:
-                    return go(new Flow.Error('Invalid mark type: ' + config.type));
-                }
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error creating plot.', error));
-            }
-        };
-        return initialize(_config);
-    };
-    stack = function (attr) {
-        var self;
-        return function () {
-            var transform;
-            transform = {
-                type: 'stack',
-                height: 'data.' + attr
-            };
-            return [
-                transform,
-                attr
-            ];
-        };
-        self = function (table) {
-            var end, endVariable, n, p, row, start, startVariable, type, value, _i, _len, _ref, _ref1;
-            type = table.schema[attr].type;
-            _ref = table.expand(type, type), startVariable = _ref[0], endVariable = _ref[1];
-            start = startVariable.label;
-            end = endVariable.label;
-            n = 0;
-            p = 0;
-            _ref1 = table.rows;
-            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                row = _ref1[_i];
-                value = row[attr];
-                if (value >= 0) {
-                    row[start] = p;
-                    row[end] = p = p + value;
-                } else {
-                    row[start] = n;
-                    row[end] = n = n + value;
-                }
-            }
-            startVariable.domain = [
-                n,
-                p
-            ];
-            endVariable.domain = [
-                n,
-                p
-            ];
-            return [
-                start,
-                end
-            ];
-        };
-        return self;
-    };
-    Flow.Plot = plot;
-    plot.stack = stack;
-}.call(this));
-(function () {
-    Flow.Prelude = function () {
-        var _always, _copy, _deepClone, _isDefined, _isFalsy, _isTruthy, _negative, _never, _remove, _repeat, _typeOf, _words;
-        _isDefined = function (value) {
-            return !lodash.isUndefined(value);
-        };
-        _isTruthy = function (value) {
-            if (value) {
-                return true;
-            } else {
-                return false;
-            }
-        };
-        _isFalsy = function (value) {
-            if (value) {
-                return false;
-            } else {
-                return true;
-            }
-        };
-        _negative = function (value) {
-            return !value;
-        };
-        _always = function () {
-            return true;
-        };
-        _never = function () {
-            return false;
-        };
-        _copy = function (array) {
-            return array.slice(0);
-        };
-        _remove = function (array, element) {
-            var index;
-            if (-1 < (index = lodash.indexOf(array, element))) {
-                return lodash.head(arra.splice(index, 1));
-            } else {
-                return void 0;
-            }
-        };
-        _words = function (text) {
-            return text.split(/\s+/);
-        };
-        _repeat = function (count, value) {
-            var array, i, _i;
-            array = [];
-            for (i = _i = 0; 0 <= count ? _i < count : _i > count; i = 0 <= count ? ++_i : --_i) {
-                array.push(value);
-            }
-            return array;
-        };
-        _typeOf = function (a) {
-            var type;
-            type = Object.prototype.toString.call(a);
-            if (a === null) {
-                return Flow.TNull;
-            } else if (a === void 0) {
-                return Flow.TUndefined;
-            } else if (a === true || a === false || type === '[object Boolean]') {
-                return Flow.TBoolean;
-            } else {
-                switch (type) {
-                case '[object String]':
-                    return Flow.TString;
-                case '[object Number]':
-                    return Flow.TNumber;
-                case '[object Function]':
-                    return Flow.TFunction;
-                case '[object Object]':
-                    return Flow.TObject;
-                case '[object Array]':
-                    return Flow.TArray;
-                case '[object Arguments]':
-                    return Flow.TArguments;
-                case '[object Date]':
-                    return Flow.TDate;
-                case '[object RegExp]':
-                    return Flow.TRegExp;
-                case '[object Error]':
-                    return Flow.TError;
-                default:
-                    return type;
-                }
-            }
-        };
-        _deepClone = function (obj) {
-            return JSON.parse(JSON.stringify(obj));
-        };
-        return {
-            isDefined: _isDefined,
-            isTruthy: _isTruthy,
-            isFalsy: _isFalsy,
-            negative: _negative,
-            always: _always,
-            never: _never,
-            copy: _copy,
-            remove: _remove,
-            words: _words,
-            repeat: _repeat,
-            typeOf: _typeOf,
-            deepClone: _deepClone,
-            stringify: JSON.stringify
-        };
-    }();
-}.call(this));
-(function () {
-    Flow.Sandbox = function (_, routines) {
-        return {
-            routines: routines,
-            context: {},
-            results: {}
-        };
-    };
-}.call(this));
-(function () {
-    Flow.TUndefined = 'undefined';
-    Flow.TNull = 'null';
-    Flow.TBoolean = 'Boolean';
-    Flow.TString = 'String';
-    Flow.TNumber = 'Number';
-    Flow.TFunction = 'Function';
-    Flow.TObject = 'Object';
-    Flow.TArray = 'Array';
-    Flow.TArguments = 'Arguments';
-    Flow.TDate = 'Date';
-    Flow.TRegExp = 'RegExp';
-    Flow.TError = 'Error';
-    Flow.TFactor = 'Factor';
-}.call(this));
-(function () {
-    var describeCount, fromNow;
-    describeCount = function (count, singular, plural) {
-        if (!plural) {
-            plural = singular + 's';
-        }
-        switch (count) {
-        case 0:
-            return 'No ' + plural;
-        case 1:
-            return '1 ' + singular;
-        default:
-            return '' + count + ' ' + plural;
-        }
-    };
-    fromNow = function (date) {
-        return moment(date).fromNow();
-    };
-    Flow.Util = {
-        describeCount: describeCount,
-        fromNow: fromNow
-    };
-}.call(this));
-(function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.30';
+    FLOW_VERSION = '0.2.31';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -6126,6 +3671,2461 @@
     };
 }.call(this));
 (function () {
+    Flow.ApplicationContext = function (_) {
+        _.ready = Flow.Dataflow.slots();
+        _.status = Flow.Dataflow.slot();
+        _.selectCell = Flow.Dataflow.slot();
+        _.insertCell = Flow.Dataflow.slot();
+        _.insertAndExecuteCell = Flow.Dataflow.slot();
+        _.showHelp = Flow.Dataflow.slot();
+        _.showOutline = Flow.Dataflow.slot();
+        _.showBrowser = Flow.Dataflow.slot();
+        _.showClipboard = Flow.Dataflow.slot();
+        _.saveClip = Flow.Dataflow.slot();
+        _.loadNotebook = Flow.Dataflow.slot();
+        return _.storeNotebook = Flow.Dataflow.slot();
+    };
+}.call(this));
+(function () {
+    Flow.Application = function (_, routines) {
+        var _notebook, _renderers, _routines, _sandbox;
+        Flow.ApplicationContext(_);
+        _routines = routines(_);
+        _sandbox = Flow.Sandbox(_, _routines);
+        _renderers = Flow.Renderers(_, _sandbox);
+        _notebook = Flow.Notebook(_, _renderers);
+        return {
+            context: _,
+            sandbox: _sandbox,
+            view: _notebook
+        };
+    };
+}.call(this));
+(function () {
+    var createBuffer, iterate, pipe, renderable, _applicate, _async, _find, _find$2, _find$3, _fork, _get, _isFuture, _join, _noop, __slice = [].slice;
+    createBuffer = function (array) {
+        var buffer, _array, _go;
+        _array = array || [];
+        _go = null;
+        buffer = function (element) {
+            if (element === void 0) {
+                return _array;
+            } else {
+                _array.push(element);
+                if (_go) {
+                    _go(element);
+                }
+                return element;
+            }
+        };
+        buffer.subscribe = function (go) {
+            return _go = go;
+        };
+        buffer.buffer = _array;
+        buffer.isBuffer = true;
+        return buffer;
+    };
+    _noop = function (go) {
+        return go(null);
+    };
+    _applicate = function (go) {
+        return function (error, args) {
+            if (lodash.isFunction(go)) {
+                return go.apply(null, [error].concat(args));
+            }
+        };
+    };
+    renderable = function () {
+        var args, f, ft, render, _i;
+        f = arguments[0], args = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), render = arguments[_i++];
+        ft = _fork(f, args);
+        ft.render = render;
+        return ft;
+    };
+    _fork = function (f, args) {
+        var self;
+        self = function (go) {
+            var canGo;
+            canGo = lodash.isFunction(go);
+            if (self.settled) {
+                if (self.rejected) {
+                    if (canGo) {
+                        return go(self.error);
+                    }
+                } else {
+                    if (canGo) {
+                        return go(null, self.result);
+                    }
+                }
+            } else {
+                return _join(args, function (error, args) {
+                    if (error) {
+                        self.error = error;
+                        self.fulfilled = false;
+                        self.rejected = true;
+                        if (canGo) {
+                            return go(error);
+                        }
+                    } else {
+                        return f.apply(null, args.concat(function (error, result) {
+                            if (error) {
+                                self.error = error;
+                                self.fulfilled = false;
+                                self.rejected = true;
+                                if (canGo) {
+                                    go(error);
+                                }
+                            } else {
+                                self.result = result;
+                                self.fulfilled = true;
+                                self.rejected = false;
+                                if (canGo) {
+                                    go(null, result);
+                                }
+                            }
+                            self.settled = true;
+                            return self.pending = false;
+                        }));
+                    }
+                });
+            }
+        };
+        self.method = f;
+        self.args = args;
+        self.fulfilled = false;
+        self.rejected = false;
+        self.settled = false;
+        self.pending = true;
+        self.isFuture = true;
+        return self;
+    };
+    _isFuture = function (a) {
+        if (a != null ? a.isFuture : void 0) {
+            return true;
+        } else {
+            return false;
+        }
+    };
+    _join = function (args, go) {
+        var arg, i, _actual, _i, _len, _results, _settled, _tasks;
+        if (args.length === 0) {
+            return go(null, []);
+        }
+        _tasks = [];
+        _results = [];
+        for (i = _i = 0, _len = args.length; _i < _len; i = ++_i) {
+            arg = args[i];
+            if (arg != null ? arg.isFuture : void 0) {
+                _tasks.push({
+                    future: arg,
+                    resultIndex: i
+                });
+            } else {
+                _results[i] = arg;
+            }
+        }
+        if (_tasks.length === 0) {
+            return go(null, _results);
+        }
+        _actual = 0;
+        _settled = false;
+        lodash.forEach(_tasks, function (task) {
+            return task.future.call(null, function (error, result) {
+                if (_settled) {
+                    return;
+                }
+                if (error) {
+                    _settled = true;
+                    go(new Flow.Error('Error evaluating future[' + task.resultIndex + ']', error));
+                } else {
+                    _results[task.resultIndex] = result;
+                    _actual++;
+                    if (_actual === _tasks.length) {
+                        _settled = true;
+                        go(null, _results);
+                    }
+                }
+            });
+        });
+    };
+    pipe = function (tasks) {
+        var next, _tasks;
+        _tasks = tasks.slice(0);
+        next = function (args, go) {
+            var task;
+            task = _tasks.shift();
+            if (task) {
+                return task.apply(null, args.concat(function () {
+                    var error, results;
+                    error = arguments[0], results = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+                    if (error) {
+                        return go(error);
+                    } else {
+                        return next(results, go);
+                    }
+                }));
+            } else {
+                return go.apply(null, [null].concat(args));
+            }
+        };
+        return function () {
+            var args, go, _i;
+            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
+            return next(args, go);
+        };
+    };
+    iterate = function (tasks) {
+        var next, _results, _tasks;
+        _tasks = tasks.slice(0);
+        _results = [];
+        next = function (go) {
+            var task;
+            task = _tasks.shift();
+            if (task) {
+                return task(function (error, result) {
+                    if (error) {
+                        _results.push([error]);
+                    } else {
+                        _results.push([
+                            null,
+                            result
+                        ]);
+                    }
+                    return next(go);
+                });
+            } else {
+                return go(null, _results);
+            }
+        };
+        return function (go) {
+            return next(go);
+        };
+    };
+    _async = function () {
+        var args, f, later;
+        f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+        later = function () {
+            var args, error, go, result, _i;
+            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
+            try {
+                result = f.apply(null, args);
+                return go(null, result);
+            } catch (_error) {
+                error = _error;
+                return go(error);
+            }
+        };
+        return _fork(later, args);
+    };
+    _find$3 = function (attr, prop, obj) {
+        var v, _i, _len;
+        if (_isFuture(obj)) {
+            return _async(_find$3, attr, prop, obj);
+        } else if (lodash.isArray(obj)) {
+            for (_i = 0, _len = obj.length; _i < _len; _i++) {
+                v = obj[_i];
+                if (v[attr] === prop) {
+                    return v;
+                }
+            }
+            return;
+        }
+    };
+    _find$2 = function (attr, obj) {
+        if (_isFuture(obj)) {
+            return _async(_find$2, attr, obj);
+        } else if (lodash.isString(attr)) {
+            if (lodash.isArray(obj)) {
+                return _find$3('name', attr, obj);
+            } else {
+                return obj[attr];
+            }
+        }
+    };
+    _find = function () {
+        var a, args, b, c, ta, tb, tc;
+        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        switch (args.length) {
+        case 3:
+            a = args[0], b = args[1], c = args[2];
+            ta = Flow.Prelude.typeOf(a);
+            tb = Flow.Prelude.typeOf(b);
+            tc = Flow.Prelude.typeOf(c);
+            if (ta === 'Array' && tb === 'String') {
+                return _find$3(b, c, a);
+            } else if (ta === 'String' && (tc = 'Array')) {
+                return _find$3(a, b, c);
+            }
+            break;
+        case 2:
+            a = args[0], b = args[1];
+            if (!a) {
+                return;
+            }
+            if (!b) {
+                return;
+            }
+            if (lodash.isString(b)) {
+                return _find$2(b, a);
+            } else if (lodash.isString(a)) {
+                return _find$2(a, b);
+            }
+        }
+    };
+    _get = function (attr, obj) {
+        if (_isFuture(obj)) {
+            return _async(_get, attr, obj);
+        } else if (lodash.isString(attr)) {
+            if (lodash.isArray(obj)) {
+                return _find$3('name', attr, obj);
+            } else {
+                return obj[attr];
+            }
+        }
+    };
+    Flow.Async = {
+        createBuffer: createBuffer,
+        noop: _noop,
+        applicate: _applicate,
+        renderable: renderable,
+        isFuture: _isFuture,
+        fork: _fork,
+        join: _join,
+        pipe: pipe,
+        iterate: iterate,
+        async: _async,
+        find: _find,
+        get: _get
+    };
+}.call(this));
+(function () {
+    Flow.CoffeescriptKernel = function () {
+        var coalesceScopes, compileCoffeescript, compileJavascript, createGlobalScope, createLocalScope, createRootScope, deleteAstNode, executeJavascript, generateJavascript, identifyDeclarations, parseDeclarations, parseJavascript, removeHoistedDeclarations, rewriteJavascript, safetyWrapCoffeescript, traverseJavascript, traverseJavascriptScoped;
+        safetyWrapCoffeescript = function (guid) {
+            return function (cs, go) {
+                var block, lines;
+                lines = cs.replace(/[\n\r]/g, '\n').split('\n');
+                block = lodash.map(lines, function (line) {
+                    return '  ' + line;
+                });
+                block.unshift('_h2o_results_[\'' + guid + '\'].result do ->');
+                return go(null, block.join('\n'));
+            };
+        };
+        compileCoffeescript = function (cs, go) {
+            var error;
+            try {
+                return go(null, CoffeeScript.compile(cs, { bare: true }));
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error compiling coffee-script', error));
+            }
+        };
+        parseJavascript = function (js, go) {
+            var error;
+            try {
+                return go(null, esprima.parse(js));
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error parsing javascript expression', error));
+            }
+        };
+        identifyDeclarations = function (node) {
+            var declaration;
+            if (!node) {
+                return null;
+            }
+            switch (node.type) {
+            case 'VariableDeclaration':
+                return function () {
+                    var _i, _len, _ref, _results;
+                    _ref = node.declarations;
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        declaration = _ref[_i];
+                        if (declaration.type === 'VariableDeclarator' && declaration.id.type === 'Identifier') {
+                            _results.push({
+                                name: declaration.id.name,
+                                object: '_h2o_context_'
+                            });
+                        }
+                    }
+                    return _results;
+                }();
+            case 'FunctionDeclaration':
+                if (node.id.type === 'Identifier') {
+                    return [{
+                            name: node.id.name,
+                            object: '_h2o_context_'
+                        }];
+                }
+                break;
+            case 'ForStatement':
+                return identifyDeclarations(node.init);
+            case 'ForInStatement':
+            case 'ForOfStatement':
+                return identifyDeclarations(node.left);
+            }
+            return null;
+        };
+        parseDeclarations = function (block) {
+            var declaration, declarations, identifiers, node, _i, _j, _len, _len1, _ref;
+            identifiers = [];
+            _ref = block.body;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                node = _ref[_i];
+                if (declarations = identifyDeclarations(node)) {
+                    for (_j = 0, _len1 = declarations.length; _j < _len1; _j++) {
+                        declaration = declarations[_j];
+                        identifiers.push(declaration);
+                    }
+                }
+            }
+            return lodash.indexBy(identifiers, function (identifier) {
+                return identifier.name;
+            });
+        };
+        traverseJavascript = function (parent, key, node, f) {
+            var child, i;
+            if (lodash.isArray(node)) {
+                i = node.length;
+                while (i--) {
+                    child = node[i];
+                    if (lodash.isObject(child)) {
+                        traverseJavascript(node, i, child, f);
+                        f(node, i, child);
+                    }
+                }
+            } else {
+                for (i in node) {
+                    child = node[i];
+                    if (lodash.isObject(child)) {
+                        traverseJavascript(node, i, child, f);
+                        f(node, i, child);
+                    }
+                }
+            }
+        };
+        deleteAstNode = function (parent, i) {
+            if (_.isArray(parent)) {
+                return parent.splice(i, 1);
+            } else if (lodash.isObject(parent)) {
+                return delete parent[i];
+            }
+        };
+        createLocalScope = function (node) {
+            var localScope, param, _i, _len, _ref;
+            localScope = parseDeclarations(node.body);
+            _ref = node.params;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                param = _ref[_i];
+                if (param.type === 'Identifier') {
+                    localScope[param.name] = {
+                        name: param.name,
+                        object: 'local'
+                    };
+                }
+            }
+            return localScope;
+        };
+        coalesceScopes = function (scopes) {
+            var currentScope, i, identifier, name, scope, _i, _len;
+            currentScope = {};
+            for (i = _i = 0, _len = scopes.length; _i < _len; i = ++_i) {
+                scope = scopes[i];
+                if (i === 0) {
+                    for (name in scope) {
+                        identifier = scope[name];
+                        currentScope[name] = identifier;
+                    }
+                } else {
+                    for (name in scope) {
+                        identifier = scope[name];
+                        currentScope[name] = null;
+                    }
+                }
+            }
+            return currentScope;
+        };
+        traverseJavascriptScoped = function (scopes, parentScope, parent, key, node, f) {
+            var child, currentScope, isNewScope;
+            isNewScope = node.type === 'FunctionExpression' || node.type === 'FunctionDeclaration';
+            if (isNewScope) {
+                scopes.push(createLocalScope(node));
+                currentScope = coalesceScopes(scopes);
+            } else {
+                currentScope = parentScope;
+            }
+            for (key in node) {
+                child = node[key];
+                if (lodash.isObject(child)) {
+                    traverseJavascriptScoped(scopes, currentScope, node, key, child, f);
+                    f(currentScope, node, key, child);
+                }
+            }
+            if (isNewScope) {
+                scopes.pop();
+            }
+        };
+        createRootScope = function (sandbox) {
+            return function (program, go) {
+                var error, name, rootScope;
+                try {
+                    rootScope = parseDeclarations(program.body[0].expression['arguments'][0].callee.body);
+                    for (name in sandbox.context) {
+                        rootScope[name] = {
+                            name: name,
+                            object: '_h2o_context_'
+                        };
+                    }
+                    return go(null, rootScope, program);
+                } catch (_error) {
+                    error = _error;
+                    return go(new Flow.Error('Error parsing root scope', error));
+                }
+            };
+        };
+        removeHoistedDeclarations = function (rootScope, program, go) {
+            var error;
+            try {
+                traverseJavascript(null, null, program, function (parent, key, node) {
+                    var declarations;
+                    if (node.type === 'VariableDeclaration') {
+                        declarations = node.declarations.filter(function (declaration) {
+                            return declaration.type === 'VariableDeclarator' && declaration.id.type === 'Identifier' && !rootScope[declaration.id.name];
+                        });
+                        if (declarations.length === 0) {
+                            return deleteAstNode(parent, key);
+                        } else {
+                            return node.declarations = declarations;
+                        }
+                    }
+                });
+                return go(null, rootScope, program);
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error rewriting javascript', error));
+            }
+        };
+        createGlobalScope = function (rootScope, routines) {
+            var globalScope, identifier, name;
+            globalScope = {};
+            for (name in rootScope) {
+                identifier = rootScope[name];
+                globalScope[name] = identifier;
+            }
+            for (name in routines) {
+                globalScope[name] = {
+                    name: name,
+                    object: 'h2o'
+                };
+            }
+            return globalScope;
+        };
+        rewriteJavascript = function (sandbox) {
+            return function (rootScope, program, go) {
+                var error, globalScope;
+                globalScope = createGlobalScope(rootScope, sandbox.routines);
+                try {
+                    traverseJavascriptScoped([globalScope], globalScope, null, null, program, function (globalScope, parent, key, node) {
+                        var identifier;
+                        if (node.type === 'Identifier') {
+                            if (parent.type === 'VariableDeclarator' && key === 'id') {
+                                return;
+                            }
+                            if (key === 'property') {
+                                return;
+                            }
+                            if (!(identifier = globalScope[node.name])) {
+                                return;
+                            }
+                            return parent[key] = {
+                                type: 'MemberExpression',
+                                computed: false,
+                                object: {
+                                    type: 'Identifier',
+                                    name: identifier.object
+                                },
+                                property: {
+                                    type: 'Identifier',
+                                    name: identifier.name
+                                }
+                            };
+                        }
+                    });
+                    return go(null, program);
+                } catch (_error) {
+                    error = _error;
+                    return go(new Flow.Error('Error rewriting javascript', error));
+                }
+            };
+        };
+        generateJavascript = function (program, go) {
+            var error;
+            try {
+                return go(null, escodegen.generate(program));
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error generating javascript', error));
+            }
+        };
+        compileJavascript = function (js, go) {
+            var closure, error;
+            try {
+                closure = new Function('h2o', '_h2o_context_', '_h2o_results_', 'print', js);
+                return go(null, closure);
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error compiling javascript', error));
+            }
+        };
+        executeJavascript = function (sandbox, print) {
+            return function (closure, go) {
+                var error;
+                try {
+                    return go(null, closure(sandbox.routines, sandbox.context, sandbox.results, print));
+                } catch (_error) {
+                    error = _error;
+                    return go(new Flow.Error('Error executing javascript', error));
+                }
+            };
+        };
+        return {
+            safetyWrapCoffeescript: safetyWrapCoffeescript,
+            compileCoffeescript: compileCoffeescript,
+            parseJavascript: parseJavascript,
+            createRootScope: createRootScope,
+            removeHoistedDeclarations: removeHoistedDeclarations,
+            rewriteJavascript: rewriteJavascript,
+            generateJavascript: generateJavascript,
+            compileJavascript: compileJavascript,
+            executeJavascript: executeJavascript
+        };
+    }();
+}.call(this));
+(function () {
+    var combineRanges, computeRange, createAbstractVariable, createCompiledPrototype, createFactor, createNumericVariable, createRecordConstructor, createTable, createVariable, factor, includeZeroInRange, nextPrototypeName, permute, _prototypeCache, _prototypeId, __slice = [].slice;
+    _prototypeId = 0;
+    nextPrototypeName = function () {
+        return 'Map' + ++_prototypeId;
+    };
+    _prototypeCache = {};
+    createCompiledPrototype = function (attrs) {
+        var attr, cacheKey, i, inits, params, proto, prototypeName;
+        cacheKey = attrs.join('\0');
+        if (proto = _prototypeCache[cacheKey]) {
+            return proto;
+        }
+        params = function () {
+            var _i, _ref, _results;
+            _results = [];
+            for (i = _i = 0, _ref = attrs.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+                _results.push('a' + i);
+            }
+            return _results;
+        }();
+        inits = function () {
+            var _i, _len, _results;
+            _results = [];
+            for (i = _i = 0, _len = attrs.length; _i < _len; i = ++_i) {
+                attr = attrs[i];
+                _results.push('this[' + JSON.stringify(attr) + ']=a' + i + ';');
+            }
+            return _results;
+        }();
+        prototypeName = nextPrototypeName();
+        return _prototypeCache[cacheKey] = new Function('function ' + prototypeName + '(' + params.join(',') + '){' + inits.join('') + '} return ' + prototypeName + ';')();
+    };
+    createRecordConstructor = function (variables) {
+        var variable;
+        return createCompiledPrototype(function () {
+            var _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = variables.length; _i < _len; _i++) {
+                variable = variables[_i];
+                _results.push(variable.label);
+            }
+            return _results;
+        }());
+    };
+    createTable = function (opts) {
+        var description, expand, fill, label, meta, rows, schema, variable, variables, _i, _len;
+        label = opts.label, description = opts.description, variables = opts.variables, rows = opts.rows, meta = opts.meta;
+        if (!description) {
+            description = 'No description available.';
+        }
+        schema = {};
+        for (_i = 0, _len = variables.length; _i < _len; _i++) {
+            variable = variables[_i];
+            schema[variable.label] = variable;
+        }
+        fill = function (i, go) {
+            _fill(i, function (error, result) {
+                var index, startIndex, value, _j, _len1;
+                if (error) {
+                    return go(error);
+                } else {
+                    startIndex = result.index, lodash.values = result.values;
+                    for (index = _j = 0, _len1 = lodash.values.length; _j < _len1; index = ++_j) {
+                        value = lodash.values[index];
+                        rows[startIndex + index] = lodash.values[index];
+                    }
+                    return go(null);
+                }
+            });
+        };
+        expand = function () {
+            var type, types, _j, _len1, _results;
+            types = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+            _results = [];
+            for (_j = 0, _len1 = types.length; _j < _len1; _j++) {
+                type = types[_j];
+                label = lodash.uniqueId('__flow_variable_');
+                _results.push(schema[label] = createNumericVariable(label));
+            }
+            return _results;
+        };
+        return {
+            label: label,
+            description: description,
+            schema: schema,
+            variables: variables,
+            rows: rows,
+            meta: meta,
+            fill: fill,
+            expand: expand,
+            _is_table_: true
+        };
+    };
+    includeZeroInRange = function (range) {
+        var hi, lo;
+        lo = range[0], hi = range[1];
+        if (lo > 0 && hi > 0) {
+            return [
+                0,
+                hi
+            ];
+        } else if (lo < 0 && hi < 0) {
+            return [
+                lo,
+                0
+            ];
+        } else {
+            return range;
+        }
+    };
+    combineRanges = function () {
+        var hi, lo, range, ranges, value, _i, _len;
+        ranges = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        lo = Number.POSITIVE_INFINITY;
+        hi = Number.NEGATIVE_INFINITY;
+        for (_i = 0, _len = ranges.length; _i < _len; _i++) {
+            range = ranges[_i];
+            if (lo > (value = range[0])) {
+                lo = value;
+            }
+            if (hi < (value = range[1])) {
+                hi = value;
+            }
+        }
+        return [
+            lo,
+            hi
+        ];
+    };
+    computeRange = function (rows, attr) {
+        var hi, lo, row, value, _i, _len;
+        if (rows.length) {
+            lo = Number.POSITIVE_INFINITY;
+            hi = Number.NEGATIVE_INFINITY;
+            for (_i = 0, _len = rows.length; _i < _len; _i++) {
+                row = rows[_i];
+                value = row[attr];
+                if (value < lo) {
+                    lo = value;
+                }
+                if (value > hi) {
+                    hi = value;
+                }
+            }
+            return [
+                lo,
+                hi
+            ];
+        } else {
+            return [
+                -1,
+                1
+            ];
+        }
+    };
+    permute = function (array, indices) {
+        var i, index, permuted, _i, _len;
+        permuted = new Array(array.length);
+        for (i = _i = 0, _len = indices.length; _i < _len; i = ++_i) {
+            index = indices[i];
+            permuted[i] = array[index];
+        }
+        return permuted;
+    };
+    createAbstractVariable = function (_label, _type, _domain, _format, _read) {
+        return {
+            label: _label,
+            type: _type,
+            domain: _domain || [],
+            format: _format || lodash.identity,
+            read: _read
+        };
+    };
+    createNumericVariable = function (_label, _domain, _format, _read) {
+        var self;
+        self = createAbstractVariable(_label, Flow.TNumber, _domain || [
+            Number.POSITIVE_INFINITY,
+            Number.NEGATIVE_INFINITY
+        ], _format, _read);
+        if (!self.read) {
+            self.read = function (datum) {
+                if (datum < self.domain[0]) {
+                    self.domain[0] = datum;
+                }
+                if (datum > self.domain[1]) {
+                    self.domain[1] = datum;
+                }
+                return datum;
+            };
+        }
+        return self;
+    };
+    createVariable = function (_label, _type, _domain, _format, _read) {
+        if (_type === Flow.TNumber) {
+            return createNumericVariable(_label, _domain, _format, _read);
+        } else {
+            return createAbstractVariable(_label, _type, _domain, _format, _read);
+        }
+    };
+    createFactor = function (_label, _domain, _format, _read) {
+        var level, self, _i, _id, _len, _levels, _ref;
+        self = createAbstractVariable(_label, Flow.TFactor, _domain || [], _format, _read);
+        _id = 0;
+        _levels = {};
+        if (self.domain.length) {
+            _ref = self.domain;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                level = _ref[_i];
+                _levels[level] = _id++;
+            }
+        }
+        if (!self.read) {
+            self.read = function (datum) {
+                var id;
+                level = datum === void 0 || datum === null ? 'null' : datum;
+                if (void 0 === (id = _levels[level])) {
+                    _levels[level] = id = _id++;
+                    self.domain.push(level);
+                }
+                return id;
+            };
+        }
+        return self;
+    };
+    factor = function (array) {
+        var data, domain, i, id, level, levels, _i, _id, _len;
+        _id = 0;
+        levels = {};
+        domain = [];
+        data = new Array(array.length);
+        for (i = _i = 0, _len = array.length; _i < _len; i = ++_i) {
+            level = array[i];
+            if (void 0 === (id = levels[level])) {
+                levels[level] = id = _id++;
+                domain.push(level);
+            }
+            data[i] = id;
+        }
+        return [
+            domain,
+            data
+        ];
+    };
+    Flow.Data = {
+        Table: createTable,
+        Variable: createVariable,
+        Factor: createFactor,
+        computeColumnInterpretation: function (type) {
+            if (type === Flow.TNumber) {
+                return 'c';
+            } else if (type === Flow.TFactor) {
+                return 'd';
+            } else {
+                return 't';
+            }
+        },
+        Record: createRecordConstructor,
+        computeRange: computeRange,
+        combineRanges: combineRanges,
+        includeZeroInRange: includeZeroInRange,
+        factor: factor,
+        permute: permute
+    };
+}.call(this));
+(function () {
+    var __slice = [].slice;
+    Flow.Dataflow = function () {
+        var createObservable, createObservableArray, createSignal, createSignals, createSlot, createSlots, isObservable, _act, _apply, _isSignal, _lift, _link, _merge, _react, _unlink;
+        createSlot = function () {
+            var arrow, self;
+            arrow = null;
+            self = function () {
+                var args;
+                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+                if (arrow) {
+                    return arrow.func.apply(null, args);
+                } else {
+                    return void 0;
+                }
+            };
+            self.subscribe = function (func) {
+                console.assert(lodash.isFunction(func));
+                if (arrow) {
+                    throw new Error('Cannot re-attach slot');
+                } else {
+                    return arrow = {
+                        func: func,
+                        dispose: function () {
+                            return arrow = null;
+                        }
+                    };
+                }
+            };
+            self.dispose = function () {
+                if (arrow) {
+                    return arrow.dispose();
+                }
+            };
+            return self;
+        };
+        createSlots = function () {
+            var arrows, self;
+            arrows = [];
+            self = function () {
+                var args;
+                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+                return lodash.map(arrows, function (arrow) {
+                    return arrow.func.apply(null, args);
+                });
+            };
+            self.subscribe = function (func) {
+                var arrow;
+                console.assert(lodash.isFunction(func));
+                arrows.push(arrow = {
+                    func: func,
+                    dispose: function () {
+                        return Flow.Prelude.remove(arrows, arrow);
+                    }
+                });
+                return arrow;
+            };
+            self.dispose = function () {
+                return lodash.forEach(Flow.Prelude.copy(arrows), function (arrow) {
+                    return arrow.dispose();
+                });
+            };
+            return self;
+        };
+        if (typeof ko !== 'undefined' && ko !== null) {
+            createObservable = ko.observable;
+            createObservableArray = ko.observableArray;
+            isObservable = ko.isObservable;
+        } else {
+            createObservable = function (initialValue) {
+                var arrows, currentValue, notifySubscribers, self;
+                arrows = [];
+                currentValue = initialValue;
+                notifySubscribers = function (arrows, newValue) {
+                    var arrow, _i, _len;
+                    for (_i = 0, _len = arrows.length; _i < _len; _i++) {
+                        arrow = arrows[_i];
+                        arrow.func(newValue);
+                    }
+                };
+                self = function (newValue) {
+                    var unchanged;
+                    if (arguments.length === 0) {
+                        return currentValue;
+                    } else {
+                        unchanged = self.equalityComparer ? self.equalityComparer(currentValue, newValue) : currentValue === newValue;
+                        if (!unchanged) {
+                            currentValue = newValue;
+                            return notifySubscribers(arrows, newValue);
+                        }
+                    }
+                };
+                self.subscribe = function (func) {
+                    var arrow;
+                    console.assert(lodash.isFunction(func));
+                    arrows.push(arrow = {
+                        func: func,
+                        dispose: function () {
+                            return Flow.Prelude.remove(arrows, arrow);
+                        }
+                    });
+                    return arrow;
+                };
+                self.__observable__ = true;
+                return self;
+            };
+            createObservableArray = createObservable;
+            isObservable = function (obj) {
+                if (obj.__observable__) {
+                    return true;
+                } else {
+                    return false;
+                }
+            };
+        }
+        createSignal = function (value, equalityComparer) {
+            var observable;
+            if (arguments.length === 0) {
+                return createSignal(void 0, Flow.Prelude.never);
+            } else {
+                observable = createObservable(value);
+                if (lodash.isFunction(equalityComparer)) {
+                    observable.equalityComparer = equalityComparer;
+                }
+                return observable;
+            }
+        };
+        _isSignal = isObservable;
+        createSignals = function (array) {
+            return createObservableArray(array || []);
+        };
+        _link = function (source, func) {
+            console.assert(lodash.isFunction(source, '[signal] is not a function'));
+            console.assert(lodash.isFunction(source.subscribe, '[signal] does not have a [dispose] method'));
+            console.assert(lodash.isFunction(func, '[func] is not a function'));
+            return source.subscribe(func);
+        };
+        _unlink = function (arrows) {
+            var arrow, _i, _len, _results;
+            if (lodash.isArray(arrows)) {
+                _results = [];
+                for (_i = 0, _len = arrows.length; _i < _len; _i++) {
+                    arrow = arrows[_i];
+                    console.assert(lodash.isFunction(arrow.dispose, '[arrow] does not have a [dispose] method'));
+                    _results.push(arrow.dispose());
+                }
+                return _results;
+            } else {
+                console.assert(lodash.isFunction(arrows.dispose, '[arrow] does not have a [dispose] method'));
+                return arrows.dispose();
+            }
+        };
+        _apply = function (sources, func) {
+            return func.apply(null, lodash.map(sources, function (source) {
+                return source();
+            }));
+        };
+        _act = function () {
+            var func, sources, _i;
+            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
+            _apply(sources, func);
+            return lodash.map(sources, function (source) {
+                return _link(source, function () {
+                    return _apply(sources, func);
+                });
+            });
+        };
+        _react = function () {
+            var func, sources, _i;
+            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
+            return lodash.map(sources, function (source) {
+                return _link(source, function () {
+                    return _apply(sources, func);
+                });
+            });
+        };
+        _lift = function () {
+            var evaluate, func, sources, target, _i;
+            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
+            evaluate = function () {
+                return _apply(sources, func);
+            };
+            target = createSignal(evaluate());
+            lodash.map(sources, function (source) {
+                return _link(source, function () {
+                    return target(evaluate());
+                });
+            });
+            return target;
+        };
+        _merge = function () {
+            var evaluate, func, sources, target, _i;
+            sources = 3 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 2) : (_i = 0, []), target = arguments[_i++], func = arguments[_i++];
+            evaluate = function () {
+                return _apply(sources, func);
+            };
+            target(evaluate());
+            return lodash.map(sources, function (source) {
+                return _link(source, function () {
+                    return target(evaluate());
+                });
+            });
+        };
+        return {
+            slot: createSlot,
+            slots: createSlots,
+            signal: createSignal,
+            signals: createSignals,
+            isSignal: _isSignal,
+            link: _link,
+            unlink: _unlink,
+            act: _act,
+            react: _react,
+            lift: _lift,
+            merge: _merge
+        };
+    }();
+}.call(this));
+(function () {
+    var FlowError, __hasProp = {}.hasOwnProperty, __extends = function (child, parent) {
+            for (var key in parent) {
+                if (__hasProp.call(parent, key))
+                    child[key] = parent[key];
+            }
+            function ctor() {
+                this.constructor = child;
+            }
+            ctor.prototype = parent.prototype;
+            child.prototype = new ctor();
+            child.__super__ = parent.prototype;
+            return child;
+        };
+    FlowError = function (_super) {
+        __extends(FlowError, _super);
+        function FlowError(message, cause) {
+            var error;
+            this.message = message;
+            this.cause = cause;
+            this.name = 'FlowError';
+            error = new Error();
+            if (error.stack) {
+                this.stack = error.stack;
+            } else {
+                this.stack = printStackTrace();
+            }
+        }
+        return FlowError;
+    }(Error);
+    Flow.Error = FlowError;
+}.call(this));
+(function () {
+    var Digits, formatDate, formatReal, formatTime, significantDigitsBeforeDecimal, __formatReal;
+    significantDigitsBeforeDecimal = function (value) {
+        return 1 + Math.floor(Math.log(Math.abs(value)) / Math.LN10);
+    };
+    Digits = function (digits, value) {
+        var magnitude, sd;
+        if (value === 0) {
+            return 0;
+        } else {
+            sd = significantDigitsBeforeDecimal(value);
+            if (sd >= digits) {
+                return value.toFixed(0);
+            } else {
+                magnitude = Math.pow(10, digits - sd);
+                return Math.round(value * magnitude) / magnitude;
+            }
+        }
+    };
+    if (typeof exports === 'undefined' || exports === null) {
+        formatTime = d3.time.format('%Y-%m-%d %H:%M:%S');
+    }
+    formatDate = function (time) {
+        if (time) {
+            return formatTime(new Date(time));
+        } else {
+            return '-';
+        }
+    };
+    __formatReal = {};
+    formatReal = function (precision) {
+        var cached, format;
+        format = (cached = __formatReal[precision]) ? cached : __formatReal[precision] = precision === -1 ? lodash.identity : d3.format('.' + precision + 'f');
+        return function (value) {
+            return format(value);
+        };
+    };
+    Flow.Format = {
+        Digits: Digits,
+        Real: formatReal,
+        Date: formatDate
+    };
+}.call(this));
+(function () {
+    var button, checkbox, content, control, dropdown, html, listbox, markdown, text, textarea, textbox, wrapArray, wrapValue;
+    wrapValue = function (value, init) {
+        if (value === void 0) {
+            return Flow.Dataflow.signal(init);
+        } else {
+            if (Flow.Dataflow.isSignal(value)) {
+                return value;
+            } else {
+                return Flow.Dataflow.signal(value);
+            }
+        }
+    };
+    wrapArray = function (elements) {
+        var element;
+        if (elements) {
+            if (Flow.Dataflow.isSignal(elements)) {
+                element = elements();
+                if (lodash.isArray(element)) {
+                    return elements;
+                } else {
+                    return Flow.Dataflow.signal([element]);
+                }
+            } else {
+                return Flow.Dataflow.signals(lodash.isArray(elements) ? elements : [elements]);
+            }
+        } else {
+            return Flow.Dataflow.signals([]);
+        }
+    };
+    control = function (type, opts) {
+        var guid;
+        if (!opts) {
+            opts = {};
+        }
+        guid = 'gui_' + lodash.uniqueId();
+        return {
+            type: type,
+            id: opts.id || guid,
+            label: Flow.Dataflow.signal(opts.label || ' '),
+            description: Flow.Dataflow.signal(opts.description || ' '),
+            visible: Flow.Dataflow.signal(opts.visible === false ? false : true),
+            disable: Flow.Dataflow.signal(opts.disable === true ? true : false),
+            template: 'flow-form-' + type,
+            templateOf: function (control) {
+                return control.template;
+            }
+        };
+    };
+    content = function (type, opts) {
+        var self;
+        self = control(type, opts);
+        self.value = wrapValue(opts.value, '');
+        return self;
+    };
+    text = function (opts) {
+        return content('text', opts);
+    };
+    html = function (opts) {
+        return content('html', opts);
+    };
+    markdown = function (opts) {
+        return content('markdown', opts);
+    };
+    checkbox = function (opts) {
+        var self;
+        self = control('checkbox', opts);
+        self.value = wrapValue(opts.value, opts.value ? true : false);
+        return self;
+    };
+    dropdown = function (opts) {
+        var self;
+        self = control('dropdown', opts);
+        self.options = opts.options || [];
+        self.value = wrapValue(opts.value);
+        self.caption = opts.caption || 'Choose...';
+        return self;
+    };
+    listbox = function (opts) {
+        var self;
+        self = control('listbox', opts);
+        self.options = opts.options || [];
+        self.values = wrapArray(opts.values);
+        return self;
+    };
+    textbox = function (opts) {
+        var self;
+        self = control('textbox', opts);
+        self.value = wrapValue(opts.value, '');
+        self.event = lodash.isString(opts.event) ? opts.event : null;
+        return self;
+    };
+    textarea = function (opts) {
+        var self;
+        self = control('textarea', opts);
+        self.value = wrapValue(opts.value, '');
+        self.event = lodash.isString(opts.event) ? opts.event : null;
+        self.rows = lodash.isNumber(opts.rows) ? opts.rows : 5;
+        return self;
+    };
+    button = function (opts) {
+        var self;
+        self = control('button', opts);
+        self.click = lodash.isFunction(opts.click) ? opts.click : lodash.noop;
+        return self;
+    };
+    Flow.Gui = {
+        text: text,
+        html: html,
+        markdown: markdown,
+        checkbox: checkbox,
+        dropdown: dropdown,
+        listbox: listbox,
+        textbox: textbox,
+        textarea: textarea,
+        button: button
+    };
+}.call(this));
+(function () {
+    var compile, _templateCache, __slice = [].slice;
+    compile = function (template, type) {
+        var attrs, beginTag, classes, closeTag, id, index, name, tmpl, _ref;
+        if (0 <= (index = template.indexOf(' '))) {
+            tmpl = template.substr(0, index);
+            attrs = template.substr(index);
+        } else {
+            tmpl = template;
+        }
+        _ref = tmpl.split(/\.+/g), name = _ref[0], classes = 2 <= _ref.length ? __slice.call(_ref, 1) : [];
+        if (0 === name.indexOf('#')) {
+            id = name.substr(1);
+            name = 'div';
+        }
+        if (name === '') {
+            name = 'div';
+        }
+        beginTag = '<' + name;
+        if (id) {
+            beginTag += ' id=\'' + id + '\'';
+        }
+        if (classes.length) {
+            beginTag += ' class=\'' + classes.join(' ') + '\'';
+        }
+        if (attrs) {
+            beginTag += attrs;
+        }
+        beginTag += '>';
+        closeTag = '</' + name + '>';
+        if (type === '=') {
+            return function (content) {
+                return beginTag + (content !== null && content !== void 0 ? content : '') + closeTag;
+            };
+        } else if (type === '+') {
+            return function (content, arg0) {
+                var tag;
+                tag = beginTag.replace('{0}', arg0);
+                return tag + content + closeTag;
+            };
+        } else {
+            return function (contents) {
+                return beginTag + contents.join('') + closeTag;
+            };
+        }
+    };
+    _templateCache = {};
+    Flow.HTML = {
+        template: function () {
+            var cached, template, templates, type, _i, _len, _results;
+            templates = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+            _results = [];
+            for (_i = 0, _len = templates.length; _i < _len; _i++) {
+                template = templates[_i];
+                if (cached = _templateCache[template]) {
+                    _results.push(cached);
+                } else {
+                    type = template.charAt(0);
+                    if (type === '=' || type === '+') {
+                        _results.push(_templateCache[template] = compile(template.substr(1), type));
+                    } else {
+                        _results.push(_templateCache[template] = compile(template));
+                    }
+                }
+            }
+            return _results;
+        },
+        render: function (name, html) {
+            var el;
+            el = document.createElement(name);
+            if (html) {
+                if (lodash.isString(html)) {
+                    el.innerHTML = html;
+                } else {
+                    el.appendChild(html);
+                }
+            }
+            return el;
+        }
+    };
+}.call(this));
+(function () {
+    if ((typeof window !== 'undefined' && window !== null ? window.ko : void 0) == null) {
+        return;
+    }
+    ko.bindingHandlers.raw = {
+        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $element, arg;
+            arg = ko.unwrap(valueAccessor());
+            if (arg) {
+                $element = $(element);
+                $element.empty();
+                $element.append(arg);
+            }
+        }
+    };
+    ko.bindingHandlers.markdown = {
+        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var data, error, html;
+            data = ko.unwrap(valueAccessor());
+            try {
+                html = marked(data || '');
+            } catch (_error) {
+                error = _error;
+                html = error.message || 'Error rendering markdown.';
+            }
+            return $(element).html(html);
+        }
+    };
+    ko.bindingHandlers.stringify = {
+        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var data;
+            data = ko.unwrap(valueAccessor());
+            return $(element).text(JSON.stringify(data, null, 2));
+        }
+    };
+    ko.bindingHandlers.enterKey = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $element, action;
+            if (action = ko.unwrap(valueAccessor())) {
+                if (lodash.isFunction(action)) {
+                    $element = $(element);
+                    $element.keydown(function (e) {
+                        if (e.which === 13) {
+                            action(viewModel);
+                        }
+                    });
+                } else {
+                    throw 'Enter key action is not a function';
+                }
+            }
+        }
+    };
+    ko.bindingHandlers.typeahead = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $element, action;
+            if (action = ko.unwrap(valueAccessor())) {
+                if (lodash.isFunction(action)) {
+                    $element = $(element);
+                    $element.typeahead(null, {
+                        displayKey: 'value',
+                        source: action
+                    });
+                } else {
+                    throw 'Typeahead action is not a function';
+                }
+            }
+        }
+    };
+    ko.bindingHandlers.cursorPosition = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var arg;
+            if (arg = ko.unwrap(valueAccessor())) {
+                arg.getCursorPosition = function () {
+                    return $(element).textrange('get', 'position');
+                };
+            }
+        }
+    };
+    ko.bindingHandlers.autoResize = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $el, arg, resize;
+            if (arg = ko.unwrap(valueAccessor())) {
+                arg.autoResize = resize = function () {
+                    return lodash.defer(function () {
+                        return $el.css('height', 'auto').height(element.scrollHeight);
+                    });
+                };
+                $el = $(element).on('input', resize);
+                resize();
+            }
+        }
+    };
+    ko.bindingHandlers.scrollIntoView = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $el, $viewport, arg;
+            if (arg = ko.unwrap(valueAccessor())) {
+                $el = $(element);
+                $viewport = $el.closest('.flow-box-notebook');
+                arg.scrollIntoView = function () {
+                    var height, position, top;
+                    position = $viewport.scrollTop();
+                    top = $el.position().top + position;
+                    height = $viewport.height();
+                    if (top - 20 < position || top + 20 > position + height) {
+                        return $viewport.animate({ scrollTop: top }, 'fast');
+                    }
+                };
+            }
+        }
+    };
+    ko.bindingHandlers.dom = {
+        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $element, arg;
+            arg = ko.unwrap(valueAccessor());
+            if (arg) {
+                $element = $(element);
+                $element.empty();
+                $element.append(arg);
+            }
+        }
+    };
+    ko.bindingHandlers.dump = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var object;
+            return object = ko.unwrap(valueAccessor());
+        }
+    };
+}.call(this));
+(function () {
+    var keyOf, list, purge, purgeAll, read, write, _ls;
+    _ls = window.localStorage;
+    keyOf = function (type, id) {
+        return '' + type + ':' + id;
+    };
+    list = function (type) {
+        var i, id, key, objs, t, _i, _ref, _ref1;
+        objs = [];
+        for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+            key = _ls.key(i);
+            _ref1 = key.split(':'), t = _ref1[0], id = _ref1[1];
+            if (type === t) {
+                objs.push([
+                    type,
+                    id,
+                    JSON.parse(_ls.getItem(key))
+                ]);
+            }
+        }
+        return objs;
+    };
+    read = function (type, id) {
+        var raw;
+        if (raw = _ls.getobj(keyOf(type, id))) {
+            return JSON.parse(raw);
+        } else {
+            return null;
+        }
+    };
+    write = function (type, id, obj) {
+        return _ls.setItem(keyOf(type, id), JSON.stringify(obj));
+    };
+    purge = function (type, id) {
+        if (id) {
+            return _ls.removeItem(keyOf(type, id));
+        } else {
+            return purgeAll(type);
+        }
+    };
+    purgeAll = function (type) {
+        var i, key, _i, _len;
+        lodash.keys = function () {
+            var _i, _ref, _results;
+            _results = [];
+            for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+                _results.push(_ls.key(i));
+            }
+            return _results;
+        }();
+        for (_i = 0, _len = lodash.keys.length; _i < _len; _i++) {
+            key = lodash.keys[_i];
+            if (type === lodash.head(key.split(':'))) {
+                _ls.removeItem(key);
+            }
+        }
+    };
+    Flow.LocalStorage = {
+        list: list,
+        read: read,
+        write: write,
+        purge: purge
+    };
+}.call(this));
+(function () {
+    if ((typeof window !== 'undefined' && window !== null ? window.marked : void 0) == null) {
+        return;
+    }
+    marked.setOptions({
+        smartypants: true,
+        highlight: function (code, lang) {
+            if (window.hljs) {
+                return window.hljs.highlightAuto(code, [lang]).value;
+            } else {
+                return code;
+            }
+        }
+    });
+}.call(this));
+(function () {
+    var computeDomain, createAxis, createLinearScale, createOrdinalBandScale, plot, renderD3BarChart, renderD3StackedBar, stack;
+    computeDomain = function (table, variableName) {
+        var level, levels, row, value, _i, _len, _ref;
+        levels = {};
+        _ref = table.rows;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            row = _ref[_i];
+            value = row[variableName];
+            if (!(level = levels[value])) {
+                levels[value] = true;
+            }
+        }
+        return lodash.keys(levels);
+    };
+    createOrdinalBandScale = function (domain, range) {
+        return d3.scale.ordinal().domain(domain).rangeRoundBands(range, 0.1);
+    };
+    createLinearScale = function (domain, range) {
+        return d3.scale.linear().domain(domain).range(range);
+    };
+    createAxis = function (scale, opts) {
+        var axis;
+        axis = d3.svg.axis().scale(scale);
+        if (opts.orient) {
+            axis.orient(opts.orient);
+        }
+        if (opts.ticks) {
+            axis.ticks(opts.ticks);
+        }
+        return axis;
+    };
+    renderD3StackedBar = function (title, table, attrX1, attrX2, attrColor) {
+        var availableHeight, availableWidth, axisX, bar, d, domainX, el, h4, height, items, label, legend, legendEl, legends, margin, rows, scaleColor, scaleX, schema, svg, svgAxisX, swatch, tooltip, variableColor, variableX1, variableX2, variables, viz, width, _ref;
+        schema = table.schema, variables = table.variables, rows = table.rows;
+        variableX1 = table.schema[attrX1];
+        variableX2 = table.schema[attrX2];
+        variableColor = table.schema[attrColor];
+        domainX = Flow.Data.combineRanges(variableX1.domain, variableX2.domain);
+        availableWidth = 450;
+        availableHeight = 16 + 30;
+        margin = {
+            top: 0,
+            right: 10,
+            bottom: 30,
+            left: 10
+        };
+        width = availableWidth - margin.left - margin.right;
+        height = availableHeight - margin.top - margin.bottom;
+        scaleX = d3.scale.linear().domain(domainX).range([
+            0,
+            width
+        ]);
+        scaleColor = d3.scale.ordinal().domain(variableColor.domain).range(d3.scale.category10().range());
+        axisX = createAxis(scaleX, { orient: 'bottom' });
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        viz = d3.select(svg).attr('class', 'plot').attr('width', availableWidth).attr('height', availableHeight).append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+        svgAxisX = viz.append('g').attr('class', 'axis').attr('transform', 'translate(0,' + height + ')').call(axisX);
+        tooltip = function (d) {
+            var tip, variable, _i, _len;
+            tip = '';
+            for (_i = 0, _len = variables.length; _i < _len; _i++) {
+                variable = variables[_i];
+                tip += '' + variable.label + ': ' + (variable.type === Flow.TFactor ? variable.domain[d[variable.label]] : d[variable.label]) + '\n';
+            }
+            return tip.trim();
+        };
+        bar = viz.selectAll('.bar').data(rows).enter().append('rect').attr('class', 'bar').attr('x', function (d) {
+            return scaleX(d[attrX1]);
+        }).attr('width', function (d) {
+            return scaleX(d[attrX2] - d[attrX1]);
+        }).attr('height', height).style('fill', function (d) {
+            return scaleColor(variableColor.domain[d[attrColor]]);
+        }).append('title').text(tooltip);
+        _ref = Flow.HTML.template('.flow-legend', 'span.flow-legend-item', '+span.flow-legend-swatch style=\'background:{0}\'', '=span.flow-legend-label'), legends = _ref[0], legend = _ref[1], swatch = _ref[2], label = _ref[3];
+        items = function () {
+            var _i, _len, _ref1, _results;
+            _ref1 = variableColor.domain;
+            _results = [];
+            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                d = _ref1[_i];
+                _results.push(legend([
+                    swatch('', scaleColor(d)),
+                    label(d)
+                ]));
+            }
+            return _results;
+        }();
+        legendEl = Flow.HTML.render('div', legends(items));
+        el = document.createElement('div');
+        if (title) {
+            h4 = Flow.HTML.template('=h4')[0];
+            el.appendChild(Flow.HTML.render('div', h4(lodash.escape(title))));
+        }
+        el.appendChild(svg);
+        el.appendChild(legendEl);
+        return el;
+    };
+    renderD3BarChart = function (title, table, attrX, attrY) {
+        var availableHeight, availableWidth, axisX, axisY, domainX, domainY, el, h4, height, heightY, interpretationX, interpretationXY, interpretationY, margin, positionX, positionY, row, rows, scaleX, scaleY, schema, svg, svgAxisX, svgAxisY, variableX, variableY, variables, viz, width, widthX;
+        schema = table.schema, variables = table.variables, rows = table.rows;
+        variableX = schema[attrX];
+        variableY = schema[attrY];
+        interpretationX = Flow.Data.computevariableInterpretation(variableX.type);
+        interpretationY = Flow.Data.computevariableInterpretation(variableY.type);
+        interpretationXY = interpretationX + interpretationY;
+        domainX = function () {
+            var _i, _len, _results;
+            if (interpretationX === 'c') {
+                return Flow.Data.includeZeroInRange(variableX.domain);
+            } else {
+                _results = [];
+                for (_i = 0, _len = rows.length; _i < _len; _i++) {
+                    row = rows[_i];
+                    _results.push(variableX.domain[row[attrX]]);
+                }
+                return _results;
+            }
+        }();
+        domainY = function () {
+            var _i, _len, _results;
+            if (interpretationY === 'c') {
+                return Flow.Data.includeZeroInRange(variableY.domain);
+            } else {
+                _results = [];
+                for (_i = 0, _len = rows.length; _i < _len; _i++) {
+                    row = rows[_i];
+                    _results.push(variableY.domain[row[attrY]]);
+                }
+                return _results;
+            }
+        }();
+        availableWidth = interpretationX === 'c' ? 500 : domainX.length * 20;
+        availableHeight = interpretationY === 'c' ? 500 : domainY.length * 20;
+        margin = {
+            top: 20,
+            right: 20,
+            bottom: 30,
+            left: 40
+        };
+        width = availableWidth - margin.left - margin.right;
+        height = availableHeight - margin.top - margin.bottom;
+        scaleX = interpretationX === 'd' ? createOrdinalBandScale(domainX, [
+            0,
+            width
+        ]) : createLinearScale(domainX, [
+            0,
+            width
+        ]);
+        scaleY = interpretationY === 'd' ? createOrdinalBandScale(domainY, [
+            0,
+            height
+        ]) : createLinearScale(domainY, [
+            height,
+            0
+        ]);
+        axisX = createAxis(scaleX, { orient: 'bottom' });
+        axisY = createAxis(scaleY, { orient: 'left' });
+        if (interpretationXY === 'dc') {
+            positionX = function (d) {
+                return scaleX(variableX.domain[d[attrX]]);
+            };
+            positionY = function (d) {
+                return scaleY(d[attrY]);
+            };
+            widthX = scaleX.rangeBand();
+            heightY = function (d) {
+                return height - scaleY(d[attrY]);
+            };
+        } else {
+            positionX = function (d) {
+                return scaleX(0);
+            };
+            positionY = function (d) {
+                return scaleY(variableY.domain[d[attrY]]);
+            };
+            widthX = function (d) {
+                return scaleX(d[attrX]);
+            };
+            heightY = scaleY.rangeBand();
+        }
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        viz = d3.select(svg).attr('class', 'plot').attr('width', availableWidth).attr('height', availableHeight).append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+        svgAxisX = viz.append('g').attr('class', 'axis').attr('transform', 'translate(0,' + height + ')').call(axisX);
+        svgAxisY = viz.append('g').attr('class', 'axis').call(axisY);
+        if (false) {
+            svgAxisY.append('text').attr('transform', 'rotate(-90)').attr('y', 6).attr('dy', '.71em').style('text-anchor', 'end').text(variableY.label);
+        }
+        viz.selectAll('.bar').data(rows).enter().append('rect').attr('class', 'bar').attr('x', positionX).attr('width', widthX).attr('y', positionY).attr('height', heightY);
+        el = document.createElement('div');
+        if (title) {
+            h4 = Flow.HTML.template('=h4')[0];
+            el.appendChild(Flow.HTML.render('div', h4(lodash.escape(title))));
+        }
+        el.appendChild(svg);
+        return el;
+    };
+    plot = function (_config, go) {
+        var initialize, renderText, renderUsingVega;
+        renderText = function (config, go) {
+            var grid, h4, p, row, table, tbody, td, tdr, tds, th, thead, thr, ths, tr, trs, value, variable, _ref;
+            _ref = Flow.HTML.template('.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt'), grid = _ref[0], h4 = _ref[1], p = _ref[2], table = _ref[3], thead = _ref[4], tbody = _ref[5], tr = _ref[6], th = _ref[7], thr = _ref[8], td = _ref[9], tdr = _ref[10];
+            ths = function () {
+                var _i, _len, _ref1, _results;
+                _ref1 = config.data.variables;
+                _results = [];
+                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                    variable = _ref1[_i];
+                    switch (variable.type) {
+                    case Flow.TNumber:
+                        _results.push(thr(lodash.escape(variable.label)));
+                        break;
+                    default:
+                        _results.push(th(lodash.escape(variable.label)));
+                    }
+                }
+                return _results;
+            }();
+            trs = function () {
+                var _i, _len, _ref1, _results;
+                _ref1 = config.data.rows;
+                _results = [];
+                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                    row = _ref1[_i];
+                    tds = function () {
+                        var _j, _len1, _ref2, _results1;
+                        _ref2 = config.data.variables;
+                        _results1 = [];
+                        for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
+                            variable = _ref2[_j];
+                            value = row[variable.label];
+                            switch (variable.type) {
+                            case Flow.TFactor:
+                                _results1.push(td(value === null ? '-' : lodash.escape(variable.domain[value])));
+                                break;
+                            case Flow.TNumber:
+                                _results1.push(tdr(value === null ? '-' : value));
+                                break;
+                            case Flow.TArray:
+                                _results1.push(td(value === null ? '-' : value.join(', ')));
+                                break;
+                            case Flow.TObject:
+                                _results1.push(td(value === null ? '-' : variable.format(value)));
+                                break;
+                            default:
+                                _results1.push(td(value === null ? '-' : value));
+                            }
+                        }
+                        return _results1;
+                    }();
+                    _results.push(tr(tds));
+                }
+                return _results;
+            }();
+            return go(null, Flow.HTML.render('div', grid([
+                h4(config.data.label),
+                p(config.data.description),
+                table([
+                    thead(tr(ths)),
+                    tbody(trs)
+                ])
+            ])));
+        };
+        renderUsingVega = function (config, go) {
+            var color, data, domainX, domainY, el, enter, height, mark, scaleTypeX, scaleTypeY, spec, transformX, transformY, type, variableColor, variableX, variableY, width, x, y, _ref, _ref1;
+            width = config.width, height = config.height, type = config.type, data = config.data, x = config.x, y = config.y, color = config.color;
+            if (lodash.isFunction(x)) {
+                _ref = x(), transformX = _ref[0], x = _ref[1];
+                transformX.point = 'data.' + y;
+            }
+            variableX = data.schema[x];
+            if (lodash.isFunction(y)) {
+                _ref1 = y(), transformY = _ref1[0], y = _ref1[1];
+                transformY.point = 'data.' + x;
+            }
+            variableY = data.schema[y];
+            variableColor = data.schema[color];
+            if (!variableX) {
+                return go(new Flow.Error('Invalid \'x\' variable: \'' + x + '\''));
+            }
+            if (!variableY) {
+                return go(new Flow.Error('Invalid \'y\' variable: \'' + y + '\''));
+            }
+            if (color) {
+                if (!variableColor) {
+                    return go(new Flow.Error('Invalid \'color\' variable: \'' + color + '\''));
+                }
+                if (variableColor.type === Flow.TNumber) {
+                    return go(new Flow.Error('Encoding numeric variables into mark color is not supported.'));
+                }
+            }
+            spec = {};
+            scaleTypeX = variableX.type === Flow.TNumber ? 'linear' : 'ordinal';
+            scaleTypeY = variableY.type === Flow.TNumber ? 'linear' : 'ordinal';
+            if (scaleTypeX === 'ordinal') {
+                domainX = computeDomain(data, variableX.label);
+            }
+            if (scaleTypeY === 'ordinal') {
+                domainY = computeDomain(data, variableY.label);
+            }
+            spec.width = width ? width : scaleTypeX === 'linear' ? 250 : 20 * domainX.length;
+            spec.height = height ? height : scaleTypeY === 'linear' ? 250 : 15 * domainY.length;
+            spec.data = [{ name: 'table' }];
+            spec.scales = [
+                {
+                    name: 'x',
+                    type: scaleTypeX,
+                    domain: {
+                        data: 'table',
+                        field: 'data.' + x
+                    },
+                    range: 'width',
+                    nice: true
+                },
+                {
+                    name: 'y',
+                    type: scaleTypeY,
+                    domain: {
+                        data: 'table',
+                        field: 'data.' + y
+                    },
+                    range: 'height',
+                    nice: true
+                }
+            ];
+            if (color) {
+                spec.scales.push({
+                    name: 'color',
+                    type: 'ordinal',
+                    range: 'category20'
+                });
+            }
+            spec.axes = [
+                {
+                    type: 'x',
+                    scale: 'x',
+                    title: x
+                },
+                {
+                    type: 'y',
+                    scale: 'y',
+                    title: y
+                }
+            ];
+            if (type === 'point') {
+                mark = {
+                    type: 'symbol',
+                    from: { data: 'table' },
+                    properties: {
+                        enter: {
+                            x: {
+                                scale: 'x',
+                                field: 'data.' + x
+                            },
+                            y: {
+                                scale: 'y',
+                                field: 'data.' + y
+                            },
+                            stroke: { value: 'steelblue' },
+                            strokeWidth: { value: 1.5 }
+                        }
+                    }
+                };
+            } else if (type === 'line') {
+                if (color) {
+                    mark = {
+                        type: 'group',
+                        from: {
+                            data: 'table',
+                            transform: [{
+                                    type: 'facet',
+                                    keys: ['data.' + color]
+                                }]
+                        },
+                        marks: [{
+                                type: 'line',
+                                properties: {
+                                    enter: {
+                                        x: {
+                                            scale: 'x',
+                                            field: 'data.' + x
+                                        },
+                                        y: {
+                                            scale: 'y',
+                                            field: 'data.' + y
+                                        },
+                                        stroke: {
+                                            scale: 'color',
+                                            field: 'data.' + color
+                                        },
+                                        strokeWidth: { value: 1.5 }
+                                    }
+                                }
+                            }]
+                    };
+                } else {
+                    mark = {
+                        type: 'line',
+                        from: { data: 'table' },
+                        properties: {
+                            enter: {
+                                x: {
+                                    scale: 'x',
+                                    field: 'data.' + x
+                                },
+                                y: {
+                                    scale: 'y',
+                                    field: 'data.' + y
+                                },
+                                stroke: { value: 'steelblue' },
+                                strokeWidth: { value: 1.5 }
+                            }
+                        }
+                    };
+                }
+            } else if (type === 'area') {
+                if (scaleTypeX === 'ordinal' && scaleTypeY === 'linear') {
+                    enter = {
+                        x: {
+                            scale: 'x',
+                            field: 'data.' + x
+                        },
+                        y: {
+                            scale: 'y',
+                            field: 'data.' + y
+                        },
+                        y2: {
+                            scale: 'y',
+                            value: 0
+                        },
+                        fill: { value: 'steelblue' }
+                    };
+                } else if (scaleTypeX === 'linear' && scaleTypeY === 'ordinal') {
+                    enter = {
+                        x: {
+                            scale: 'x',
+                            field: 'data.' + x
+                        },
+                        x2: {
+                            scale: 'x',
+                            value: 0
+                        },
+                        y: {
+                            scale: 'y',
+                            field: 'data.' + y
+                        },
+                        fill: { value: 'steelblue' }
+                    };
+                } else if (scaleTypeX === 'linear' && scaleTypeY === 'linear') {
+                    enter = {
+                        x: {
+                            scale: 'x',
+                            field: 'data.' + x
+                        },
+                        y: {
+                            scale: 'y',
+                            field: 'data.' + y
+                        },
+                        y2: {
+                            scale: 'y',
+                            value: 0
+                        },
+                        fill: { value: 'steelblue' }
+                    };
+                } else {
+                    return go(new Flow.Error('Not implemented'));
+                }
+                mark = {
+                    type: 'area',
+                    from: { data: 'table' },
+                    properties: { enter: enter }
+                };
+            } else if (type === 'interval') {
+                if (scaleTypeX === 'ordinal' && scaleTypeY === 'linear') {
+                    if (color) {
+                        mark = {
+                            type: 'group',
+                            from: {
+                                data: 'table',
+                                transform: [
+                                    {
+                                        type: 'facet',
+                                        keys: ['data.' + color]
+                                    },
+                                    transformY
+                                ]
+                            },
+                            marks: [{
+                                    type: 'rect',
+                                    properties: {
+                                        enter: {
+                                            x: {
+                                                scale: 'x',
+                                                field: 'data.' + x
+                                            },
+                                            width: {
+                                                scale: 'x',
+                                                band: true,
+                                                offset: -1
+                                            },
+                                            y: {
+                                                scale: 'y',
+                                                field: 'y'
+                                            },
+                                            y2: {
+                                                scale: 'y',
+                                                field: 'y2'
+                                            },
+                                            fill: {
+                                                scale: 'color',
+                                                field: 'data.' + color
+                                            }
+                                        }
+                                    }
+                                }]
+                        };
+                    } else {
+                        mark = {
+                            type: 'rect',
+                            from: { data: 'table' },
+                            properties: {
+                                enter: {
+                                    x: {
+                                        scale: 'x',
+                                        field: 'data.' + x
+                                    },
+                                    width: {
+                                        scale: 'x',
+                                        band: true,
+                                        offset: -1
+                                    },
+                                    y: {
+                                        scale: 'y',
+                                        field: 'data.' + y
+                                    },
+                                    y2: {
+                                        scale: 'y',
+                                        value: 0
+                                    },
+                                    fill: { value: 'steelblue' }
+                                }
+                            }
+                        };
+                    }
+                } else if (scaleTypeX === 'linear' && scaleTypeY === 'ordinal') {
+                    if (color) {
+                        mark = {
+                            type: 'group',
+                            from: {
+                                data: 'table',
+                                transform: [
+                                    {
+                                        type: 'facet',
+                                        keys: ['data.' + color]
+                                    },
+                                    transformX
+                                ]
+                            },
+                            marks: [{
+                                    type: 'rect',
+                                    properties: {
+                                        enter: {
+                                            x: {
+                                                scale: 'x',
+                                                field: 'y'
+                                            },
+                                            x2: {
+                                                scale: 'x',
+                                                field: 'y2'
+                                            },
+                                            y: {
+                                                scale: 'y',
+                                                field: 'data.' + y
+                                            },
+                                            height: {
+                                                scale: 'y',
+                                                band: true,
+                                                offset: -1
+                                            },
+                                            fill: {
+                                                scale: 'color',
+                                                field: 'data.' + color
+                                            }
+                                        }
+                                    }
+                                }]
+                        };
+                    } else {
+                        mark = {
+                            type: 'rect',
+                            from: { data: 'table' },
+                            properties: {
+                                enter: {
+                                    x: {
+                                        scale: 'x',
+                                        field: 'data.' + x
+                                    },
+                                    x2: {
+                                        scale: 'x',
+                                        value: 0
+                                    },
+                                    y: {
+                                        scale: 'y',
+                                        field: 'data.' + y
+                                    },
+                                    height: {
+                                        scale: 'y',
+                                        band: true,
+                                        offset: -1
+                                    },
+                                    fill: { value: 'steelblue' }
+                                }
+                            }
+                        };
+                    }
+                } else if (scaleTypeX === 'linear' && scaleTypeY === 'linear') {
+                    return go(new Flow.Error('Not implemented'));
+                } else {
+                    return go(new Flow.Error('Not implemented'));
+                }
+            }
+            spec.marks = [mark];
+            go(null, Flow.HTML.render('div', el = document.createElement('div')));
+            vg.parse.spec(spec, function (ctor) {
+                var chart;
+                chart = ctor({
+                    el: el,
+                    data: { table: data.rows }
+                });
+                return chart.update();
+            });
+        };
+        initialize = function (config) {
+            var error;
+            try {
+                switch (config.type) {
+                case 'point':
+                case 'line':
+                case 'area':
+                case 'interval':
+                    return renderUsingVega(config, go);
+                case 'schema':
+                    return go(new Flow.Error('Not implemented: ' + config.type));
+                case 'text':
+                    return renderText(config, go);
+                default:
+                    return go(new Flow.Error('Invalid mark type: ' + config.type));
+                }
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error creating plot.', error));
+            }
+        };
+        return initialize(_config);
+    };
+    stack = function (attr) {
+        var self;
+        return function () {
+            var transform;
+            transform = {
+                type: 'stack',
+                height: 'data.' + attr
+            };
+            return [
+                transform,
+                attr
+            ];
+        };
+        self = function (table) {
+            var end, endVariable, n, p, row, start, startVariable, type, value, _i, _len, _ref, _ref1;
+            type = table.schema[attr].type;
+            _ref = table.expand(type, type), startVariable = _ref[0], endVariable = _ref[1];
+            start = startVariable.label;
+            end = endVariable.label;
+            n = 0;
+            p = 0;
+            _ref1 = table.rows;
+            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                row = _ref1[_i];
+                value = row[attr];
+                if (value >= 0) {
+                    row[start] = p;
+                    row[end] = p = p + value;
+                } else {
+                    row[start] = n;
+                    row[end] = n = n + value;
+                }
+            }
+            startVariable.domain = [
+                n,
+                p
+            ];
+            endVariable.domain = [
+                n,
+                p
+            ];
+            return [
+                start,
+                end
+            ];
+        };
+        return self;
+    };
+    Flow.Plot = plot;
+    plot.stack = stack;
+}.call(this));
+(function () {
+    Flow.Prelude = function () {
+        var _always, _copy, _deepClone, _isDefined, _isFalsy, _isTruthy, _negative, _never, _remove, _repeat, _typeOf, _words;
+        _isDefined = function (value) {
+            return !lodash.isUndefined(value);
+        };
+        _isTruthy = function (value) {
+            if (value) {
+                return true;
+            } else {
+                return false;
+            }
+        };
+        _isFalsy = function (value) {
+            if (value) {
+                return false;
+            } else {
+                return true;
+            }
+        };
+        _negative = function (value) {
+            return !value;
+        };
+        _always = function () {
+            return true;
+        };
+        _never = function () {
+            return false;
+        };
+        _copy = function (array) {
+            return array.slice(0);
+        };
+        _remove = function (array, element) {
+            var index;
+            if (-1 < (index = lodash.indexOf(array, element))) {
+                return lodash.head(arra.splice(index, 1));
+            } else {
+                return void 0;
+            }
+        };
+        _words = function (text) {
+            return text.split(/\s+/);
+        };
+        _repeat = function (count, value) {
+            var array, i, _i;
+            array = [];
+            for (i = _i = 0; 0 <= count ? _i < count : _i > count; i = 0 <= count ? ++_i : --_i) {
+                array.push(value);
+            }
+            return array;
+        };
+        _typeOf = function (a) {
+            var type;
+            type = Object.prototype.toString.call(a);
+            if (a === null) {
+                return Flow.TNull;
+            } else if (a === void 0) {
+                return Flow.TUndefined;
+            } else if (a === true || a === false || type === '[object Boolean]') {
+                return Flow.TBoolean;
+            } else {
+                switch (type) {
+                case '[object String]':
+                    return Flow.TString;
+                case '[object Number]':
+                    return Flow.TNumber;
+                case '[object Function]':
+                    return Flow.TFunction;
+                case '[object Object]':
+                    return Flow.TObject;
+                case '[object Array]':
+                    return Flow.TArray;
+                case '[object Arguments]':
+                    return Flow.TArguments;
+                case '[object Date]':
+                    return Flow.TDate;
+                case '[object RegExp]':
+                    return Flow.TRegExp;
+                case '[object Error]':
+                    return Flow.TError;
+                default:
+                    return type;
+                }
+            }
+        };
+        _deepClone = function (obj) {
+            return JSON.parse(JSON.stringify(obj));
+        };
+        return {
+            isDefined: _isDefined,
+            isTruthy: _isTruthy,
+            isFalsy: _isFalsy,
+            negative: _negative,
+            always: _always,
+            never: _never,
+            copy: _copy,
+            remove: _remove,
+            words: _words,
+            repeat: _repeat,
+            typeOf: _typeOf,
+            deepClone: _deepClone,
+            stringify: JSON.stringify
+        };
+    }();
+}.call(this));
+(function () {
+    Flow.Sandbox = function (_, routines) {
+        return {
+            routines: routines,
+            context: {},
+            results: {}
+        };
+    };
+}.call(this));
+(function () {
+    Flow.TUndefined = 'undefined';
+    Flow.TNull = 'null';
+    Flow.TBoolean = 'Boolean';
+    Flow.TString = 'String';
+    Flow.TNumber = 'Number';
+    Flow.TFunction = 'Function';
+    Flow.TObject = 'Object';
+    Flow.TArray = 'Array';
+    Flow.TArguments = 'Arguments';
+    Flow.TDate = 'Date';
+    Flow.TRegExp = 'RegExp';
+    Flow.TError = 'Error';
+    Flow.TFactor = 'Factor';
+}.call(this));
+(function () {
+    var describeCount, fromNow;
+    describeCount = function (count, singular, plural) {
+        if (!plural) {
+            plural = singular + 's';
+        }
+        switch (count) {
+        case 0:
+            return 'No ' + plural;
+        case 1:
+            return '1 ' + singular;
+        default:
+            return '' + count + ' ' + plural;
+        }
+    };
+    fromNow = function (date) {
+        return moment(date).fromNow();
+    };
+    Flow.Util = {
+        describeCount: describeCount,
+        fromNow: fromNow
+    };
+}.call(this));
+(function () {
     H2O.Assist = function (_, _items) {
         var createAssistItem, item, name;
         createAssistItem = function (name, item) {
@@ -6804,7 +6804,7 @@
         tryImportFiles = function () {
             var specifiedPath;
             specifiedPath = _specifiedPath();
-            return _.requestFileGlob(specifiedPath, 0, function (error, result) {
+            return _.requestFileGlob(specifiedPath, -1, function (error, result) {
                 if (error) {
                     return _exception(error.data.errmsg);
                 } else {
