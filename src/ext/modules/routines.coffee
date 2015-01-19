@@ -568,10 +568,17 @@ H2O.Routines = (_) ->
 
   extendPredictions = (opts, predictions) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
-    inspect_ predictions,
-      predictions: inspectBinomialPredictions opts, predictions
-      #metrics: inspectBinomialMetrics opts, predictions
-      #scores: inspectBinomialScores opts, predictions
+    if (every predictions, (prediction) -> prediction.model_category is 'Binomial')
+      inspect_ predictions,
+        predictions: inspectBinomialPredictions opts, predictions
+        metrics: inspectBinomialMetrics opts, predictions
+        scores: inspectBinomialScores opts, predictions
+    else
+      inspect_ predictions,
+        predictions: inspectBinomialPredictions opts, predictions
+        #metrics: inspectBinomialMetrics opts, predictions
+        #scores: inspectBinomialScores opts, predictions
+
 
   inspectBinomialScores = (opts, predictions) -> ->
 
