@@ -169,11 +169,16 @@
           <li class="dropdown"><a href="#" data-toggle="dropdown" class="dropdown-toggle"><span data-bind="text:label"></span><span class="caret"></span></a>
             <ul role="menu" class="dropdown-menu">
               <!-- ko foreach:items-->
-              <!-- ko if:isAction-->
-              <li data-bind="css:{ 'disabled':isDisabled }"><a href="#" data-bind="click:action"><span data-bind="text:label"></span></a></li>
+              <!-- ko ifnot:action-->
+              <!-- ko if:label-->
+              <li data-bind="text:label" class="dropdown-header"></li>
               <!-- /ko-->
-              <!-- ko ifnot:isAction-->
+              <!-- ko ifnot:label-->
               <li class="divider"></li>
+              <!-- /ko-->
+              <!-- /ko-->
+              <!-- ko if:action-->
+              <li data-bind="css:{ 'disabled':isDisabled }"><a href="#" data-bind="click:action"><span data-bind="text:label"></span></a></li>
               <!-- /ko-->
               <!-- /ko-->
             </ul>
@@ -802,6 +807,15 @@
             </th>
             <td>
               <input type="text" data-bind="value:integerRange" class="flow-textbox">
+            </td>
+            <td>(No description available)</td>
+          </tr>
+          <tr>
+            <th>
+              <label>Has Response?</label>
+            </th>
+            <td>
+              <input type="checkbox" data-bind="checked:hasResponse">
             </td>
             <td>(No description available)</td>
           </tr>
