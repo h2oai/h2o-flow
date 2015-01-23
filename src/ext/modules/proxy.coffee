@@ -46,7 +46,8 @@ H2O.Proxy = (_) ->
   requestWithOpts = (path, opts, go) ->
     doGet (composePath path, opts), go
 
-  encodeArray = (array) -> "[#{join (map array, encodeURIComponent), ','}]"
+  encodeArrayForGet = (array) -> "[#{encodeURIComponent join (map array, (element) -> "\"#{element}\""), ','}]"
+  encodeArrayForPost = (array) -> "[#{join (map array, (element) -> "\"#{element}\""), ','}]"
 
   encodeObject = (source) ->
     target = {}
@@ -56,10 +57,11 @@ H2O.Proxy = (_) ->
 
   requestInspect = (key, go) ->
     opts = key: encodeURIComponent key
-    requestWithOpts '/Inspect.json', opts, go
+    requestWithOpts '/1/Inspect.json', opts, go
 
   requestCreateFrame = (opts, go) ->
-    requestWithOpts '/2/CreateFrame.json', (encodeObject opts), go
+    #requestWithOpts '/2/CreateFrame.json', (encodeObject opts), go
+    doPost '/2/CreateFrame.json', opts, go
 
   requestFrames = (go) ->
     doGet '/3/Frames.json', (error, result) ->
@@ -83,7 +85,7 @@ H2O.Proxy = (_) ->
         go null, head result.frames
 
   requestJobs = (go) ->
-    doGet '/3/Jobs.json', (error, result) ->
+    doGet '/2/Jobs.json', (error, result) ->
       if error
         go new Flow.Error 'Error fetching jobs', error
       else
@@ -92,7 +94,7 @@ H2O.Proxy = (_) ->
   requestJob = (key, go) ->
     #opts = key: encodeURIComponent key
     #requestWithOpts '/Job.json', opts, go
-    doGet "/3/Jobs.json/#{encodeURIComponent key}", (error, result) ->
+    doGet "/2/Jobs.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go new Flow.Error "Error fetching job '#{key}'", error
       else
@@ -102,7 +104,7 @@ H2O.Proxy = (_) ->
     opts =
       src: encodeURIComponent path
       limit: limit
-    requestWithOpts '/Typeahead.json/files', opts, go
+    requestWithOpts '/2/Typeahead.json/files', opts, go
 
   requestImportFiles = (paths, go) ->
     tasks = map paths, (path) ->
@@ -112,26 +114,25 @@ H2O.Proxy = (_) ->
 
   requestImportFile = (path, go) ->
     opts = path: encodeURIComponent path
-    requestWithOpts '/ImportFiles.json', opts, go
+    requestWithOpts '/2/ImportFiles.json', opts, go
 
   requestParseSetup = (sources, go) ->
-    encodedPaths = map sources, encodeURIComponent
     opts =
-      srcs: "[#{join encodedPaths, ','}]"
-    requestWithOpts '/ParseSetup.json', opts, go
+      srcs: encodeArrayForPost sources
+    doPost '/2/ParseSetup.json', opts, go
 
   requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, go) ->
     opts =
-      hex: encodeURIComponent destinationKey
-      srcs: encodeArray sourceKeys
+      hex: destinationKey
+      srcs: encodeArrayForPost sourceKeys
       pType: parserType
       sep: separator
       ncols: columnCount
       singleQuotes: useSingleQuotes
-      columnNames: encodeArray columnNames
+      columnNames: encodeArrayForPost columnNames
       checkHeader: checkHeader
       delete_on_done: deleteOnDone
-    requestWithOpts '/Parse.json', opts, go
+    doPost '/2/Parse.json', opts, go
 
   patchUpModels = (models) ->
     for model in models
@@ -159,16 +160,16 @@ H2O.Proxy = (_) ->
         go error, head patchUpModels result.models
 
   requestModelBuilders = (go) ->
-    doGet "/2/ModelBuilders.json", go
+    doGet "/3/ModelBuilders.json", go
 
   requestModelBuilder = (algo, go) ->
-    doGet "/2/ModelBuilders.json/#{algo}", go
+    doGet "/3/ModelBuilders.json/#{algo}", go
 
   requestModelInputValidation = (algo, parameters, go) ->
-    doPost "/2/ModelBuilders.json/#{algo}/parameters", parameters, go
+    doPost "/3/ModelBuilders.json/#{algo}/parameters", parameters, go
 
   requestModelBuild = (algo, parameters, go) ->
-    doPost "/2/ModelBuilders.json/#{algo}", parameters, go
+    doPost "/3/ModelBuilders.json/#{algo}", parameters, go
 
   requestPredict = (modelKey, frameKey, go) ->
     doPost "/3/Predictions.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, (error, result) ->
@@ -223,16 +224,16 @@ H2O.Proxy = (_) ->
     go null, Flow.LocalStorage.write type, id, obj
 
   requestCloud = (go) ->
-    doGet '/3/Cloud.json', go
+    doGet '/1/Cloud.json', go
 
   requestTimeline = (go) ->
-    doGet '/3/Timeline.json', go
+    doGet '/2/Timeline.json', go
 
   requestProfile = (depth, go) ->
-    doGet "/3/Profiler.json?depth=#{depth}", go
+    doGet "/2/Profiler.json?depth=#{depth}", go
 
   requestStackTrace = (go) ->
-    doGet '/3/JStack.json', go
+    doGet '/2/JStack.json', go
 
   requestRemoveAll = (go) ->
     doGet '/3/RemoveAll.json', go
