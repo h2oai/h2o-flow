@@ -208,6 +208,8 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                   ignoredColumnsParameter.values columnLabels
           return
 
+  encodeArrayForPost = (array) -> "[#{join (map array, (element) -> "\"#{element}\""), ','}]"
+
   collectParameters = (includeUnchangedParameters=no) ->
     parameters = {}
     for controls in _controlGroups
@@ -220,7 +222,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                 parameters[control.name] = value
             when 'list'
               if value.length
-                parameters[control.name] = "[#{value.join ','}]"
+                parameters[control.name] = encodeArrayForPost value
             else
               parameters[control.name] = value
     parameters
