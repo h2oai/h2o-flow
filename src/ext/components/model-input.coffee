@@ -132,12 +132,12 @@ createListControl = (parameter) ->
   control
 
 createCheckboxControl = (parameter) ->
-  _value = signal parameter.actual_value is 'true' #FIXME
+  _value = signal parameter.actual_value
 
   control = createControl 'checkbox', parameter
   control.clientId = do uniqueId
   control.value = _value
-  control.defaultValue = parameter.default_value is 'true'
+  control.defaultValue = parameter.default_value
   control
 
 createControlFromParameter = (parameter) ->
@@ -293,7 +293,7 @@ H2O.ModelInput = (_, _algo, _opts) ->
     #
     classificationParameter = find parameters, (parameter) -> parameter.name is 'do_classification'
     if classificationParameter
-      classificationParameter.actual_value = 'true'
+      classificationParameter.actual_value = yes
 
     _.requestFrames (error, frames) ->
       if error
