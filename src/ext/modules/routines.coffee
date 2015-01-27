@@ -182,6 +182,23 @@ H2O.Routines = (_) ->
 
   plot.stack = Flow.Plot.stack
 
+  _plot1 = (plot, go) ->
+    plot (error, vis) ->
+      if error
+        go new Flow.Error 'Error rendering vis.', error
+      else
+        go null, vis
+
+  plot1 = (f) ->
+    if _isFuture f
+      throw new Error 'TODO Display plot input'
+      #XXX
+      #renderable _plotInput, config, (config, go) ->
+      #  go null, H2O.PlotInput _, config
+    else
+      renderable _plot1, (f window.plot), (plot, go) ->
+        go null, H2O.PlotOutput _, plot.element
+
   grid = (data) ->
     plot
       type: 'text'
@@ -652,47 +669,49 @@ H2O.Routines = (_) ->
           metrics: inspectBinomialMetrics { model: modelKey, frame: frameKey }, [ prediction ]
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
-    variables = [
-      Flow.Data.Variable 'label', TString
-      Flow.Data.Variable 'missing', TNumber
-      Flow.Data.Variable 'zeros', TNumber
-      Flow.Data.Variable 'pinfs', TNumber
-      Flow.Data.Variable 'ninfs', TNumber
-      Flow.Data.Variable 'min', TNumber
-      Flow.Data.Variable 'max', TNumber
-      Flow.Data.Variable 'mean', TNumber
-      Flow.Data.Variable 'sigma', TNumber
-      Flow.Data.Variable 'type', TString
-      Flow.Data.Variable 'cardinality', TNumber
+    attrs = [
+      [ 'label', TString ]
+      [ 'missing', TNumber ]
+      [ 'zeros', TNumber ]
+      [ 'pinfs', TNumber ]
+      [ 'ninfs', TNumber ]
+      [ 'min', TNumber ]
+      [ 'max', TNumber ]
+      [ 'mean', TNumber ]
+      [ 'sigma', TNumber ]
+      [ 'type', TString ]
+      [ 'cardinality', TNumber ]
     ]
 
-    Record = Flow.Data.Record variables
-    rows = for column in frameColumns
-      row = new Record()
-      for variable in variables
-        label = variable.label
-        switch label
-          when 'min'
-            row[label] = head column.mins
-          when 'max'
-            row[label] = head column.maxs
-          when 'cardinality'
-            row[label] = if domain = column.domain then domain.length else null
-          else
-            row[label] = column[label] 
-      row
+    dataset = {}
+    for [ name, type ] in attrs
+      data = dataset[name] = new Array frameColumns.length
+      switch name
+        when 'min'
+          for column, i in frameColumns
+            data[i] = head column.mins
+        when 'max'
+          for column, i in frameColumns
+            data[i] = head column.maxs
+        when 'cardinality'
+          for column, i in frameColumns
+            data[i] = if domain = column.domain then domain.length else null
+        else
+          for column, i in frameColumns
+            data[i] = column[name]
 
-    Flow.Data.Table
-      label: tableLabel
+    vectors = for [ name, type ] in attrs
+      switch type
+        when TString
+          window.plot.createFactor name, type, dataset[name]
+        when TNumber
+          window.plot.createVector name, type, dataset[name], identity
+
+    window.plot.createFrame tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getFrame #{stringify frameKey}"
-        plot: """
-        plot
-          data: inspect '#{tableLabel}', getFrame #{stringify frameKey}
-        """
+      origin: "getFrame #{stringify frameKey}"
+      plot: "plot inspect '#{tableLabel}', getFrame #{stringify frameKey}"
+
 
   inspectFrameData = (frameKey, frame) -> ->
     frameColumns = frame.columns
@@ -772,16 +791,7 @@ H2O.Routines = (_) ->
         meta:
           origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
-
     inspectDistribution = ->
-      variables = [
-        Flow.Data.Variable 'interval', TString
-        Flow.Data.Variable 'width', TNumber
-        Flow.Data.Variable 'count', TNumber
-      ]
-
-      Record = Flow.Data.Record variables
-      
       minBinCount = 32
       { base, stride, bins } = column
       width = Math.floor bins.length / minBinCount
@@ -790,6 +800,9 @@ H2O.Routines = (_) ->
       rows = []
       if width > 0
         binCount = minBinCount + if bins.length % width > 0 then 1 else 0
+        intervalData = new Array binCount
+        widthData = new Array binCount
+        countData = new Array binCount
         for i in [0 ... binCount]
           m = i * width
           n = m + width
@@ -797,96 +810,58 @@ H2O.Routines = (_) ->
           for binIndex in [m ... n] when n < bins.length
             count += bins[binIndex]
 
-          row = new Record()
-          row.interval = base + i * interval
-          row.width = interval
-          row.count = count
-          rows.push row
+          intervalData[i] = base + i * interval
+          widthData[i] = interval
+          countData[i] = count
       else
+        binCount = bins.length
+        intervalData = new Array binCount
+        widthData = new Array binCount
+        countData = new Array binCount
         for count, i in bins
-          row = new Record()
-          row.interval = base + i * stride
-          row.width = stride
-          row.count = count
-          rows.push row
+          intervalData[i] = base + i * stride
+          widthData[i] = stride
+          countData[i] = count
 
-      Flow.Data.Table
-        label: 'distribution'
+      vectors = [
+        window.plot.createFactor 'interval', TString, intervalData
+        window.plot.createVector 'width', TNumber, widthData, identity
+        window.plot.createVector 'count', TNumber, countData, identity
+      ]
+
+      window.plot.createFrame 'distribution', vectors, (sequence binCount), null, 
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-          plot: """
-          plot
-            data: inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-            type: 'interval'
-            x: 'interval'
-            y: 'count'
-          """
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        plot: """
+        plot1 (g) -> g(
+          g.rect(
+            g.position 'interval', 'count'
+            g.width g.value 1
+          )
+          g.from inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+        )
+        """
 
     inspectCharacteristics = ->
       { missing, zeros, pinfs, ninfs } = column
       other = rowCount - missing - zeros - pinfs - ninfs
 
-      variables = [
-        label: 'label'
-        type: TString
-      ,
-        label: 'characteristic'
-        type: TString
-      ,
-        label: 'count'
-        type: TNumber
-        domain: [ 0, rowCount ]
-      ,
-        label: 'percent'
-        type: TNumber
-        domain: [ 0, 100 ]
+      characteristicData = [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
+      countData = [ missing, ninfs, zeros, pinfs, other ]
+      percentData = for count in countData
+        100 * count / rowCount
+
+      vectors = [
+        window.plot.createFactor 'characteristic', TString, characteristicData
+        window.plot.createVector 'count', TNumber, countData, identity
+        window.plot.createVector 'percent', TNumber, percentData, identity
       ]
 
-      characteristics = [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
-      rows = for count, i in [ missing, ninfs, zeros, pinfs, other ]
-        label: column.label
-        characteristic: characteristics[i]
-        count: count
-        percent: 100 * count / rowCount
-
-      Flow.Data.Table
-        label: 'characteristics'
+      window.plot.createFrame 'characteristics', vectors, (sequence characteristicData.length), null,
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-          plot: """
-          plot
-            title: 'Characteristics for #{frameKey} : #{column.label}'
-            type: 'interval'
-            data: inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-            x: plot.stack 'count'
-            y: 'label'
-            color: 'characteristic'
-          """
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectSummary = ->
-      variables = [
-        label: 'mean'
-        type: TNumber
-      ,
-        label: 'q1'
-        type: TNumber
-      ,
-        label: 'q2'
-        type: TNumber
-      ,
-        label: 'q3'
-        type: TNumber
-      ,
-        label: 'outliers'
-        type: TArray
-      ]
-
       defaultPercentiles = frame.default_pctiles
       percentiles = column.pctiles
 
@@ -895,21 +870,30 @@ H2O.Routines = (_) ->
       q2 = percentiles[defaultPercentiles.indexOf 0.5]
       q3 = percentiles[defaultPercentiles.indexOf 0.75]
       outliers = unique concat column.mins, column.maxs
+      minimum = head column.mins
+      maximum = head column.maxs
 
-      row =
-        mean: mean
-        q1: q1
-        q2: q2
-        q3: q3
-        outliers: outliers
+      vectors = [
+        window.plot.createFactor 'column', TString, [ columnName ]
+        window.plot.createVector 'mean', TNumber, [ mean ], identity
+        window.plot.createVector 'q1', TNumber, [ q1 ], identity
+        window.plot.createVector 'q2', TNumber, [ q2 ], identity
+        window.plot.createVector 'q3', TNumber, [ q3 ], identity
+        window.plot.createVector 'min', TNumber, [ minimum ], identity
+        window.plot.createVector 'max', TNumber, [ maximum ], identity
+      ]
 
-      Flow.Data.Table
-        label: 'summary'
+      window.plot.createFrame 'summary', vectors, (sequence 1), null, 
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: [ row ]
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        plot: """
+        plot1 (g) -> g(
+          g.schema(
+            g.position 'min', 'q1', 'q2', 'q3', 'max', 'column'
+          )
+          g.from inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+        )
+        """
 
     inspectDomain = ->
       levels = map column.bins, (count, index) -> count: count, index: index
@@ -1277,6 +1261,7 @@ H2O.Routines = (_) ->
   dump: dump
   inspect: inspect
   plot: plot
+  plot1: plot1
   grid: grid
   get: _get
   #

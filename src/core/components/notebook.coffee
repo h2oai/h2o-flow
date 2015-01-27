@@ -557,8 +557,8 @@ Flow.Notebook = (_, _renderers) ->
   ]
   
   toKeyboardHelp = (shortcut) ->
-    [ sequence, caption ] = shortcut
-    keystrokes = join (map (split sequence, /\+/g), (key) -> "<kbd>#{key}</kbd>"), ' '
+    [ seq, caption ] = shortcut
+    keystrokes = join (map (split seq, /\+/g), (key) -> "<kbd>#{key}</kbd>"), ' '
     keystrokes: keystrokes
     caption: caption
 

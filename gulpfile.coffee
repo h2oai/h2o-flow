@@ -58,9 +58,11 @@ config =
       'lib/bootstrap/dist/js/bootstrap.js'
       'lib/d3/d3.js'
       'lib/vega/vega.js'
+      'lib/chroma-js/chroma.js'
       'lib/marked/lib/marked.js'
       'lib/knockoutjs/dist/knockout.debug.js'
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
+      'vendor/h2oai/vortex.min.js'
     ]
     css: [
       'lib/fontawesome/css/font-awesome.css'
