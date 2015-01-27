@@ -46,7 +46,6 @@ H2O.Proxy = (_) ->
   requestWithOpts = (path, opts, go) ->
     doGet (composePath path, opts), go
 
-  encodeArrayForGet = (array) -> "[#{encodeURIComponent join (map array, (element) -> "\"#{element}\""), ','}]"
   encodeArrayForPost = (array) -> "[#{join (map array, (element) -> "\"#{element}\""), ','}]"
 
   encodeObject = (source) ->
@@ -194,9 +193,9 @@ H2O.Proxy = (_) ->
         # TODO workaround for a filtering bug in the API
         # 
         predictions = for prediction in result.model_metrics
-          if modelKey and prediction.model.key isnt modelKey
+          if modelKey and prediction.model.name isnt modelKey
             null
-          else if frameKey and prediction.frame.key.name isnt frameKey
+          else if frameKey and prediction.frame.name isnt frameKey
             null
           else
             prediction

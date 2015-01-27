@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.32';
+    FLOW_VERSION = '0.2.34';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4127,7 +4127,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doGet, doPost, encodeArrayForGet, encodeArrayForPost, encodeObject, http, mapWithKey, patchUpModels, requestAbout, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestStackTrace, requestTimeline, requestWithOpts;
+        var composePath, doGet, doPost, encodeArrayForPost, encodeObject, http, mapWithKey, patchUpModels, requestAbout, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestStackTrace, requestTimeline, requestWithOpts;
         http = function (path, opts, go) {
             var req;
             _.status('server', 'request', path);
@@ -4175,11 +4175,6 @@
         };
         requestWithOpts = function (path, opts, go) {
             return doGet(composePath(path, opts), go);
-        };
-        encodeArrayForGet = function (array) {
-            return '[' + encodeURIComponent(lodash.map(array, function (element) {
-                return '"' + element + '"';
-            }).join(',')) + ']';
         };
         encodeArrayForPost = function (array) {
             return '[' + lodash.map(array, function (element) {
@@ -4374,9 +4369,9 @@
                         _results = [];
                         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
                             prediction = _ref[_i];
-                            if (modelKey && prediction.model.key !== modelKey) {
+                            if (modelKey && prediction.model.name !== modelKey) {
                                 _results.push(null);
-                            } else if (frameKey && prediction.frame.key.name !== frameKey) {
+                            } else if (frameKey && prediction.frame.name !== frameKey) {
                                 _results.push(null);
                             } else {
                                 _results.push(prediction);
@@ -7491,7 +7486,7 @@
         }
     };
     H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
-        var collectParameters, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _parametersByLevel, _validationFailureMessage;
+        var collectParameters, createModel, criticalControls, encodeArrayForPost, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _parametersByLevel, _validationFailureMessage;
         _exception = Flow.Dataflow.signal(null);
         _validationFailureMessage = Flow.Dataflow.signal('');
         _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
@@ -7580,6 +7575,11 @@
                 }
             }
         }());
+        encodeArrayForPost = function (array) {
+            return '[' + lodash.map(array, function (element) {
+                return '"' + element + '"';
+            }).join(',') + ']';
+        };
         collectParameters = function (includeUnchangedParameters) {
             var control, controls, parameters, value, _i, _j, _len, _len1;
             if (includeUnchangedParameters == null) {
@@ -7600,7 +7600,7 @@
                             break;
                         case 'list':
                             if (value.length) {
-                                parameters[control.name] = '[' + value.join(',') + ']';
+                                parameters[control.name] = encodeArrayForPost(value);
                             }
                             break;
                         default:
