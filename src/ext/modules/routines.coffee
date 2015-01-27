@@ -21,6 +21,10 @@ _assistance =
     description: 'Make a prediction'
     icon: 'bolt'
 
+parseNaNs = (array) ->
+  for element in array
+    if element is 'NaN' then undefined else element
+
 computeTruePositiveRate = (cm) ->
   [[tn, fp], [fn, tp]] = cm
   tp / (tp + fn)
@@ -261,50 +265,45 @@ H2O.Routines = (_) ->
 
   inspectModelParameters = (model) -> ->
     parameters = model.parameters
-    variables = [
-      Flow.Data.Variable 'label', TString
-      Flow.Data.Variable 'type', TString
-      Flow.Data.Variable 'level', TString
-      Flow.Data.Variable 'actual_value', TObject
-      Flow.Data.Variable 'default_value', TObject
+
+    attrs = [
+      [ 'label', TString ]
+      [ 'type', TString ]
+      [ 'level', TString ]
+      [ 'actual_value', TObject ]
+      [ 'default_value', TObject ]
     ]
 
-    Record = Flow.Data.Record variables
-    rows = new Array parameters.length
-    for parameter, i in parameters
-      rows[i] = row = new Record()
-      for variable in variables
-        row[variable.label] = parameter[variable.label]
+    vectors = for [ name, type ] in attrs
+      data = new Array parameters.length
 
-    Flow.Data.Table
-      label: 'parameters'
+      for parameter, i in parameters
+        data[i] = parameter[name]
+
+      switch type
+        when TString
+          window.plot.createFactor name, type, data
+        when TObject
+          window.plot.createList name, data, stringify
+
+    window.plot.createFrame 'parameters', vectors, (sequence parameters.length), null,
       description: "Parameters for model '#{model.key.name}'" #TODO frame key
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
 
   inspectGBMModelOutput = (model) -> ->
     output = model.output
-    variables = [
-      Flow.Data.Variable 'tree', TNumber
-      Flow.Data.Variable 'mse_train', TObject
-      Flow.Data.Variable 'mse_valid', TObject
+
+    size = output.mse_train.length
+
+    vectors = [
+      window.plot.createVector 'tree', TNumber, (sequence size)
+      window.plot.createVector 'mse_train', TNumber, parseNaNs output.mse_train
+      window.plot.createVector 'mse_valid', TNumber, parseNaNs output.mse_valid
     ]
 
-    Record = Flow.Data.Record variables
-    rows = new Array output.mse_train.length
-    for mse_train, i in output.mse_train
-      rows[i] = new Record i, mse_train, output.mse_valid[i]
-
-    Flow.Data.Table
-      label: 'output'
+    window.plot.createFrame 'output', vectors, (sequence size), null,
       description: "Output for GBM model '#{model.key.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
-
+      origin: "getModel #{stringify model.key.name}"
 
   inspectKMeansModelOutput = (model) -> ->
     output = model.output
@@ -683,9 +682,8 @@ H2O.Routines = (_) ->
       [ 'cardinality', TNumber ]
     ]
 
-    dataset = {}
     for [ name, type ] in attrs
-      data = dataset[name] = new Array frameColumns.length
+      data = new Array frameColumns.length
       switch name
         when 'min'
           for column, i in frameColumns
@@ -700,12 +698,11 @@ H2O.Routines = (_) ->
           for column, i in frameColumns
             data[i] = column[name]
 
-    vectors = for [ name, type ] in attrs
       switch type
         when TString
-          window.plot.createFactor name, type, dataset[name]
+          window.plot.createFactor name, type, data
         when TNumber
-          window.plot.createVector name, type, dataset[name], identity
+          window.plot.createVector name, type, data
 
     window.plot.createFrame tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
@@ -825,8 +822,8 @@ H2O.Routines = (_) ->
 
       vectors = [
         window.plot.createFactor 'interval', TString, intervalData
-        window.plot.createVector 'width', TNumber, widthData, identity
-        window.plot.createVector 'count', TNumber, countData, identity
+        window.plot.createVector 'width', TNumber, widthData
+        window.plot.createVector 'count', TNumber, countData
       ]
 
       window.plot.createFrame 'distribution', vectors, (sequence binCount), null, 
@@ -853,8 +850,8 @@ H2O.Routines = (_) ->
 
       vectors = [
         window.plot.createFactor 'characteristic', TString, characteristicData
-        window.plot.createVector 'count', TNumber, countData, identity
-        window.plot.createVector 'percent', TNumber, percentData, identity
+        window.plot.createVector 'count', TNumber, countData
+        window.plot.createVector 'percent', TNumber, percentData
       ]
 
       window.plot.createFrame 'characteristics', vectors, (sequence characteristicData.length), null,
@@ -875,12 +872,12 @@ H2O.Routines = (_) ->
 
       vectors = [
         window.plot.createFactor 'column', TString, [ columnName ]
-        window.plot.createVector 'mean', TNumber, [ mean ], identity
-        window.plot.createVector 'q1', TNumber, [ q1 ], identity
-        window.plot.createVector 'q2', TNumber, [ q2 ], identity
-        window.plot.createVector 'q3', TNumber, [ q3 ], identity
-        window.plot.createVector 'min', TNumber, [ minimum ], identity
-        window.plot.createVector 'max', TNumber, [ maximum ], identity
+        window.plot.createVector 'mean', TNumber, [ mean ]
+        window.plot.createVector 'q1', TNumber, [ q1 ]
+        window.plot.createVector 'q2', TNumber, [ q2 ]
+        window.plot.createVector 'q3', TNumber, [ q3 ]
+        window.plot.createVector 'min', TNumber, [ minimum ]
+        window.plot.createVector 'max', TNumber, [ maximum ]
       ]
 
       window.plot.createFrame 'summary', vectors, (sequence 1), null, 
