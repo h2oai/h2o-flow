@@ -1,11 +1,14 @@
 class FlowError extends Error
   constructor: (@message, @cause) ->
     @name = 'FlowError'
-    error = new Error()
-    if error.stack
-      @stack = error.stack
+    if @cause?.stack
+      @stack = @cause.stack
     else
-      @stack = printStackTrace()
+      error = new Error()
+      if error.stack
+        @stack = error.stack
+      else
+        @stack = printStackTrace()
 
 Flow.Error = FlowError
 

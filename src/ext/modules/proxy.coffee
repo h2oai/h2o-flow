@@ -16,16 +16,20 @@ H2O.Proxy = (_) ->
     req.fail (xhr, status, error) ->
       _.status 'server', 'error', path
 
-      message = if xhr.responseJSON?.errmsg
-        xhr.responseJSON.errmsg
+      response = xhr.responseJSON
+      
+      cause = if response?.exception_msg
+        serverError = new Flow.Error response.exception_msg
+        serverError.stack = "#{response.dev_msg} (#{response.exception_type})" + "\n  " + response.stacktrace.join "\n  "
+        serverError
       else if error?.message
-        error.message
+        new Flow.Error error.message
       else if status is 0
-        'Could not connect to H2O'
+        new Flow.Error 'Could not connect to H2O'
       else
-        'Unknown error'
+        new Flow.Error 'Unknown error'
 
-      go new Flow.Error message, new Flow.Error if opts then "Error calling POST #{path} with opts #{JSON.stringify opts}" else "Error calling GET #{path}"
+      go new Flow.Error (if opts then "Error calling POST #{path} with opts #{JSON.stringify opts}" else "Error calling GET #{path}"), cause
 
   doGet = (path, go) -> http path, null, go
   doPost = http
