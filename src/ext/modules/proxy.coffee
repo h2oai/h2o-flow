@@ -54,6 +54,12 @@ H2O.Proxy = (_) ->
       target[k] = encodeURIComponent v
     target
 
+  encodeObjectForPost = (source) ->
+    target = {}
+    for k, v of source
+      target[k] = if isArray v then encodeArrayForPost v else v
+    target
+
   requestInspect = (key, go) ->
     opts = key: encodeURIComponent key
     requestWithOpts '/1/Inspect.json', opts, go
@@ -165,10 +171,10 @@ H2O.Proxy = (_) ->
     doGet "/3/ModelBuilders.json/#{algo}", go
 
   requestModelInputValidation = (algo, parameters, go) ->
-    doPost "/3/ModelBuilders.json/#{algo}/parameters", parameters, go
+    doPost "/3/ModelBuilders.json/#{algo}/parameters", (encodeObjectForPost parameters), go
 
   requestModelBuild = (algo, parameters, go) ->
-    doPost "/3/ModelBuilders.json/#{algo}", parameters, go
+    doPost "/3/ModelBuilders.json/#{algo}", (encodeObjectForPost parameters), go
 
   requestPredict = (modelKey, frameKey, go) ->
     doPost "/3/Predictions.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, (error, result) ->
