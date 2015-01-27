@@ -307,80 +307,54 @@ H2O.Routines = (_) ->
 
   inspectKMeansModelOutput = (model) -> ->
     output = model.output
-    variables = [
-      Flow.Data.Variable 'parameter', TString
-      Flow.Data.Variable 'value', TObject
+
+    vectors = [
+      window.plot.createVector 'avg_between_ss', TNumber, [ output.avg_between_ss ]
+      window.plot.createVector 'avg_ss', TNumber, [ output.avg_ss ]
+      window.plot.createVector 'avg_within_ss', TNumber, [ output.avg_within_ss ]
+      window.plot.createVector 'categorical_column_count', TNumber, [ output.categorical_column_count ]
+      window.plot.createVector 'iterations', TNumber, [ output.iterations ]
+      window.plot.createFactor 'model_category', TString, [ output.model_category ]
+
     ]
 
-    Record = Flow.Data.Record variables
-    attrs = [ 'iters', 'mse', 'ncats' ]
-    rows = new Array attrs.length
-    for attr, i in attrs
-      rows[i] = new Record attr, output[attr]
-
-    Flow.Data.Table
-      label: 'output'
+    window.plot.createFrame 'output', vectors, (sequence 1), null,
       description: "Output for k-means model '#{model.key.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
 
-  inspectKMeansModelClusterDetails = (model) -> ->
+  inspectKMeansModelClusterMeans = (model) -> ->
     output = model.output
-    variables = [
-      Flow.Data.Variable 'cluster', TNumber
-      Flow.Data.Variable 'rows', TNumber
-      Flow.Data.Variable 'mses', TNumber
+
+    vectors = [
+      window.plot.createFactor 'cluster', TString, output.centers.rowHeaders
+      window.plot.createVector 'size', TNumber, output.size
+      window.plot.createVector 'within_mse', TNumber, output.within_mse
     ]
-    Record = Flow.Data.Record variables
-    rows = new Array output.clusters.length
-    for cluster, i in output.clusters
-      rows[i] = new Record i, output.rows[i], output.mses[i]
 
-    Flow.Data.Table
-      label: 'cluster_details'
-      description: "Clusters for k-means model '#{model.key.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
+    window.plot.createFrame 'cluster_means', vectors, (sequence output.size.length), null, 
+      description: "Cluster means for k-means model '#{model.key.name}'"
+      origin: "getModel #{stringify model.key.name}"
 
-  inspectKMeansModelClusters = (model) -> ->
+  inspectKmeansModelClusters = (model) -> ->
     output = model.output
-    { clusters, domains, names } = output
-    variables = [
-      Flow.Data.Variable 'names', TNumber
-    ]
-    for i in [ 0 ... clusters.length ]
-      variables.push Flow.Data.Variable "#{i}", TObject
 
-    Record = Flow.Data.Record variables
-    cluster0 = head clusters
-    rows = new Array cluster0.length
-    for i in [ 0 ... cluster0.length ]
-      rows[i] = row = new Record names[i]
-      for cluster, j in clusters
-        row["#{j}"] = if domain = domains[i] 
-          domain[cluster[i]]
-        else
-          cluster[i]
+    vectors = for header, i in output.centers.colHeaders
+      data = for row in output.centers_raw
+        row[i]
+      window.plot.createVector header, TNumber, data
 
-    Flow.Data.Table
-      label: 'clusters'
+    vectors.unshift window.plot.createFactor 'cluster', TString, output.centers.rowHeaders
+
+    window.plot.createFrame 'clusters', vectors, (sequence output.centers_raw.length), null, 
       description: "Clusters for k-means model '#{model.key.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
-
+      origin: "getModel #{stringify model.key.name}"
 
   extendKMeansModel = (model) ->
     inspect_ model,
       parameters: inspectModelParameters model
       output: inspectKMeansModelOutput model
-      clusters: inspectKMeansModelClusters model
-      cluster_details: inspectKMeansModelClusterDetails model
+      clusters: inspectKmeansModelClusters model
+      cluster_means: inspectKMeansModelClusterMeans model
 
   extendDeepLearningModel = (model) ->
     inspect_ model,
