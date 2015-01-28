@@ -21,9 +21,17 @@ _assistance =
     description: 'Make a prediction'
     icon: 'bolt'
 
-parseNaNs = (array) ->
-  for element in array
-    if element is 'NaN' then undefined else element
+parseNaNs = (source) ->
+  target = new Array source.length
+  for element in source
+    target[i] = if element is 'NaN' then undefined else element
+  target
+
+repeatValues = (count, value) ->
+  target = new Array count
+  for i in [0 ... count]
+    target[i] = value
+  target
 
 computeTruePositiveRate = (cm) ->
   [[tn, fp], [fn, tp]] = cm
@@ -230,38 +238,26 @@ H2O.Routines = (_) ->
   #TODO rename
   inspectMultimodelParameters = (models) -> ->
     leader = head models
-    parameters = leader.parameters
-    variables = for parameter in parameters
+    vectors = for i in [ 0 ... leader.parameters.length ]
+      data = for model in models
+        value = model.parameters[i].actual_value
+        if value? then value else undefined
       switch parameter.type
-        when 'enum', 'Frame', 'string', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-          Flow.Data.Variable parameter.label, TString
+        when 'enum', 'Frame', 'string', 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+          window.plot.createFactor parameter.label, TString, data
         when 'byte', 'short', 'int', 'long', 'float', 'double'
-          Flow.Data.Variable parameter.label, TNumber
-        when 'string[]'
-          Flow.Data.Variable parameter.label, TString
+          window.plot.createVector parameter.label, TNumber, data
         when 'boolean'
-          Flow.Data.Variable parameter.label, TBoolean
+          window.plot.createList parameter.label, data, (a) -> if a then 'true' else 'false'
         else
-          Flow.Data.Variable parameter.label, TObject
-
-    Record = Flow.Data.Record variables
-
-    rows = new Array models.length
-    for model, i in models
-      rows[i] = row = new Record()
-      for parameter, j in model.parameters
-        variable = variables[j]
-        row[variable.label] = parameter.actual_value
+          window.plot.createList parameter.label, data
 
     modelKeys = (model.key for model in models)
 
-    Flow.Data.Table
-      label: 'parameters'
+    window.plot.createFrame 'parameters', vectors, (sequence models.length), null,
       description: "Parameters for models #{modelKeys.join ', '}"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModels #{stringify modelKeys}"
+      origin: "getModels #{stringify modelKeys}"
+
 
   inspectModelParameters = (model) -> ->
     parameters = model.parameters
@@ -402,159 +398,85 @@ H2O.Routines = (_) ->
   inspectRegressionPrediction = (prediction) -> ->
     { frame, model, predictions } = prediction
 
-    variables = [
-      Flow.Data.Variable 'parameter', TString
-      Flow.Data.Variable 'value', TObject
+    vectors = [
+      window.plot.createFactor 'key', TString, [ model.name ]
+      window.plot.createFactor 'frame', TString, [ frame.name ]
+      window.plot.createFactor 'model_category', TString, [ prediction.model_category ]
+      window.plot.createVector 'duration_in_ms', TString, [ prediction.duration_in_ms ]
+      window.plot.createVector 'scoring_time', TString, [ prediction.scoring_time ]
     ]
 
-    Record = Flow.Data.Record variables
-
-    rows = []
-    rows.push new Record 'key', model.name
-    rows.push new Record 'frame', frame.name
-    rows.push new Record 'model_category', prediction.model_category
-    rows.push new Record 'duration_in_ms', prediction.duration_in_ms
-    rows.push new Record 'scoring_time', prediction.scoring_time
-
-    Flow.Data.Table
-      label: 'prediction'
+    window.plot.createFrame 'prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
-
+      origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
   inspectBinomialPrediction = (prediction) -> ->
     { frame, model, auc } = prediction
 
-    variables = [
-      Flow.Data.Variable 'parameter', TString
-      Flow.Data.Variable 'value', TObject
+    vectors = [
+      window.plot.createFactor 'key', TString, [ model.name ]
+      window.plot.createFactor 'frame', TString, [ frame.name ]
+      window.plot.createFactor 'model_category', TString, [ prediction.model_category ]
+      window.plot.createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      window.plot.createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
+      window.plot.createVector 'AUC', TNumber, [ auc.AUC ]
+      window.plot.createVector 'Gini', TNumber, [ auc.Gini ]
+      window.plot.createFactor 'threshold_criterion', TString, [ auc.threshold_criterion ]
     ]
 
-    Record = Flow.Data.Record variables
-
-    rows = []
-    rows.push new Record 'key', model.name
-    rows.push new Record 'frame', frame.name
-    rows.push new Record 'model_category', prediction.model_category
-    rows.push new Record 'duration_in_ms', prediction.duration_in_ms
-    rows.push new Record 'scoring_time', prediction.scoring_time
-    rows.push new Record 'AUC', auc.AUC
-    rows.push new Record 'Gini', auc.Gini
-    rows.push new Record 'threshold_criterion', auc.threshold_criterion
-
-    Flow.Data.Table
-      label: 'prediction'
+    window.plot.createFrame 'prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+      origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
   inspectBinomialMetrics = (opts, predictions) -> ->
-    variables = [
-      Flow.Data.Variable 'criteria', TString
-      Flow.Data.Variable 'threshold', TNumber
-      Flow.Data.Variable 'F1', TNumber
-      Flow.Data.Variable 'F2', TNumber
-      Flow.Data.Variable 'F0point5', TNumber
-      Flow.Data.Variable 'accuracy', TNumber
-      Flow.Data.Variable 'error', TNumber
-      Flow.Data.Variable 'precision', TNumber
-      Flow.Data.Variable 'recall', TNumber
-      Flow.Data.Variable 'specificity', TNumber
-      Flow.Data.Variable 'mcc', TNumber
-      Flow.Data.Variable 'max_per_class_error', TNumber
-      Flow.Data.Variable 'confusion_matrix', TObject, null, formatConfusionMatrix
-      Flow.Data.Variable 'TPR', TNumber
-      Flow.Data.Variable 'FPR', TNumber
-      Flow.Data.Variable 'key', TString
-      Flow.Data.Variable 'model', TString
-      Flow.Data.Variable 'frame', TString
+    vectors = [
+      window.plot.createFactor 'criteria', TString, auc.threshold_criteria
+      window.plot.createVector 'threshold', TNumber, parseNaNs auc.threshold_for_criteria
+      window.plot.createVector 'F1', TNumber, parseNaNs auc.F1_for_criteria
+      window.plot.createVector 'F2', TNumber, parseNaNs auc.F2_for_criteria
+      window.plot.createVector 'F0point5', TNumber, parseNaNs auc.F0point5_for_criteria
+      window.plot.createVector 'accuracy', TNumber, parseNaNs auc.accuracy_for_criteria
+      window.plot.createVector 'error', TNumber, parseNaNs auc.error_for_criteria
+      window.plot.createVector 'precision', TNumber, parseNaNs auc.precision_for_criteria
+      window.plot.createVector 'recall', TNumber, parseNaNs auc.recall_for_criteria
+      window.plot.createVector 'specificity', TNumber, parseNaNs auc.specificity_for_criteria
+      window.plot.createVector 'mcc', TNumber, parseNaNs auc.max_per_class_error_for_criteria
+      window.plot.createVector 'max_per_class_error', TNumber, parseNaNs auc.max_per_class_error
+      window.plot.createList 'confusion_matrix', (cm = auc.confusion_matrix_for_criteria), formatConfusionMatrix
+      window.plot.createVector 'TPR', TNumber, (map cm, computeTruePositiveRate)
+      window.plot.createVector 'FPR', TNumber, (map cm, computeFalsePositiveRate)
+      window.plot.createFactor 'key', TString, repeatValues auc.threshold_criteria.length, model.name + ' on ' + frame.name
+      window.plot.createFactor 'model', TString, repeatValues auc.threshold_criteria.length, model.name
+      window.plot.createFactor 'frame', TString, repeatValues auc.threshold_criteria.length, frame.name
     ]
 
-    Record = Flow.Data.Record variables
-
-    rows = []
-    for prediction in predictions
-      { frame, model, auc } = prediction
-      for i in [ 0 ... auc.threshold_criteria.length ]
-        rows.push new Record(
-          auc.threshold_criteria[i]
-          read auc.threshold_for_criteria[i]
-          read auc.F1_for_criteria[i]
-          read auc.F2_for_criteria[i]
-          read auc.F0point5_for_criteria[i]
-          read auc.accuracy_for_criteria[i]
-          read auc.error_for_criteria[i]
-          read auc.precision_for_criteria[i]
-          read auc.recall_for_criteria[i]
-          read auc.specificity_for_criteria[i]
-          read auc.mcc_for_criteria[i]
-          read auc.max_per_class_error_for_criteria[i]
-          cm = auc.confusion_matrix_for_criteria[i] 
-          computeTruePositiveRate cm
-          computeFalsePositiveRate cm
-          model.name + ' on ' + frame.name
-          model.name
-          frame.name
-        )
-
-    Flow.Data.Table
-      label: 'metrics'
+    window.plot.createFrame 'metrics', vectors, (sequence auc.threshold_criteria.length), null,
       description: "Metrics for the selected predictions"
-      variables: variables
-      rows: rows
-      meta:
-        origin: formulateGetPredictionsOrigin opts
-        plot: """
-        plot
-          data: inspect 'metrics', #{formulateGetPredictionsOrigin opts}
-        """
+      origin: formulateGetPredictionsOrigin opts
+      plot: """
+      plot
+        data: inspect 'metrics', #{formulateGetPredictionsOrigin opts}
+      """
 
   inspectBinomialPredictions = (opts, predictions) -> ->
-    variables = [
-      Flow.Data.Variable 'key', TString
-      Flow.Data.Variable 'model', TString
-      Flow.Data.Variable 'frame', TString
-      Flow.Data.Variable 'model_category', TString
-      Flow.Data.Variable 'duration_in_ms', TNumber
-      Flow.Data.Variable 'scoring_time', TNumber
-      #Flow.Data.Variable 'AUC', TNumber
-      #Flow.Data.Variable 'Gini', TNumber
-      #Flow.Data.Variable 'threshold_criterion', TString
+    vectors = [
+      window.plot.createFactor 'key', TString, (prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
+      window.plot.createFactor 'frame', TString, (prediction.frame.name for prediction in predictions)
+      window.plot.createFactor 'model_category', TString, (prediction.model_category for prediction in predictions)
+      window.plot.createVector 'duration_in_ms', TNumber, (prediction.duration_in_ms for prediction in predictions)
+      window.plot.createVector 'scoring_time', TNumber, (prediction.scoring_time for prediction in predictions)
+      #window.plot.createVector 'AUC', TNumber, (prediction.auc.AUC for prediction in predictions)
+      #window.plot.createVector 'Gini', TNumber, (prediction.auc.Gini for prediction in predictions)
+      #window.plot.createFactor 'threshold_criterion', TString, (prediction.auc.threshold_criterion for prediction in predictions)
     ]
 
-    Record = Flow.Data.Record variables
-    
-    rows = new Array predictions.length
-    for prediction, i in predictions
-      { frame, model, auc } = prediction
-      rows[i] = row = new Record(
-        model.name + ' on ' + frame.name
-        model.name
-        frame.name
-        prediction.model_category
-        prediction.duration_in_ms
-        prediction.scoring_time
-        #auc.AUC
-        #auc.Gini
-        #auc.threshold_criterion
-      )
-
-    Flow.Data.Table
-      label: 'predictions'
+    window.plot.createFrame 'predictions', vectors, (sequence predictions.length), null,
       description: "Prediction output for selected predictions."
-      variables: variables
-      rows: rows
-      meta:
-        origin: formulateGetPredictionsOrigin opts
-        plot: """
-        plot
-          data: inspect 'predictions', #{formulateGetPredictionsOrigin opts}
-        """
+      origin: formulateGetPredictionsOrigin opts
+      plot: """
+      plot
+        data: inspect 'predictions', #{formulateGetPredictionsOrigin opts}
+      """
 
   extendPredictions = (opts, predictions) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
