@@ -38,7 +38,7 @@ parseNaNs = (source) ->
     target[i] = if element is 'NaN' then undefined else element
   target
 
-parseNulls=  (source) ->
+parseNulls = (source) ->
   target = new Array source.length
   for element, i in source
     target[i] = if element? then element else undefined
@@ -238,6 +238,7 @@ H2O.Routines = (_) ->
       renderable _plot1, (f window.plot), (plot, go) ->
         go null, H2O.PlotOutput _, plot.element
 
+  #XXX pass-thru to g.table()
   grid = (data) ->
     plot
       type: 'text'
@@ -480,10 +481,7 @@ H2O.Routines = (_) ->
     createDataframe 'metrics', vectors, (sequence (head vectors).count()), null,
       description: "Metrics for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
-      plot: """
-      plot
-        data: inspect 'metrics', #{formulateGetPredictionsOrigin opts}
-      """
+      plot: "plot1 inspect 'metrics', #{formulateGetPredictionsOrigin opts}"
 
   inspectBinomialPredictions = (opts, predictions) -> ->
     vectors = [
@@ -500,10 +498,7 @@ H2O.Routines = (_) ->
     createDataframe 'predictions', vectors, (sequence predictions.length), null,
       description: "Prediction output for selected predictions."
       origin: formulateGetPredictionsOrigin opts
-      plot: """
-      plot
-        data: inspect 'predictions', #{formulateGetPredictionsOrigin opts}
-      """
+      plot: "plot1 inspect 'predictions', #{formulateGetPredictionsOrigin opts}"
 
   extendPredictions = (opts, predictions) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
@@ -542,10 +537,7 @@ H2O.Routines = (_) ->
     createDataframe 'scores', vectors, (sequence (head vectors).count()), null, 
       description: "Scores for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
-      plot: """
-      plot
-        data: inspect 'scores', #{formulateGetPredictionsOrigin opts}
-      """
+      plot: "plot1 inspect 'scores', #{formulateGetPredictionsOrigin opts}"
     
   extendPrediction = (modelKey, frameKey, prediction) ->
     render_ prediction, -> H2O.PredictOutput _, prediction
@@ -590,7 +582,7 @@ H2O.Routines = (_) ->
     createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
       origin: "getFrame #{stringify frameKey}"
-      plot: "plot inspect '#{tableLabel}', getFrame #{stringify frameKey}"
+      plot: "plot1 inspect '#{tableLabel}', getFrame #{stringify frameKey}"
 
 
   inspectFrameData = (frameKey, frame) -> ->
@@ -763,12 +755,12 @@ H2O.Routines = (_) ->
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: """
-        plot
-          title: 'Domain for #{frameKey} : #{column.label}'
-          type: 'interval'
-          data: inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-          x: 'count'
-          y: 'label'
+        plot1 (g) -> g(
+          g.rect(
+            g.position 'count', 'label'
+          )
+          g.from inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+        )
         """
 
     inspections =
