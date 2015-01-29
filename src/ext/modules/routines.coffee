@@ -3,6 +3,7 @@
 createVector = window.plot.createVector
 createFactor = window.plot.createFactor
 createList = window.plot.createList
+createDataframe = window.plot.createFrame
 
 _assistance =
   importFiles:
@@ -31,6 +32,12 @@ parseNaNs = (source) ->
   target = new Array source.length
   for element, i in source
     target[i] = if element is 'NaN' then undefined else element
+  target
+
+parseNulls=  (source) ->
+  target = new Array source.length
+  for element, i in source
+    target[i] = if element? then element else undefined
   target
 
 repeatValues = (count, value) ->
@@ -270,7 +277,7 @@ H2O.Routines = (_) ->
 
     modelKeys = (model.key for model in models)
 
-    window.plot.createFrame 'parameters', vectors, (sequence models.length), null,
+    createDataframe 'parameters', vectors, (sequence models.length), null,
       description: "Parameters for models #{modelKeys.join ', '}"
       origin: "getModels #{stringify modelKeys}"
 
@@ -298,7 +305,7 @@ H2O.Routines = (_) ->
         when TObject
           createList name, data, stringify
 
-    window.plot.createFrame 'parameters', vectors, (sequence parameters.length), null,
+    createDataframe 'parameters', vectors, (sequence parameters.length), null,
       description: "Parameters for model '#{model.key.name}'" #TODO frame key
       origin: "getModel #{stringify model.key.name}"
 
@@ -313,7 +320,7 @@ H2O.Routines = (_) ->
       createVector 'mse_valid', TNumber, parseNaNs output.mse_valid
     ]
 
-    window.plot.createFrame 'output', vectors, (sequence size), null,
+    createDataframe 'output', vectors, (sequence size), null,
       description: "Output for GBM model '#{model.key.name}'"
       origin: "getModel #{stringify model.key.name}"
 
@@ -330,7 +337,7 @@ H2O.Routines = (_) ->
 
     ]
 
-    window.plot.createFrame 'output', vectors, (sequence 1), null,
+    createDataframe 'output', vectors, (sequence 1), null,
       description: "Output for k-means model '#{model.key.name}'"
       origin: "getModel #{stringify model.key.name}"
 
@@ -343,7 +350,7 @@ H2O.Routines = (_) ->
       createVector 'within_mse', TNumber, output.within_mse
     ]
 
-    window.plot.createFrame 'cluster_means', vectors, (sequence output.size.length), null, 
+    createDataframe 'cluster_means', vectors, (sequence output.size.length), null, 
       description: "Cluster means for k-means model '#{model.key.name}'"
       origin: "getModel #{stringify model.key.name}"
 
@@ -357,7 +364,7 @@ H2O.Routines = (_) ->
 
     vectors.unshift createFactor 'cluster', TString, output.centers.rowHeaders
 
-    window.plot.createFrame 'clusters', vectors, (sequence output.centers_raw.length), null, 
+    createDataframe 'clusters', vectors, (sequence output.centers_raw.length), null, 
       description: "Clusters for k-means model '#{model.key.name}'"
       origin: "getModel #{stringify model.key.name}"
 
@@ -422,7 +429,7 @@ H2O.Routines = (_) ->
       createVector 'scoring_time', TString, [ prediction.scoring_time ]
     ]
 
-    window.plot.createFrame 'prediction', vectors, (sequence 1), null,
+    createDataframe 'prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
       origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
@@ -440,7 +447,7 @@ H2O.Routines = (_) ->
       createFactor 'threshold_criterion', TString, [ auc.threshold_criterion ]
     ]
 
-    window.plot.createFrame 'prediction', vectors, (sequence 1), null,
+    createDataframe 'prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
       origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
@@ -466,7 +473,7 @@ H2O.Routines = (_) ->
       createFactor 'frame', TString, concatArrays (repeatValues prediction.auc.threshold_criteria.length, prediction.frame.name for prediction in predictions)
     ]
 
-    window.plot.createFrame 'metrics', vectors, (sequence (head vectors).count()), null,
+    createDataframe 'metrics', vectors, (sequence (head vectors).count()), null,
       description: "Metrics for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
       plot: """
@@ -486,7 +493,7 @@ H2O.Routines = (_) ->
       #createFactor 'threshold_criterion', TString, (prediction.auc.threshold_criterion for prediction in predictions)
     ]
 
-    window.plot.createFrame 'predictions', vectors, (sequence predictions.length), null,
+    createDataframe 'predictions', vectors, (sequence predictions.length), null,
       description: "Prediction output for selected predictions."
       origin: formulateGetPredictionsOrigin opts
       plot: """
@@ -528,7 +535,7 @@ H2O.Routines = (_) ->
       createFactor 'frame', TString, concatArrays (repeatValues prediction.auc.thresholds.length, prediction.frame.name for prediction in predictions)
     ]
 
-    window.plot.createFrame 'scores', vectors, (sequence (head vectors).count()), null, 
+    createDataframe 'scores', vectors, (sequence (head vectors).count()), null, 
       description: "Scores for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
       plot: """
@@ -550,42 +557,33 @@ H2O.Routines = (_) ->
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
-      [ 'label', TString ]
-      [ 'missing', TNumber ]
-      [ 'zeros', TNumber ]
-      [ 'pinfs', TNumber ]
-      [ 'ninfs', TNumber ]
-      [ 'min', TNumber ]
-      [ 'max', TNumber ]
-      [ 'mean', TNumber ]
-      [ 'sigma', TNumber ]
-      [ 'type', TString ]
-      [ 'cardinality', TNumber ]
+      'label'
+      'missing'
+      'zeros'
+      'pinfs'
+      'ninfs'
+      'min'
+      'max'
+      'mean'
+      'sigma'
+      'type'
+      'cardinality'
     ]
 
-    for [ name, type ] in attrs
-      data = new Array frameColumns.length
+    vectors = for name in attrs
       switch name
         when 'min'
-          for column, i in frameColumns
-            data[i] = head column.mins
+          createVector name, TNumber, (head column.mins for column in frameColumns)
         when 'max'
-          for column, i in frameColumns
-            data[i] = head column.maxs
+          createVector name, TNumber, (head column.maxs for column in frameColumns)
         when 'cardinality'
-          for column, i in frameColumns
-            data[i] = if domain = column.domain then domain.length else null
+          createVector name, TNumber, ((if domain = column.domain then domain.length else undefined) for column in frameColumns)
+        when 'label', 'type'
+          createFactor name, TString, (column[name] for column in frameColumns)
         else
-          for column, i in frameColumns
-            data[i] = column[name]
-
-      switch type
-        when TString
-          createFactor name, type, data
-        when TNumber
-          createVector name, type, data
-
-    window.plot.createFrame tableLabel, vectors, (sequence frameColumns.length), null,
+          createVector name, TNumber, (column[name] for column in frameColumns)
+         
+    createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
       origin: "getFrame #{stringify frameKey}"
       plot: "plot inspect '#{tableLabel}', getFrame #{stringify frameKey}"
@@ -593,43 +591,23 @@ H2O.Routines = (_) ->
 
   inspectFrameData = (frameKey, frame) -> ->
     frameColumns = frame.columns
-    variables = for column in frameColumns
+
+    vectors = for column in frameColumns
       #XXX format functions
       switch column.type
-        when 'int'
-          Flow.Data.Variable column.label, TNumber
-        when 'real'
-          Flow.Data.Variable column.label, TNumber
+        when 'int', 'real'
+          createVector column.label, TNumber, parseNaNs column.data
         when 'enum'
-          Flow.Data.Factor column.label, column.domain
-        when 'uuid', 'string'
-          Flow.Data.Variable column.label, TString
+          domain = column.domain
+          createFactor column.label, TString, ((if index? then domain[index] else undefined) for index in column.data)
         when 'time'
-          Flow.Data.Variable column.label, TDate
-        else
-          Flow.Data.Variable column.label, TObject
+          createVector column.label, TNumber, parseNaNs column.data
+        else # uuid / string / etc.
+          createList column.label, parseNulls column.data
 
-    Record = Flow.Data.Record variables
-    rowCount = (head frameColumns).data.length
-    rows = for i in [0 ... rowCount]
-      row = new Record()
-      for variable, j in variables
-        value = frameColumns[j].data[i]
-        switch variable.type
-          when TNumber, TNumber
-            #TODO handle +-Inf
-            row[variable.label] = if value is 'NaN' then null else value
-          else
-            row[variable.label] = value
-      row
-    
-    Flow.Data.Table
-      label: 'data'
+    createDataframe 'data', vectors, (sequence (head frameColumns).data.length), null,
       description: 'A partial list of rows in the H2O Frame.'
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getFrame #{stringify frameKey}"
+      origin: "getFrame #{stringify frameKey}"
 
   extendFrame = (frameKey, frame) ->
     inspections =
@@ -707,7 +685,7 @@ H2O.Routines = (_) ->
         createVector 'count', TNumber, countData
       ]
 
-      window.plot.createFrame 'distribution', vectors, (sequence binCount), null, 
+      createDataframe 'distribution', vectors, (sequence binCount), null, 
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: """
@@ -735,7 +713,7 @@ H2O.Routines = (_) ->
         createVector 'percent', TNumber, percentData
       ]
 
-      window.plot.createFrame 'characteristics', vectors, (sequence characteristicData.length), null,
+      createDataframe 'characteristics', vectors, (sequence characteristicData.length), null,
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
@@ -761,7 +739,7 @@ H2O.Routines = (_) ->
         createVector 'max', TNumber, [ maximum ]
       ]
 
-      window.plot.createFrame 'summary', vectors, (sequence 1), null, 
+      createDataframe 'summary', vectors, (sequence 1), null, 
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: """
