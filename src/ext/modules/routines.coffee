@@ -628,28 +628,14 @@ H2O.Routines = (_) ->
     rowCount = frame.rows
 
     inspectPercentiles = ->
-      percentiles = frame.default_pctiles
-      percentileValues = column.pctiles
-
-      variables = [
-        Flow.Data.Variable 'percentile', TNumber
-        Flow.Data.Variable 'value', TNumber #TODO depends on type of variable?
+      vectors = [
+        createVector 'percentile', TNumber, frame.default_pctiles
+        createVector 'value', TNumber, column.pctiles
       ]
 
-      Record = Flow.Data.Record variables
-      rows = for percentile, i in percentiles
-        row = new Record()
-        row.percentile = percentile
-        row.value = percentileValues[i]
-        row
-
-      Flow.Data.Table
-        label: 'percentiles'
+      createDataframe 'percentiles', vectors, (sequence frame.default_pctiles.length), null, 
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectDistribution = ->
       minBinCount = 32
@@ -790,6 +776,7 @@ H2O.Routines = (_) ->
     if column.type is 'int' or column.type is 'real'
       inspections.summary = inspectSummary
       inspections.distribution = inspectDistribution
+      inspections.percentiles = inspectPercentiles
     else
       inspections.domain = inspectDomain
 
