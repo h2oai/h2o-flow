@@ -28,6 +28,10 @@ _assistance =
     description: 'Make a prediction'
     icon: 'bolt'
 
+createArrays = (length) ->
+  for i in [0 ... length]
+    new Array length
+
 parseNaNs = (source) ->
   target = new Array source.length
   for element, i in source
@@ -756,35 +760,30 @@ H2O.Routines = (_) ->
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
-      variables = [
-        Flow.Data.Variable 'label', TString
-        countVariable = Flow.Data.Variable 'count', TNumber
-        Flow.Data.Variable 'percent', TNumber, [ 0, 100 ]
+      [ labels, counts, percents ] = createArrays sortedLevels.length
+
+      for level, i in sortedLevels
+        labels[i] = column.domain[level.index]
+        counts[i] = level.count
+        percents[i] = 100 * level.count / rowCount
+
+      vectors = [
+        createFactor 'label', TString, labels
+        createVector 'count', TNumber, counts
+        createVector 'percent', TNumber, percents
       ]
 
-      Record = Flow.Data.Record variables
-      rows = for level in sortedLevels
-        row = new Record()
-        row.label = column.domain[level.index]
-        row.count = countVariable.read level.count
-        row.percent = 100 * level.count / rowCount
-        row
-      
-      Flow.Data.Table
-        label: 'domain'
+      createDataframe 'domain', vectors, (sequence sortedLevels.length), null,
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-          plot: """
-          plot
-            title: 'Domain for #{frameKey} : #{column.label}'
-            type: 'interval'
-            data: inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-            x: 'count'
-            y: 'label'
-          """
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        plot: """
+        plot
+          title: 'Domain for #{frameKey} : #{column.label}'
+          type: 'interval'
+          data: inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
+          x: 'count'
+          y: 'label'
+        """
 
     inspections =
       characteristics: inspectCharacteristics
