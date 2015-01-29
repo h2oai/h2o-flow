@@ -210,6 +210,13 @@ H2O.Routines = (_) ->
     else
       go new Flow.Error "Cannot plot(): missing 'data'."
 
+  _plotInput1 = (f, go) ->
+    f (error, frame) ->
+      if error
+        go new Flow.Error 'Error evaluating data for plot().', error
+      else
+        go null, frame
+
   plot = (config) ->
     configKeys = keys config
     if (configKeys.length is 1) and 'data' is head configKeys
@@ -230,10 +237,9 @@ H2O.Routines = (_) ->
 
   plot1 = (f) ->
     if _isFuture f
-      throw new Error 'TODO Display plot input'
-      #XXX
-      #renderable _plotInput, config, (config, go) ->
-      #  go null, H2O.PlotInput _, config
+      _fork proceed, H2O.PlotInput, f
+      #renderable _plotInput1, f, (frame, go) ->
+      #  go null, H2O.PlotInput _, frame
     else
       renderable _plot1, (f window.plot), (plot, go) ->
         go null, H2O.PlotOutput _, plot.element

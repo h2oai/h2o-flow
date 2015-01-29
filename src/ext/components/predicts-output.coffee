@@ -50,16 +50,16 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
     _.insertAndExecuteCell 'cs', "getPredictions #{stringify selectedKeys}"
 
   plotPredictions = ->
-    _.insertAndExecuteCell 'cs', _predictionsTable.meta.plot
+    _.insertAndExecuteCell 'cs', _predictionsTable.metadata.plot
 
   plotScores = ->
-    _.insertAndExecuteCell 'cs', _scoresTable.meta.plot
+    _.insertAndExecuteCell 'cs', _scoresTable.metadata.plot
 
   plotMetrics = ->
-    _.insertAndExecuteCell 'cs', _metricsTable.meta.plot
+    _.insertAndExecuteCell 'cs', _metricsTable.metadata.plot
 
   inspectAll = ->
-    _.insertAndExecuteCell 'cs', "inspect #{_predictionsTable.meta.origin}"
+    _.insertAndExecuteCell 'cs', "inspect #{_predictionsTable.metadata.origin}"
 
   predict = ->
     _.insertAndExecuteCell 'cs', 'predict'
