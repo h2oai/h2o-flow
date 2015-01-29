@@ -1,3 +1,9 @@
+
+
+createVector = window.plot.createVector
+createFactor = window.plot.createFactor
+createList = window.plot.createList
+
 _assistance =
   importFiles:
     description: 'Import file(s) into H<sub>2</sub>O'
@@ -23,7 +29,7 @@ _assistance =
 
 parseNaNs = (source) ->
   target = new Array source.length
-  for element in source
+  for element, i in source
     target[i] = if element is 'NaN' then undefined else element
   target
 
@@ -32,6 +38,16 @@ repeatValues = (count, value) ->
   for i in [0 ... count]
     target[i] = value
   target
+
+concatArrays = (arrays) ->
+  switch arrays.length
+    when 0
+      []
+    when 1
+      head arrays
+    else
+      a = head arrays
+      a.concat.apply a, rest arrays
 
 computeTruePositiveRate = (cm) ->
   [[tn, fp], [fn, tp]] = cm
@@ -244,13 +260,13 @@ H2O.Routines = (_) ->
         if value? then value else undefined
       switch parameter.type
         when 'enum', 'Frame', 'string', 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-          window.plot.createFactor parameter.label, TString, data
+          createFactor parameter.label, TString, data
         when 'byte', 'short', 'int', 'long', 'float', 'double'
-          window.plot.createVector parameter.label, TNumber, data
+          createVector parameter.label, TNumber, data
         when 'boolean'
-          window.plot.createList parameter.label, data, (a) -> if a then 'true' else 'false'
+          createList parameter.label, data, (a) -> if a then 'true' else 'false'
         else
-          window.plot.createList parameter.label, data
+          createList parameter.label, data
 
     modelKeys = (model.key for model in models)
 
@@ -278,9 +294,9 @@ H2O.Routines = (_) ->
 
       switch type
         when TString
-          window.plot.createFactor name, type, data
+          createFactor name, type, data
         when TObject
-          window.plot.createList name, data, stringify
+          createList name, data, stringify
 
     window.plot.createFrame 'parameters', vectors, (sequence parameters.length), null,
       description: "Parameters for model '#{model.key.name}'" #TODO frame key
@@ -292,9 +308,9 @@ H2O.Routines = (_) ->
     size = output.mse_train.length
 
     vectors = [
-      window.plot.createVector 'tree', TNumber, (sequence size)
-      window.plot.createVector 'mse_train', TNumber, parseNaNs output.mse_train
-      window.plot.createVector 'mse_valid', TNumber, parseNaNs output.mse_valid
+      createVector 'tree', TNumber, (sequence size)
+      createVector 'mse_train', TNumber, parseNaNs output.mse_train
+      createVector 'mse_valid', TNumber, parseNaNs output.mse_valid
     ]
 
     window.plot.createFrame 'output', vectors, (sequence size), null,
@@ -305,12 +321,12 @@ H2O.Routines = (_) ->
     output = model.output
 
     vectors = [
-      window.plot.createVector 'avg_between_ss', TNumber, [ output.avg_between_ss ]
-      window.plot.createVector 'avg_ss', TNumber, [ output.avg_ss ]
-      window.plot.createVector 'avg_within_ss', TNumber, [ output.avg_within_ss ]
-      window.plot.createVector 'categorical_column_count', TNumber, [ output.categorical_column_count ]
-      window.plot.createVector 'iterations', TNumber, [ output.iterations ]
-      window.plot.createFactor 'model_category', TString, [ output.model_category ]
+      createVector 'avg_between_ss', TNumber, [ output.avg_between_ss ]
+      createVector 'avg_ss', TNumber, [ output.avg_ss ]
+      createVector 'avg_within_ss', TNumber, [ output.avg_within_ss ]
+      createVector 'categorical_column_count', TNumber, [ output.categorical_column_count ]
+      createVector 'iterations', TNumber, [ output.iterations ]
+      createFactor 'model_category', TString, [ output.model_category ]
 
     ]
 
@@ -322,9 +338,9 @@ H2O.Routines = (_) ->
     output = model.output
 
     vectors = [
-      window.plot.createFactor 'cluster', TString, output.centers.rowHeaders
-      window.plot.createVector 'size', TNumber, output.size
-      window.plot.createVector 'within_mse', TNumber, output.within_mse
+      createFactor 'cluster', TString, output.centers.rowHeaders
+      createVector 'size', TNumber, output.size
+      createVector 'within_mse', TNumber, output.within_mse
     ]
 
     window.plot.createFrame 'cluster_means', vectors, (sequence output.size.length), null, 
@@ -337,9 +353,9 @@ H2O.Routines = (_) ->
     vectors = for header, i in output.centers.colHeaders
       data = for row in output.centers_raw
         row[i]
-      window.plot.createVector header, TNumber, data
+      createVector header, TNumber, data
 
-    vectors.unshift window.plot.createFactor 'cluster', TString, output.centers.rowHeaders
+    vectors.unshift createFactor 'cluster', TString, output.centers.rowHeaders
 
     window.plot.createFrame 'clusters', vectors, (sequence output.centers_raw.length), null, 
       description: "Clusters for k-means model '#{model.key.name}'"
@@ -399,11 +415,11 @@ H2O.Routines = (_) ->
     { frame, model, predictions } = prediction
 
     vectors = [
-      window.plot.createFactor 'key', TString, [ model.name ]
-      window.plot.createFactor 'frame', TString, [ frame.name ]
-      window.plot.createFactor 'model_category', TString, [ prediction.model_category ]
-      window.plot.createVector 'duration_in_ms', TString, [ prediction.duration_in_ms ]
-      window.plot.createVector 'scoring_time', TString, [ prediction.scoring_time ]
+      createFactor 'key', TString, [ model.name ]
+      createFactor 'frame', TString, [ frame.name ]
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'duration_in_ms', TString, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TString, [ prediction.scoring_time ]
     ]
 
     window.plot.createFrame 'prediction', vectors, (sequence 1), null,
@@ -414,14 +430,14 @@ H2O.Routines = (_) ->
     { frame, model, auc } = prediction
 
     vectors = [
-      window.plot.createFactor 'key', TString, [ model.name ]
-      window.plot.createFactor 'frame', TString, [ frame.name ]
-      window.plot.createFactor 'model_category', TString, [ prediction.model_category ]
-      window.plot.createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
-      window.plot.createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
-      window.plot.createVector 'AUC', TNumber, [ auc.AUC ]
-      window.plot.createVector 'Gini', TNumber, [ auc.Gini ]
-      window.plot.createFactor 'threshold_criterion', TString, [ auc.threshold_criterion ]
+      createFactor 'key', TString, [ model.name ]
+      createFactor 'frame', TString, [ frame.name ]
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
+      createVector 'AUC', TNumber, [ auc.AUC ]
+      createVector 'Gini', TNumber, [ auc.Gini ]
+      createFactor 'threshold_criterion', TString, [ auc.threshold_criterion ]
     ]
 
     window.plot.createFrame 'prediction', vectors, (sequence 1), null,
@@ -430,27 +446,27 @@ H2O.Routines = (_) ->
 
   inspectBinomialMetrics = (opts, predictions) -> ->
     vectors = [
-      window.plot.createFactor 'criteria', TString, auc.threshold_criteria
-      window.plot.createVector 'threshold', TNumber, parseNaNs auc.threshold_for_criteria
-      window.plot.createVector 'F1', TNumber, parseNaNs auc.F1_for_criteria
-      window.plot.createVector 'F2', TNumber, parseNaNs auc.F2_for_criteria
-      window.plot.createVector 'F0point5', TNumber, parseNaNs auc.F0point5_for_criteria
-      window.plot.createVector 'accuracy', TNumber, parseNaNs auc.accuracy_for_criteria
-      window.plot.createVector 'error', TNumber, parseNaNs auc.error_for_criteria
-      window.plot.createVector 'precision', TNumber, parseNaNs auc.precision_for_criteria
-      window.plot.createVector 'recall', TNumber, parseNaNs auc.recall_for_criteria
-      window.plot.createVector 'specificity', TNumber, parseNaNs auc.specificity_for_criteria
-      window.plot.createVector 'mcc', TNumber, parseNaNs auc.max_per_class_error_for_criteria
-      window.plot.createVector 'max_per_class_error', TNumber, parseNaNs auc.max_per_class_error
-      window.plot.createList 'confusion_matrix', (cm = auc.confusion_matrix_for_criteria), formatConfusionMatrix
-      window.plot.createVector 'TPR', TNumber, (map cm, computeTruePositiveRate)
-      window.plot.createVector 'FPR', TNumber, (map cm, computeFalsePositiveRate)
-      window.plot.createFactor 'key', TString, repeatValues auc.threshold_criteria.length, model.name + ' on ' + frame.name
-      window.plot.createFactor 'model', TString, repeatValues auc.threshold_criteria.length, model.name
-      window.plot.createFactor 'frame', TString, repeatValues auc.threshold_criteria.length, frame.name
+      createFactor 'criteria', TString, concatArrays (prediction.auc.threshold_criteria for prediction in predictions)
+      createVector 'threshold', TNumber, concatArrays (parseNaNs prediction.auc.threshold_for_criteria for prediction in predictions)
+      createVector 'F1', TNumber, concatArrays (parseNaNs prediction.auc.F1_for_criteria for prediction in predictions)
+      createVector 'F2', TNumber, concatArrays (parseNaNs prediction.auc.F2_for_criteria for prediction in predictions)
+      createVector 'F0point5', TNumber, concatArrays (parseNaNs prediction.auc.F0point5_for_criteria for prediction in predictions)
+      createVector 'accuracy', TNumber, concatArrays (parseNaNs prediction.auc.accuracy_for_criteria for prediction in predictions)
+      createVector 'error', TNumber, concatArrays (parseNaNs prediction.auc.error_for_criteria for prediction in predictions)
+      createVector 'precision', TNumber, concatArrays (parseNaNs prediction.auc.precision_for_criteria for prediction in predictions)
+      createVector 'recall', TNumber, concatArrays (parseNaNs prediction.auc.recall_for_criteria for prediction in predictions)
+      createVector 'specificity', TNumber, concatArrays (parseNaNs prediction.auc.specificity_for_criteria for prediction in predictions)
+      createVector 'mcc', TNumber, concatArrays (parseNaNs prediction.auc.max_per_class_error_for_criteria for prediction in predictions)
+      createVector 'max_per_class_error', TNumber, concatArrays (parseNaNs prediction.auc.max_per_class_error for prediction in predictions)
+      createList 'confusion_matrix', (concatArrays (prediction.auc.confusion_matrix_for_criteria for prediction in predictions)), formatConfusionMatrix
+      createVector 'TPR', TNumber, concatArrays (map prediction.auc.confusion_matrix_for_criteria, computeTruePositiveRate for prediction in predictions)
+      createVector 'FPR', TNumber, concatArrays (map prediction.auc.confusion_matrix_for_criteria, computeFalsePositiveRate for prediction in predictions)
+      createFactor 'key', TString, concatArrays (repeatValues prediction.auc.threshold_criteria.length, prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
+      createFactor 'model', TString, concatArrays (repeatValues prediction.auc.threshold_criteria.length, prediction.model.name for prediction in predictions)
+      createFactor 'frame', TString, concatArrays (repeatValues prediction.auc.threshold_criteria.length, prediction.frame.name for prediction in predictions)
     ]
 
-    window.plot.createFrame 'metrics', vectors, (sequence auc.threshold_criteria.length), null,
+    window.plot.createFrame 'metrics', vectors, (sequence (head vectors).count()), null,
       description: "Metrics for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
       plot: """
@@ -460,14 +476,14 @@ H2O.Routines = (_) ->
 
   inspectBinomialPredictions = (opts, predictions) -> ->
     vectors = [
-      window.plot.createFactor 'key', TString, (prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
-      window.plot.createFactor 'frame', TString, (prediction.frame.name for prediction in predictions)
-      window.plot.createFactor 'model_category', TString, (prediction.model_category for prediction in predictions)
-      window.plot.createVector 'duration_in_ms', TNumber, (prediction.duration_in_ms for prediction in predictions)
-      window.plot.createVector 'scoring_time', TNumber, (prediction.scoring_time for prediction in predictions)
-      #window.plot.createVector 'AUC', TNumber, (prediction.auc.AUC for prediction in predictions)
-      #window.plot.createVector 'Gini', TNumber, (prediction.auc.Gini for prediction in predictions)
-      #window.plot.createFactor 'threshold_criterion', TString, (prediction.auc.threshold_criterion for prediction in predictions)
+      createFactor 'key', TString, (prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
+      createFactor 'frame', TString, (prediction.frame.name for prediction in predictions)
+      createFactor 'model_category', TString, (prediction.model_category for prediction in predictions)
+      createVector 'duration_in_ms', TNumber, (prediction.duration_in_ms for prediction in predictions)
+      createVector 'scoring_time', TNumber, (prediction.scoring_time for prediction in predictions)
+      #createVector 'AUC', TNumber, (prediction.auc.AUC for prediction in predictions)
+      #createVector 'Gini', TNumber, (prediction.auc.Gini for prediction in predictions)
+      #createFactor 'threshold_criterion', TString, (prediction.auc.threshold_criterion for prediction in predictions)
     ]
 
     window.plot.createFrame 'predictions', vectors, (sequence predictions.length), null,
@@ -491,65 +507,34 @@ H2O.Routines = (_) ->
         #metrics: inspectBinomialMetrics opts, predictions
         #scores: inspectBinomialScores opts, predictions
 
-
   inspectBinomialScores = (opts, predictions) -> ->
-
-    variables = [
-      Flow.Data.Variable 'thresholds', TNumber
-      Flow.Data.Variable 'F1', TNumber
-      Flow.Data.Variable 'F2', TNumber
-      Flow.Data.Variable 'F0point5', TNumber
-      Flow.Data.Variable 'accuracy', TNumber
-      Flow.Data.Variable 'errorr', TNumber
-      Flow.Data.Variable 'precision', TNumber
-      Flow.Data.Variable 'recall', TNumber
-      Flow.Data.Variable 'specificity', TNumber
-      Flow.Data.Variable 'mcc', TNumber
-      Flow.Data.Variable 'max_per_class_error', TNumber
-      Flow.Data.Variable 'confusion_matrices', TObject, null, formatConfusionMatrix
-      Flow.Data.Variable 'TPR', TNumber
-      Flow.Data.Variable 'FPR', TNumber
-      Flow.Data.Variable 'key', TString
-      Flow.Data.Variable 'model', TString
-      Flow.Data.Variable 'frame', TString
+    vectors = [
+      createVector 'thresholds', TNumber, concatArrays (parseNaNs prediction.auc.thresholds for prediction in predictions)
+      createVector 'F1', TNumber, concatArrays (parseNaNs prediction.auc.F1 for prediction in predictions)
+      createVector 'F2', TNumber, concatArrays (parseNaNs prediction.auc.F2 for prediction in predictions)
+      createVector 'F0point5', TNumber, concatArrays (parseNaNs prediction.auc.F0point5 for prediction in predictions)
+      createVector 'accuracy', TNumber, concatArrays (parseNaNs prediction.auc.accuracy for prediction in predictions)
+      createVector 'errorr', TNumber, concatArrays (parseNaNs prediction.auc.errorr for prediction in predictions)
+      createVector 'precision', TNumber, concatArrays (parseNaNs prediction.auc.precision for prediction in predictions)
+      createVector 'recall', TNumber, concatArrays (parseNaNs prediction.auc.recall for prediction in predictions)
+      createVector 'specificity', TNumber, concatArrays (parseNaNs prediction.auc.specificity for prediction in predictions)
+      createVector 'mcc', TNumber, concatArrays (parseNaNs prediction.auc.mcc for prediction in predictions)
+      createVector 'max_per_class_error', TNumber, concatArrays (parseNaNs prediction.auc.max_per_class_error for prediction in predictions)
+      createList 'confusion_matrices', (concatArrays (prediction.auc.confusion_matrices for prediction in predictions)), formatConfusionMatrix
+      createVector 'TPR', TNumber, concatArrays (map prediction.auc.confusion_matrices, computeTruePositiveRate for prediction in predictions)
+      createVector 'FPR', TNumber, concatArrays (map prediction.auc.confusion_matrices, computeFalsePositiveRate for prediction in predictions)
+      createFactor 'key', TString, concatArrays (repeatValues prediction.auc.thresholds.length, prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
+      createFactor 'model', TString, concatArrays (repeatValues prediction.auc.thresholds.length, prediction.model.name for prediction in predictions)
+      createFactor 'frame', TString, concatArrays (repeatValues prediction.auc.thresholds.length, prediction.frame.name for prediction in predictions)
     ]
 
-    Record = Flow.Data.Record variables
-    rows = []
-    for prediction in predictions
-      { frame, model, auc } = prediction
-      for i in [ 0 ... auc.thresholds.length ]
-        rows.push new Record(
-          read auc.thresholds[i]
-          read auc.F1[i]
-          read auc.F2[i]
-          read auc.F0point5[i]
-          read auc.accuracy[i]
-          read auc.errorr[i]
-          read auc.precision[i]
-          read auc.recall[i]
-          read auc.specificity[i]
-          read auc.mcc[i]
-          read auc.max_per_class_error[i]
-          cm = auc.confusion_matrices[i]
-          computeTruePositiveRate cm
-          computeFalsePositiveRate cm
-          model.name + ' on ' + frame.name
-          model.name
-          frame.name
-        )
-
-    Flow.Data.Table
-      label: 'scores'
+    window.plot.createFrame 'scores', vectors, (sequence (head vectors).count()), null, 
       description: "Scores for the selected predictions"
-      variables: variables
-      rows: rows
-      meta:
-        origin: formulateGetPredictionsOrigin opts
-        plot: """
-        plot
-          data: inspect 'scores', #{formulateGetPredictionsOrigin opts}
-        """
+      origin: formulateGetPredictionsOrigin opts
+      plot: """
+      plot
+        data: inspect 'scores', #{formulateGetPredictionsOrigin opts}
+      """
     
   extendPrediction = (modelKey, frameKey, prediction) ->
     render_ prediction, -> H2O.PredictOutput _, prediction
@@ -596,9 +581,9 @@ H2O.Routines = (_) ->
 
       switch type
         when TString
-          window.plot.createFactor name, type, data
+          createFactor name, type, data
         when TNumber
-          window.plot.createVector name, type, data
+          createVector name, type, data
 
     window.plot.createFrame tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
@@ -717,9 +702,9 @@ H2O.Routines = (_) ->
           countData[i] = count
 
       vectors = [
-        window.plot.createFactor 'interval', TString, intervalData
-        window.plot.createVector 'width', TNumber, widthData
-        window.plot.createVector 'count', TNumber, countData
+        createFactor 'interval', TString, intervalData
+        createVector 'width', TNumber, widthData
+        createVector 'count', TNumber, countData
       ]
 
       window.plot.createFrame 'distribution', vectors, (sequence binCount), null, 
@@ -745,9 +730,9 @@ H2O.Routines = (_) ->
         100 * count / rowCount
 
       vectors = [
-        window.plot.createFactor 'characteristic', TString, characteristicData
-        window.plot.createVector 'count', TNumber, countData
-        window.plot.createVector 'percent', TNumber, percentData
+        createFactor 'characteristic', TString, characteristicData
+        createVector 'count', TNumber, countData
+        createVector 'percent', TNumber, percentData
       ]
 
       window.plot.createFrame 'characteristics', vectors, (sequence characteristicData.length), null,
@@ -767,13 +752,13 @@ H2O.Routines = (_) ->
       maximum = head column.maxs
 
       vectors = [
-        window.plot.createFactor 'column', TString, [ columnName ]
-        window.plot.createVector 'mean', TNumber, [ mean ]
-        window.plot.createVector 'q1', TNumber, [ q1 ]
-        window.plot.createVector 'q2', TNumber, [ q2 ]
-        window.plot.createVector 'q3', TNumber, [ q3 ]
-        window.plot.createVector 'min', TNumber, [ minimum ]
-        window.plot.createVector 'max', TNumber, [ maximum ]
+        createFactor 'column', TString, [ columnName ]
+        createVector 'mean', TNumber, [ mean ]
+        createVector 'q1', TNumber, [ q1 ]
+        createVector 'q2', TNumber, [ q2 ]
+        createVector 'q3', TNumber, [ q3 ]
+        createVector 'min', TNumber, [ minimum ]
+        createVector 'max', TNumber, [ maximum ]
       ]
 
       window.plot.createFrame 'summary', vectors, (sequence 1), null, 
@@ -806,7 +791,7 @@ H2O.Routines = (_) ->
         row.count = countVariable.read level.count
         row.percent = 100 * level.count / rowCount
         row
-
+      
       Flow.Data.Table
         label: 'domain'
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."

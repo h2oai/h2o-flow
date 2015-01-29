@@ -1,7 +1,7 @@
 H2O.PredictOutput = (_, prediction) ->
   { frame, model } = prediction
 
-  _predictionTable = _.inspect 'prediction', prediction
+  #_predictionTable = _.inspect 'prediction', prediction
 
   inspect = ->
     #XXX get this from prediction table
@@ -10,7 +10,7 @@ H2O.PredictOutput = (_, prediction) ->
   viewPredictionFrame = ->
     _.insertAndExecuteCell 'cs', "getFrame #{stringify prediction.predictions.key.name}"
 
-  predictionTable: _predictionTable
+  #predictionTable: _predictionTable
   inspect: inspect
   viewPredictionFrame: viewPredictionFrame
   template: 'flow-predict-output'
