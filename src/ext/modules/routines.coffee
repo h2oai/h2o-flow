@@ -28,6 +28,39 @@ _assistance =
     description: 'Make a prediction'
     icon: 'bolt'
 
+
+parseInts = (source) ->
+  for str in source
+    if isNaN value = parseInt str, 10
+      undefined
+    else
+      value
+
+parseFloats = (source) ->
+  for str in source
+    if isNaN value = parseFloat str
+      undefined
+    else
+      value
+
+toFrame = (table, metadata) ->
+  size = if table.data.length > 0 then (head table.data).length else 0
+
+  #TODO handle format strings and description
+  vectors = for column, i in table.columns
+    data = table.data[i]
+    switch column.type
+      when 'byte', 'short', 'int', 'long'
+        createVector column.name, TNumber, parseInts data
+      when 'float', 'double'
+        createVector column.name, TNumber, parseFloats data
+      when 'string'
+        createFactor column.name, TString, data
+      else
+        createList column.name, data
+
+  createDataframe table.name, vectors, (sequence size), null, metadata
+
 createArrays = (length) ->
   for i in [0 ... length]
     new Array length
@@ -296,31 +329,22 @@ H2O.Routines = (_) ->
       description: "Output for k-means model '#{model.key.name}'"
       origin: "getModel #{stringify model.key.name}"
 
-  inspectKMeansModelClusterMeans = (model) -> ->
+  inspectKmeansModelClusters = (model) -> ->
     output = model.output
 
     vectors = [
-      createFactor 'cluster', TString, output.centers.rowHeaders
+      createFactor 'cluster', TString, head output.centers.data
       createVector 'size', TNumber, output.size
       createVector 'within_mse', TNumber, output.within_mse
     ]
 
-    createDataframe 'cluster_means', vectors, (sequence output.size.length), null, 
-      description: "Cluster means for k-means model '#{model.key.name}'"
+    createDataframe 'clusters', vectors, (sequence output.size.length), null, 
+      description: "Clusters for k-means model '#{model.key.name}'"
       origin: "getModel #{stringify model.key.name}"
 
-  inspectKmeansModelClusters = (model) -> ->
-    output = model.output
-
-    vectors = for header, i in output.centers.colHeaders
-      data = for row in output.centers_raw
-        row[i]
-      createVector header, TNumber, data
-
-    vectors.unshift createFactor 'cluster', TString, output.centers.rowHeaders
-
-    createDataframe 'clusters', vectors, (sequence output.centers_raw.length), null, 
-      description: "Clusters for k-means model '#{model.key.name}'"
+  inspectKmeansModelClusterMeans = (model) -> ->
+    toFrame model.output.centers, 
+      description: "Cluster means for k-means model '#{model.key.name}'"
       origin: "getModel #{stringify model.key.name}"
 
   extendKMeansModel = (model) ->
@@ -328,7 +352,7 @@ H2O.Routines = (_) ->
       parameters: inspectModelParameters model
       output: inspectKMeansModelOutput model
       clusters: inspectKmeansModelClusters model
-      cluster_means: inspectKMeansModelClusterMeans model
+      'Cluster means': inspectKmeansModelClusterMeans model
 
   extendDeepLearningModel = (model) ->
     inspect_ model,
