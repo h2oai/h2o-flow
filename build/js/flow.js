@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.35';
+    FLOW_VERSION = '0.2.36';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -3224,712 +3224,6 @@
             }
         }
     });
-}.call(this));
-(function () {
-    var computeDomain, createAxis, createLinearScale, createOrdinalBandScale, plot, renderD3BarChart, renderD3StackedBar, stack;
-    computeDomain = function (table, variableName) {
-        var level, levels, row, value, _i, _len, _ref;
-        levels = {};
-        _ref = table.rows;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            row = _ref[_i];
-            value = row[variableName];
-            if (!(level = levels[value])) {
-                levels[value] = true;
-            }
-        }
-        return lodash.keys(levels);
-    };
-    createOrdinalBandScale = function (domain, range) {
-        return d3.scale.ordinal().domain(domain).rangeRoundBands(range, 0.1);
-    };
-    createLinearScale = function (domain, range) {
-        return d3.scale.linear().domain(domain).range(range);
-    };
-    createAxis = function (scale, opts) {
-        var axis;
-        axis = d3.svg.axis().scale(scale);
-        if (opts.orient) {
-            axis.orient(opts.orient);
-        }
-        if (opts.ticks) {
-            axis.ticks(opts.ticks);
-        }
-        return axis;
-    };
-    renderD3StackedBar = function (title, table, attrX1, attrX2, attrColor) {
-        var availableHeight, availableWidth, axisX, bar, d, domainX, el, h4, height, items, label, legend, legendEl, legends, margin, rows, scaleColor, scaleX, schema, svg, svgAxisX, swatch, tooltip, variableColor, variableX1, variableX2, variables, viz, width, _ref;
-        schema = table.schema, variables = table.variables, rows = table.rows;
-        variableX1 = table.schema[attrX1];
-        variableX2 = table.schema[attrX2];
-        variableColor = table.schema[attrColor];
-        domainX = Flow.Data.combineRanges(variableX1.domain, variableX2.domain);
-        availableWidth = 450;
-        availableHeight = 16 + 30;
-        margin = {
-            top: 0,
-            right: 10,
-            bottom: 30,
-            left: 10
-        };
-        width = availableWidth - margin.left - margin.right;
-        height = availableHeight - margin.top - margin.bottom;
-        scaleX = d3.scale.linear().domain(domainX).range([
-            0,
-            width
-        ]);
-        scaleColor = d3.scale.ordinal().domain(variableColor.domain).range(d3.scale.category10().range());
-        axisX = createAxis(scaleX, { orient: 'bottom' });
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        viz = d3.select(svg).attr('class', 'plot').attr('width', availableWidth).attr('height', availableHeight).append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-        svgAxisX = viz.append('g').attr('class', 'axis').attr('transform', 'translate(0,' + height + ')').call(axisX);
-        tooltip = function (d) {
-            var tip, variable, _i, _len;
-            tip = '';
-            for (_i = 0, _len = variables.length; _i < _len; _i++) {
-                variable = variables[_i];
-                tip += '' + variable.label + ': ' + (variable.type === Flow.TFactor ? variable.domain[d[variable.label]] : d[variable.label]) + '\n';
-            }
-            return tip.trim();
-        };
-        bar = viz.selectAll('.bar').data(rows).enter().append('rect').attr('class', 'bar').attr('x', function (d) {
-            return scaleX(d[attrX1]);
-        }).attr('width', function (d) {
-            return scaleX(d[attrX2] - d[attrX1]);
-        }).attr('height', height).style('fill', function (d) {
-            return scaleColor(variableColor.domain[d[attrColor]]);
-        }).append('title').text(tooltip);
-        _ref = Flow.HTML.template('.flow-legend', 'span.flow-legend-item', '+span.flow-legend-swatch style=\'background:{0}\'', '=span.flow-legend-label'), legends = _ref[0], legend = _ref[1], swatch = _ref[2], label = _ref[3];
-        items = function () {
-            var _i, _len, _ref1, _results;
-            _ref1 = variableColor.domain;
-            _results = [];
-            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                d = _ref1[_i];
-                _results.push(legend([
-                    swatch('', scaleColor(d)),
-                    label(d)
-                ]));
-            }
-            return _results;
-        }();
-        legendEl = Flow.HTML.render('div', legends(items));
-        el = document.createElement('div');
-        if (title) {
-            h4 = Flow.HTML.template('=h4')[0];
-            el.appendChild(Flow.HTML.render('div', h4(lodash.escape(title))));
-        }
-        el.appendChild(svg);
-        el.appendChild(legendEl);
-        return el;
-    };
-    renderD3BarChart = function (title, table, attrX, attrY) {
-        var availableHeight, availableWidth, axisX, axisY, domainX, domainY, el, h4, height, heightY, interpretationX, interpretationXY, interpretationY, margin, positionX, positionY, row, rows, scaleX, scaleY, schema, svg, svgAxisX, svgAxisY, variableX, variableY, variables, viz, width, widthX;
-        schema = table.schema, variables = table.variables, rows = table.rows;
-        variableX = schema[attrX];
-        variableY = schema[attrY];
-        interpretationX = Flow.Data.computevariableInterpretation(variableX.type);
-        interpretationY = Flow.Data.computevariableInterpretation(variableY.type);
-        interpretationXY = interpretationX + interpretationY;
-        domainX = function () {
-            var _i, _len, _results;
-            if (interpretationX === 'c') {
-                return Flow.Data.includeZeroInRange(variableX.domain);
-            } else {
-                _results = [];
-                for (_i = 0, _len = rows.length; _i < _len; _i++) {
-                    row = rows[_i];
-                    _results.push(variableX.domain[row[attrX]]);
-                }
-                return _results;
-            }
-        }();
-        domainY = function () {
-            var _i, _len, _results;
-            if (interpretationY === 'c') {
-                return Flow.Data.includeZeroInRange(variableY.domain);
-            } else {
-                _results = [];
-                for (_i = 0, _len = rows.length; _i < _len; _i++) {
-                    row = rows[_i];
-                    _results.push(variableY.domain[row[attrY]]);
-                }
-                return _results;
-            }
-        }();
-        availableWidth = interpretationX === 'c' ? 500 : domainX.length * 20;
-        availableHeight = interpretationY === 'c' ? 500 : domainY.length * 20;
-        margin = {
-            top: 20,
-            right: 20,
-            bottom: 30,
-            left: 40
-        };
-        width = availableWidth - margin.left - margin.right;
-        height = availableHeight - margin.top - margin.bottom;
-        scaleX = interpretationX === 'd' ? createOrdinalBandScale(domainX, [
-            0,
-            width
-        ]) : createLinearScale(domainX, [
-            0,
-            width
-        ]);
-        scaleY = interpretationY === 'd' ? createOrdinalBandScale(domainY, [
-            0,
-            height
-        ]) : createLinearScale(domainY, [
-            height,
-            0
-        ]);
-        axisX = createAxis(scaleX, { orient: 'bottom' });
-        axisY = createAxis(scaleY, { orient: 'left' });
-        if (interpretationXY === 'dc') {
-            positionX = function (d) {
-                return scaleX(variableX.domain[d[attrX]]);
-            };
-            positionY = function (d) {
-                return scaleY(d[attrY]);
-            };
-            widthX = scaleX.rangeBand();
-            heightY = function (d) {
-                return height - scaleY(d[attrY]);
-            };
-        } else {
-            positionX = function (d) {
-                return scaleX(0);
-            };
-            positionY = function (d) {
-                return scaleY(variableY.domain[d[attrY]]);
-            };
-            widthX = function (d) {
-                return scaleX(d[attrX]);
-            };
-            heightY = scaleY.rangeBand();
-        }
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        viz = d3.select(svg).attr('class', 'plot').attr('width', availableWidth).attr('height', availableHeight).append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-        svgAxisX = viz.append('g').attr('class', 'axis').attr('transform', 'translate(0,' + height + ')').call(axisX);
-        svgAxisY = viz.append('g').attr('class', 'axis').call(axisY);
-        if (false) {
-            svgAxisY.append('text').attr('transform', 'rotate(-90)').attr('y', 6).attr('dy', '.71em').style('text-anchor', 'end').text(variableY.label);
-        }
-        viz.selectAll('.bar').data(rows).enter().append('rect').attr('class', 'bar').attr('x', positionX).attr('width', widthX).attr('y', positionY).attr('height', heightY);
-        el = document.createElement('div');
-        if (title) {
-            h4 = Flow.HTML.template('=h4')[0];
-            el.appendChild(Flow.HTML.render('div', h4(lodash.escape(title))));
-        }
-        el.appendChild(svg);
-        return el;
-    };
-    plot = function (_config, go) {
-        var initialize, renderText, renderUsingVega;
-        renderText = function (config, go) {
-            var grid, h4, p, row, table, tbody, td, tdr, tds, th, thead, thr, ths, tr, trs, value, variable, _ref;
-            _ref = Flow.HTML.template('.grid', '=h4', '=p', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt'), grid = _ref[0], h4 = _ref[1], p = _ref[2], table = _ref[3], thead = _ref[4], tbody = _ref[5], tr = _ref[6], th = _ref[7], thr = _ref[8], td = _ref[9], tdr = _ref[10];
-            ths = function () {
-                var _i, _len, _ref1, _results;
-                _ref1 = config.data.variables;
-                _results = [];
-                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                    variable = _ref1[_i];
-                    switch (variable.type) {
-                    case Flow.TNumber:
-                        _results.push(thr(lodash.escape(variable.label)));
-                        break;
-                    default:
-                        _results.push(th(lodash.escape(variable.label)));
-                    }
-                }
-                return _results;
-            }();
-            trs = function () {
-                var _i, _len, _ref1, _results;
-                _ref1 = config.data.rows;
-                _results = [];
-                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                    row = _ref1[_i];
-                    tds = function () {
-                        var _j, _len1, _ref2, _results1;
-                        _ref2 = config.data.variables;
-                        _results1 = [];
-                        for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
-                            variable = _ref2[_j];
-                            value = row[variable.label];
-                            switch (variable.type) {
-                            case Flow.TFactor:
-                                _results1.push(td(value === null ? '-' : lodash.escape(variable.domain[value])));
-                                break;
-                            case Flow.TNumber:
-                                _results1.push(tdr(value === null ? '-' : value));
-                                break;
-                            case Flow.TArray:
-                                _results1.push(td(value === null ? '-' : value.join(', ')));
-                                break;
-                            case Flow.TObject:
-                                _results1.push(td(value === null ? '-' : variable.format(value)));
-                                break;
-                            default:
-                                _results1.push(td(value === null ? '-' : value));
-                            }
-                        }
-                        return _results1;
-                    }();
-                    _results.push(tr(tds));
-                }
-                return _results;
-            }();
-            return go(null, Flow.HTML.render('div', grid([
-                h4(config.data.label),
-                p(config.data.description),
-                table([
-                    thead(tr(ths)),
-                    tbody(trs)
-                ])
-            ])));
-        };
-        renderUsingVega = function (config, go) {
-            var color, data, domainX, domainY, el, enter, height, mark, scaleTypeX, scaleTypeY, spec, transformX, transformY, type, variableColor, variableX, variableY, width, x, y, _ref, _ref1;
-            width = config.width, height = config.height, type = config.type, data = config.data, x = config.x, y = config.y, color = config.color;
-            if (lodash.isFunction(x)) {
-                _ref = x(), transformX = _ref[0], x = _ref[1];
-                transformX.point = 'data.' + y;
-            }
-            variableX = data.schema[x];
-            if (lodash.isFunction(y)) {
-                _ref1 = y(), transformY = _ref1[0], y = _ref1[1];
-                transformY.point = 'data.' + x;
-            }
-            variableY = data.schema[y];
-            variableColor = data.schema[color];
-            if (!variableX) {
-                return go(new Flow.Error('Invalid \'x\' variable: \'' + x + '\''));
-            }
-            if (!variableY) {
-                return go(new Flow.Error('Invalid \'y\' variable: \'' + y + '\''));
-            }
-            if (color) {
-                if (!variableColor) {
-                    return go(new Flow.Error('Invalid \'color\' variable: \'' + color + '\''));
-                }
-                if (variableColor.type === Flow.TNumber) {
-                    return go(new Flow.Error('Encoding numeric variables into mark color is not supported.'));
-                }
-            }
-            spec = {};
-            scaleTypeX = variableX.type === Flow.TNumber ? 'linear' : 'ordinal';
-            scaleTypeY = variableY.type === Flow.TNumber ? 'linear' : 'ordinal';
-            if (scaleTypeX === 'ordinal') {
-                domainX = computeDomain(data, variableX.label);
-            }
-            if (scaleTypeY === 'ordinal') {
-                domainY = computeDomain(data, variableY.label);
-            }
-            spec.width = width ? width : scaleTypeX === 'linear' ? 250 : 20 * domainX.length;
-            spec.height = height ? height : scaleTypeY === 'linear' ? 250 : 15 * domainY.length;
-            spec.data = [{ name: 'table' }];
-            spec.scales = [
-                {
-                    name: 'x',
-                    type: scaleTypeX,
-                    domain: {
-                        data: 'table',
-                        field: 'data.' + x
-                    },
-                    range: 'width',
-                    nice: true
-                },
-                {
-                    name: 'y',
-                    type: scaleTypeY,
-                    domain: {
-                        data: 'table',
-                        field: 'data.' + y
-                    },
-                    range: 'height',
-                    nice: true
-                }
-            ];
-            if (color) {
-                spec.scales.push({
-                    name: 'color',
-                    type: 'ordinal',
-                    range: 'category20'
-                });
-            }
-            spec.axes = [
-                {
-                    type: 'x',
-                    scale: 'x',
-                    title: x
-                },
-                {
-                    type: 'y',
-                    scale: 'y',
-                    title: y
-                }
-            ];
-            if (type === 'point') {
-                mark = {
-                    type: 'symbol',
-                    from: { data: 'table' },
-                    properties: {
-                        enter: {
-                            x: {
-                                scale: 'x',
-                                field: 'data.' + x
-                            },
-                            y: {
-                                scale: 'y',
-                                field: 'data.' + y
-                            },
-                            stroke: { value: 'steelblue' },
-                            strokeWidth: { value: 1.5 }
-                        }
-                    }
-                };
-            } else if (type === 'line') {
-                if (color) {
-                    mark = {
-                        type: 'group',
-                        from: {
-                            data: 'table',
-                            transform: [{
-                                    type: 'facet',
-                                    keys: ['data.' + color]
-                                }]
-                        },
-                        marks: [{
-                                type: 'line',
-                                properties: {
-                                    enter: {
-                                        x: {
-                                            scale: 'x',
-                                            field: 'data.' + x
-                                        },
-                                        y: {
-                                            scale: 'y',
-                                            field: 'data.' + y
-                                        },
-                                        stroke: {
-                                            scale: 'color',
-                                            field: 'data.' + color
-                                        },
-                                        strokeWidth: { value: 1.5 }
-                                    }
-                                }
-                            }]
-                    };
-                } else {
-                    mark = {
-                        type: 'line',
-                        from: { data: 'table' },
-                        properties: {
-                            enter: {
-                                x: {
-                                    scale: 'x',
-                                    field: 'data.' + x
-                                },
-                                y: {
-                                    scale: 'y',
-                                    field: 'data.' + y
-                                },
-                                stroke: { value: 'steelblue' },
-                                strokeWidth: { value: 1.5 }
-                            }
-                        }
-                    };
-                }
-            } else if (type === 'area') {
-                if (scaleTypeX === 'ordinal' && scaleTypeY === 'linear') {
-                    enter = {
-                        x: {
-                            scale: 'x',
-                            field: 'data.' + x
-                        },
-                        y: {
-                            scale: 'y',
-                            field: 'data.' + y
-                        },
-                        y2: {
-                            scale: 'y',
-                            value: 0
-                        },
-                        fill: { value: 'steelblue' }
-                    };
-                } else if (scaleTypeX === 'linear' && scaleTypeY === 'ordinal') {
-                    enter = {
-                        x: {
-                            scale: 'x',
-                            field: 'data.' + x
-                        },
-                        x2: {
-                            scale: 'x',
-                            value: 0
-                        },
-                        y: {
-                            scale: 'y',
-                            field: 'data.' + y
-                        },
-                        fill: { value: 'steelblue' }
-                    };
-                } else if (scaleTypeX === 'linear' && scaleTypeY === 'linear') {
-                    enter = {
-                        x: {
-                            scale: 'x',
-                            field: 'data.' + x
-                        },
-                        y: {
-                            scale: 'y',
-                            field: 'data.' + y
-                        },
-                        y2: {
-                            scale: 'y',
-                            value: 0
-                        },
-                        fill: { value: 'steelblue' }
-                    };
-                } else {
-                    return go(new Flow.Error('Not implemented'));
-                }
-                mark = {
-                    type: 'area',
-                    from: { data: 'table' },
-                    properties: { enter: enter }
-                };
-            } else if (type === 'interval') {
-                if (scaleTypeX === 'ordinal' && scaleTypeY === 'linear') {
-                    if (color) {
-                        mark = {
-                            type: 'group',
-                            from: {
-                                data: 'table',
-                                transform: [
-                                    {
-                                        type: 'facet',
-                                        keys: ['data.' + color]
-                                    },
-                                    transformY
-                                ]
-                            },
-                            marks: [{
-                                    type: 'rect',
-                                    properties: {
-                                        enter: {
-                                            x: {
-                                                scale: 'x',
-                                                field: 'data.' + x
-                                            },
-                                            width: {
-                                                scale: 'x',
-                                                band: true,
-                                                offset: -1
-                                            },
-                                            y: {
-                                                scale: 'y',
-                                                field: 'y'
-                                            },
-                                            y2: {
-                                                scale: 'y',
-                                                field: 'y2'
-                                            },
-                                            fill: {
-                                                scale: 'color',
-                                                field: 'data.' + color
-                                            }
-                                        }
-                                    }
-                                }]
-                        };
-                    } else {
-                        mark = {
-                            type: 'rect',
-                            from: { data: 'table' },
-                            properties: {
-                                enter: {
-                                    x: {
-                                        scale: 'x',
-                                        field: 'data.' + x
-                                    },
-                                    width: {
-                                        scale: 'x',
-                                        band: true,
-                                        offset: -1
-                                    },
-                                    y: {
-                                        scale: 'y',
-                                        field: 'data.' + y
-                                    },
-                                    y2: {
-                                        scale: 'y',
-                                        value: 0
-                                    },
-                                    fill: { value: 'steelblue' }
-                                }
-                            }
-                        };
-                    }
-                } else if (scaleTypeX === 'linear' && scaleTypeY === 'ordinal') {
-                    if (color) {
-                        mark = {
-                            type: 'group',
-                            from: {
-                                data: 'table',
-                                transform: [
-                                    {
-                                        type: 'facet',
-                                        keys: ['data.' + color]
-                                    },
-                                    transformX
-                                ]
-                            },
-                            marks: [{
-                                    type: 'rect',
-                                    properties: {
-                                        enter: {
-                                            x: {
-                                                scale: 'x',
-                                                field: 'y'
-                                            },
-                                            x2: {
-                                                scale: 'x',
-                                                field: 'y2'
-                                            },
-                                            y: {
-                                                scale: 'y',
-                                                field: 'data.' + y
-                                            },
-                                            height: {
-                                                scale: 'y',
-                                                band: true,
-                                                offset: -1
-                                            },
-                                            fill: {
-                                                scale: 'color',
-                                                field: 'data.' + color
-                                            }
-                                        }
-                                    }
-                                }]
-                        };
-                    } else {
-                        mark = {
-                            type: 'rect',
-                            from: { data: 'table' },
-                            properties: {
-                                enter: {
-                                    x: {
-                                        scale: 'x',
-                                        field: 'data.' + x
-                                    },
-                                    x2: {
-                                        scale: 'x',
-                                        value: 0
-                                    },
-                                    y: {
-                                        scale: 'y',
-                                        field: 'data.' + y
-                                    },
-                                    height: {
-                                        scale: 'y',
-                                        band: true,
-                                        offset: -1
-                                    },
-                                    fill: { value: 'steelblue' }
-                                }
-                            }
-                        };
-                    }
-                } else if (scaleTypeX === 'linear' && scaleTypeY === 'linear') {
-                    return go(new Flow.Error('Not implemented'));
-                } else {
-                    return go(new Flow.Error('Not implemented'));
-                }
-            }
-            spec.marks = [mark];
-            go(null, Flow.HTML.render('div', el = document.createElement('div')));
-            vg.parse.spec(spec, function (ctor) {
-                var chart;
-                chart = ctor({
-                    el: el,
-                    data: { table: data.rows }
-                });
-                return chart.update();
-            });
-        };
-        initialize = function (config) {
-            var error;
-            try {
-                switch (config.type) {
-                case 'point':
-                case 'line':
-                case 'area':
-                case 'interval':
-                    return renderUsingVega(config, go);
-                case 'schema':
-                    return go(new Flow.Error('Not implemented: ' + config.type));
-                case 'text':
-                    return renderText(config, go);
-                default:
-                    return go(new Flow.Error('Invalid mark type: ' + config.type));
-                }
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error creating plot.', error));
-            }
-        };
-        return initialize(_config);
-    };
-    stack = function (attr) {
-        var self;
-        return function () {
-            var transform;
-            transform = {
-                type: 'stack',
-                height: 'data.' + attr
-            };
-            return [
-                transform,
-                attr
-            ];
-        };
-        self = function (table) {
-            var end, endVariable, n, p, row, start, startVariable, type, value, _i, _len, _ref, _ref1;
-            type = table.schema[attr].type;
-            _ref = table.expand(type, type), startVariable = _ref[0], endVariable = _ref[1];
-            start = startVariable.label;
-            end = endVariable.label;
-            n = 0;
-            p = 0;
-            _ref1 = table.rows;
-            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                row = _ref1[_i];
-                value = row[attr];
-                if (value >= 0) {
-                    row[start] = p;
-                    row[end] = p = p + value;
-                } else {
-                    row[start] = n;
-                    row[end] = n = n + value;
-                }
-            }
-            startVariable.domain = [
-                n,
-                p
-            ];
-            endVariable.domain = [
-                n,
-                p
-            ];
-            return [
-                start,
-                end
-            ];
-        };
-        return self;
-    };
-    Flow.Plot = plot;
-    plot.stack = stack;
 }.call(this));
 (function () {
     Flow.Prelude = function () {
@@ -7731,7 +7025,7 @@
         }
     };
     H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
-        var collectParameters, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _parametersByLevel, _validationFailureMessage;
+        var collectParameters, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _parametersByLevel, _revalidate, _validationFailureMessage;
         _exception = Flow.Dataflow.signal(null);
         _validationFailureMessage = Flow.Dataflow.signal('');
         _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
@@ -7852,52 +7146,63 @@
             return parameters;
         };
         performValidations = function (checkForErrors, go) {
-            var parameters, responseColumnParameter, trainingFrameParameter;
+            var parameters;
             _exception(null);
             parameters = collectParameters(true);
-            trainingFrameParameter = findFormField('training_frame');
-            responseColumnParameter = findFormField('response_column');
-            if (trainingFrameParameter && !parameters.training_frame) {
-                return _validationFailureMessage('Please specify a training frame.');
-            }
-            if (responseColumnParameter && !parameters.response_column) {
-                return _validationFailureMessage('Please specify a response column.');
-            }
             _validationFailureMessage('');
-            return go();
             return _.requestModelInputValidation(_algorithm, parameters, function (error, modelBuilder) {
-                var control, hasErrors, validation, _i, _len, _ref;
+                var control, controls, hasErrors, validation, validations, validationsByControlName, _i, _j, _k, _len, _len1, _len2;
                 if (error) {
                     return _exception(Flow.Failure(new Flow.Error('Error fetching initial model builder state', error)));
                 } else {
                     hasErrors = false;
-                    _ref = modelBuilder.validation_messages;
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        validation = _ref[_i];
-                        control = findControl(validation.field_name);
-                        if (control) {
-                            if (validation.message_type === 'HIDE') {
-                                control.isVisible(false);
-                            } else if (!checkForErrors) {
-                                switch (validation.message_type) {
-                                case 'INFO':
+                    if (modelBuilder.validation_messages.length) {
+                        validationsByControlName = lodash.groupBy(modelBuilder.validation_messages, function (validation) {
+                            return validation.field_name;
+                        });
+                        for (_i = 0, _len = _controlGroups.length; _i < _len; _i++) {
+                            controls = _controlGroups[_i];
+                            for (_j = 0, _len1 = controls.length; _j < _len1; _j++) {
+                                control = controls[_j];
+                                if (validations = validationsByControlName[control.name]) {
+                                    for (_k = 0, _len2 = validations.length; _k < _len2; _k++) {
+                                        validation = validations[_k];
+                                        if (validation.message_type === 'HIDE') {
+                                            control.isVisible(false);
+                                        } else {
+                                            control.isVisible(true);
+                                            if (checkForErrors) {
+                                                switch (validation.message_type) {
+                                                case 'INFO':
+                                                    control.hasInfo(true);
+                                                    control.message(validation.message);
+                                                    break;
+                                                case 'WARN':
+                                                    control.hasWarning(true);
+                                                    control.message(validation.message);
+                                                    break;
+                                                case 'ERROR':
+                                                    control.hasError(true);
+                                                    control.message(validation.message);
+                                                    hasErrors = true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
                                     control.isVisible(true);
-                                    control.message(validation.message);
-                                    break;
-                                case 'WARN':
-                                    control.isVisible(true);
-                                    control.message(validation.message);
-                                    break;
-                                case 'ERROR':
-                                    control.isVisible(true);
-                                    control.hasError(true);
-                                    control.message(validation.message);
-                                    hasErrors = true;
+                                    control.hasInfo(false);
+                                    control.hasWarning(false);
+                                    control.hasError(false);
+                                    control.message('');
                                 }
                             }
                         }
                     }
-                    if (!hasErrors) {
+                    if (hasErrors) {
+                        return _validationFailureMessage('Your model parameters have one or more errors. Please fix them and try again.');
+                    } else {
+                        _validationFailureMessage('');
                         return go();
                     }
                 }
@@ -7905,12 +7210,29 @@
         };
         createModel = function () {
             _exception(null);
-            return performValidations(false, function () {
+            return performValidations(true, function () {
                 var parameters;
                 parameters = collectParameters(false);
                 return _.insertAndExecuteCell('cs', 'buildModel \'' + _algorithm + '\', ' + Flow.Prelude.stringify(parameters));
             });
         };
+        _revalidate = function (value) {
+            if (value !== void 0) {
+                return performValidations(false, function () {
+                });
+            }
+        };
+        revalidate = lodash.throttle(_revalidate, 1000, { leading: false });
+        performValidations(false, function () {
+            var control, controls, _i, _j, _len, _len1;
+            for (_i = 0, _len = _controlGroups.length; _i < _len; _i++) {
+                controls = _controlGroups[_i];
+                for (_j = 0, _len1 = controls.length; _j < _len1; _j++) {
+                    control = controls[_j];
+                    Flow.Dataflow.react(control.value, revalidate);
+                }
+            }
+        });
         return {
             form: _form,
             exception: _exception,
