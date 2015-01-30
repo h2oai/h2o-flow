@@ -506,10 +506,23 @@ table
   table
     margin 10px 0 20px 0
     font-size 85%
-    tbody > tr:nth-child(odd)
+    tr:nth-child(odd)
       background-color #eee
     td, th
       padding 2px 5px
+
+
+  // Nasty hacks - FIXME
+  .vx-tooltip
+    table
+      font-family monospace !important
+      margin 0 !important
+      font-size 100% !important
+      tr:nth-child(odd)
+        background-color inherit !important
+      td, th
+        padding 0px 4px !important
+
   table.flow-matrix
     margin 0
     tr
