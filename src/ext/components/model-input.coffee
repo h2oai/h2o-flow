@@ -24,6 +24,7 @@ createTextboxControl = (parameter) ->
   control = createControl 'textbox', parameter
   control.value = _value
   control.defaultValue = parameter.default_value
+
   control
 
 createDropdownControl = (parameter) ->
@@ -225,51 +226,73 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
               parameters[control.name] = value
     parameters
 
+  #
+  # The 'checkForErrors' parameter exists so that we can conditionally choose 
+  # to ignore validation errors. This is because we need the show/hide states 
+  # for each field the first time around, but not the errors/warnings/info 
+  # messages. 
+  #
+  # Thus, when this function is called during form init, checkForErrors is 
+  #  passed in as 'false', and during form submission, checkForErrors is 
+  #  passsed in as 'true'.
+  #
   performValidations = (checkForErrors, go) ->
     _exception null
     parameters = collectParameters yes
-    trainingFrameParameter = findFormField 'training_frame'
-    responseColumnParameter = findFormField 'response_column'
-    if trainingFrameParameter and not parameters.training_frame
-      return _validationFailureMessage 'Please specify a training frame.'
-    if responseColumnParameter and not parameters.response_column
-      return _validationFailureMessage 'Please specify a response column.'
     _validationFailureMessage ''
-    return go()
 
     _.requestModelInputValidation _algorithm, parameters, (error, modelBuilder) ->
       if error
         _exception Flow.Failure new Flow.Error 'Error fetching initial model builder state', error
       else
         hasErrors = no
-        for validation in modelBuilder.validation_messages
-          control = findControl validation.field_name
-          if control
-            if validation.message_type is 'HIDE'
-              control.isVisible no
-            else if not checkForErrors
-              switch validation.message_type
-                when 'INFO'
-                  control.isVisible yes
-                  control.message validation.message
-                when 'WARN'
-                  control.isVisible yes
-                  control.message validation.message
-                when 'ERROR'
-                  control.isVisible yes
-                  control.hasError yes
-                  control.message validation.message
-                  hasErrors = yes
-        go() unless hasErrors
+
+        if modelBuilder.validation_messages.length
+          validationsByControlName = groupBy modelBuilder.validation_messages, (validation) -> validation.field_name
+
+          for controls in _controlGroups
+            for control in controls
+              if validations = validationsByControlName[control.name]
+                for validation in validations
+                  if validation.message_type is 'HIDE'
+                    control.isVisible no
+                  else
+                    control.isVisible yes
+                    if checkForErrors
+                      switch validation.message_type
+                        when 'INFO'
+                          control.hasInfo yes
+                          control.message validation.message
+                        when 'WARN'
+                          control.hasWarning yes
+                          control.message validation.message
+                        when 'ERROR'
+                          control.hasError yes
+                          control.message validation.message
+                          hasErrors = yes
+              else
+                control.isVisible yes
+                control.hasInfo no
+                control.hasWarning no
+                control.hasError no
+                control.message ''
+
+        if hasErrors
+          _validationFailureMessage 'Your model parameters have one or more errors. Please fix them and try again.'
+          # Do not pass go(). Do not collect $200.
+        else
+          _validationFailureMessage ''
+          go() # Proceed with form submission
 
   createModel = ->
     _exception null
-    performValidations no, ->
+    performValidations yes, ->
       parameters = collectParameters no
       _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
 
   # Kick off validations (minus error checking) to get hidden parameters
-  # performValidations yes, ->
+  performValidations no, ->
+
 
   form: _form
   exception: _exception
