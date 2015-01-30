@@ -51,13 +51,7 @@ H2O.FrameOutput = (_, _frame) ->
     _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify _frame.key.name}"
 
   inspectData = ->
-    _.insertAndExecuteCell 'cs',
-      """
-      plot (g) -> g(
-        g.table()
-        g.from inspect 'data', getFrame #{stringify _frame.key.name}
-      )
-      """
+    _.insertAndExecuteCell 'cs', "grid inspect 'data', getFrame #{stringify _frame.key.name}"
 
   predict = ->
     _.insertAndExecuteCell 'cs', "predict null, #{stringify _frame.key.name}"

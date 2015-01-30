@@ -188,11 +188,11 @@ H2O.Routines = (_) ->
       renderable _plot, (f lightning), (plot, go) ->
         go null, H2O.PlotOutput _, plot.element
 
-  #XXX pass-thru to g.table()
-  grid = (data) ->
-    plot
-      type: 'text'
-      data: data
+  grid = (f) ->
+    plot (g) -> g(
+      g.table()
+      g.from f
+    )
 
   extendCloud = (cloud) ->
     render_ cloud, -> H2O.CloudOutput _, cloud
