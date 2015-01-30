@@ -6,5 +6,4 @@ lib
 *.log
 *.tmp
 .gradle
-vendor/h2oai
 
