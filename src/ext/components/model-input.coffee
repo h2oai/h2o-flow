@@ -290,9 +290,18 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
       parameters = collectParameters no
       _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
 
+  _revalidate = (value) ->
+    if value isnt undefined # HACK: KO seems to be raising change notifications when dropdown boxes are initialized. 
+      performValidations no, ->
+
+  revalidate = throttle _revalidate, 1000, leading: no
+
   # Kick off validations (minus error checking) to get hidden parameters
   performValidations no, ->
-
+    for controls in _controlGroups
+      for control in controls
+        react control.value, revalidate
+    return
 
   form: _form
   exception: _exception
