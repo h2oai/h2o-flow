@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.34';
+    FLOW_VERSION = '0.2.35';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1321,9 +1321,9 @@
             ]
         ];
         toKeyboardHelp = function (shortcut) {
-            var caption, keystrokes, sequence;
-            sequence = shortcut[0], caption = shortcut[1];
-            keystrokes = lodash.map(sequence.split(/\+/g), function (key) {
+            var caption, keystrokes, seq;
+            seq = shortcut[0], caption = shortcut[1];
+            keystrokes = lodash.map(seq.split(/\+/g), function (key) {
                 return '<kbd>' + key + '</kbd>';
             }).join(' ');
             return {
@@ -2757,15 +2757,19 @@
     FlowError = function (_super) {
         __extends(FlowError, _super);
         function FlowError(message, cause) {
-            var error;
+            var error, _ref;
             this.message = message;
             this.cause = cause;
             this.name = 'FlowError';
-            error = new Error();
-            if (error.stack) {
-                this.stack = error.stack;
+            if ((_ref = this.cause) != null ? _ref.stack : void 0) {
+                this.stack = this.cause.stack;
             } else {
-                this.stack = printStackTrace();
+                error = new Error();
+                if (error.stack) {
+                    this.stack = error.stack;
+                } else {
+                    this.stack = printStackTrace();
+                }
             }
         }
         return FlowError;
@@ -4127,7 +4131,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doGet, doPost, encodeArrayForPost, encodeObject, http, mapWithKey, patchUpModels, requestAbout, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestStackTrace, requestTimeline, requestWithOpts;
+        var composePath, doGet, doPost, encodeArrayForPost, encodeObject, encodeObjectForPost, http, mapWithKey, patchUpModels, requestAbout, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestStackTrace, requestTimeline, requestWithOpts;
         http = function (path, opts, go) {
             var req;
             _.status('server', 'request', path);
@@ -4143,10 +4147,11 @@
                 }
             });
             return req.fail(function (xhr, status, error) {
-                var message, _ref;
+                var cause, response, serverError;
                 _.status('server', 'error', path);
-                message = ((_ref = xhr.responseJSON) != null ? _ref.errmsg : void 0) ? xhr.responseJSON.errmsg : (error != null ? error.message : void 0) ? error.message : status === 0 ? 'Could not connect to H2O' : 'Unknown error';
-                return go(new Flow.Error(message, new Flow.Error(opts ? 'Error calling POST ' + path + ' with opts ' + JSON.stringify(opts) : 'Error calling GET ' + path)));
+                response = xhr.responseJSON;
+                cause = (response != null ? response.exception_msg : void 0) ? (serverError = new Flow.Error(response.exception_msg), serverError.stack = '' + response.dev_msg + ' (' + response.exception_type + ')' + '\n  ' + response.stacktrace.join('\n  '), serverError) : (error != null ? error.message : void 0) ? new Flow.Error(error.message) : status === 0 ? new Flow.Error('Could not connect to H2O') : new Flow.Error('Unknown error');
+                return go(new Flow.Error(opts ? 'Error calling POST ' + path + ' with opts ' + JSON.stringify(opts) : 'Error calling GET ' + path, cause));
             });
         };
         doGet = function (path, go) {
@@ -4178,7 +4183,11 @@
         };
         encodeArrayForPost = function (array) {
             return '[' + lodash.map(array, function (element) {
-                return '"' + element + '"';
+                if (lodash.isNumber(element)) {
+                    return element;
+                } else {
+                    return '"' + element + '"';
+                }
             }).join(',') + ']';
         };
         encodeObject = function (source) {
@@ -4187,6 +4196,15 @@
             for (k in source) {
                 v = source[k];
                 target[k] = encodeURIComponent(v);
+            }
+            return target;
+        };
+        encodeObjectForPost = function (source) {
+            var k, target, v;
+            target = {};
+            for (k in source) {
+                v = source[k];
+                target[k] = lodash.isArray(v) ? encodeArrayForPost(v) : v;
             }
             return target;
         };
@@ -4333,10 +4351,10 @@
             return doGet('/3/ModelBuilders.json/' + algo, go);
         };
         requestModelInputValidation = function (algo, parameters, go) {
-            return doPost('/3/ModelBuilders.json/' + algo + '/parameters', parameters, go);
+            return doPost('/3/ModelBuilders.json/' + algo + '/parameters', encodeObjectForPost(parameters), go);
         };
         requestModelBuild = function (algo, parameters, go) {
-            return doPost('/3/ModelBuilders.json/' + algo, parameters, go);
+            return doPost('/3/ModelBuilders.json/' + algo, encodeObjectForPost(parameters), go);
         };
         requestPredict = function (modelKey, frameKey, go) {
             return doPost('/3/Predictions.json/models/' + encodeURIComponent(modelKey) + '/frames/' + encodeURIComponent(frameKey), {}, function (error, result) {
@@ -4472,7 +4490,12 @@
     };
 }.call(this));
 (function () {
-    var computeFalsePositiveRate, computeTruePositiveRate, formatConfusionMatrix, formulateGetPredictionsOrigin, _assistance, __slice = [].slice;
+    var computeFalsePositiveRate, computeTruePositiveRate, concatArrays, createArrays, createDataframe, createFactor, createList, createVector, formatConfusionMatrix, formulateGetPredictionsOrigin, lightning, parseFloats, parseInts, parseNaNs, parseNulls, repeatValues, toFrame, _assistance, __slice = [].slice;
+    lightning = window.plot;
+    createVector = lightning.createVector;
+    createFactor = lightning.createFactor;
+    createList = lightning.createList;
+    createDataframe = lightning.createFrame;
     _assistance = {
         importFiles: {
             description: 'Import file(s) into H<sub>2</sub>O',
@@ -4501,6 +4524,110 @@
         predict: {
             description: 'Make a prediction',
             icon: 'bolt'
+        }
+    };
+    parseInts = function (source) {
+        var str, value, _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = source.length; _i < _len; _i++) {
+            str = source[_i];
+            if (lodash.isNaN(value = parseInt(str, 10))) {
+                _results.push(void 0);
+            } else {
+                _results.push(value);
+            }
+        }
+        return _results;
+    };
+    parseFloats = function (source) {
+        var str, value, _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = source.length; _i < _len; _i++) {
+            str = source[_i];
+            if (lodash.isNaN(value = parseFloat(str))) {
+                _results.push(void 0);
+            } else {
+                _results.push(value);
+            }
+        }
+        return _results;
+    };
+    toFrame = function (table, metadata) {
+        var column, data, i, size, vectors;
+        size = table.data.length > 0 ? lodash.head(table.data).length : 0;
+        vectors = function () {
+            var _i, _len, _ref, _results;
+            _ref = table.columns;
+            _results = [];
+            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                column = _ref[i];
+                data = table.data[i];
+                switch (column.type) {
+                case 'byte':
+                case 'short':
+                case 'int':
+                case 'long':
+                    _results.push(createVector(column.name, Flow.TNumber, parseInts(data)));
+                    break;
+                case 'float':
+                case 'double':
+                    _results.push(createVector(column.name, Flow.TNumber, parseFloats(data)));
+                    break;
+                case 'string':
+                    _results.push(createFactor(column.name, Flow.TString, data));
+                    break;
+                default:
+                    _results.push(createList(column.name, data));
+                }
+            }
+            return _results;
+        }();
+        return createDataframe(table.name, vectors, lodash.range(size), null, metadata);
+    };
+    createArrays = function (length) {
+        var i, _i, _results;
+        _results = [];
+        for (i = _i = 0; 0 <= length ? _i < length : _i > length; i = 0 <= length ? ++_i : --_i) {
+            _results.push(new Array(length));
+        }
+        return _results;
+    };
+    parseNaNs = function (source) {
+        var element, i, target, _i, _len;
+        target = new Array(source.length);
+        for (i = _i = 0, _len = source.length; _i < _len; i = ++_i) {
+            element = source[i];
+            target[i] = element === 'NaN' ? void 0 : element;
+        }
+        return target;
+    };
+    parseNulls = function (source) {
+        var element, i, target, _i, _len;
+        target = new Array(source.length);
+        for (i = _i = 0, _len = source.length; _i < _len; i = ++_i) {
+            element = source[i];
+            target[i] = element != null ? element : void 0;
+        }
+        return target;
+    };
+    repeatValues = function (count, value) {
+        var i, target, _i;
+        target = new Array(count);
+        for (i = _i = 0; 0 <= count ? _i < count : _i > count; i = 0 <= count ? ++_i : --_i) {
+            target[i] = value;
+        }
+        return target;
+    };
+    concatArrays = function (arrays) {
+        var a;
+        switch (arrays.length) {
+        case 0:
+            return [];
+        case 1:
+            return lodash.head(arrays);
+        default:
+            a = lodash.head(arrays);
+            return a.concat.apply(a, lodash.tail(arrays));
         }
     };
     computeTruePositiveRate = function (cm) {
@@ -4562,7 +4689,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendJob, extendKMeansModel, extendLogFile, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectKMeansModelClusterDetails, inspectKMeansModelClusters, inspectKMeansModelOutput, inspectModelParameters, inspectMultimodelParameters, inspectRegressionPrediction, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestFrame, requestFrames, requestLogFile, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestStackTrace, requestTimeline, setupParse, __plot, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _plotInput, _ref;
+        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendJob, extendKMeansModel, extendLogFile, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultimodelParameters, inspectRegressionPrediction, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestFrame, requestFrames, requestLogFile, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestStackTrace, requestTimeline, setupParse, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -4681,69 +4808,27 @@
             });
             return inspection;
         };
-        __plot = function (config, go) {
-            return Flow.Plot(config, function (error, plot) {
+        _plot = function (plot, go) {
+            return plot(function (error, vis) {
                 if (error) {
-                    return go(new Flow.Error('Error rendering plot.', error));
+                    return go(new Flow.Error('Error rendering vis.', error));
                 } else {
-                    return go(null, plot);
+                    return go(null, vis);
                 }
             });
         };
-        _plot = function (config, go) {
-            if (config.data) {
-                if (_isFuture(config.data)) {
-                    return config.data(function (error, data) {
-                        if (error) {
-                            return go(new Flow.Error('Error evaluating data for plot().', error));
-                        } else {
-                            config.data = data;
-                            return __plot(config, go);
-                        }
-                    });
-                } else {
-                    return __plot(config, go);
-                }
+        plot = function (f) {
+            if (_isFuture(f)) {
+                return _fork(proceed, H2O.PlotInput, f);
             } else {
-                return go(new Flow.Error('Cannot plot(): missing \'data\'.'));
-            }
-        };
-        _plotInput = function (config, go) {
-            if (config.data) {
-                if (_isFuture(config.data)) {
-                    return config.data(function (error, data) {
-                        if (error) {
-                            return go(new Flow.Error('Error evaluating data for plot().', error));
-                        } else {
-                            config.data = data;
-                            return go(null, config);
-                        }
-                    });
-                } else {
-                    return go(null, config);
-                }
-            } else {
-                return go(new Flow.Error('Cannot plot(): missing \'data\'.'));
-            }
-        };
-        plot = function (config) {
-            var configKeys;
-            configKeys = lodash.keys(config);
-            if (configKeys.length === 1 && 'data' === lodash.head(configKeys)) {
-                return renderable(_plotInput, config, function (config, go) {
-                    return go(null, H2O.PlotInput(_, config));
-                });
-            } else {
-                return renderable(_plot, config, function (plot, go) {
-                    return go(null, H2O.PlotOutput(_, plot));
+                return renderable(_plot, f(lightning), function (plot, go) {
+                    return go(null, H2O.PlotOutput(_, plot.element));
                 });
             }
         };
-        plot.stack = Flow.Plot.stack;
-        grid = function (data) {
-            return plot({
-                type: 'text',
-                data: data
+        grid = function (f) {
+            return plot(function (g) {
+                return g(g.table(), g.from(f));
             });
         };
         extendCloud = function (cloud) {
@@ -4779,25 +4864,38 @@
         };
         inspectMultimodelParameters = function (models) {
             return function () {
-                var Record, i, j, leader, model, modelKeys, parameter, parameters, row, rows, variable, variables, _i, _j, _len, _len1, _ref1;
+                var data, i, leader, model, modelKeys, value, vectors;
                 leader = lodash.head(models);
-                parameters = leader.parameters;
-                variables = function () {
-                    var _i, _len, _results;
+                vectors = function () {
+                    var _i, _ref1, _results;
                     _results = [];
-                    for (_i = 0, _len = parameters.length; _i < _len; _i++) {
-                        parameter = parameters[_i];
+                    for (i = _i = 0, _ref1 = leader.parameters.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; i = 0 <= _ref1 ? ++_i : --_i) {
+                        data = function () {
+                            var _j, _len, _results1;
+                            _results1 = [];
+                            for (_j = 0, _len = models.length; _j < _len; _j++) {
+                                model = models[_j];
+                                value = model.parameters[i].actual_value;
+                                if (value != null) {
+                                    _results1.push(value);
+                                } else {
+                                    _results1.push(void 0);
+                                }
+                            }
+                            return _results1;
+                        }();
                         switch (parameter.type) {
                         case 'enum':
                         case 'Frame':
                         case 'string':
+                        case 'string[]':
                         case 'byte[]':
                         case 'short[]':
                         case 'int[]':
                         case 'long[]':
                         case 'float[]':
                         case 'double[]':
-                            _results.push(Flow.Data.Variable(parameter.label, Flow.TString));
+                            _results.push(createFactor(parameter.label, Flow.TString, data));
                             break;
                         case 'byte':
                         case 'short':
@@ -4805,183 +4903,147 @@
                         case 'long':
                         case 'float':
                         case 'double':
-                            _results.push(Flow.Data.Variable(parameter.label, Flow.TNumber));
-                            break;
-                        case 'string[]':
-                            _results.push(Flow.Data.Variable(parameter.label, Flow.TString));
+                            _results.push(createVector(parameter.label, Flow.TNumber, data));
                             break;
                         case 'boolean':
-                            _results.push(Flow.Data.Variable(parameter.label, Flow.TBoolean));
+                            _results.push(createList(parameter.label, data, function (a) {
+                                if (a) {
+                                    return 'true';
+                                } else {
+                                    return 'false';
+                                }
+                            }));
                             break;
                         default:
-                            _results.push(Flow.Data.Variable(parameter.label, Flow.TObject));
+                            _results.push(createList(parameter.label, data));
                         }
                     }
                     return _results;
                 }();
-                Record = Flow.Data.Record(variables);
-                rows = new Array(models.length);
-                for (i = _i = 0, _len = models.length; _i < _len; i = ++_i) {
-                    model = models[i];
-                    rows[i] = row = new Record();
-                    _ref1 = model.parameters;
-                    for (j = _j = 0, _len1 = _ref1.length; _j < _len1; j = ++_j) {
-                        parameter = _ref1[j];
-                        variable = variables[j];
-                        row[variable.label] = parameter.actual_value;
-                    }
-                }
                 modelKeys = function () {
-                    var _k, _len2, _results;
+                    var _i, _len, _results;
                     _results = [];
-                    for (_k = 0, _len2 = models.length; _k < _len2; _k++) {
-                        model = models[_k];
+                    for (_i = 0, _len = models.length; _i < _len; _i++) {
+                        model = models[_i];
                         _results.push(model.key);
                     }
                     return _results;
                 }();
-                return Flow.Data.Table({
-                    label: 'parameters',
+                return createDataframe('parameters', vectors, lodash.range(models.length), null, {
                     description: 'Parameters for models ' + modelKeys.join(', '),
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getModels ' + Flow.Prelude.stringify(modelKeys) }
+                    origin: 'getModels ' + Flow.Prelude.stringify(modelKeys)
                 });
             };
         };
         inspectModelParameters = function (model) {
             return function () {
-                var Record, i, parameter, parameters, row, rows, variable, variables, _i, _j, _len, _len1;
+                var attrs, data, i, parameter, parameters, type, vectors;
                 parameters = model.parameters;
-                variables = [
-                    Flow.Data.Variable('label', Flow.TString),
-                    Flow.Data.Variable('type', Flow.TString),
-                    Flow.Data.Variable('level', Flow.TString),
-                    Flow.Data.Variable('actual_value', Flow.TObject),
-                    Flow.Data.Variable('default_value', Flow.TObject)
+                attrs = [
+                    [
+                        'label',
+                        Flow.TString
+                    ],
+                    [
+                        'type',
+                        Flow.TString
+                    ],
+                    [
+                        'level',
+                        Flow.TString
+                    ],
+                    [
+                        'actual_value',
+                        Flow.TObject
+                    ],
+                    [
+                        'default_value',
+                        Flow.TObject
+                    ]
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = new Array(parameters.length);
-                for (i = _i = 0, _len = parameters.length; _i < _len; i = ++_i) {
-                    parameter = parameters[i];
-                    rows[i] = row = new Record();
-                    for (_j = 0, _len1 = variables.length; _j < _len1; _j++) {
-                        variable = variables[_j];
-                        row[variable.label] = parameter[variable.label];
+                vectors = function () {
+                    var _i, _j, _len, _len1, _ref1, _results;
+                    _results = [];
+                    for (_i = 0, _len = attrs.length; _i < _len; _i++) {
+                        _ref1 = attrs[_i], name = _ref1[0], type = _ref1[1];
+                        data = new Array(parameters.length);
+                        for (i = _j = 0, _len1 = parameters.length; _j < _len1; i = ++_j) {
+                            parameter = parameters[i];
+                            data[i] = parameter[name];
+                        }
+                        switch (type) {
+                        case Flow.TString:
+                            _results.push(createFactor(name, type, data));
+                            break;
+                        case Flow.TObject:
+                            _results.push(createList(name, data, Flow.Prelude.stringify));
+                            break;
+                        default:
+                            _results.push(void 0);
+                        }
                     }
-                }
-                return Flow.Data.Table({
-                    label: 'parameters',
+                    return _results;
+                }();
+                return createDataframe('parameters', vectors, lodash.range(parameters.length), null, {
                     description: 'Parameters for model \'' + model.key.name + '\'',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getModel ' + Flow.Prelude.stringify(model.key.name) }
+                    origin: 'getModel ' + Flow.Prelude.stringify(model.key.name)
                 });
             };
         };
         inspectGBMModelOutput = function (model) {
             return function () {
-                var Record, i, mse_train, output, rows, variables, _i, _len, _ref1;
+                var output, size, vectors;
                 output = model.output;
-                variables = [
-                    Flow.Data.Variable('tree', Flow.TNumber),
-                    Flow.Data.Variable('mse_train', Flow.TObject),
-                    Flow.Data.Variable('mse_valid', Flow.TObject)
+                size = output.mse_train.length;
+                vectors = [
+                    createVector('tree', Flow.TNumber, lodash.range(size)),
+                    createVector('mse_train', Flow.TNumber, parseNaNs(output.mse_train)),
+                    createVector('mse_valid', Flow.TNumber, parseNaNs(output.mse_valid))
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = new Array(output.mse_train.length);
-                _ref1 = output.mse_train;
-                for (i = _i = 0, _len = _ref1.length; _i < _len; i = ++_i) {
-                    mse_train = _ref1[i];
-                    rows[i] = new Record(i, mse_train, output.mse_valid[i]);
-                }
-                return Flow.Data.Table({
-                    label: 'output',
+                return createDataframe('output', vectors, lodash.range(size), null, {
                     description: 'Output for GBM model \'' + model.key.name + '\'',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getModel ' + Flow.Prelude.stringify(model.key.name) }
+                    origin: 'getModel ' + Flow.Prelude.stringify(model.key.name)
                 });
             };
         };
         inspectKMeansModelOutput = function (model) {
             return function () {
-                var Record, attr, attrs, i, output, rows, variables, _i, _len;
+                var output, vectors;
                 output = model.output;
-                variables = [
-                    Flow.Data.Variable('parameter', Flow.TString),
-                    Flow.Data.Variable('value', Flow.TObject)
+                vectors = [
+                    createVector('avg_between_ss', Flow.TNumber, [output.avg_between_ss]),
+                    createVector('avg_ss', Flow.TNumber, [output.avg_ss]),
+                    createVector('avg_within_ss', Flow.TNumber, [output.avg_within_ss]),
+                    createVector('categorical_column_count', Flow.TNumber, [output.categorical_column_count]),
+                    createVector('iterations', Flow.TNumber, [output.iterations]),
+                    createFactor('model_category', Flow.TString, [output.model_category])
                 ];
-                Record = Flow.Data.Record(variables);
-                attrs = [
-                    'iters',
-                    'mse',
-                    'ncats'
-                ];
-                rows = new Array(attrs.length);
-                for (i = _i = 0, _len = attrs.length; _i < _len; i = ++_i) {
-                    attr = attrs[i];
-                    rows[i] = new Record(attr, output[attr]);
-                }
-                return Flow.Data.Table({
-                    label: 'output',
+                return createDataframe('output', vectors, lodash.range(1), null, {
                     description: 'Output for k-means model \'' + model.key.name + '\'',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getModel ' + Flow.Prelude.stringify(model.key.name) }
+                    origin: 'getModel ' + Flow.Prelude.stringify(model.key.name)
                 });
             };
         };
-        inspectKMeansModelClusterDetails = function (model) {
+        inspectKmeansModelClusters = function (model) {
             return function () {
-                var Record, cluster, i, output, rows, variables, _i, _len, _ref1;
+                var output, vectors;
                 output = model.output;
-                variables = [
-                    Flow.Data.Variable('cluster', Flow.TNumber),
-                    Flow.Data.Variable('rows', Flow.TNumber),
-                    Flow.Data.Variable('mses', Flow.TNumber)
+                vectors = [
+                    createFactor('cluster', Flow.TString, lodash.head(output.centers.data)),
+                    createVector('size', Flow.TNumber, output.size),
+                    createVector('within_mse', Flow.TNumber, output.within_mse)
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = new Array(output.clusters.length);
-                _ref1 = output.clusters;
-                for (i = _i = 0, _len = _ref1.length; _i < _len; i = ++_i) {
-                    cluster = _ref1[i];
-                    rows[i] = new Record(i, output.rows[i], output.mses[i]);
-                }
-                return Flow.Data.Table({
-                    label: 'cluster_details',
+                return createDataframe('clusters', vectors, lodash.range(output.size.length), null, {
                     description: 'Clusters for k-means model \'' + model.key.name + '\'',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getModel ' + Flow.Prelude.stringify(model.key.name) }
+                    origin: 'getModel ' + Flow.Prelude.stringify(model.key.name)
                 });
             };
         };
-        inspectKMeansModelClusters = function (model) {
+        inspectKmeansModelClusterMeans = function (model) {
             return function () {
-                var Record, cluster, cluster0, clusters, domain, domains, i, j, names, output, row, rows, variables, _i, _j, _k, _len, _ref1, _ref2;
-                output = model.output;
-                clusters = output.clusters, domains = output.domains, names = output.names;
-                variables = [Flow.Data.Variable('names', Flow.TNumber)];
-                for (i = _i = 0, _ref1 = clusters.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; i = 0 <= _ref1 ? ++_i : --_i) {
-                    variables.push(Flow.Data.Variable('' + i, Flow.TObject));
-                }
-                Record = Flow.Data.Record(variables);
-                cluster0 = lodash.head(clusters);
-                rows = new Array(cluster0.length);
-                for (i = _j = 0, _ref2 = cluster0.length; 0 <= _ref2 ? _j < _ref2 : _j > _ref2; i = 0 <= _ref2 ? ++_j : --_j) {
-                    rows[i] = row = new Record(names[i]);
-                    for (j = _k = 0, _len = clusters.length; _k < _len; j = ++_k) {
-                        cluster = clusters[j];
-                        row['' + j] = (domain = domains[i]) ? domain[cluster[i]] : cluster[i];
-                    }
-                }
-                return Flow.Data.Table({
-                    label: 'clusters',
-                    description: 'Clusters for k-means model \'' + model.key.name + '\'',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getModel ' + Flow.Prelude.stringify(model.key.name) }
+                return toFrame(model.output.centers, {
+                    description: 'Cluster means for k-means model \'' + model.key.name + '\'',
+                    origin: 'getModel ' + Flow.Prelude.stringify(model.key.name)
                 });
             };
         };
@@ -4989,8 +5051,8 @@
             return inspect_(model, {
                 parameters: inspectModelParameters(model),
                 output: inspectKMeansModelOutput(model),
-                clusters: inspectKMeansModelClusters(model),
-                cluster_details: inspectKMeansModelClusterDetails(model)
+                clusters: inspectKmeansModelClusters(model),
+                'Cluster means': inspectKmeansModelClusterMeans(model)
             });
         };
         extendDeepLearningModel = function (model) {
@@ -5059,126 +5121,269 @@
         };
         inspectRegressionPrediction = function (prediction) {
             return function () {
-                var Record, frame, model, predictions, rows, variables;
+                var frame, model, predictions, vectors;
                 frame = prediction.frame, model = prediction.model, predictions = prediction.predictions;
-                variables = [
-                    Flow.Data.Variable('parameter', Flow.TString),
-                    Flow.Data.Variable('value', Flow.TObject)
+                vectors = [
+                    createFactor('key', Flow.TString, [model.name]),
+                    createFactor('frame', Flow.TString, [frame.name]),
+                    createFactor('model_category', Flow.TString, [prediction.model_category]),
+                    createVector('duration_in_ms', Flow.TString, [prediction.duration_in_ms]),
+                    createVector('scoring_time', Flow.TString, [prediction.scoring_time])
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = [];
-                rows.push(new Record('key', model.name));
-                rows.push(new Record('frame', frame.name));
-                rows.push(new Record('model_category', prediction.model_category));
-                rows.push(new Record('duration_in_ms', prediction.duration_in_ms));
-                rows.push(new Record('scoring_time', prediction.scoring_time));
-                return Flow.Data.Table({
-                    label: 'prediction',
+                return createDataframe('prediction', vectors, lodash.range(1), null, {
                     description: 'Prediction output for model \'' + model.name + '\' on frame \'' + frame.name + '\'',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getPrediction ' + Flow.Prelude.stringify(model.name) + ', ' + Flow.Prelude.stringify(frame.name) }
+                    origin: 'getPrediction ' + Flow.Prelude.stringify(model.name) + ', ' + Flow.Prelude.stringify(frame.name)
                 });
             };
         };
         inspectBinomialPrediction = function (prediction) {
             return function () {
-                var Record, auc, frame, model, rows, variables;
+                var auc, frame, model, vectors;
                 frame = prediction.frame, model = prediction.model, auc = prediction.auc;
-                variables = [
-                    Flow.Data.Variable('parameter', Flow.TString),
-                    Flow.Data.Variable('value', Flow.TObject)
+                vectors = [
+                    createFactor('key', Flow.TString, [model.name]),
+                    createFactor('frame', Flow.TString, [frame.name]),
+                    createFactor('model_category', Flow.TString, [prediction.model_category]),
+                    createVector('duration_in_ms', Flow.TNumber, [prediction.duration_in_ms]),
+                    createVector('scoring_time', Flow.TNumber, [prediction.scoring_time]),
+                    createVector('AUC', Flow.TNumber, [auc.AUC]),
+                    createVector('Gini', Flow.TNumber, [auc.Gini]),
+                    createFactor('threshold_criterion', Flow.TString, [auc.threshold_criterion])
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = [];
-                rows.push(new Record('key', model.name));
-                rows.push(new Record('frame', frame.name));
-                rows.push(new Record('model_category', prediction.model_category));
-                rows.push(new Record('duration_in_ms', prediction.duration_in_ms));
-                rows.push(new Record('scoring_time', prediction.scoring_time));
-                rows.push(new Record('AUC', auc.AUC));
-                rows.push(new Record('Gini', auc.Gini));
-                rows.push(new Record('threshold_criterion', auc.threshold_criterion));
-                return Flow.Data.Table({
-                    label: 'prediction',
+                return createDataframe('prediction', vectors, lodash.range(1), null, {
                     description: 'Prediction output for model \'' + model.name + '\' on frame \'' + frame.name + '\'',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getPrediction ' + Flow.Prelude.stringify(model.name) + ', ' + Flow.Prelude.stringify(frame.name) }
+                    origin: 'getPrediction ' + Flow.Prelude.stringify(model.name) + ', ' + Flow.Prelude.stringify(frame.name)
                 });
             };
         };
         inspectBinomialMetrics = function (opts, predictions) {
             return function () {
-                var Record, auc, cm, frame, i, model, prediction, rows, variables, _i, _j, _len, _ref1;
-                variables = [
-                    Flow.Data.Variable('criteria', Flow.TString),
-                    Flow.Data.Variable('threshold', Flow.TNumber),
-                    Flow.Data.Variable('F1', Flow.TNumber),
-                    Flow.Data.Variable('F2', Flow.TNumber),
-                    Flow.Data.Variable('F0point5', Flow.TNumber),
-                    Flow.Data.Variable('accuracy', Flow.TNumber),
-                    Flow.Data.Variable('error', Flow.TNumber),
-                    Flow.Data.Variable('precision', Flow.TNumber),
-                    Flow.Data.Variable('recall', Flow.TNumber),
-                    Flow.Data.Variable('specificity', Flow.TNumber),
-                    Flow.Data.Variable('mcc', Flow.TNumber),
-                    Flow.Data.Variable('max_per_class_error', Flow.TNumber),
-                    Flow.Data.Variable('confusion_matrix', Flow.TObject, null, formatConfusionMatrix),
-                    Flow.Data.Variable('TPR', Flow.TNumber),
-                    Flow.Data.Variable('FPR', Flow.TNumber),
-                    Flow.Data.Variable('key', Flow.TString),
-                    Flow.Data.Variable('model', Flow.TString),
-                    Flow.Data.Variable('frame', Flow.TString)
+                var prediction, vectors;
+                vectors = [
+                    createFactor('criteria', Flow.TString, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(prediction.auc.threshold_criteria);
+                        }
+                        return _results;
+                    }())),
+                    createVector('threshold', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.threshold_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('F1', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.F1_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('F2', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.F2_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('F0point5', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.F0point5_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('accuracy', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.accuracy_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('error', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.error_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('precision', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.precision_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('recall', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.recall_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('specificity', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.specificity_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('mcc', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.max_per_class_error_for_criteria));
+                        }
+                        return _results;
+                    }())),
+                    createVector('max_per_class_error', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.max_per_class_error));
+                        }
+                        return _results;
+                    }())),
+                    createList('confusion_matrix', concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(prediction.auc.confusion_matrix_for_criteria);
+                        }
+                        return _results;
+                    }()), formatConfusionMatrix),
+                    createVector('TPR', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(lodash.map(prediction.auc.confusion_matrix_for_criteria, computeTruePositiveRate));
+                        }
+                        return _results;
+                    }())),
+                    createVector('FPR', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(lodash.map(prediction.auc.confusion_matrix_for_criteria, computeFalsePositiveRate));
+                        }
+                        return _results;
+                    }())),
+                    createFactor('key', Flow.TString, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(repeatValues(prediction.auc.threshold_criteria.length, prediction.model.name + ' on ' + prediction.frame.name));
+                        }
+                        return _results;
+                    }())),
+                    createFactor('model', Flow.TString, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(repeatValues(prediction.auc.threshold_criteria.length, prediction.model.name));
+                        }
+                        return _results;
+                    }())),
+                    createFactor('frame', Flow.TString, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(repeatValues(prediction.auc.threshold_criteria.length, prediction.frame.name));
+                        }
+                        return _results;
+                    }()))
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = [];
-                for (_i = 0, _len = predictions.length; _i < _len; _i++) {
-                    prediction = predictions[_i];
-                    frame = prediction.frame, model = prediction.model, auc = prediction.auc;
-                    for (i = _j = 0, _ref1 = auc.threshold_criteria.length; 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
-                        rows.push(new Record(auc.threshold_criteria[i], read(auc.threshold_for_criteria[i]), read(auc.F1_for_criteria[i]), read(auc.F2_for_criteria[i]), read(auc.F0point5_for_criteria[i]), read(auc.accuracy_for_criteria[i]), read(auc.error_for_criteria[i]), read(auc.precision_for_criteria[i]), read(auc.recall_for_criteria[i]), read(auc.specificity_for_criteria[i]), read(auc.mcc_for_criteria[i]), read(auc.max_per_class_error_for_criteria[i]), cm = auc.confusion_matrix_for_criteria[i], computeTruePositiveRate(cm), computeFalsePositiveRate(cm), model.name + ' on ' + frame.name, model.name, frame.name));
-                    }
-                }
-                return Flow.Data.Table({
-                    label: 'metrics',
+                return createDataframe('metrics', vectors, lodash.range(lodash.head(vectors).count()), null, {
                     description: 'Metrics for the selected predictions',
-                    variables: variables,
-                    rows: rows,
-                    meta: {
-                        origin: formulateGetPredictionsOrigin(opts),
-                        plot: 'plot\n  data: inspect \'metrics\', ' + formulateGetPredictionsOrigin(opts)
-                    }
+                    origin: formulateGetPredictionsOrigin(opts),
+                    plot: 'plot inspect \'metrics\', ' + formulateGetPredictionsOrigin(opts)
                 });
             };
         };
         inspectBinomialPredictions = function (opts, predictions) {
             return function () {
-                var Record, auc, frame, i, model, prediction, row, rows, variables, _i, _len;
-                variables = [
-                    Flow.Data.Variable('key', Flow.TString),
-                    Flow.Data.Variable('model', Flow.TString),
-                    Flow.Data.Variable('frame', Flow.TString),
-                    Flow.Data.Variable('model_category', Flow.TString),
-                    Flow.Data.Variable('duration_in_ms', Flow.TNumber),
-                    Flow.Data.Variable('scoring_time', Flow.TNumber)
+                var prediction, vectors;
+                vectors = [
+                    createFactor('key', Flow.TString, function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(prediction.model.name + ' on ' + prediction.frame.name);
+                        }
+                        return _results;
+                    }()),
+                    createFactor('frame', Flow.TString, function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(prediction.frame.name);
+                        }
+                        return _results;
+                    }()),
+                    createFactor('model_category', Flow.TString, function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(prediction.model_category);
+                        }
+                        return _results;
+                    }()),
+                    createVector('duration_in_ms', Flow.TNumber, function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(prediction.duration_in_ms);
+                        }
+                        return _results;
+                    }()),
+                    createVector('scoring_time', Flow.TNumber, function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(prediction.scoring_time);
+                        }
+                        return _results;
+                    }())
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = new Array(predictions.length);
-                for (i = _i = 0, _len = predictions.length; _i < _len; i = ++_i) {
-                    prediction = predictions[i];
-                    frame = prediction.frame, model = prediction.model, auc = prediction.auc;
-                    rows[i] = row = new Record(model.name + ' on ' + frame.name, model.name, frame.name, prediction.model_category, prediction.duration_in_ms, prediction.scoring_time);
-                }
-                return Flow.Data.Table({
-                    label: 'predictions',
+                return createDataframe('predictions', vectors, lodash.range(predictions.length), null, {
                     description: 'Prediction output for selected predictions.',
-                    variables: variables,
-                    rows: rows,
-                    meta: {
-                        origin: formulateGetPredictionsOrigin(opts),
-                        plot: 'plot\n  data: inspect \'predictions\', ' + formulateGetPredictionsOrigin(opts)
-                    }
+                    origin: formulateGetPredictionsOrigin(opts),
+                    plot: 'plot inspect \'predictions\', ' + formulateGetPredictionsOrigin(opts)
                 });
             };
         };
@@ -5200,44 +5405,166 @@
         };
         inspectBinomialScores = function (opts, predictions) {
             return function () {
-                var Record, auc, cm, frame, i, model, prediction, rows, variables, _i, _j, _len, _ref1;
-                variables = [
-                    Flow.Data.Variable('thresholds', Flow.TNumber),
-                    Flow.Data.Variable('F1', Flow.TNumber),
-                    Flow.Data.Variable('F2', Flow.TNumber),
-                    Flow.Data.Variable('F0point5', Flow.TNumber),
-                    Flow.Data.Variable('accuracy', Flow.TNumber),
-                    Flow.Data.Variable('errorr', Flow.TNumber),
-                    Flow.Data.Variable('precision', Flow.TNumber),
-                    Flow.Data.Variable('recall', Flow.TNumber),
-                    Flow.Data.Variable('specificity', Flow.TNumber),
-                    Flow.Data.Variable('mcc', Flow.TNumber),
-                    Flow.Data.Variable('max_per_class_error', Flow.TNumber),
-                    Flow.Data.Variable('confusion_matrices', Flow.TObject, null, formatConfusionMatrix),
-                    Flow.Data.Variable('TPR', Flow.TNumber),
-                    Flow.Data.Variable('FPR', Flow.TNumber),
-                    Flow.Data.Variable('key', Flow.TString),
-                    Flow.Data.Variable('model', Flow.TString),
-                    Flow.Data.Variable('frame', Flow.TString)
+                var prediction, vectors;
+                vectors = [
+                    createVector('thresholds', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.thresholds));
+                        }
+                        return _results;
+                    }())),
+                    createVector('F1', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.F1));
+                        }
+                        return _results;
+                    }())),
+                    createVector('F2', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.F2));
+                        }
+                        return _results;
+                    }())),
+                    createVector('F0point5', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.F0point5));
+                        }
+                        return _results;
+                    }())),
+                    createVector('accuracy', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.accuracy));
+                        }
+                        return _results;
+                    }())),
+                    createVector('errorr', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.errorr));
+                        }
+                        return _results;
+                    }())),
+                    createVector('precision', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.precision));
+                        }
+                        return _results;
+                    }())),
+                    createVector('recall', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.recall));
+                        }
+                        return _results;
+                    }())),
+                    createVector('specificity', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.specificity));
+                        }
+                        return _results;
+                    }())),
+                    createVector('mcc', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.mcc));
+                        }
+                        return _results;
+                    }())),
+                    createVector('max_per_class_error', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(parseNaNs(prediction.auc.max_per_class_error));
+                        }
+                        return _results;
+                    }())),
+                    createList('confusion_matrices', concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(prediction.auc.confusion_matrices);
+                        }
+                        return _results;
+                    }()), formatConfusionMatrix),
+                    createVector('TPR', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(lodash.map(prediction.auc.confusion_matrices, computeTruePositiveRate));
+                        }
+                        return _results;
+                    }())),
+                    createVector('FPR', Flow.TNumber, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(lodash.map(prediction.auc.confusion_matrices, computeFalsePositiveRate));
+                        }
+                        return _results;
+                    }())),
+                    createFactor('key', Flow.TString, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(repeatValues(prediction.auc.thresholds.length, prediction.model.name + ' on ' + prediction.frame.name));
+                        }
+                        return _results;
+                    }())),
+                    createFactor('model', Flow.TString, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(repeatValues(prediction.auc.thresholds.length, prediction.model.name));
+                        }
+                        return _results;
+                    }())),
+                    createFactor('frame', Flow.TString, concatArrays(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = predictions.length; _i < _len; _i++) {
+                            prediction = predictions[_i];
+                            _results.push(repeatValues(prediction.auc.thresholds.length, prediction.frame.name));
+                        }
+                        return _results;
+                    }()))
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = [];
-                for (_i = 0, _len = predictions.length; _i < _len; _i++) {
-                    prediction = predictions[_i];
-                    frame = prediction.frame, model = prediction.model, auc = prediction.auc;
-                    for (i = _j = 0, _ref1 = auc.thresholds.length; 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
-                        rows.push(new Record(read(auc.thresholds[i]), read(auc.F1[i]), read(auc.F2[i]), read(auc.F0point5[i]), read(auc.accuracy[i]), read(auc.errorr[i]), read(auc.precision[i]), read(auc.recall[i]), read(auc.specificity[i]), read(auc.mcc[i]), read(auc.max_per_class_error[i]), cm = auc.confusion_matrices[i], computeTruePositiveRate(cm), computeFalsePositiveRate(cm), model.name + ' on ' + frame.name, model.name, frame.name));
-                    }
-                }
-                return Flow.Data.Table({
-                    label: 'scores',
+                return createDataframe('scores', vectors, lodash.range(lodash.head(vectors).count()), null, {
                     description: 'Scores for the selected predictions',
-                    variables: variables,
-                    rows: rows,
-                    meta: {
-                        origin: formulateGetPredictionsOrigin(opts),
-                        plot: 'plot\n  data: inspect \'scores\', ' + formulateGetPredictionsOrigin(opts)
-                    }
+                    origin: formulateGetPredictionsOrigin(opts),
+                    plot: 'plot inspect \'scores\', ' + formulateGetPredictionsOrigin(opts)
                 });
             };
         };
@@ -5265,121 +5592,134 @@
         };
         inspectFrameColumns = function (tableLabel, frameKey, frame, frameColumns) {
             return function () {
-                var Record, column, domain, label, row, rows, variable, variables;
-                variables = [
-                    Flow.Data.Variable('label', Flow.TString),
-                    Flow.Data.Variable('missing', Flow.TNumber),
-                    Flow.Data.Variable('zeros', Flow.TNumber),
-                    Flow.Data.Variable('pinfs', Flow.TNumber),
-                    Flow.Data.Variable('ninfs', Flow.TNumber),
-                    Flow.Data.Variable('min', Flow.TNumber),
-                    Flow.Data.Variable('max', Flow.TNumber),
-                    Flow.Data.Variable('mean', Flow.TNumber),
-                    Flow.Data.Variable('sigma', Flow.TNumber),
-                    Flow.Data.Variable('type', Flow.TString),
-                    Flow.Data.Variable('cardinality', Flow.TNumber)
+                var attrs, column, domain, vectors;
+                attrs = [
+                    'label',
+                    'missing',
+                    'zeros',
+                    'pinfs',
+                    'ninfs',
+                    'min',
+                    'max',
+                    'mean',
+                    'sigma',
+                    'type',
+                    'cardinality'
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = function () {
-                    var _i, _j, _len, _len1, _results;
+                vectors = function () {
+                    var _i, _len, _results;
                     _results = [];
-                    for (_i = 0, _len = frameColumns.length; _i < _len; _i++) {
-                        column = frameColumns[_i];
-                        row = new Record();
-                        for (_j = 0, _len1 = variables.length; _j < _len1; _j++) {
-                            variable = variables[_j];
-                            label = variable.label;
-                            switch (label) {
-                            case 'min':
-                                row[label] = lodash.head(column.mins);
-                                break;
-                            case 'max':
-                                row[label] = lodash.head(column.maxs);
-                                break;
-                            case 'cardinality':
-                                row[label] = (domain = column.domain) ? domain.length : null;
-                                break;
-                            default:
-                                row[label] = column[label];
-                            }
+                    for (_i = 0, _len = attrs.length; _i < _len; _i++) {
+                        name = attrs[_i];
+                        switch (name) {
+                        case 'min':
+                            _results.push(createVector(name, Flow.TNumber, function () {
+                                var _j, _len1, _results1;
+                                _results1 = [];
+                                for (_j = 0, _len1 = frameColumns.length; _j < _len1; _j++) {
+                                    column = frameColumns[_j];
+                                    _results1.push(lodash.head(column.mins));
+                                }
+                                return _results1;
+                            }()));
+                            break;
+                        case 'max':
+                            _results.push(createVector(name, Flow.TNumber, function () {
+                                var _j, _len1, _results1;
+                                _results1 = [];
+                                for (_j = 0, _len1 = frameColumns.length; _j < _len1; _j++) {
+                                    column = frameColumns[_j];
+                                    _results1.push(lodash.head(column.maxs));
+                                }
+                                return _results1;
+                            }()));
+                            break;
+                        case 'cardinality':
+                            _results.push(createVector(name, Flow.TNumber, function () {
+                                var _j, _len1, _results1;
+                                _results1 = [];
+                                for (_j = 0, _len1 = frameColumns.length; _j < _len1; _j++) {
+                                    column = frameColumns[_j];
+                                    _results1.push((domain = column.domain) ? domain.length : void 0);
+                                }
+                                return _results1;
+                            }()));
+                            break;
+                        case 'label':
+                        case 'type':
+                            _results.push(createFactor(name, Flow.TString, function () {
+                                var _j, _len1, _results1;
+                                _results1 = [];
+                                for (_j = 0, _len1 = frameColumns.length; _j < _len1; _j++) {
+                                    column = frameColumns[_j];
+                                    _results1.push(column[name]);
+                                }
+                                return _results1;
+                            }()));
+                            break;
+                        default:
+                            _results.push(createVector(name, Flow.TNumber, function () {
+                                var _j, _len1, _results1;
+                                _results1 = [];
+                                for (_j = 0, _len1 = frameColumns.length; _j < _len1; _j++) {
+                                    column = frameColumns[_j];
+                                    _results1.push(column[name]);
+                                }
+                                return _results1;
+                            }()));
                         }
-                        _results.push(row);
                     }
                     return _results;
                 }();
-                return Flow.Data.Table({
-                    label: tableLabel,
+                return createDataframe(tableLabel, vectors, lodash.range(frameColumns.length), null, {
                     description: 'A list of ' + tableLabel + ' in the H2O Frame.',
-                    variables: variables,
-                    rows: rows,
-                    meta: {
-                        origin: 'getFrame ' + Flow.Prelude.stringify(frameKey),
-                        plot: 'plot\n  data: inspect \'' + tableLabel + '\', getFrame ' + Flow.Prelude.stringify(frameKey)
-                    }
+                    origin: 'getFrame ' + Flow.Prelude.stringify(frameKey),
+                    plot: 'plot inspect \'' + tableLabel + '\', getFrame ' + Flow.Prelude.stringify(frameKey)
                 });
             };
         };
         inspectFrameData = function (frameKey, frame) {
             return function () {
-                var Record, column, frameColumns, i, j, row, rowCount, rows, value, variable, variables;
+                var column, domain, frameColumns, index, vectors;
                 frameColumns = frame.columns;
-                variables = function () {
+                vectors = function () {
                     var _i, _len, _results;
                     _results = [];
                     for (_i = 0, _len = frameColumns.length; _i < _len; _i++) {
                         column = frameColumns[_i];
                         switch (column.type) {
                         case 'int':
-                            _results.push(Flow.Data.Variable(column.label, Flow.TNumber));
-                            break;
                         case 'real':
-                            _results.push(Flow.Data.Variable(column.label, Flow.TNumber));
+                            _results.push(createVector(column.label, Flow.TNumber, parseNaNs(column.data)));
                             break;
                         case 'enum':
-                            _results.push(Flow.Data.Factor(column.label, column.domain));
-                            break;
-                        case 'uuid':
-                        case 'string':
-                            _results.push(Flow.Data.Variable(column.label, Flow.TString));
+                            domain = column.domain;
+                            _results.push(createFactor(column.label, Flow.TString, function () {
+                                var _j, _len1, _ref1, _results1;
+                                _ref1 = column.data;
+                                _results1 = [];
+                                for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+                                    index = _ref1[_j];
+                                    _results1.push(index != null ? domain[index] : void 0);
+                                }
+                                return _results1;
+                            }()));
                             break;
                         case 'time':
-                            _results.push(Flow.Data.Variable(column.label, Flow.TDate));
+                            _results.push(createVector(column.label, Flow.TNumber, parseNaNs(column.data)));
+                            break;
+                        case 'string':
+                            _results.push(createList(column.label, parseNulls(column.str_data)));
                             break;
                         default:
-                            _results.push(Flow.Data.Variable(column.label, Flow.TObject));
+                            _results.push(createList(column.label, parseNulls(column.data)));
                         }
                     }
                     return _results;
                 }();
-                Record = Flow.Data.Record(variables);
-                rowCount = lodash.head(frameColumns).data.length;
-                rows = function () {
-                    var _i, _j, _len, _results;
-                    _results = [];
-                    for (i = _i = 0; 0 <= rowCount ? _i < rowCount : _i > rowCount; i = 0 <= rowCount ? ++_i : --_i) {
-                        row = new Record();
-                        for (j = _j = 0, _len = variables.length; _j < _len; j = ++_j) {
-                            variable = variables[j];
-                            value = frameColumns[j].data[i];
-                            switch (variable.type) {
-                            case Flow.TNumber:
-                            case Flow.TNumber:
-                                row[variable.label] = value === 'NaN' ? null : value;
-                                break;
-                            default:
-                                row[variable.label] = value;
-                            }
-                        }
-                        _results.push(row);
-                    }
-                    return _results;
-                }();
-                return Flow.Data.Table({
-                    label: 'data',
+                return createDataframe('data', vectors, lodash.range(frame.len - frame.off), null, {
                     description: 'A partial list of rows in the H2O Frame.',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getFrame ' + Flow.Prelude.stringify(frameKey) }
+                    origin: 'getFrame ' + Flow.Prelude.stringify(frameKey)
                 });
             };
         };
@@ -5414,42 +5754,18 @@
             column = lodash.head(frame.columns);
             rowCount = frame.rows;
             inspectPercentiles = function () {
-                var Record, i, percentile, percentileValues, percentiles, row, rows, variables;
-                percentiles = frame.default_pctiles;
-                percentileValues = column.pctiles;
-                variables = [
-                    Flow.Data.Variable('percentile', Flow.TNumber),
-                    Flow.Data.Variable('value', Flow.TNumber)
+                var vectors;
+                vectors = [
+                    createVector('percentile', Flow.TNumber, frame.default_pctiles),
+                    createVector('value', Flow.TNumber, column.pctiles)
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = function () {
-                    var _i, _len, _results;
-                    _results = [];
-                    for (i = _i = 0, _len = percentiles.length; _i < _len; i = ++_i) {
-                        percentile = percentiles[i];
-                        row = new Record();
-                        row.percentile = percentile;
-                        row.value = percentileValues[i];
-                        _results.push(row);
-                    }
-                    return _results;
-                }();
-                return Flow.Data.Table({
-                    label: 'percentiles',
+                return createDataframe('percentiles', vectors, lodash.range(frame.default_pctiles.length), null, {
                     description: 'Percentiles for column \'' + column.label + '\' in frame \'' + frameKey + '\'.',
-                    variables: variables,
-                    rows: rows,
-                    meta: { origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName) }
+                    origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName)
                 });
             };
             inspectDistribution = function () {
-                var Record, base, binCount, binIndex, bins, count, i, interval, m, minBinCount, n, row, rows, stride, variables, width, _i, _j, _k, _len;
-                variables = [
-                    Flow.Data.Variable('interval', Flow.TString),
-                    Flow.Data.Variable('width', Flow.TNumber),
-                    Flow.Data.Variable('count', Flow.TNumber)
-                ];
-                Record = Flow.Data.Record(variables);
+                var base, binCount, binIndex, bins, count, countData, i, interval, intervalData, m, minBinCount, n, rows, stride, vectors, width, widthData, _i, _j, _k, _len;
                 minBinCount = 32;
                 base = column.base, stride = column.stride, bins = column.bins;
                 width = Math.floor(bins.length / minBinCount);
@@ -5457,6 +5773,9 @@
                 rows = [];
                 if (width > 0) {
                     binCount = minBinCount + (bins.length % width > 0 ? 1 : 0);
+                    intervalData = new Array(binCount);
+                    widthData = new Array(binCount);
+                    countData = new Array(binCount);
                     for (i = _i = 0; 0 <= binCount ? _i < binCount : _i > binCount; i = 0 <= binCount ? ++_i : --_i) {
                         m = i * width;
                         n = m + width;
@@ -5466,126 +5785,72 @@
                                 count += bins[binIndex];
                             }
                         }
-                        row = new Record();
-                        row.interval = base + i * interval;
-                        row.width = interval;
-                        row.count = count;
-                        rows.push(row);
+                        intervalData[i] = base + i * interval;
+                        widthData[i] = interval;
+                        countData[i] = count;
                     }
                 } else {
+                    binCount = bins.length;
+                    intervalData = new Array(binCount);
+                    widthData = new Array(binCount);
+                    countData = new Array(binCount);
                     for (i = _k = 0, _len = bins.length; _k < _len; i = ++_k) {
                         count = bins[i];
-                        row = new Record();
-                        row.interval = base + i * stride;
-                        row.width = stride;
-                        row.count = count;
-                        rows.push(row);
+                        intervalData[i] = base + i * stride;
+                        widthData[i] = stride;
+                        countData[i] = count;
                     }
                 }
-                return Flow.Data.Table({
-                    label: 'distribution',
+                vectors = [
+                    createFactor('interval', Flow.TString, intervalData),
+                    createVector('width', Flow.TNumber, widthData),
+                    createVector('count', Flow.TNumber, countData)
+                ];
+                return createDataframe('distribution', vectors, lodash.range(binCount), null, {
                     description: 'Distribution for column \'' + column.label + '\' in frame \'' + frameKey + '\'.',
-                    variables: variables,
-                    rows: rows,
-                    meta: {
-                        origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName),
-                        plot: 'plot\n  data: inspect \'distribution\', getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName) + '\n  type: \'interval\'\n  x: \'interval\'\n  y: \'count\''
-                    }
+                    origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName),
+                    plot: 'plot (g) -> g(\n  g.rect(\n    g.position \'interval\', \'count\'\n    g.width g.value 1\n  )\n  g.from inspect \'distribution\', getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName) + '\n)'
                 });
             };
             inspectCharacteristics = function () {
-                var characteristics, count, i, missing, ninfs, other, pinfs, rows, variables, zeros;
+                var characteristicData, count, countData, missing, ninfs, other, percentData, pinfs, vectors, zeros;
                 missing = column.missing, zeros = column.zeros, pinfs = column.pinfs, ninfs = column.ninfs;
                 other = rowCount - missing - zeros - pinfs - ninfs;
-                variables = [
-                    {
-                        label: 'label',
-                        type: Flow.TString
-                    },
-                    {
-                        label: 'characteristic',
-                        type: Flow.TString
-                    },
-                    {
-                        label: 'count',
-                        type: Flow.TNumber,
-                        domain: [
-                            0,
-                            rowCount
-                        ]
-                    },
-                    {
-                        label: 'percent',
-                        type: Flow.TNumber,
-                        domain: [
-                            0,
-                            100
-                        ]
-                    }
-                ];
-                characteristics = [
+                characteristicData = [
                     'Missing',
                     '-Inf',
                     'Zero',
                     '+Inf',
                     'Other'
                 ];
-                rows = function () {
-                    var _i, _len, _ref1, _results;
-                    _ref1 = [
-                        missing,
-                        ninfs,
-                        zeros,
-                        pinfs,
-                        other
-                    ];
+                countData = [
+                    missing,
+                    ninfs,
+                    zeros,
+                    pinfs,
+                    other
+                ];
+                percentData = function () {
+                    var _i, _len, _results;
                     _results = [];
-                    for (i = _i = 0, _len = _ref1.length; _i < _len; i = ++_i) {
-                        count = _ref1[i];
-                        _results.push({
-                            label: column.label,
-                            characteristic: characteristics[i],
-                            count: count,
-                            percent: 100 * count / rowCount
-                        });
+                    for (_i = 0, _len = countData.length; _i < _len; _i++) {
+                        count = countData[_i];
+                        _results.push(100 * count / rowCount);
                     }
                     return _results;
                 }();
-                return Flow.Data.Table({
-                    label: 'characteristics',
+                vectors = [
+                    createFactor('characteristic', Flow.TString, characteristicData),
+                    createVector('count', Flow.TNumber, countData),
+                    createVector('percent', Flow.TNumber, percentData)
+                ];
+                return createDataframe('characteristics', vectors, lodash.range(characteristicData.length), null, {
                     description: 'Characteristics for column \'' + column.label + '\' in frame \'' + frameKey + '\'.',
-                    variables: variables,
-                    rows: rows,
-                    meta: {
-                        origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName),
-                        plot: 'plot\n  title: \'Characteristics for ' + frameKey + ' : ' + column.label + '\'\n  type: \'interval\'\n  data: inspect \'characteristics\', getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName) + '\n  x: plot.stack \'count\'\n  y: \'label\'\n  color: \'characteristic\''
-                    }
+                    origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName)
                 });
             };
             inspectSummary = function () {
-                var defaultPercentiles, mean, outliers, percentiles, q1, q2, q3, row, variables;
-                variables = [
-                    {
-                        label: 'mean',
-                        type: Flow.TNumber
-                    },
-                    {
-                        label: 'q1',
-                        type: Flow.TNumber
-                    },
-                    {
-                        label: 'q2',
-                        type: Flow.TNumber
-                    },
-                    {
-                        label: 'q3',
-                        type: Flow.TNumber
-                    },
-                    {
-                        label: 'outliers',
-                        type: Flow.TArray
-                    }
-                ];
+                var defaultPercentiles, maximum, mean, minimum, outliers, percentiles, q1, q2, q3, vectors;
                 defaultPercentiles = frame.default_pctiles;
                 percentiles = column.pctiles;
                 mean = column.mean;
@@ -5593,23 +5858,25 @@
                 q2 = percentiles[defaultPercentiles.indexOf(0.5)];
                 q3 = percentiles[defaultPercentiles.indexOf(0.75)];
                 outliers = lodash.unique(column.mins.concat(column.maxs));
-                row = {
-                    mean: mean,
-                    q1: q1,
-                    q2: q2,
-                    q3: q3,
-                    outliers: outliers
-                };
-                return Flow.Data.Table({
-                    label: 'summary',
+                minimum = lodash.head(column.mins);
+                maximum = lodash.head(column.maxs);
+                vectors = [
+                    createFactor('column', Flow.TString, [columnName]),
+                    createVector('mean', Flow.TNumber, [mean]),
+                    createVector('q1', Flow.TNumber, [q1]),
+                    createVector('q2', Flow.TNumber, [q2]),
+                    createVector('q3', Flow.TNumber, [q3]),
+                    createVector('min', Flow.TNumber, [minimum]),
+                    createVector('max', Flow.TNumber, [maximum])
+                ];
+                return createDataframe('summary', vectors, lodash.range(1), null, {
                     description: 'Summary for column \'' + column.label + '\' in frame \'' + frameKey + '\'.',
-                    variables: variables,
-                    rows: [row],
-                    meta: { origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName) }
+                    origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName),
+                    plot: 'plot (g) -> g(\n  g.schema(\n    g.position \'min\', \'q1\', \'q2\', \'q3\', \'max\', \'column\'\n  )\n  g.from inspect \'summary\', getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName) + '\n)'
                 });
             };
             inspectDomain = function () {
-                var Record, countVariable, level, levels, row, rows, sortedLevels, variables;
+                var counts, i, labels, level, levels, percents, sortedLevels, vectors, _i, _len, _ref1;
                 levels = lodash.map(column.bins, function (count, index) {
                     return {
                         count: count,
@@ -5619,43 +5886,29 @@
                 sortedLevels = lodash.sortBy(levels, function (level) {
                     return -level.count;
                 });
-                variables = [
-                    Flow.Data.Variable('label', Flow.TString),
-                    countVariable = Flow.Data.Variable('count', Flow.TNumber),
-                    Flow.Data.Variable('percent', Flow.TNumber, [
-                        0,
-                        100
-                    ])
+                _ref1 = createArrays(sortedLevels.length), labels = _ref1[0], counts = _ref1[1], percents = _ref1[2];
+                for (i = _i = 0, _len = sortedLevels.length; _i < _len; i = ++_i) {
+                    level = sortedLevels[i];
+                    labels[i] = column.domain[level.index];
+                    counts[i] = level.count;
+                    percents[i] = 100 * level.count / rowCount;
+                }
+                vectors = [
+                    createFactor('label', Flow.TString, labels),
+                    createVector('count', Flow.TNumber, counts),
+                    createVector('percent', Flow.TNumber, percents)
                 ];
-                Record = Flow.Data.Record(variables);
-                rows = function () {
-                    var _i, _len, _results;
-                    _results = [];
-                    for (_i = 0, _len = sortedLevels.length; _i < _len; _i++) {
-                        level = sortedLevels[_i];
-                        row = new Record();
-                        row.label = column.domain[level.index];
-                        row.count = countVariable.read(level.count);
-                        row.percent = 100 * level.count / rowCount;
-                        _results.push(row);
-                    }
-                    return _results;
-                }();
-                return Flow.Data.Table({
-                    label: 'domain',
+                return createDataframe('domain', vectors, lodash.range(sortedLevels.length), null, {
                     description: 'Domain for column \'' + column.label + '\' in frame \'' + frameKey + '\'.',
-                    variables: variables,
-                    rows: rows,
-                    meta: {
-                        origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName),
-                        plot: 'plot\n  title: \'Domain for ' + frameKey + ' : ' + column.label + '\'\n  type: \'interval\'\n  data: inspect \'domain\', getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName) + '\n  x: \'count\'\n  y: \'label\''
-                    }
+                    origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName),
+                    plot: 'plot (g) -> g(\n  g.rect(\n    g.position \'count\', \'label\'\n  )\n  g.from inspect \'domain\', getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName) + '\n)'
                 });
             };
             inspections = { characteristics: inspectCharacteristics };
             if (column.type === 'int' || column.type === 'real') {
                 inspections.summary = inspectSummary;
                 inspections.distribution = inspectDistribution;
+                inspections.percentiles = inspectPercentiles;
             } else {
                 inspections.domain = inspectDomain;
             }
@@ -5934,7 +6187,7 @@
                         return go(error);
                     } else {
                         uniquePredictions = lodash.values(lodash.indexBy(lodash.flatten(predictions, true), function (prediction) {
-                            return prediction.model.key + prediction.frame.key.name;
+                            return prediction.model.name + prediction.frame.name;
                         }));
                         return go(null, extendPredictions(opts, uniquePredictions));
                     }
@@ -6079,8 +6332,7 @@
             }
         };
         Flow.Dataflow.link(_.ready, function () {
-            Flow.Dataflow.link(_.inspect, inspect);
-            return Flow.Dataflow.link(_.plot, __plot);
+            return Flow.Dataflow.link(_.inspect, inspect);
         });
         return {
             fork: _fork,
@@ -6566,20 +6818,20 @@
     H2O.FrameOutput = function (_, _frame) {
         var createGrid, createModel, download, inspect, inspectData, predict, _grid;
         createGrid = function (data) {
-            var action, el, grid, row, rowIndex, table, tbody, td, tdr, tds, th, thead, thr, ths, tr, trs, value, variable, _ref;
+            var action, el, grid, i, table, tbody, td, tdr, tds, th, thead, thr, ths, tr, trs, value, vector, vectorIndex, _ref;
             _ref = Flow.HTML.template('.grid', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt', '+a data-action=\'summary\' data-index=\'{0}\' class=\'action\' href=\'#\''), grid = _ref[0], table = _ref[1], thead = _ref[2], tbody = _ref[3], tr = _ref[4], th = _ref[5], thr = _ref[6], td = _ref[7], tdr = _ref[8], action = _ref[9];
             ths = function () {
                 var _i, _len, _ref1, _results;
-                _ref1 = data.variables;
+                _ref1 = data.vectors;
                 _results = [];
                 for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                    variable = _ref1[_i];
-                    switch (variable.type) {
+                    vector = _ref1[_i];
+                    switch (vector.type) {
                     case Flow.TNumber:
-                        _results.push(thr(lodash.escape(variable.label)));
+                        _results.push(thr(lodash.escape(vector.label)));
                         break;
                     default:
-                        _results.push(th(lodash.escape(variable.label)));
+                        _results.push(th(lodash.escape(vector.label)));
                     }
                 }
                 return _results;
@@ -6587,34 +6839,31 @@
             ths.push(th('Actions'));
             trs = function () {
                 var _i, _len, _ref1, _results;
-                _ref1 = data.rows;
+                _ref1 = data.indices;
                 _results = [];
-                for (rowIndex = _i = 0, _len = _ref1.length; _i < _len; rowIndex = ++_i) {
-                    row = _ref1[rowIndex];
+                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                    i = _ref1[_i];
                     tds = function () {
                         var _j, _len1, _ref2, _results1;
-                        _ref2 = data.variables;
+                        _ref2 = data.vectors;
                         _results1 = [];
-                        for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
-                            variable = _ref2[_j];
-                            value = row[variable.label];
-                            switch (variable.type) {
-                            case Flow.TFactor:
-                                _results1.push(td(value === null ? '-' : lodash.escape(variable.domain[value])));
+                        for (vectorIndex = _j = 0, _len1 = _ref2.length; _j < _len1; vectorIndex = ++_j) {
+                            vector = _ref2[vectorIndex];
+                            value = vector.format(i);
+                            switch (vector.type) {
+                            case Flow.TString:
+                                _results1.push(td(value !== void 0 ? lodash.escape(value) : '-'));
                                 break;
                             case Flow.TNumber:
-                                _results1.push(tdr(value === null ? '-' : value));
-                                break;
-                            case Flow.TArray:
-                                _results1.push(td(value === null ? '-' : value.join(', ')));
+                                _results1.push(tdr(value !== void 0 ? value : '-'));
                                 break;
                             default:
-                                _results1.push(td(value === null ? '-' : value));
+                                _results1.push(td('?'));
                             }
                         }
                         return _results1;
                     }();
-                    tds.push(td(action('Summary...', rowIndex)));
+                    tds.push(td(action('Summary...', i)));
                     _results.push(tr(tds));
                 }
                 return _results;
@@ -6629,13 +6878,10 @@
                 $link = $(this);
                 action = $link.attr('data-action');
                 index = parseInt($link.attr('data-index'), 10);
-                switch (action) {
-                case 'summary':
-                    if (index >= 0) {
-                        row = data.rows[index];
-                        if (row) {
-                            return _.insertAndExecuteCell('cs', 'inspect getColumnSummary ' + Flow.Prelude.stringify(_frame.key.name) + ', ' + Flow.Prelude.stringify(row.label));
-                        }
+                if (index >= 0) {
+                    switch (action) {
+                    case 'summary':
+                        return _.insertAndExecuteCell('cs', 'inspect getColumnSummary ' + Flow.Prelude.stringify(_frame.key.name) + ', ' + Flow.Prelude.stringify(data.schema.label.valueAt(index)));
                     }
                 }
             });
@@ -7002,19 +7248,19 @@
     };
 }.call(this));
 (function () {
-    H2O.InspectOutput = function (_, _table) {
+    H2O.InspectOutput = function (_, _frame) {
         var plot, view;
         view = function () {
-            return _.insertAndExecuteCell('cs', 'grid inspect ' + Flow.Prelude.stringify(_table.label) + ', ' + _table.meta.origin);
+            return _.insertAndExecuteCell('cs', 'grid inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin);
         };
         plot = function () {
-            return _.insertAndExecuteCell('cs', _table.meta.plot);
+            return _.insertAndExecuteCell('cs', _frame.metadata.plot);
         };
         return {
-            label: _table.label,
-            variables: _table.variables,
+            label: _frame.label,
+            vectors: _frame.vectors,
             view: view,
-            canPlot: _table.meta.plot ? true : false,
+            canPlot: _frame.metadata.plot ? true : false,
             plot: plot,
             template: 'flow-inspect-output'
         };
@@ -7026,21 +7272,20 @@
         createTableView = function (table) {
             var grid, inspect, plot;
             inspect = function () {
-                return _.insertAndExecuteCell('cs', 'inspect ' + Flow.Prelude.stringify(table.label) + ', ' + table.meta.origin);
+                return _.insertAndExecuteCell('cs', 'inspect ' + Flow.Prelude.stringify(table.label) + ', ' + table.metadata.origin);
             };
             grid = function () {
-                return _.insertAndExecuteCell('cs', 'grid inspect ' + Flow.Prelude.stringify(table.label) + ', ' + table.meta.origin);
+                return _.insertAndExecuteCell('cs', 'grid inspect ' + Flow.Prelude.stringify(table.label) + ', ' + table.metadata.origin);
             };
             plot = function () {
-                return _.insertAndExecuteCell('cs', table.meta.plot);
+                return _.insertAndExecuteCell('cs', table.metadata.plot);
             };
             return {
                 label: table.label,
-                description: table.description,
-                variables: table.variables,
+                description: table.metadata.description,
                 inspect: inspect,
                 grid: grid,
-                canPlot: table.meta.plot ? true : false,
+                canPlot: table.metadata.plot ? true : false,
                 plot: plot
             };
         };
@@ -7449,11 +7694,11 @@
     };
     createCheckboxControl = function (parameter) {
         var control, _value;
-        _value = Flow.Dataflow.signal(parameter.actual_value === 'true');
+        _value = Flow.Dataflow.signal(parameter.actual_value);
         control = createControl('checkbox', parameter);
         control.clientId = lodash.uniqueId();
         control.value = _value;
-        control.defaultValue = parameter.default_value === 'true';
+        control.defaultValue = parameter.default_value;
         return control;
     };
     createControlFromParameter = function (parameter) {
@@ -7486,7 +7731,7 @@
         }
     };
     H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
-        var collectParameters, createModel, criticalControls, encodeArrayForPost, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _parametersByLevel, _validationFailureMessage;
+        var collectParameters, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _parametersByLevel, _validationFailureMessage;
         _exception = Flow.Dataflow.signal(null);
         _validationFailureMessage = Flow.Dataflow.signal('');
         _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
@@ -7575,11 +7820,6 @@
                 }
             }
         }());
-        encodeArrayForPost = function (array) {
-            return '[' + lodash.map(array, function (element) {
-                return '"' + element + '"';
-            }).join(',') + ']';
-        };
         collectParameters = function (includeUnchangedParameters) {
             var control, controls, parameters, value, _i, _j, _len, _len1;
             if (includeUnchangedParameters == null) {
@@ -7600,7 +7840,7 @@
                             break;
                         case 'list':
                             if (value.length) {
-                                parameters[control.name] = encodeArrayForPost(value);
+                                parameters[control.name] = value;
                             }
                             break;
                         default:
@@ -7699,7 +7939,7 @@
                 return parameter.name === 'do_classification';
             });
             if (classificationParameter) {
-                classificationParameter.actual_value = 'true';
+                classificationParameter.actual_value = true;
             }
             return _.requestFrames(function (error, frames) {
                 var frame, frameKeys, frameParameters, parameter, _i, _len;
@@ -7802,6 +8042,13 @@
                 case 'VecSpecifier':
                     if (actual_value) {
                         return actual_value.column_name;
+                    } else {
+                        return null;
+                    }
+                    break;
+                case 'string[]':
+                    if (actual_value) {
+                        return actual_value.join(', ');
                     } else {
                         return null;
                     }
@@ -8101,18 +8348,25 @@
     };
 }.call(this));
 (function () {
-    H2O.PlotInput = function (_, config) {
-        var plot, _canPlot, _color, _table, _type, _types, _variables, _x, _y;
-        _table = config.data;
+    H2O.PlotInput = function (_, _frame) {
+        var plot, vector, _canPlot, _color, _type, _types, _vectors, _x, _y;
         _types = [
             'point',
-            'line',
-            'area',
-            'interval'
+            'path',
+            'rect'
         ];
-        _variables = lodash.map(_table.variables, function (variable) {
-            return variable.label;
-        });
+        _vectors = function () {
+            var _i, _len, _ref, _results;
+            _ref = _frame.vectors;
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                vector = _ref[_i];
+                if (vector.type === Flow.TString || vector.type === Flow.TNumber) {
+                    _results.push(vector.label);
+                }
+            }
+            return _results;
+        }();
         _type = Flow.Dataflow.signal(null);
         _x = Flow.Dataflow.signal(null);
         _y = Flow.Dataflow.signal(null);
@@ -8121,17 +8375,14 @@
             return type && x && y;
         });
         plot = function () {
-            var color;
-            if (color = _color()) {
-                return _.insertAndExecuteCell('cs', 'plot\n  data: inspect ' + Flow.Prelude.stringify(_table.label) + ', ' + _table.meta.origin + '\n  type: \'' + _type() + '\'\n  x: ' + Flow.Prelude.stringify(_x()) + '\n  y: ' + Flow.Prelude.stringify(_y()) + '\n  color: ' + Flow.Prelude.stringify(color));
-            } else {
-                return _.insertAndExecuteCell('cs', 'plot\n  data: inspect ' + Flow.Prelude.stringify(_table.label) + ', ' + _table.meta.origin + '\n  type: \'' + _type() + '\'\n  x: ' + Flow.Prelude.stringify(_x()) + '\n  y: ' + Flow.Prelude.stringify(_y()));
-            }
+            var color, command;
+            command = (color = _color()) ? 'plot (g) -> g(\n  g.' + _type() + '(\n    g.position ' + Flow.Prelude.stringify(_x()) + ', ' + Flow.Prelude.stringify(_y()) + '\n    g.color ' + Flow.Prelude.stringify(color) + '\n  )\n  g.from inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin + '\n)' : 'plot (g) -> g(\n  g.' + _type() + '(\n    g.position ' + Flow.Prelude.stringify(_x()) + ', ' + Flow.Prelude.stringify(_y()) + '\n  )\n  g.from inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin + '\n)';
+            return _.insertAndExecuteCell('cs', command);
         };
         return {
             types: _types,
             type: _type,
-            variables: _variables,
+            vectors: _vectors,
             x: _x,
             y: _y,
             color: _color,
@@ -8234,9 +8485,8 @@
 }.call(this));
 (function () {
     H2O.PredictOutput = function (_, prediction) {
-        var frame, inspect, model, viewPredictionFrame, _predictionTable;
+        var frame, inspect, model, viewPredictionFrame;
         frame = prediction.frame, model = prediction.model;
-        _predictionTable = _.inspect('prediction', prediction);
         inspect = function () {
             return _.insertAndExecuteCell('cs', 'inspect getPrediction ' + Flow.Prelude.stringify(model.name) + ', ' + Flow.Prelude.stringify(frame.name));
         };
@@ -8244,7 +8494,6 @@
             return _.insertAndExecuteCell('cs', 'getFrame ' + Flow.Prelude.stringify(prediction.predictions.key.name));
         };
         return {
-            predictionTable: _predictionTable,
             inspect: inspect,
             viewPredictionFrame: viewPredictionFrame,
             template: 'flow-predict-output'
@@ -8340,16 +8589,16 @@
             return _.insertAndExecuteCell('cs', 'getPredictions ' + Flow.Prelude.stringify(selectedKeys));
         };
         plotPredictions = function () {
-            return _.insertAndExecuteCell('cs', _predictionsTable.meta.plot);
+            return _.insertAndExecuteCell('cs', _predictionsTable.metadata.plot);
         };
         plotScores = function () {
-            return _.insertAndExecuteCell('cs', _scoresTable.meta.plot);
+            return _.insertAndExecuteCell('cs', _scoresTable.metadata.plot);
         };
         plotMetrics = function () {
-            return _.insertAndExecuteCell('cs', _metricsTable.meta.plot);
+            return _.insertAndExecuteCell('cs', _metricsTable.metadata.plot);
         };
         inspectAll = function () {
-            return _.insertAndExecuteCell('cs', 'inspect ' + _predictionsTable.meta.origin);
+            return _.insertAndExecuteCell('cs', 'inspect ' + _predictionsTable.metadata.origin);
         };
         predict = function () {
             return _.insertAndExecuteCell('cs', 'predict');

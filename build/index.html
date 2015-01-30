@@ -603,7 +603,7 @@
             </tr>
           </thead>
           <tbody>
-            <!-- ko foreach:variables-->
+            <!-- ko foreach:vectors-->
             <tr>
               <td><i class="fa fa-ellipsis-v"></i>
               </td>
@@ -646,7 +646,7 @@
               <label>X-Axis:</label>
             </th>
             <td>
-              <select data-bind="options:variables, value:x, optionsCaption:'(Select)'"></select>
+              <select data-bind="options:vectors, value:x, optionsCaption:'(Select)'"></select>
             </td>
           </tr>
           <tr>
@@ -654,7 +654,7 @@
               <label>Y-Axis:</label>
             </th>
             <td>
-              <select data-bind="options:variables, value:y, optionsCaption:'(Select)'"></select>
+              <select data-bind="options:vectors, value:y, optionsCaption:'(Select)'"></select>
             </td>
           </tr>
           <tr>
@@ -662,7 +662,7 @@
               <label>Color:</label>
             </th>
             <td>
-              <select data-bind="options:variables, value:color, optionsCaption:'(Select)'"></select>
+              <select data-bind="options:vectors, value:color, optionsCaption:'(Select)'"></select>
             </td>
           </tr>
           <tr>
@@ -1601,14 +1601,6 @@
             </h3>
         <table class="flow-form">
           <tbody>
-            <!-- ko with:predictionTable-->
-            <!-- ko foreach:rows-->
-            <tr>
-              <th data-bind="text:parameter"></th>
-              <td data-bind="text:value"></td>
-            </tr>
-            <!-- /ko-->
-            <!-- /ko-->
             <tr>
               <th width="1">
                 <label>Actions:</label>

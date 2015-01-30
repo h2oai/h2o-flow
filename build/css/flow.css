@@ -458,12 +458,24 @@ table.flow-form-ruled tr:first-child {
   margin: 10px 0 20px 0;
   font-size: 85%;
 }
-.flow-plot table tbody > tr:nth-child(odd) {
+.flow-plot table tr:nth-child(odd) {
   background-color: #eee;
 }
 .flow-plot table td,
 .flow-plot table th {
   padding: 2px 5px;
+}
+.flow-plot .vx-tooltip table {
+  font-family: monospace !important;
+  margin: 0 !important;
+  font-size: 100% !important;
+}
+.flow-plot .vx-tooltip table tr:nth-child(odd) {
+  background-color: inherit !important;
+}
+.flow-plot .vx-tooltip table td,
+.flow-plot .vx-tooltip table th {
+  padding: 0px 4px !important;
 }
 .flow-plot table.flow-matrix {
   margin: 0;
