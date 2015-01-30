@@ -1,9 +1,9 @@
+lightning = window.plot
 
-
-createVector = window.plot.createVector
-createFactor = window.plot.createFactor
-createList = window.plot.createList
-createDataframe = window.plot.createFrame
+createVector = lightning.createVector
+createFactor = lightning.createFactor
+createList = lightning.createList
+createDataframe = lightning.createFrame
 
 _assistance =
   importFiles:
@@ -58,7 +58,7 @@ concatArrays = (arrays) ->
       head arrays
     else
       a = head arrays
-      a.concat.apply a, rest arrays
+      a.concat.apply a, tail arrays
 
 computeTruePositiveRate = (cm) ->
   [[tn, fp], [fn, tp]] = cm
@@ -174,74 +174,18 @@ H2O.Routines = (_) ->
     render_ inspection, -> H2O.InspectOutput _, inspection
     inspection
 
-  __plot = (config, go) ->
-    Flow.Plot config, (error, plot) ->
-      if error
-        go new Flow.Error 'Error rendering plot.', error
-      else
-        go null, plot
-
-  _plot = (config, go) ->
-    #XXX clean up - duplicated in plot() for plot inputs
-    if config.data
-      if _isFuture config.data
-        config.data (error, data) ->
-          if error
-            go new Flow.Error 'Error evaluating data for plot().', error
-          else
-            config.data = data
-            __plot config, go
-      else
-        __plot config, go
-    else
-      go new Flow.Error "Cannot plot(): missing 'data'."
-
-  _plotInput = (config, go) ->
-    if config.data
-      if _isFuture config.data
-        config.data (error, data) ->
-          if error
-            go new Flow.Error 'Error evaluating data for plot().', error
-          else
-            config.data = data
-            go null, config
-      else
-        go null, config
-    else
-      go new Flow.Error "Cannot plot(): missing 'data'."
-
-  _plotInput1 = (f, go) ->
-    f (error, frame) ->
-      if error
-        go new Flow.Error 'Error evaluating data for plot().', error
-      else
-        go null, frame
-
-  plot = (config) ->
-    configKeys = keys config
-    if (configKeys.length is 1) and 'data' is head configKeys
-      renderable _plotInput, config, (config, go) ->
-        go null, H2O.PlotInput _, config
-    else
-      renderable _plot, config, (plot, go) ->
-        go null, H2O.PlotOutput _, plot
-
-  plot.stack = Flow.Plot.stack
-
-  _plot1 = (plot, go) ->
+  _plot = (plot, go) ->
     plot (error, vis) ->
       if error
         go new Flow.Error 'Error rendering vis.', error
       else
         go null, vis
 
-  plot1 = (f) ->
+  plot = (f) ->
     if _isFuture f
       _fork proceed, H2O.PlotInput, f
-      #renderable _plotInput1, f, (frame, go) ->
-      #  go null, H2O.PlotInput _, frame
     else
-      renderable _plot1, (f window.plot), (plot, go) ->
+      renderable _plot, (f lightning), (plot, go) ->
         go null, H2O.PlotOutput _, plot.element
 
   #XXX pass-thru to g.table()
@@ -487,7 +431,7 @@ H2O.Routines = (_) ->
     createDataframe 'metrics', vectors, (sequence (head vectors).count()), null,
       description: "Metrics for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
-      plot: "plot1 inspect 'metrics', #{formulateGetPredictionsOrigin opts}"
+      plot: "plot inspect 'metrics', #{formulateGetPredictionsOrigin opts}"
 
   inspectBinomialPredictions = (opts, predictions) -> ->
     vectors = [
@@ -504,7 +448,7 @@ H2O.Routines = (_) ->
     createDataframe 'predictions', vectors, (sequence predictions.length), null,
       description: "Prediction output for selected predictions."
       origin: formulateGetPredictionsOrigin opts
-      plot: "plot1 inspect 'predictions', #{formulateGetPredictionsOrigin opts}"
+      plot: "plot inspect 'predictions', #{formulateGetPredictionsOrigin opts}"
 
   extendPredictions = (opts, predictions) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
@@ -543,7 +487,7 @@ H2O.Routines = (_) ->
     createDataframe 'scores', vectors, (sequence (head vectors).count()), null, 
       description: "Scores for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
-      plot: "plot1 inspect 'scores', #{formulateGetPredictionsOrigin opts}"
+      plot: "plot inspect 'scores', #{formulateGetPredictionsOrigin opts}"
     
   extendPrediction = (modelKey, frameKey, prediction) ->
     render_ prediction, -> H2O.PredictOutput _, prediction
@@ -588,7 +532,7 @@ H2O.Routines = (_) ->
     createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
       origin: "getFrame #{stringify frameKey}"
-      plot: "plot1 inspect '#{tableLabel}', getFrame #{stringify frameKey}"
+      plot: "plot inspect '#{tableLabel}', getFrame #{stringify frameKey}"
 
 
   inspectFrameData = (frameKey, frame) -> ->
@@ -604,10 +548,12 @@ H2O.Routines = (_) ->
           createFactor column.label, TString, ((if index? then domain[index] else undefined) for index in column.data)
         when 'time'
           createVector column.label, TNumber, parseNaNs column.data
-        else # uuid / string / etc.
+        when 'string'
+          createList column.label, parseNulls column.str_data
+        else # uuid / etc.
           createList column.label, parseNulls column.data
 
-    createDataframe 'data', vectors, (sequence (head frameColumns).data.length), null,
+    createDataframe 'data', vectors, (sequence frame.len - frame.off), null,
       description: 'A partial list of rows in the H2O Frame.'
       origin: "getFrame #{stringify frameKey}"
 
@@ -677,7 +623,7 @@ H2O.Routines = (_) ->
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: """
-        plot1 (g) -> g(
+        plot (g) -> g(
           g.rect(
             g.position 'interval', 'count'
             g.width g.value 1
@@ -731,7 +677,7 @@ H2O.Routines = (_) ->
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: """
-        plot1 (g) -> g(
+        plot (g) -> g(
           g.schema(
             g.position 'min', 'q1', 'q2', 'q3', 'max', 'column'
           )
@@ -761,7 +707,7 @@ H2O.Routines = (_) ->
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: """
-        plot1 (g) -> g(
+        plot (g) -> g(
           g.rect(
             g.position 'count', 'label'
           )
@@ -972,7 +918,7 @@ H2O.Routines = (_) ->
           go error
         else
           # De-dupe predictions
-          uniquePredictions = values indexBy (flatten predictions, yes), (prediction) -> prediction.model.key + prediction.frame.key.name
+          uniquePredictions = values indexBy (flatten predictions, yes), (prediction) -> prediction.model.name + prediction.frame.name
           go null, extendPredictions opts, uniquePredictions
     else
       { model: modelKey, frame: frameKey } = opts
@@ -1079,7 +1025,6 @@ H2O.Routines = (_) ->
 
   link _.ready, ->
     link _.inspect, inspect
-    link _.plot, __plot
 
   # fork/join 
   fork: _fork
@@ -1101,7 +1046,6 @@ H2O.Routines = (_) ->
   dump: dump
   inspect: inspect
   plot: plot
-  plot1: plot1
   grid: grid
   get: _get
   #

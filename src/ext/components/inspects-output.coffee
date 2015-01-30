@@ -5,7 +5,7 @@ H2O.InspectsOutput = (_, _tables) ->
 
     grid = ->
       _.insertAndExecuteCell 'cs', """
-      plot1 (g) -> g(
+      plot (g) -> g(
         g.table()
         g.from inspect #{stringify table.label}, #{table.metadata.origin}
       )

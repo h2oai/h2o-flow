@@ -12,7 +12,7 @@ H2O.PlotInput = (_, _frame) ->
   plot = ->
     command = if color = _color()
       """
-      plot1 (g) -> g(
+      plot (g) -> g(
         g.#{_type()}(
           g.position #{stringify _x()}, #{stringify _y()}
           g.color #{stringify color}
@@ -22,7 +22,7 @@ H2O.PlotInput = (_, _frame) ->
       """
     else
       """
-      plot1 (g) -> g(
+      plot (g) -> g(
         g.#{_type()}(
           g.position #{stringify _x()}, #{stringify _y()}
         )

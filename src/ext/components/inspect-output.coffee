@@ -2,7 +2,7 @@ H2O.InspectOutput = (_, _frame) ->
   
   view = ->
     _.insertAndExecuteCell 'cs', """
-    plot1 (g) -> g(
+    plot (g) -> g(
       g.table()
       g.from inspect #{stringify _frame.label}, #{_frame.metadata.origin}
     )
