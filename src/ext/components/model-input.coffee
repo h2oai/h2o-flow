@@ -18,12 +18,43 @@ createControl = (kind, parameter) ->
   hasMessage: _hasMessage
   isVisible: _isVisible
 
-createTextboxControl = (parameter) ->
-  _value = signal parameter.actual_value
+createTextboxControl = (parameter, type) ->
+  isArrayValued = isInt = isReal = no
+
+  switch type
+    when 'byte[]', 'short[]', 'int[]', 'long[]'
+      isArrayValued = yes
+      isInt = yes
+    when 'float[]', 'double[]'
+      isArrayValued = yes
+      isReal = yes
+    when 'byte', 'short', 'int', 'long'
+      isInt = yes
+    when 'float', 'double'
+      isReal = yes
+  
+  _text = signal if isArrayValued then join (parameter.actual_value ? []), ', ' else (parameter.actual_value ? '')
+
+  _value = lift _text, (text) ->
+    if isArrayValued
+      vals = []
+      for value in split text, /\s*,\s*/g
+        if isInt
+          unless isNaN parsed = parseInt value, 10
+            vals.push parsed
+        else if isReal
+          unless isNaN parsed = parseFloat value
+            vals.push parsed
+        else
+          vals.push value
+      vals
+    else
+      text
 
   control = createControl 'textbox', parameter
+  control.text = _text
   control.value = _value
-  control.defaultValue = parameter.default_value
+  control.isArrayValued = isArrayValued
 
   control
 
@@ -33,7 +64,6 @@ createDropdownControl = (parameter) ->
   control = createControl 'dropdown', parameter
   control.values = signals parameter.values
   control.value = _value
-  control.defaultValue = parameter.default_value
   control
 
 createListControl = (parameter) ->
@@ -127,7 +157,6 @@ createListControl = (parameter) ->
   control.selectedSearchTerm = _selectedSearchTerm
   control.availableValuesCaption = _availableValuesCaption
   control.selectedValuesCaption = _selectedValuesCaption
-  control.defaultValue = parameter.default_value
   control.includeAll = includeAll
   control.excludeAll = excludeAll
   control
@@ -138,7 +167,6 @@ createCheckboxControl = (parameter) ->
   control = createControl 'checkbox', parameter
   control.clientId = do uniqueId
   control.value = _value
-  control.defaultValue = parameter.default_value
   control
 
 createControlFromParameter = (parameter) ->
@@ -150,7 +178,7 @@ createControlFromParameter = (parameter) ->
     when 'boolean'
       createCheckboxControl parameter
     when 'Key<Model>', 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-      createTextboxControl parameter
+      createTextboxControl parameter, parameter.type
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null
