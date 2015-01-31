@@ -23,17 +23,19 @@
         _.showClipboard = Flow.Dataflow.slot();
         _.saveClip = Flow.Dataflow.slot();
         _.loadNotebook = Flow.Dataflow.slot();
-        return _.storeNotebook = Flow.Dataflow.slot();
+        _.storeNotebook = Flow.Dataflow.slot();
+        return _.growl = Flow.Dataflow.slot();
     };
 }.call(this));
 (function () {
     Flow.Application = function (_, routines) {
-        var _notebook, _renderers, _routines, _sandbox;
+        var _growl, _notebook, _renderers, _routines, _sandbox;
         Flow.ApplicationContext(_);
         _routines = routines(_);
         _sandbox = Flow.Sandbox(_, _routines);
         _renderers = Flow.Renderers(_, _sandbox);
         _notebook = Flow.Notebook(_, _renderers);
+        _growl = Flow.Growl(_);
         return {
             context: _,
             sandbox: _sandbox,
@@ -1206,6 +1208,17 @@
     };
 }.call(this));
 (function () {
+    Flow.Growl = function (_) {
+        return Flow.Dataflow.link(_.growl, function (message, type) {
+            if (type) {
+                return $.bootstrapGrowl(message, { type: type });
+            } else {
+                return $.bootstrapGrowl(message);
+            }
+        });
+    };
+}.call(this));
+(function () {
     var button, checkbox, content, control, dropdown, html, listbox, markdown, text, textarea, textbox, wrapArray, wrapValue;
     wrapValue = function (value, init) {
         if (value === void 0) {
@@ -1741,7 +1754,7 @@
     Flow.TFactor = 'Factor';
 }.call(this));
 (function () {
-    var describeCount, fromNow;
+    var describeCount, formatBytes, fromNow;
     describeCount = function (count, singular, plural) {
         if (!plural) {
             plural = singular + 's';
@@ -1758,14 +1771,30 @@
     fromNow = function (date) {
         return moment(date).fromNow();
     };
+    formatBytes = function (bytes) {
+        var i, sizes;
+        sizes = [
+            'Bytes',
+            'KB',
+            'MB',
+            'GB',
+            'TB'
+        ];
+        if (bytes === 0) {
+            return '0 Byte';
+        }
+        i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+        return Math.round(bytes / Math.pow(1024, i), 2) + sizes[i];
+    };
     Flow.Util = {
         describeCount: describeCount,
-        fromNow: fromNow
+        fromNow: fromNow,
+        formatBytes: formatBytes
     };
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.37';
+    FLOW_VERSION = '0.2.38';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -2351,7 +2380,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var checkConsistency, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editTitle, executeCommand, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveNotebook, saveTitle, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, splitCell, startTour, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _createdDate, _id, _isEditingTitle, _isSidebarHidden, _lastDeletedCell, _menus, _modifiedDate, _selectedCell, _selectedCellIndex, _sidebar, _status, _title, _toolbar;
+        var checkConsistency, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editTitle, executeCommand, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveNotebook, saveTitle, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _createdDate, _id, _isEditingTitle, _isSidebarHidden, _lastDeletedCell, _menus, _modifiedDate, _selectedCell, _selectedCellIndex, _sidebar, _status, _title, _toolbar;
         _id = Flow.Dataflow.signal('');
         _title = Flow.Dataflow.signal('Untitled Flow');
         _createdDate = Flow.Dataflow.signal(new Date());
@@ -2713,6 +2742,15 @@
         displayAbout = function () {
             return $('#aboutDialog').modal();
         };
+        shutdown = function () {
+            return _.requestShutdown(function (error, result) {
+                if (error) {
+                    return _.growl('Shutdown failed: ' + error.message, 'danger');
+                } else {
+                    return _.growl('Shutdown complete!', 'warning');
+                }
+            });
+        };
         showHelp = function () {
             _isSidebarHidden(false);
             return _.showHelp();
@@ -2853,10 +2891,11 @@
                 createMenuItem('View Log', executeCommand('getLogFile')),
                 createMenuItem('Download Logs', goToUrl('/Logs/download')),
                 menuDivider,
-                createMenuHeader('Advanced Debugging'),
+                createMenuHeader('Advanced'),
                 createMenuItem('Stack Trace', executeCommand('getStackTrace')),
                 createMenuItem('Profiler', executeCommand('getProfile depth: 10')),
-                createMenuItem('Timeline', executeCommand('getTimeline'))
+                createMenuItem('Timeline', executeCommand('getTimeline')),
+                createMenuItem('Shut Down', shutdown)
             ]),
             createMenu('Help', [
                 createMenuItem('Tour', startTour, true),
@@ -3413,6 +3452,7 @@
         _.requestRemoveAll = Flow.Dataflow.slot();
         _.requestLogFile = Flow.Dataflow.slot();
         _.requestAbout = Flow.Dataflow.slot();
+        _.requestShutdown = Flow.Dataflow.slot();
         _.inspect = Flow.Dataflow.slot();
         return _.plot = Flow.Dataflow.slot();
     };
@@ -3425,7 +3465,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doGet, doPost, encodeArrayForPost, encodeObject, encodeObjectForPost, http, mapWithKey, patchUpModels, requestAbout, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestStackTrace, requestTimeline, requestWithOpts;
+        var composePath, doGet, doPost, encodeArrayForPost, encodeObject, encodeObjectForPost, http, mapWithKey, patchUpModels, requestAbout, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestShutdown, requestStackTrace, requestTimeline, requestWithOpts;
         http = function (path, opts, go) {
             var req;
             _.status('server', 'request', path);
@@ -3751,6 +3791,9 @@
         requestAbout = function (go) {
             return doGet('/3/About.json', go);
         };
+        requestShutdown = function (go) {
+            return doPost('/2/Shutdown', {}, go);
+        };
         Flow.Dataflow.link(_.requestGet, doGet);
         Flow.Dataflow.link(_.requestPost, doPost);
         Flow.Dataflow.link(_.requestInspect, requestInspect);
@@ -3784,7 +3827,8 @@
         Flow.Dataflow.link(_.requestStackTrace, requestStackTrace);
         Flow.Dataflow.link(_.requestRemoveAll, requestRemoveAll);
         Flow.Dataflow.link(_.requestLogFile, requestLogFile);
-        return Flow.Dataflow.link(_.requestAbout, requestAbout);
+        Flow.Dataflow.link(_.requestAbout, requestAbout);
+        return Flow.Dataflow.link(_.requestShutdown, requestShutdown);
     };
 }.call(this));
 (function () {
@@ -6204,6 +6248,9 @@
         _grid = createGrid(_.inspect('columns', _frame));
         return {
             key: _frame.key.name,
+            rowCount: _frame.rows,
+            columnCount: _frame.columns.length,
+            size: Flow.Util.formatBytes(_frame.byteSize),
             grid: _grid,
             inspect: inspect,
             createModel: createModel,
@@ -6215,22 +6262,6 @@
     };
 }.call(this));
 (function () {
-    var toSize;
-    toSize = function (bytes) {
-        var i, sizes;
-        sizes = [
-            'Bytes',
-            'KB',
-            'MB',
-            'GB',
-            'TB'
-        ];
-        if (bytes === 0) {
-            return '0 Byte';
-        }
-        i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-        return Math.round(bytes / Math.pow(1024, i), 2) + sizes[i];
-    };
     H2O.FramesOutput = function (_, _frames) {
         var createFrameView, importFiles, predictOnFrames, _canCompareFrames, _checkAllFrames, _frameViews, _isCheckingAll;
         _frameViews = Flow.Dataflow.signal([]);
@@ -6294,7 +6325,7 @@
                 key: frame.key.name,
                 isChecked: _isChecked,
                 description: description,
-                size: toSize(frame.byteSize),
+                size: Flow.Util.formatBytes(frame.byteSize),
                 rowCount: frame.rows,
                 columnCount: frame.columns.length,
                 isText: frame.isText,
