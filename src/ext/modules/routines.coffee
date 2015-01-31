@@ -61,8 +61,8 @@ toFrame = (table, metadata) ->
 
   createDataframe table.name, vectors, (sequence size), null, metadata
 
-createArrays = (length) ->
-  for i in [0 ... length]
+createArrays = (count, length) ->
+  for i in [0 ... count]
     new Array length
 
 parseNaNs = (source) ->
@@ -714,7 +714,7 @@ H2O.Routines = (_) ->
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
-      [ labels, counts, percents ] = createArrays sortedLevels.length
+      [ labels, counts, percents ] = createArrays 3, sortedLevels.length
 
       for level, i in sortedLevels
         labels[i] = column.domain[level.index]
