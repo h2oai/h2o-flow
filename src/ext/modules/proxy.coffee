@@ -253,6 +253,9 @@ H2O.Proxy = (_) ->
   requestAbout = (go) ->
     doGet '/3/About.json', go
 
+  requestShutdown = (go) ->
+    doPost "/2/Shutdown", {}, go
+
   link _.requestGet, doGet
   link _.requestPost, doPost
   link _.requestInspect, requestInspect
@@ -287,5 +290,6 @@ H2O.Proxy = (_) ->
   link _.requestRemoveAll, requestRemoveAll
   link _.requestLogFile, requestLogFile
   link _.requestAbout, requestAbout
+  link _.requestShutdown, requestShutdown
 
 

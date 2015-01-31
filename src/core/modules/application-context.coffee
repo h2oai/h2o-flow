@@ -11,4 +11,5 @@ Flow.ApplicationContext = (_) ->
   _.saveClip = do slot
   _.loadNotebook = do slot
   _.storeNotebook = do slot
+  _.growl = do slot
 

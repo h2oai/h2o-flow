@@ -5,6 +5,7 @@ Flow.Application = (_, routines) ->
   #XXX support external renderers
   _renderers = Flow.Renderers _, _sandbox
   _notebook = Flow.Notebook _, _renderers
+  _growl = Flow.Growl _
   
   context: _
   sandbox: _sandbox

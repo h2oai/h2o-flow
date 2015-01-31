@@ -33,5 +33,6 @@ H2O.ApplicationContext = (_) ->
   _.requestRemoveAll = do slot
   _.requestLogFile = do slot
   _.requestAbout = do slot
+  _.requestShutdown = do slot
   _.inspect = do slot
   _.plot = do slot

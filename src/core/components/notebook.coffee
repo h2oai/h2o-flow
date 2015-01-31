@@ -303,6 +303,14 @@ Flow.Notebook = (_, _renderers) ->
   displayAbout = ->
     $('#aboutDialog').modal()
 
+  shutdown = ->
+    _.requestShutdown (error, result) ->
+      if error
+        _.growl "Shutdown failed: #{error.message}", 'danger'
+      else
+        _.growl 'Shutdown complete!', 'warning'
+
+
   showHelp = ->
     _isSidebarHidden no
     _.showHelp()
@@ -438,10 +446,11 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'View Log', executeCommand 'getLogFile'
       createMenuItem 'Download Logs', goToUrl '/Logs/download'
       menuDivider
-      createMenuHeader 'Advanced Debugging'
+      createMenuHeader 'Advanced'
       createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
       createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
       createMenuItem 'Timeline', executeCommand 'getTimeline'
+      createMenuItem 'Shut Down', shutdown
     ]
   ,
     createMenu 'Help', [
