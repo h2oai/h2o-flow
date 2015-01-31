@@ -1,9 +1,3 @@
-toSize = (bytes) ->
-  sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-  return '0 Byte' if bytes is 0
-  i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)))
-  Math.round(bytes / Math.pow(1024, i), 2) + sizes[i]
-
 H2O.FramesOutput = (_, _frames) ->
   _frameViews = signal []
   _checkAllFrames = signal no
@@ -47,7 +41,7 @@ H2O.FramesOutput = (_, _frames) ->
     key: frame.key.name
     isChecked: _isChecked
     description: description
-    size: toSize frame.byteSize
+    size: Flow.Util.formatBytes frame.byteSize
     rowCount: frame.rows
     columnCount: frame.columns.length
     isText: frame.isText
