@@ -194,22 +194,18 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
   [ criticalControls, secondaryControls, expertControls ] = _controlGroups
 
-  _form = flatten [ 
-    kind: 'group'
-    title: 'Parameters'
-  ,
-    criticalControls
-  ,
-    kind: 'group'
-    title: 'Advanced'
-  ,
-    secondaryControls
-  ,
-    kind: 'group'
-    title: 'Expert'
-  ,
-    expertControls
-  ]
+  _form = []
+  if criticalControls.length
+    _form.push kind: 'group', title: 'Parameters'
+    _form.push control for control in criticalControls
+
+  if secondaryControls.length
+    _form.push kind: 'group', title: 'Advanced'
+    _form.push control for control in secondaryControls
+
+  if expertControls.length
+    _form.push kind: 'group', title: 'Expert'
+    _form.push control for control in expertControls
 
   findControl = (name) ->
     for controls in _controlGroups
