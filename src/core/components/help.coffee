@@ -160,7 +160,7 @@ Flow.Help = (_) ->
     els = [
       mark 'API'
       h5 'List of Schemas'
-      ul (li "#{action (code schema.name), schema.name} #{variable schema.type}" for schema in schemas)
+      ul (li "#{action (code schema.name), schema.name} #{variable escape schema.type}" for schema in schemas)
     ]
 
     displayHtml Flow.HTML.render 'div', div els
@@ -170,12 +170,12 @@ Flow.Help = (_) ->
 
     content = [
       mark 'Schema'
-      h5 "#{schema.name} (#{schema.type})"
+      h5 "#{schema.name} (#{escape schema.type})"
       h6 'Fields'
     ]
     
-    for field in schema.fields
-      content.push p "#{variable field.name}#{if field.required then '*' else ''} #{code field.type}<br/>#{small field.help}"
+    for field in schema.fields when field.name isnt '__meta'
+      content.push p "#{variable field.name}#{if field.required then '*' else ''} #{code escape field.type}<br/>#{small field.help}"
 
     displayHtml Flow.HTML.render 'div', div content
 
