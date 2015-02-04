@@ -1641,6 +1641,12 @@
             </tr>
           </tbody>
         </table>
+        <!-- ko if:isBinomial-->
+        <h4>Output</h4>
+        <div data-bind="raw:predictionRecord" class="flow-plot"></div>
+        <h4>AUC Plot</h4>
+        <div data-bind="raw:aucPlot" class="flow-plot"> </div>
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-cloud-output">

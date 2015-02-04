@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.39';
+    FLOW_VERSION = '0.2.40';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -674,7 +674,7 @@
                     _results = [];
                     for (_i = 0, _len = schemas.length; _i < _len; _i++) {
                         schema = schemas[_i];
-                        _results.push(li('' + action(code(schema.name), schema.name) + ' ' + variable(schema.type)));
+                        _results.push(li('' + action(code(schema.name), schema.name) + ' ' + variable(lodash.escape(schema.type))));
                     }
                     return _results;
                 }())
@@ -686,13 +686,15 @@
             _ref = Flow.HTML.template('div', '=mark', '=h5', '=h6', '=p', '=code', '=var', '=small'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3], p = _ref[4], code = _ref[5], variable = _ref[6], small = _ref[7];
             content = [
                 mark('Schema'),
-                h5('' + schema.name + ' (' + schema.type + ')'),
+                h5('' + schema.name + ' (' + lodash.escape(schema.type) + ')'),
                 h6('Fields')
             ];
             _ref1 = schema.fields;
             for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
                 field = _ref1[_i];
-                content.push(p('' + variable(field.name) + (field.required ? '*' : '') + ' ' + code(field.type) + '<br/>' + small(field.help)));
+                if (field.name !== '__meta') {
+                    content.push(p('' + variable(field.name) + (field.required ? '*' : '') + ' ' + code(lodash.escape(field.type)) + '<br/>' + small(field.help)));
+                }
             }
             return displayHtml(Flow.HTML.render('div', div(content)));
         };
@@ -3623,7 +3625,9 @@
         _.requestSchemas = Flow.Dataflow.slot();
         _.requestSchema = Flow.Dataflow.slot();
         _.inspect = Flow.Dataflow.slot();
-        return _.plot = Flow.Dataflow.slot();
+        _.plot = Flow.Dataflow.slot();
+        _.grid = Flow.Dataflow.slot();
+        return _.enumerate = Flow.Dataflow.slot();
     };
 }.call(this));
 (function () {
@@ -5860,7 +5864,16 @@
             }
         };
         Flow.Dataflow.link(_.ready, function () {
-            return Flow.Dataflow.link(_.inspect, inspect);
+            Flow.Dataflow.link(_.inspect, inspect);
+            Flow.Dataflow.link(_.plot, function (plot) {
+                return plot(lightning);
+            });
+            Flow.Dataflow.link(_.grid, function (frame) {
+                return lightning(lightning.table(), lightning.from(frame));
+            });
+            return Flow.Dataflow.link(_.enumerate, function (frame) {
+                return lightning(lightning.record(0), lightning.from(frame));
+            });
         });
         return {
             fork: _fork,
@@ -7292,7 +7305,7 @@
         }
     };
     H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
-        var collectParameters, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _parametersByLevel, _revalidate, _validationFailureMessage;
+        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _i, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
         _exception = Flow.Dataflow.signal(null);
         _validationFailureMessage = Flow.Dataflow.signal('');
         _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
@@ -7313,29 +7326,43 @@
             });
         });
         criticalControls = _controlGroups[0], secondaryControls = _controlGroups[1], expertControls = _controlGroups[2];
-        _form = lodash.flatten([
-            {
+        _form = [];
+        if (criticalControls.length) {
+            _form.push({
                 kind: 'group',
                 title: 'Parameters'
-            },
-            criticalControls,
-            {
+            });
+            for (_i = 0, _len = criticalControls.length; _i < _len; _i++) {
+                control = criticalControls[_i];
+                _form.push(control);
+            }
+        }
+        if (secondaryControls.length) {
+            _form.push({
                 kind: 'group',
                 title: 'Advanced'
-            },
-            secondaryControls,
-            {
+            });
+            for (_j = 0, _len1 = secondaryControls.length; _j < _len1; _j++) {
+                control = secondaryControls[_j];
+                _form.push(control);
+            }
+        }
+        if (expertControls.length) {
+            _form.push({
                 kind: 'group',
                 title: 'Expert'
-            },
-            expertControls
-        ]);
+            });
+            for (_k = 0, _len2 = expertControls.length; _k < _len2; _k++) {
+                control = expertControls[_k];
+                _form.push(control);
+            }
+        }
         findControl = function (name) {
-            var control, controls, _i, _j, _len, _len1;
-            for (_i = 0, _len = _controlGroups.length; _i < _len; _i++) {
-                controls = _controlGroups[_i];
-                for (_j = 0, _len1 = controls.length; _j < _len1; _j++) {
-                    control = controls[_j];
+            var controls, _l, _len3, _len4, _m;
+            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
+                controls = _controlGroups[_l];
+                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
+                    control = controls[_m];
                     if (control.name === name) {
                         return control;
                     }
@@ -7382,15 +7409,15 @@
             }
         }());
         collectParameters = function (includeUnchangedParameters) {
-            var control, controls, parameters, value, _i, _j, _len, _len1;
+            var controls, parameters, value, _l, _len3, _len4, _m;
             if (includeUnchangedParameters == null) {
                 includeUnchangedParameters = false;
             }
             parameters = {};
-            for (_i = 0, _len = _controlGroups.length; _i < _len; _i++) {
-                controls = _controlGroups[_i];
-                for (_j = 0, _len1 = controls.length; _j < _len1; _j++) {
-                    control = controls[_j];
+            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
+                controls = _controlGroups[_l];
+                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
+                    control = controls[_m];
                     value = control.value();
                     if (includeUnchangedParameters || control.isRequired || control.defaultValue !== value) {
                         switch (control.kind) {
@@ -7418,7 +7445,7 @@
             parameters = collectParameters(true);
             _validationFailureMessage('');
             return _.requestModelInputValidation(_algorithm, parameters, function (error, modelBuilder) {
-                var control, controls, hasErrors, validation, validations, validationsByControlName, _i, _j, _k, _len, _len1, _len2;
+                var controls, hasErrors, validation, validations, validationsByControlName, _l, _len3, _len4, _len5, _m, _n;
                 if (error) {
                     return _exception(Flow.Failure(new Flow.Error('Error fetching initial model builder state', error)));
                 } else {
@@ -7427,13 +7454,13 @@
                         validationsByControlName = lodash.groupBy(modelBuilder.validation_messages, function (validation) {
                             return validation.field_name;
                         });
-                        for (_i = 0, _len = _controlGroups.length; _i < _len; _i++) {
-                            controls = _controlGroups[_i];
-                            for (_j = 0, _len1 = controls.length; _j < _len1; _j++) {
-                                control = controls[_j];
+                        for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
+                            controls = _controlGroups[_l];
+                            for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
+                                control = controls[_m];
                                 if (validations = validationsByControlName[control.name]) {
-                                    for (_k = 0, _len2 = validations.length; _k < _len2; _k++) {
-                                        validation = validations[_k];
+                                    for (_n = 0, _len5 = validations.length; _n < _len5; _n++) {
+                                        validation = validations[_n];
                                         if (validation.message_type === 'HIDE') {
                                             control.isVisible(false);
                                         } else {
@@ -7489,13 +7516,13 @@
                 });
             }
         };
-        revalidate = lodash.throttle(_revalidate, 1000, { leading: false });
+        revalidate = lodash.throttle(_revalidate, 100, { leading: false });
         performValidations(false, function () {
-            var control, controls, _i, _j, _len, _len1;
-            for (_i = 0, _len = _controlGroups.length; _i < _len; _i++) {
-                controls = _controlGroups[_i];
-                for (_j = 0, _len1 = controls.length; _j < _len1; _j++) {
-                    control = controls[_j];
+            var controls, _l, _len3, _len4, _m;
+            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
+                controls = _controlGroups[_l];
+                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
+                    control = controls[_m];
                     Flow.Dataflow.react(control.value, revalidate);
                 }
             }
@@ -7513,7 +7540,7 @@
         var createModel, populateFramesAndColumns, _algorithm, _algorithms, _canCreateModel, _exception, _modelForm;
         _exception = Flow.Dataflow.signal(null);
         _algorithms = Flow.Dataflow.signal([]);
-        _algorithm = Flow.Dataflow.signal(_algo);
+        _algorithm = Flow.Dataflow.signal(null);
         _canCreateModel = Flow.Dataflow.lift(_algorithm, function (algorithm) {
             if (algorithm) {
                 return true;
@@ -7577,6 +7604,7 @@
                     }
                     return _results;
                 }());
+                _algorithm(_algo);
                 frameKey = _opts != null ? _opts.training_frame : void 0;
                 return Flow.Dataflow.act(_algorithm, function (algorithm) {
                     if (algorithm) {
@@ -8074,8 +8102,34 @@
 }.call(this));
 (function () {
     H2O.PredictOutput = function (_, prediction) {
-        var frame, inspect, model, viewPredictionFrame;
+        var frame, inspect, model, renderAucPlot, renderPredictionRecord, viewPredictionFrame, _aucPlot, _isBinomial, _isClustering, _isMultinomial, _isRegression, _predictionRecord;
         frame = prediction.frame, model = prediction.model;
+        _isBinomial = Flow.Dataflow.signal(prediction.model_category === 'Binomial');
+        _isMultinomial = Flow.Dataflow.signal(prediction.model_category === 'Multinomial');
+        _isRegression = Flow.Dataflow.signal(prediction.model_category === 'Regression');
+        _isClustering = Flow.Dataflow.signal(prediction.model_category === 'Clustering');
+        _predictionRecord = Flow.Dataflow.signal(null);
+        _aucPlot = Flow.Dataflow.signal(null);
+        if (_isBinomial()) {
+            renderPredictionRecord = _.enumerate(_.inspect('prediction', prediction));
+            renderPredictionRecord(function (error, vis) {
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    return _predictionRecord(vis.element);
+                }
+            });
+            renderAucPlot = _.plot(function (g) {
+                return g(g.path(g.position('FPR', 'TPR')), g.from(_.inspect('scores', prediction)));
+            });
+            renderAucPlot(function (error, vis) {
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    return _aucPlot(vis.element);
+                }
+            });
+        }
         inspect = function () {
             return _.insertAndExecuteCell('cs', 'inspect getPrediction ' + Flow.Prelude.stringify(model.name) + ', ' + Flow.Prelude.stringify(frame.name));
         };
@@ -8083,6 +8137,12 @@
             return _.insertAndExecuteCell('cs', 'getFrame ' + Flow.Prelude.stringify(prediction.predictions.key.name));
         };
         return {
+            isBinomial: _isBinomial,
+            isMultinomial: _isMultinomial,
+            isRegression: _isRegression,
+            isClustering: _isClustering,
+            predictionRecord: _predictionRecord,
+            aucPlot: _aucPlot,
             inspect: inspect,
             viewPredictionFrame: viewPredictionFrame,
             template: 'flow-predict-output'
