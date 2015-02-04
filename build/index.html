@@ -216,92 +216,97 @@
     </script>
     <script type="text/html" id="flow-help">
       <h4 class="flow-hint"><i class="fa fa-lightbulb-o"></i>Help</h4>
-      <blockquote>Using Flow for the first time?<br>
-        <div style="margin-top:10px">
-              <button type="button" data-bind="click:assist" class="flow-button"><i class="fa fa-support"></i><span>Assist Me!</span>
-              </button>
-        </div>
-      </blockquote>
-      <p><em>H<sub>2</sub>O Flow</em> is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like <a href="http://ipython.org/notebook.html" target="_blank">IPython Notebooks</a>.</p>
-      <p>Flow is a <em>modal</em> editor, which means that you are either in <em>edit mode</em> or <em>command mode</em>.  A <em>Flow</em> is composed of a series of executable <em>cells</em>. Each <em>cell</em> has an input and one or more outputs.</p>
-      <p>To get started, just memorize these six simple keyboard shortcuts: <kbd>enter</kbd>, <kbd>esc</kbd>, <kbd>ctrl</kbd><kbd>enter</kbd>, <kbd>a</kbd>, <kbd>b</kbd> and <kbd>d</kbd><kbd>d</kbd></p>
-      <ul>
-        <li>To edit a cell, press <kbd>enter</kbd> to get into <em>edit mode</em>.</li>
-        <li>When you're done editing, press <kbd>esc</kbd> to get back into <em>command mode</em>. </li>
-        <li>To execute a cell, press <kbd>ctrl</kbd> <kbd>enter</kbd></li>
-        <li><kbd>a</kbd> adds a new cell <u>a</u>bove the current cell.</li>
-        <li><kbd>b</kbd> adds a new cell <u>b</u>elow the current cell.</li>
-        <li><kbd>d</kbd><kbd>d</kbd> <u>d</u>eletes the current cell. Yes, you need to press <kbd>d</kbd> twice.</li>
-      </ul>
-      <p>Finally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code><a href='#' data-bind='click:assist'>assist</a></code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!</p>
+      <div class="flow-help-toolbar"><a href="#" data-bind="click:goHome" class="flow-help-toolbar-button"><i class="fa fa-home"></i></a>
+        <!-- ko if:canGoBack--><a href="#" data-bind="click:goBack" class="flow-help-toolbar-button"><i class="fa fa-arrow-left"></i></a>
+        <!-- /ko-->
+        <!-- ko ifnot:canGoBack-->
+        <div class="flow-help-toolbar-button"><i class="fa fa-arrow-left"></i></div>
+        <!-- /ko-->
+        <!-- ko if:canGoForward--><a href="#" data-bind="click:goForward" class="flow-help-toolbar-button"><i class="fa fa-arrow-right"></i></a>
+        <!-- /ko-->
+        <!-- ko ifnot:canGoForward-->
+        <div class="flow-help-toolbar-button"><i class="fa fa-arrow-right"></i></div>
+        <!-- /ko-->
+      </div>
+      <div class="flow-sidebar-content">
+        <div data-bind="raw:content" class="flow-help"></div>
+      </div>
     </script>
     <script type="text/html" id="flow-outline">
-      <div class="flow-outline">
-        <h4>Outline</h4>
-        <table>
-          <tbody>
-            <!-- ko foreach:cells-->
-            <tr data-bind="click:navigate" class="flow-pointer">
-              <td width="1" class="flow-right"><span data-bind="text:type, css:{'active':isSelected}"></span></td>
-              <td>
-                <pre data-bind="text:input, attr:{title:input}"></pre>
-              </td>
-            </tr>
-            <!-- /ko-->
-          </tbody>
-        </table>
+      <h4 class="flow-hint"><i class="fa fa-list"></i>Outline</h4>
+      <div class="flow-sidebar-content">
+        <div class="flow-outline">
+          <table>
+            <tbody>
+              <!-- ko foreach:cells-->
+              <tr data-bind="click:navigate" class="flow-pointer">
+                <td width="1" class="flow-right"><span data-bind="text:type, css:{'active':isSelected}"></span></td>
+                <td>
+                  <pre data-bind="text:input, attr:{title:input}"></pre>
+                </td>
+              </tr>
+              <!-- /ko-->
+            </tbody>
+          </table>
+        </div>
       </div>
     </script>
     <script type="text/html" id="flow-browser">
-      <div class="flow-browser">
-        <!-- ko ifnot:hasDocs-->
-        <p>You have no saved notebooks. To save a notebook, click the <i class="fa fa-save"></i>&nbsp;icon, or choose File <i class="fa fa-angle-right"></i>&nbsp;Save from the application menu.</p>
-        <!-- /ko-->
-        <!-- ko if:hasDocs-->
-        <table>
-          <tbody>
-            <!-- ko foreach:docs-->
-            <tr>
-              <td><i class="fa fa-file-o"></i></td>
-              <td>
-                <div><a href="#" data-bind="text:title, click:load"></a>
-                </div>
-                <div data-bind="text:fromNow, attr:{title:date}" class="flow-small"></div>
-              </td>
-              <td><i data-bind="click:purge" class="fa fa-trash-o flow-pointer"></i></td>
-            </tr>
-            <!-- /ko-->
-          </tbody>
-        </table>
-        <!-- /ko-->
-        <div style="margin-top:10px">
-              <button type="button" data-bind="click:loadNotebooks" class="flow-button"><i class="fa fa-refresh"></i><span>Refresh</span>
-              </button>
+      <h4 class="flow-hint"><i class="fa fa-files-o"></i>Flows</h4>
+      <div class="flow-sidebar-content">
+        <div class="flow-browser">
+          <!-- ko ifnot:hasDocs-->
+          <p>You have no saved notebooks. To save a notebook, click the <i class="fa fa-save"></i>&nbsp;icon, or choose File <i class="fa fa-angle-right"></i>&nbsp;Save from the application menu.</p>
+          <!-- /ko-->
+          <!-- ko if:hasDocs-->
+          <table>
+            <tbody>
+              <!-- ko foreach:docs-->
+              <tr>
+                <td><i class="fa fa-file-o"></i></td>
+                <td>
+                  <div><a href="#" data-bind="text:title, click:load"></a>
+                  </div>
+                  <div data-bind="text:fromNow, attr:{title:date}" class="flow-small"></div>
+                </td>
+                <td><i data-bind="click:purge" class="fa fa-trash-o flow-pointer"></i></td>
+              </tr>
+              <!-- /ko-->
+            </tbody>
+          </table>
+          <!-- /ko-->
+          <div style="margin-top:10px">
+                <button type="button" data-bind="click:loadNotebooks" class="flow-button"><i class="fa fa-refresh"></i><span>Refresh</span>
+                </button>
+          </div>
         </div>
       </div>
     </script>
     <script type="text/html" id="flow-clipboard">
-      <div class="flow-clipboard">
-        <h4>My Clips <span data-bind="text:userClipCount"></span></h4>
-        <!-- ko if:hasUserClips-->
-        <div data-bind="template:{ name:'flow-clips', data:userClips }"></div>
-        <!-- /ko-->
-        <!-- ko ifnot:hasUserClips-->
-        <p>You have no clips. To save a clip into this list, click the <i class="fa fa-paperclip"></i>&nbsp; paperclip next to the cell.<br><br>Click on a clip to insert it into your notebook. Click the <i class="fa fa-play-circle"></i>&nbsp;button to insert and execute the clip.</p>
-        <!-- /ko-->
-        <h4>System <span data-bind="text:systemClipCount"></span></h4>
-        <div data-bind="template:{ name:'flow-clips', data:systemClips }"></div>
-        <h4>Trash <span data-bind="text:trashClipCount"></span></h4>
-        <!-- ko if:hasTrashClips-->
-        <div data-bind="template:{ name:'flow-clips', data:trashClips }"></div>
-        <div style="margin-top:10px">
-              <button type="button" data-bind="click:emptyTrash" class="flow-button"><i class="fa fa-trash"></i><span>Empty Trash</span>
-              </button>
+      <h4 class="flow-hint"><i class="fa fa-clipboard"></i>Clipboard</h4>
+      <div class="flow-sidebar-content">
+        <div class="flow-clipboard">
+          <h6>My Clips <span data-bind="text:userClipCount"></span></h6>
+          <!-- ko if:hasUserClips-->
+          <div data-bind="template:{ name:'flow-clips', data:userClips }"></div>
+          <!-- /ko-->
+          <!-- ko ifnot:hasUserClips-->
+          <p>You have no clips. To save a clip into this list, click the <i class="fa fa-paperclip"></i>&nbsp; paperclip next to the cell.<br><br>Click on a clip to insert it into your notebook. Click the <i class="fa fa-play-circle"></i>&nbsp;button to insert and execute the clip.</p>
+          <!-- /ko-->
+          <h6>System <span data-bind="text:systemClipCount"></span></h6>
+          <div data-bind="template:{ name:'flow-clips', data:systemClips }"></div>
+          <h6>Trash <span data-bind="text:trashClipCount"></span></h6>
+          <!-- ko if:hasTrashClips-->
+          <div data-bind="template:{ name:'flow-clips', data:trashClips }"></div>
+          <div style="margin-top:10px">
+                <button type="button" data-bind="click:emptyTrash" class="flow-button"><i class="fa fa-trash"></i><span>Empty Trash</span>
+                </button>
+          </div>
+          <!-- /ko-->
+          <!-- ko ifnot:hasTrashClips-->
+          <p>Trash is empty. Cells that you cut or delete from your notebook appear here.</p>
+          <!-- /ko-->
         </div>
-        <!-- /ko-->
-        <!-- ko ifnot:hasTrashClips-->
-        <p>Trash is empty. Cells that you cut or delete from your notebook appear here.</p>
-        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-clips">
