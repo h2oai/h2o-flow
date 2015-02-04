@@ -10,3 +10,14 @@
           +button('Inspect', 'list', 'inspect')
           +button('View Prediction Frame', 'database', 'viewPredictionFrame')
 
+  // ko if:isBinomial
+  h4 Output
+  :wa
+
+  .flow-plot(data-bind='raw:predictionRecord')
+
+  h4 AUC Plot
+  .flow-plot(data-bind='raw:aucPlot')  
+
+  // /ko
+

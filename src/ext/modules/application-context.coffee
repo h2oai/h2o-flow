@@ -40,3 +40,5 @@ H2O.ApplicationContext = (_) ->
   _.requestSchema = do slot
   _.inspect = do slot
   _.plot = do slot
+  _.grid = do slot
+  _.enumerate = do slot

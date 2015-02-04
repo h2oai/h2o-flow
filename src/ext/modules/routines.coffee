@@ -1049,6 +1049,17 @@ H2O.Routines = (_) ->
 
   link _.ready, ->
     link _.inspect, inspect
+    link _.plot, (plot) -> plot lightning
+    link _.grid, (frame) ->
+      lightning(
+        lightning.table()
+        lightning.from frame
+      )
+    link _.enumerate, (frame) ->
+      lightning(
+        lightning.record 0
+        lightning.from frame
+      )
 
   # fork/join 
   fork: _fork
