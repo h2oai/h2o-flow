@@ -2,24 +2,26 @@ h4.flow-hint
   i.fa.fa-lightbulb-o
   | Help
 
-blockquote 
-  | Using Flow for the first time?
-  br
-  div(style='margin-top:10px')
-    +button('Assist Me!', 'support', 'assist')
+.flow-help-toolbar
+  a.flow-help-toolbar-button(href='#' data-bind='click:goHome')
+    i.fa.fa-home
+  // ko if:canGoBack
+  a.flow-help-toolbar-button(href='#' data-bind='click:goBack')
+    i.fa.fa-arrow-left
+  // /ko
+  // ko ifnot:canGoBack
+  .flow-help-toolbar-button 
+    i.fa.fa-arrow-left
+  // /ko
+  // ko if:canGoForward
+  a.flow-help-toolbar-button(href='#' data-bind='click:goForward')
+    i.fa.fa-arrow-right
+  // /ko
+  // ko ifnot:canGoForward
+  .flow-help-toolbar-button
+    i.fa.fa-arrow-right
+  // /ko
 
-p <em>H<sub>2</sub>O Flow</em> is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like <a href="http://ipython.org/notebook.html" target="_blank">IPython Notebooks</a>.
+.flow-sidebar-content
+  .flow-help(data-bind='raw:content')
 
-p Flow is a <em>modal</em> editor, which means that you are either in <em>edit mode</em> or <em>command mode</em>.  A <em>Flow</em> is composed of a series of executable <em>cells</em>. Each <em>cell</em> has an input and one or more outputs.
-  
-p To get started, just memorize these six simple keyboard shortcuts: <kbd>enter</kbd>, <kbd>esc</kbd>, <kbd>ctrl</kbd><kbd>enter</kbd>, <kbd>a</kbd>, <kbd>b</kbd> and <kbd>d</kbd><kbd>d</kbd>
-
-ul
-  li To edit a cell, press <kbd>enter</kbd> to get into <em>edit mode</em>.
-  li When you're done editing, press <kbd>esc</kbd> to get back into <em>command mode</em>. 
-  li To execute a cell, press <kbd>ctrl</kbd> <kbd>enter</kbd>
-  li <kbd>a</kbd> adds a new cell <u>a</u>bove the current cell.
-  li <kbd>b</kbd> adds a new cell <u>b</u>elow the current cell.
-  li <kbd>d</kbd><kbd>d</kbd> <u>d</u>eletes the current cell. Yes, you need to press <kbd>d</kbd> twice.
-
-p Finally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code><a href='#' data-bind='click:assist'>assist</a></code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!

@@ -577,9 +577,14 @@ table
         background flow-color-yellow
   .flow-sidebar-body
     dock(flow-sidebar-header-height + 2px)
-    overflow auto
     > div
       padding 10px
+
+    .flow-sidebar-content
+      > div
+        padding 10px
+      overflow auto
+      dock(45px)
 
 .flow-browser
   p
@@ -629,6 +634,44 @@ table
     color flow-color-link
   .fa-trash-o:hover
     color red
+
+.flow-help
+  mark
+    display inline-block
+    font-size 10px
+    text-transform uppercase
+    padding 0 6px
+    background flow-color-yellow
+  ul
+    padding 0 0 0 20px
+  h5
+    font-weight 300
+    font-size 18px
+    color #999
+  h6
+    font-size 10px
+    text-transform uppercase
+    border-bottom 1px dotted #aaa
+    margin-top 25px
+
+  small
+    color #999
+
+.flow-help-toolbar
+  position absolute
+  top 17px
+  right 10px
+
+  .flow-help-toolbar-button
+    display inline-block
+    margin-left 10px
+    color #ccc
+
+  a.flow-help-toolbar-button
+    cursor pointer
+    color #999
+    &:hover
+      color #777
 
 .flow-outline
   pre

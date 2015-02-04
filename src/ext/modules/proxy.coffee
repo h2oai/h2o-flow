@@ -256,6 +256,18 @@ H2O.Proxy = (_) ->
   requestShutdown = (go) ->
     doPost "/2/Shutdown", {}, go
 
+  requestEndpoints = (go) ->
+    doGet '/1/Metadata/endpoints.json', go
+
+  requestEndpoint = (index, go) ->
+    doGet "/1/Metadata/endpoints.json/#{index}", go
+
+  requestSchemas = (go) ->
+    doGet '/1/Metadata/schemas.json', go
+
+  requestSchema = (name, go) ->
+    doGet "/1/Metadata/schemas.json/#{encodeURIComponent name}", go
+
   link _.requestGet, doGet
   link _.requestPost, doPost
   link _.requestInspect, requestInspect
@@ -291,5 +303,9 @@ H2O.Proxy = (_) ->
   link _.requestLogFile, requestLogFile
   link _.requestAbout, requestAbout
   link _.requestShutdown, requestShutdown
+  link _.requestEndpoints, requestEndpoints
+  link _.requestEndpoint, requestEndpoint
+  link _.requestSchemas, requestSchemas
+  link _.requestSchema, requestSchema
 
 
