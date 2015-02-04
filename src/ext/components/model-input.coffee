@@ -337,7 +337,8 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 H2O.ModelInput = (_, _algo, _opts) ->
   _exception = signal null
   _algorithms = signal []
-  _algorithm = signal _algo
+  _algorithm = signal null
+  lift _algorithm, (a) -> debug "ALGO CHANGED TO " + a
   _canCreateModel = lift _algorithm, (algorithm) -> if algorithm then yes else no
 
   _modelForm = signal null
@@ -373,6 +374,7 @@ H2O.ModelInput = (_, _algo, _opts) ->
     _.requestModelBuilders (error, result) ->
       modelBuilders = if error then [] else result.model_builders
       _algorithms (key for key in keys modelBuilders when key isnt 'example')
+      _algorithm _algo
       frameKey = _opts?.training_frame
       act _algorithm, (algorithm) ->
         if algorithm
