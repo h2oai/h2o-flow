@@ -338,7 +338,6 @@ H2O.ModelInput = (_, _algo, _opts) ->
   _exception = signal null
   _algorithms = signal []
   _algorithm = signal null
-  lift _algorithm, (a) -> debug "ALGO CHANGED TO " + a
   _canCreateModel = lift _algorithm, (algorithm) -> if algorithm then yes else no
 
   _modelForm = signal null
