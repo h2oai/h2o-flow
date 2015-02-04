@@ -318,7 +318,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
     if value isnt undefined # HACK: KO seems to be raising change notifications when dropdown boxes are initialized. 
       performValidations no, ->
 
-  revalidate = throttle _revalidate, 1000, leading: no
+  revalidate = throttle _revalidate, 100, leading: no
 
   # Kick off validations (minus error checking) to get hidden parameters
   performValidations no, ->
