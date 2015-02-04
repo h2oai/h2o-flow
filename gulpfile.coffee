@@ -63,7 +63,7 @@ config =
       'lib/marked/lib/marked.js'
       'lib/knockoutjs/dist/knockout.debug.js'
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
-      'vendor/h2oai/vortex.min.js'
+      'vendor/h2oai/lightning.min.js'
     ]
     css: [
       'lib/fontawesome/css/font-awesome.css'
