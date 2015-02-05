@@ -11,7 +11,7 @@ H2O.PredictOutput = (_, prediction) ->
   #_predictionTable = _.inspect 'prediction', prediction
 
   if _isBinomial()
-    renderPredictionRecord = _.enumerate _.inspect 'prediction', prediction
+    renderPredictionRecord = _.enumerate _.inspect 'Prediction', prediction
 
     renderPredictionRecord (error, vis) ->
       if error
@@ -22,7 +22,7 @@ H2O.PredictOutput = (_, prediction) ->
     renderAucPlot = _.plot (g) ->
       g(
         g.path g.position 'FPR', 'TPR'
-        g.from _.inspect 'scores', prediction
+        g.from _.inspect 'Confusion Matrices', prediction
       )
 
     renderAucPlot (error, vis) ->

@@ -43,23 +43,44 @@ parseFloats = (source) ->
     else
       value
 
-toFrame = (table, metadata) ->
-  size = if table.data.length > 0 then (head table.data).length else 0
+convertColumnToVector = (column, data) ->
+  switch column.type
+    when 'byte', 'short', 'int', 'long'
+      createVector column.name, TNumber, parseInts data
+    when 'float', 'double'
+      createVector column.name, TNumber, parseFloats data
+    when 'string'
+      createFactor column.name, TString, data
+    else
+      createList column.name, data
 
+convertTableToFrame = (table, metadata) ->
   #TODO handle format strings and description
   vectors = for column, i in table.columns
-    data = table.data[i]
-    switch column.type
-      when 'byte', 'short', 'int', 'long'
-        createVector column.name, TNumber, parseInts data
-      when 'float', 'double'
-        createVector column.name, TNumber, parseFloats data
-      when 'string'
-        createFactor column.name, TString, data
-      else
-        createList column.name, data
+    convertColumnToVector column, table.data[i]
+  createDataframe table.name, vectors, (sequence table.rowcount), null, metadata
 
-  createDataframe table.name, vectors, (sequence size), null, metadata
+combineTables = (tables) ->
+  leader = head tables
+
+  rowCount = 0
+  columnCount = leader.data.length
+  data = new Array columnCount
+
+  for table in tables
+    rowCount += table.rowcount
+
+  for i in [0 ... columnCount]
+    data[i] = columnData = new Array rowCount
+    index = 0
+    for table in tables
+      for element in table.data[i]
+        columnData[index++] = element
+
+  name: leader.name
+  columns: leader.columns
+  data: data
+  rowcount: rowCount
 
 createArrays = (count, length) ->
   for i in [0 ... count]
@@ -343,7 +364,7 @@ H2O.Routines = (_) ->
       origin: "getModel #{stringify model.key.name}"
 
   inspectKmeansModelClusterMeans = (model) -> ->
-    toFrame model.output.centers, 
+    convertTableToFrame model.output.centers, 
       description: "Cluster means for k-means model '#{model.key.name}'"
       origin: "getModel #{stringify model.key.name}"
 
@@ -413,60 +434,53 @@ H2O.Routines = (_) ->
       origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
   inspectBinomialPrediction = (prediction) -> ->
-    { frame, model, auc } = prediction
+    { frame, model } = prediction
 
     vectors = [
       createFactor 'key', TString, [ model.name ]
       createFactor 'frame', TString, [ frame.name ]
       createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'AUC', TNumber, [ prediction.AUC ]
+      createVector 'Gini', TNumber, [ prediction.Gini ]
+      createVector 'mse', TNumber, [ prediction.mse ]
       createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
       createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
-      createVector 'AUC', TNumber, [ auc.AUC ]
-      createVector 'Gini', TNumber, [ auc.Gini ]
-      createFactor 'threshold_criterion', TString, [ auc.threshold_criterion ]
     ]
 
-    createDataframe 'prediction', vectors, (sequence 1), null,
+    createDataframe 'Prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
       origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
-  inspectBinomialMetrics = (opts, predictions) -> ->
+  inspectBinomialConfusionMatrices = (opts, predictions) -> ->
     vectors = [
-      createFactor 'criteria', TString, concatArrays (prediction.auc.threshold_criteria for prediction in predictions)
-      createVector 'threshold', TNumber, concatArrays (parseNaNs prediction.auc.threshold_for_criteria for prediction in predictions)
-      createVector 'F1', TNumber, concatArrays (parseNaNs prediction.auc.F1_for_criteria for prediction in predictions)
-      createVector 'F2', TNumber, concatArrays (parseNaNs prediction.auc.F2_for_criteria for prediction in predictions)
-      createVector 'F0point5', TNumber, concatArrays (parseNaNs prediction.auc.F0point5_for_criteria for prediction in predictions)
-      createVector 'accuracy', TNumber, concatArrays (parseNaNs prediction.auc.accuracy_for_criteria for prediction in predictions)
-      createVector 'error', TNumber, concatArrays (parseNaNs prediction.auc.error_for_criteria for prediction in predictions)
-      createVector 'precision', TNumber, concatArrays (parseNaNs prediction.auc.precision_for_criteria for prediction in predictions)
-      createVector 'recall', TNumber, concatArrays (parseNaNs prediction.auc.recall_for_criteria for prediction in predictions)
-      createVector 'specificity', TNumber, concatArrays (parseNaNs prediction.auc.specificity_for_criteria for prediction in predictions)
-      createVector 'mcc', TNumber, concatArrays (parseNaNs prediction.auc.max_per_class_error_for_criteria for prediction in predictions)
-      createVector 'max_per_class_error', TNumber, concatArrays (parseNaNs prediction.auc.max_per_class_error for prediction in predictions)
-      createList 'confusion_matrix', (concatArrays (prediction.auc.confusion_matrix_for_criteria for prediction in predictions)), formatConfusionMatrix
-      createVector 'TPR', TNumber, concatArrays (map prediction.auc.confusion_matrix_for_criteria, computeTruePositiveRate for prediction in predictions)
-      createVector 'FPR', TNumber, concatArrays (map prediction.auc.confusion_matrix_for_criteria, computeFalsePositiveRate for prediction in predictions)
-      createFactor 'key', TString, concatArrays (repeatValues prediction.auc.threshold_criteria.length, prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
-      createFactor 'model', TString, concatArrays (repeatValues prediction.auc.threshold_criteria.length, prediction.model.name for prediction in predictions)
-      createFactor 'frame', TString, concatArrays (repeatValues prediction.auc.threshold_criteria.length, prediction.frame.name for prediction in predictions)
+      createList 'CM', (concatArrays (prediction.confusion_matrices for prediction in predictions)), formatConfusionMatrix
+      createVector 'TPR', TNumber, concatArrays (map prediction.confusion_matrices, computeTruePositiveRate for prediction in predictions)
+      createVector 'FPR', TNumber, concatArrays (map prediction.confusion_matrices, computeFalsePositiveRate for prediction in predictions)
+      createFactor 'key', TString, concatArrays (repeatValues prediction.confusion_matrices.length, prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
     ]
 
-    createDataframe 'metrics', vectors, (sequence (head vectors).count()), null,
+    createDataframe 'Confusion Matrices', vectors, (sequence (head vectors).count()), null,
+      description: "Confusion matrices for the selected predictions"
+      origin: formulateGetPredictionsOrigin opts
+      plot: "plot inspect 'Confusion Matrices', #{formulateGetPredictionsOrigin opts}"
+
+  inspectBinomialMetrics = (opts, predictions) -> ->
+    inspectionFrame = combineTables (prediction.maxCriteriaAndMetricScores for prediction in predictions)
+    convertTableToFrame inspectionFrame,
       description: "Metrics for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
-      plot: "plot inspect 'metrics', #{formulateGetPredictionsOrigin opts}"
+      plot: "plot inspect '#{inspectionFrame.label}', #{formulateGetPredictionsOrigin opts}"
 
   inspectBinomialPredictions = (opts, predictions) -> ->
     vectors = [
       createFactor 'key', TString, (prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
       createFactor 'frame', TString, (prediction.frame.name for prediction in predictions)
       createFactor 'model_category', TString, (prediction.model_category for prediction in predictions)
+      createVector 'AUC', TNumber, (prediction.AUC for prediction in predictions)
+      createVector 'Gini', TNumber, (prediction.Gini for prediction in predictions)
+      createVector 'mse', TNumber, (prediction.mse for prediction in predictions)
       createVector 'duration_in_ms', TNumber, (prediction.duration_in_ms for prediction in predictions)
       createVector 'scoring_time', TNumber, (prediction.scoring_time for prediction in predictions)
-      #createVector 'AUC', TNumber, (prediction.auc.AUC for prediction in predictions)
-      #createVector 'Gini', TNumber, (prediction.auc.Gini for prediction in predictions)
-      #createFactor 'threshold_criterion', TString, (prediction.auc.threshold_criterion for prediction in predictions)
     ]
 
     createDataframe 'predictions', vectors, (sequence predictions.length), null,
@@ -477,53 +491,37 @@ H2O.Routines = (_) ->
   extendPredictions = (opts, predictions) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
     if (every predictions, (prediction) -> prediction.model_category is 'Binomial')
-      inspect_ predictions,
-        predictions: inspectBinomialPredictions opts, predictions
-        metrics: inspectBinomialMetrics opts, predictions
-        scores: inspectBinomialScores opts, predictions
+      inspections = {}
+      inspections['Prediction' ] = inspectBinomialPredictions opts, predictions
+      inspections[ (head predictions).maxCriteriaAndMetricScores.name ] = inspectBinomialScores opts, predictions
+      inspections[ (head predictions).thresholdsAndMetricScores.name ] = inspectBinomialMetrics opts, predictions
+      inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, predictions
+      inspect_ predictions, inspections
     else
-      inspect_ predictions,
-        predictions: inspectBinomialPredictions opts, predictions
-        #metrics: inspectBinomialMetrics opts, predictions
-        #scores: inspectBinomialScores opts, predictions
+      inspect_ predictions, 
+        prediction: inspectBinomialPredictions opts, predictions
 
   inspectBinomialScores = (opts, predictions) -> ->
-    vectors = [
-      createVector 'thresholds', TNumber, concatArrays (parseNaNs prediction.auc.thresholds for prediction in predictions)
-      createVector 'F1', TNumber, concatArrays (parseNaNs prediction.auc.F1 for prediction in predictions)
-      createVector 'F2', TNumber, concatArrays (parseNaNs prediction.auc.F2 for prediction in predictions)
-      createVector 'F0point5', TNumber, concatArrays (parseNaNs prediction.auc.F0point5 for prediction in predictions)
-      createVector 'accuracy', TNumber, concatArrays (parseNaNs prediction.auc.accuracy for prediction in predictions)
-      createVector 'errorr', TNumber, concatArrays (parseNaNs prediction.auc.errorr for prediction in predictions)
-      createVector 'precision', TNumber, concatArrays (parseNaNs prediction.auc.precision for prediction in predictions)
-      createVector 'recall', TNumber, concatArrays (parseNaNs prediction.auc.recall for prediction in predictions)
-      createVector 'specificity', TNumber, concatArrays (parseNaNs prediction.auc.specificity for prediction in predictions)
-      createVector 'mcc', TNumber, concatArrays (parseNaNs prediction.auc.mcc for prediction in predictions)
-      createVector 'max_per_class_error', TNumber, concatArrays (parseNaNs prediction.auc.max_per_class_error for prediction in predictions)
-      createList 'confusion_matrices', (concatArrays (prediction.auc.confusion_matrices for prediction in predictions)), formatConfusionMatrix
-      createVector 'TPR', TNumber, concatArrays (map prediction.auc.confusion_matrices, computeTruePositiveRate for prediction in predictions)
-      createVector 'FPR', TNumber, concatArrays (map prediction.auc.confusion_matrices, computeFalsePositiveRate for prediction in predictions)
-      createFactor 'key', TString, concatArrays (repeatValues prediction.auc.thresholds.length, prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
-      createFactor 'model', TString, concatArrays (repeatValues prediction.auc.thresholds.length, prediction.model.name for prediction in predictions)
-      createFactor 'frame', TString, concatArrays (repeatValues prediction.auc.thresholds.length, prediction.frame.name for prediction in predictions)
-    ]
-
-    createDataframe 'scores', vectors, (sequence (head vectors).count()), null, 
+    inspectionFrame = combineTables (prediction.thresholdsAndMetricScores for prediction in predictions)
+    convertTableToFrame inspectionFrame,
       description: "Scores for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
-      plot: "plot inspect 'scores', #{formulateGetPredictionsOrigin opts}"
+      plot: "plot inspect '#{inspectionFrame.label}', #{formulateGetPredictionsOrigin opts}"
     
   extendPrediction = (modelKey, frameKey, prediction) ->
+    opts = { model: modelKey, frame: frameKey }
     render_ prediction, -> H2O.PredictOutput _, prediction
     switch prediction.model_category
       when 'Regression', 'Multinomial', 'Clustering'
         inspect_ prediction,
           prediction: inspectRegressionPrediction prediction
       else
-        inspect_ prediction,
-          prediction: inspectBinomialPrediction prediction
-          scores: inspectBinomialScores { model: modelKey, frame: frameKey }, [ prediction ]
-          metrics: inspectBinomialMetrics { model: modelKey, frame: frameKey }, [ prediction ]
+        inspections = {}
+        inspections[ 'Prediction' ] = inspectBinomialPrediction prediction
+        inspections[ prediction.maxCriteriaAndMetricScores.name ] = inspectBinomialScores opts, [ prediction ]
+        inspections[ prediction.thresholdsAndMetricScores.name ] =  inspectBinomialMetrics opts, [ prediction ]
+        inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, [ prediction ]
+        inspect_ prediction, inspections
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
