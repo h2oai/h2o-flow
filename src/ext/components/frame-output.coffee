@@ -42,7 +42,7 @@ H2O.FrameOutput = (_, _frame) ->
       if index >= 0
         switch action
           when 'summary'
-            _.insertAndExecuteCell 'cs', "inspect getColumnSummary #{stringify _frame.key.name}, #{stringify data.schema.label.valueAt index}"
+            _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify _frame.key.name}, #{stringify data.schema.label.valueAt index}"
 
     el
 

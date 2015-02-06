@@ -679,15 +679,7 @@ H2O.Routines = (_) ->
       createDataframe 'distribution', vectors, (sequence binCount), null, 
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-        plot: """
-        plot (g) -> g(
-          g.rect(
-            g.position 'interval', 'count'
-            g.width g.value 1
-          )
-          g.from inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-        )
-        """
+        plot: "plot inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectCharacteristics = ->
       { missing, zeros, pinfs, ninfs } = column
@@ -707,6 +699,7 @@ H2O.Routines = (_) ->
       createDataframe 'characteristics', vectors, (sequence characteristicData.length), null,
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        plot: "plot inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectSummary = ->
       defaultPercentiles = frame.default_pctiles
@@ -733,23 +726,18 @@ H2O.Routines = (_) ->
       createDataframe 'summary', vectors, (sequence 1), null, 
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-        plot: """
-        plot (g) -> g(
-          g.schema(
-            g.position 'min', 'q1', 'q2', 'q3', 'max', 'column'
-          )
-          g.from inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-        )
-        """
+        plot: "plot inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectDomain = ->
       levels = map column.bins, (count, index) -> count: count, index: index
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
-      [ labels, counts, percents ] = createArrays 3, sortedLevels.length
+      top15Levels = head sortedLevels, 15
 
-      for level, i in sortedLevels
+      [ labels, counts, percents ] = createArrays 3, top15Levels.length
+
+      for level, i in top15Levels
         labels[i] = column.domain[level.index]
         counts[i] = level.count
         percents[i] = 100 * level.count / rowCount
@@ -760,17 +748,10 @@ H2O.Routines = (_) ->
         createVector 'percent', TNumber, percents
       ]
 
-      createDataframe 'domain', vectors, (sequence sortedLevels.length), null,
+      createDataframe 'domain', vectors, (sequence top15Levels.length), null,
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-        plot: """
-        plot (g) -> g(
-          g.rect(
-            g.position 'count', 'label'
-          )
-          g.from inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-        )
-        """
+        plot: "plot inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspections =
       characteristics: inspectCharacteristics
@@ -782,7 +763,7 @@ H2O.Routines = (_) ->
       inspections.domain = inspectDomain
 
     inspect_ frame, inspections
-    render_ frame, -> go null, H2O.ColumnSummaryOutput _, frameKey, frame, columnName
+    render_ frame, -> H2O.ColumnSummaryOutput _, frameKey, frame, columnName
 
   requestFrame = (frameKey, go) ->
     _.requestFrame frameKey, (error, frame) ->
