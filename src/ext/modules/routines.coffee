@@ -318,6 +318,37 @@ H2O.Routines = (_) ->
       description: "Parameters for model '#{model.key.name}'" #TODO frame key
       origin: "getModel #{stringify model.key.name}"
 
+  inspectGLMModelOutput = (model) -> ->
+    output = model.output
+
+    vectors = [
+      createFactor 'model_category', TString, [ output.model_category ]
+      createFactor 'binomial', TString, [ output.binomial ]
+      createVector 'aic', TNumber, [ output.aic ]
+      createVector 'auc', TNumber, [ output.auc ]
+      createVector 'best_lambda_idx', TNumber, [ output.best_lambda_idx ]
+      createVector 'null_degrees_of_freedom', TNumber, [ output.null_degrees_of_freedom ]
+      createVector 'null_deviance', TNumber, [ output.null_deviance ]
+      createVector 'rank', TNumber, [ output.rank ]
+      createVector 'residual_degrees_of_freedom', TNumber, [ output.residual_degrees_of_freedom ]
+      createVector 'residual_deviance', TNumber, [ output.residual_deviance ]
+      createVector 'threshold', TNumber, [ output.threshold ]
+    ]
+
+    createDataframe 'output', vectors, (sequence 1), null,
+      description: "Output for GLM model '#{model.key.name}'"
+      origin: "getModel #{stringify model.key.name}"
+
+  inspectGLMCoefficientsMagnitude = (model) -> ->
+    convertTableToFrame model.output.coefficients_magnitude,
+      description: "#{model.output.coefficients_magnitude.name} for GLM model #{model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
+
+  inspectGLMCoefficientsTable = (model) -> ->
+    convertTableToFrame model.output.coefficients_table,
+      description: "#{model.output.coefficients_table.name} for GLM model #{model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
+
   inspectGBMModelOutput = (model) -> ->
     output = model.output
 
@@ -385,8 +416,12 @@ H2O.Routines = (_) ->
       output: inspectGBMModelOutput model
 
   extendGLMModel = (model) ->
-    inspect_ model,
-      parameters: inspectModelParameters model
+    inspections = {}
+    inspections.parameters = inspectModelParameters model
+    inspections.output = inspectGLMModelOutput model
+    inspections[model.output.coefficients_magnitude.name] = inspectGLMCoefficientsMagnitude model 
+    inspections[model.output.coefficients_table.name] = inspectGLMCoefficientsTable model
+    inspect_ model, inspections
 
   extendJob = (job) ->
     render_ job, -> H2O.JobOutput _, job
@@ -1013,7 +1048,6 @@ H2O.Routines = (_) ->
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status
     onFail = (jqxhr, settings, error) -> go error #TODO use framework error
-
     $.getScript path
       .done onDone
       .fail onFail
