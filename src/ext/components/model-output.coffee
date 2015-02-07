@@ -1,6 +1,8 @@
 H2O.ModelOutput = (_, _model) ->
   _isExpanded = signal no
+  _output = signal null
   
+  #TODO use _.enumerate()
   _inputParameters = map _model.parameters, (parameter) ->
     { type, default_value, actual_value, label, help } = parameter
 
@@ -19,6 +21,16 @@ H2O.ModelOutput = (_, _model) ->
     help: help
     isModified: default_value is actual_value
 
+  renderPlot = (target, render) ->
+    render (error, vis) ->
+      if error
+        debug error
+      else
+        target vis.element
+
+  if table = _.inspect 'output', _model
+    renderPlot _output, _.enumerate table
+
   toggle = ->
     _isExpanded not _isExpanded()
 
@@ -35,6 +47,7 @@ H2O.ModelOutput = (_, _model) ->
   key: _model.key
   algo: _model.algo
   inputParameters: _inputParameters
+  output: _output
   isExpanded: _isExpanded
   toggle: toggle
   cloneModel: cloneModel

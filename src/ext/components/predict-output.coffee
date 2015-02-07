@@ -10,26 +10,20 @@ H2O.PredictOutput = (_, prediction) ->
 
   #_predictionTable = _.inspect 'prediction', prediction
 
-  if _isBinomial()
-    renderPredictionRecord = _.enumerate _.inspect 'Prediction', prediction
-
-    renderPredictionRecord (error, vis) ->
+  renderPlot = (target, render) ->
+    render (error, vis) ->
       if error
         debug error
       else
-        _predictionRecord vis.element
+        target vis.element
 
-    renderAucPlot = _.plot (g) ->
+  if _isBinomial()
+    renderPlot _predictionRecord, _.enumerate _.inspect 'Prediction', prediction
+    renderPlot _aucPlot, _.plot (g) ->
       g(
         g.path g.position 'FPR', 'TPR'
         g.from _.inspect 'Confusion Matrices', prediction
       )
-
-    renderAucPlot (error, vis) ->
-      if error
-        debug error
-      else
-        _aucPlot vis.element
 
   inspect = ->
     #XXX get this from prediction table
