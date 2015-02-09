@@ -532,8 +532,8 @@ H2O.Routines = (_) ->
     if (every predictions, (prediction) -> prediction.model_category is 'Binomial')
       inspections = {}
       inspections['Prediction' ] = inspectBinomialPredictions opts, predictions
-      inspections[ (head predictions).maxCriteriaAndMetricScores.name ] = inspectBinomialScores opts, predictions
-      inspections[ (head predictions).thresholdsAndMetricScores.name ] = inspectBinomialMetrics opts, predictions
+      inspections[ (head predictions).thresholdsAndMetricScores.name ] = inspectBinomialScores opts, predictions
+      inspections[ (head predictions).maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, predictions
       inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, predictions
       inspect_ predictions, inspections
     else
@@ -557,8 +557,8 @@ H2O.Routines = (_) ->
       else
         inspections = {}
         inspections[ 'Prediction' ] = inspectBinomialPrediction prediction
-        inspections[ prediction.maxCriteriaAndMetricScores.name ] = inspectBinomialScores opts, [ prediction ]
-        inspections[ prediction.thresholdsAndMetricScores.name ] =  inspectBinomialMetrics opts, [ prediction ]
+        inspections[ prediction.thresholdsAndMetricScores.name ] = inspectBinomialScores opts, [ prediction ]
+        inspections[ prediction.maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, [ prediction ]
         inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, [ prediction ]
         inspect_ prediction, inspections
 
