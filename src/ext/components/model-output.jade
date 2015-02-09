@@ -46,3 +46,8 @@
   h4 Model Output
   .flow-plot(data-bind='raw:output')
   // /ko
+
+  // ko if:glmVariableImportancePlot
+  h4 Normalized Coefficient Magnitudes
+  .flow-plot(data-bind='raw:glmVariableImportancePlot')
+  // /ko

@@ -1,7 +1,8 @@
 H2O.ModelOutput = (_, _model) ->
   _isExpanded = signal no
   _output = signal null
-  
+  _glmVariableImportancePlot = signal null
+
   #TODO use _.enumerate()
   _inputParameters = map _model.parameters, (parameter) ->
     { type, default_value, actual_value, label, help } = parameter
@@ -31,6 +32,18 @@ H2O.ModelOutput = (_, _model) ->
   if table = _.inspect 'output', _model
     renderPlot _output, _.enumerate table
 
+  if _model.algo is 'glm'
+    if table = _.inspect 'Normalized Coefficient Magnitudes', _model
+      renderPlot _glmVariableImportancePlot, _.plot (g) ->
+        g(
+          g.rect(
+            g.position 'Magnitude', 'Column'
+          )
+          g.from table
+          g.limit 15
+        )
+
+
   toggle = ->
     _isExpanded not _isExpanded()
 
@@ -48,6 +61,7 @@ H2O.ModelOutput = (_, _model) ->
   algo: _model.algo
   inputParameters: _inputParameters
   output: _output
+  glmVariableImportancePlot: _glmVariableImportancePlot
   isExpanded: _isExpanded
   toggle: toggle
   cloneModel: cloneModel
