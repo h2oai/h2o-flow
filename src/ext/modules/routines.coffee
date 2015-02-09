@@ -340,11 +340,15 @@ H2O.Routines = (_) ->
       origin: "getModel #{stringify model.key.name}"
 
   inspectGLMCoefficientsMagnitude = (model) -> ->
+    #TODO HACK
+    model.output.coefficients_magnitude.columns[0].name = 'Column'
     convertTableToFrame model.output.coefficients_magnitude,
       description: "#{model.output.coefficients_magnitude.name} for GLM model #{model.key.name}"
       origin: "getModel #{stringify model.key.name}"
 
   inspectGLMCoefficientsTable = (model) -> ->
+    #TODO HACK
+    model.output.coefficients_table.columns[0].name = 'Column'
     convertTableToFrame model.output.coefficients_table,
       description: "#{model.output.coefficients_table.name} for GLM model #{model.key.name}"
       origin: "getModel #{stringify model.key.name}"
