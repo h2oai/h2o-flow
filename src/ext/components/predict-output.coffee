@@ -6,7 +6,7 @@ H2O.PredictOutput = (_, prediction) ->
   _isClustering = signal prediction.model_category is 'Clustering'
 
   _predictionRecord = signal null
-  _aucPlot = signal null
+  _rocCurve = signal null
 
   #_predictionTable = _.inspect 'prediction', prediction
 
@@ -19,7 +19,7 @@ H2O.PredictOutput = (_, prediction) ->
 
   if _isBinomial()
     renderPlot _predictionRecord, _.enumerate _.inspect 'Prediction', prediction
-    renderPlot _aucPlot, _.plot (g) ->
+    renderPlot _rocCurve, _.plot (g) ->
       g(
         g.path g.position 'FPR', 'TPR'
         g.from _.inspect 'Confusion Matrices', prediction
@@ -37,7 +37,7 @@ H2O.PredictOutput = (_, prediction) ->
   isRegression: _isRegression
   isClustering: _isClustering
   predictionRecord: _predictionRecord
-  aucPlot: _aucPlot
+  rocCurve: _rocCurve
   inspect: inspect
   viewPredictionFrame: viewPredictionFrame
   template: 'flow-predict-output'
