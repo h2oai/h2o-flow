@@ -109,6 +109,14 @@ H2O.Proxy = (_) ->
       else
         go null, head result.jobs
 
+  requestCancelJob = (key, go) ->
+    doPost "/2/Jobs.json/#{encodeURIComponent key}/cancel", {}, (error, result) ->
+      if error
+        go new Flow.Error "Error canceling job '#{key}'", error
+      else
+        debug result
+        go null
+
   requestFileGlob = (path, limit, go) ->
     opts =
       src: encodeURIComponent path
@@ -277,6 +285,7 @@ H2O.Proxy = (_) ->
   link _.requestColumnSummary, requestColumnSummary
   link _.requestJobs, requestJobs
   link _.requestJob, requestJob
+  link _.requestCancelJob, requestCancelJob
   link _.requestFileGlob, requestFileGlob
   link _.requestImportFiles, requestImportFiles
   link _.requestImportFile, requestImportFile
