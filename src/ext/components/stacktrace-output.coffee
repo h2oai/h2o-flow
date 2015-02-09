@@ -11,9 +11,9 @@ H2O.StackTraceOutput = (_, _stackTrace) ->
     display = -> _activeNode self
 
     self =
-      name: node._node
-      timestamp: new Date node._time
-      threads: (createThread thread for thread in node._traces)
+      name: node.node
+      timestamp: new Date node.time
+      threads: (createThread thread for thread in node.thread_traces)
       display: display
 
   _nodes = for node in _stackTrace.traces
