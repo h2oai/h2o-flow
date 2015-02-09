@@ -963,6 +963,7 @@
             </tbody>
           </table>
         </div>
+        <h4>Model Parameters</h4>
         <div data-bind="css:{ 'flow-unhide':isExpanded }">
           <div class="flow-right flow-margin-after">
             <!-- ko ifnot:isExpanded-->
@@ -993,6 +994,10 @@
             </tbody>
           </table>
         </div>
+        <!-- ko if:output-->
+        <h4>Model Output</h4>
+        <div data-bind="raw:output" class="flow-plot"></div>
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-parse-output">
@@ -1523,23 +1528,27 @@
                         </div>
                       </td>
                     </tr>
+                    <tr>
+                      <td class="flow-narrow"></td>
+                      <td data-bind="text:progressMessage" class="flow-wide"></td>
+                    </tr>
                   </tbody>
                 </table>
               </td>
             </tr>
-            <tr>
-              <th class="flow-narrow">Actions</th>
-              <td class="flow-wide">
-                <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-search"></i>View</button>
-                <button type="button" data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }" class="flow-button">
-                  <!-- ko if:isLive--><i class="fa fa-refresh fa-spin"></i><span>Stop</span>
-                  <!-- /ko-->
-                  <!-- ko ifnot:isLive--><i class="fa fa-refresh"></i><span>Refresh</span>
-                  <!-- /ko-->
-                </button>
-              </td>
-            </tr>
           </tbody>
+          <tr>
+            <th class="flow-narrow">Actions</th>
+            <td class="flow-wide">
+              <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-search"></i>View</button>
+              <button type="button" data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }" class="flow-button">
+                <!-- ko if:isLive--><i class="fa fa-refresh fa-spin"></i><span>Stop</span>
+                <!-- /ko-->
+                <!-- ko ifnot:isLive--><i class="fa fa-refresh"></i><span>Refresh</span>
+                <!-- /ko-->
+              </button>
+            </td>
+          </tr>
         </table>
       </div>
     </script>
