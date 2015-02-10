@@ -572,7 +572,6 @@
             <tr>
               <th width="1">&nbsp;</th>
               <th>Name</th>
-              <th>Description</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -581,7 +580,6 @@
             <tr>
               <td><i class="fa fa-table"></i></td>
               <td><a href="#" data-bind="text:label, click:grid"></a></td>
-              <td data-bind="text:description"></td>
               <td>
                 <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span></button>
                 <!-- ko if:canPlot-->
@@ -997,6 +995,18 @@
         <!-- ko if:output-->
         <h4>Model Output</h4>
         <div data-bind="raw:output" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:dlTrainingMetrics-->
+        <h4>Training Metrics</h4>
+        <div data-bind="raw:dlTrainingMetrics" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:dlScoringHistory-->
+        <h4>Scoring History</h4>
+        <div data-bind="raw:dlScoringHistory" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:glmVariableImportancePlot-->
+        <h4>Normalized Coefficient Magnitudes</h4>
+        <div data-bind="raw:glmVariableImportancePlot" class="flow-plot"></div>
         <!-- /ko-->
       </div>
     </script>
@@ -1529,26 +1539,21 @@
                       </td>
                     </tr>
                     <tr>
-                      <td class="flow-narrow"></td>
+                      <td class="flow-narrow">&nbsp;</td>
                       <td data-bind="text:progressMessage" class="flow-wide"></td>
                     </tr>
                   </tbody>
                 </table>
               </td>
             </tr>
+            <tr>
+              <th class="flow-narrow">Actions</th>
+              <td class="flow-wide">
+                <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-search"></i>View</button>
+                <button type="button" data-bind="click:cancel, visible:canCancel" class="flow-button"><i class="fa fa-ban"></i>Cancel Job</button>
+              </td>
+            </tr>
           </tbody>
-          <tr>
-            <th class="flow-narrow">Actions</th>
-            <td class="flow-wide">
-              <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-search"></i>View</button>
-              <button type="button" data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }" class="flow-button">
-                <!-- ko if:isLive--><i class="fa fa-refresh fa-spin"></i><span>Stop</span>
-                <!-- /ko-->
-                <!-- ko ifnot:isLive--><i class="fa fa-refresh"></i><span>Refresh</span>
-                <!-- /ko-->
-              </button>
-            </td>
-          </tr>
         </table>
       </div>
     </script>
@@ -1667,8 +1672,8 @@
         <!-- ko if:isBinomial-->
         <h4>Output</h4>
         <div data-bind="raw:predictionRecord" class="flow-plot"></div>
-        <h4>AUC Plot</h4>
-        <div data-bind="raw:aucPlot" class="flow-plot"> </div>
+        <h4>ROC Curve</h4>
+        <div data-bind="raw:rocCurve" class="flow-plot"> </div>
         <!-- /ko-->
       </div>
     </script>
