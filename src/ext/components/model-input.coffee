@@ -70,7 +70,7 @@ createListControl = (parameter) ->
   _availableSearchTerm = signal ''
   _selectedSearchTerm = signal ''
 
-  createValueView = (value) ->
+  createValueView = ({ label, value }) ->
     _isAvailable = signal yes
     _canInclude = signal yes
     _canExclude = signal yes
@@ -84,6 +84,7 @@ createListControl = (parameter) ->
       _selectedValues.remove self
 
     self =
+      label: label
       value: value
       include: include
       exclude: exclude
@@ -91,7 +92,10 @@ createListControl = (parameter) ->
       canExclude: _canExclude
       isAvailable: _isAvailable
 
-  _values = signals parameter.values
+  _values = signals map parameter.values, (value) ->
+    label: value
+    value: value
+
   _availableValues = lift _values, (vals) -> map vals, createValueView
   _views = {}
   for view in _availableValues()
@@ -226,9 +230,14 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
           if frameKey
             _.requestFrame frameKey, (error, frame) ->
               unless error
-                columnLabels = map frame.columns, (column) -> column.label
+                columnValues = map frame.columns, (column) -> column.label
+                columnLabels = map frame.columns, (column) -> 
+                  missingPercent = 100 * column.missing / frame.rows
+                  na = if missingPercent is 0 then '' else " (#{round missingPercent}% NA)"
+                  label: "#{column.label}#{na}"
+                  value: column.label
                 if responseColumnParameter
-                  responseColumnParameter.values columnLabels
+                  responseColumnParameter.values columnValues
                 if ignoredColumnsParameter
                   ignoredColumnsParameter.values columnLabels
           return
