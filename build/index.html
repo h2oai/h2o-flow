@@ -910,6 +910,13 @@
                 </td>
                 <!-- /ko-->
               </tr>
+              <tr>
+                <!-- ko foreach:columns-->
+                <td>
+                  <select data-bind="options:$parent.dataTypes, value:type"></select>
+                </td>
+                <!-- /ko-->
+              </tr>
             </thead>
             <tbody>
               <!-- ko foreach:rows-->
@@ -1171,13 +1178,13 @@
           <div style="height:25px">
             <input type="text" placeholder="Search..." data-bind="value:availableSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
           </div>
-          <div style="margin-bottom:5px;height:200px;overflow:auto;border:1px dotted #ccc">
+          <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
             <table>
               <tbody>
                 <!-- ko foreach:availableValues-->
                 <tr data-bind="visible:isAvailable() &amp;&amp; canInclude(), click:include" class="flow-pointer">
                   <td><i title="Add" class="fa fa-plus"></i></td>
-                  <td data-bind="text:value"></td>
+                  <td data-bind="text:label"></td>
                 </tr>
                 <!-- /ko-->
               </tbody>
@@ -1194,13 +1201,13 @@
           <div style="height:25px">
             <input type="text" placeholder="Search..." data-bind="value:selectedSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
           </div>
-          <div style="margin-bottom:5px;height:200px;overflow:auto;border:1px dotted #ccc">
+          <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
             <table>
               <tbody>
                 <!-- ko foreach:selectedValues-->
                 <tr data-bind="visible:canExclude, click:exclude" class="flow-pointer">
                   <td><i title="Remove" class="fa fa-remove flow-pointer"></i></td>
-                  <td data-bind="text:value"></td>
+                  <td data-bind="text:label"></td>
                 </tr>
                 <!-- /ko-->
               </tbody>
