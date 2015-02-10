@@ -525,8 +525,8 @@ H2O.Routines = (_) ->
     { frame, model } = prediction
 
     vectors = [
-      createFactor 'key', TString, [ model.name ]
-      createFactor 'frame', TString, [ frame.name ]
+      #createFactor 'key', TString, [ model.name ]
+      #createFactor 'frame', TString, [ frame.name ]
       createFactor 'model_category', TString, [ prediction.model_category ]
       createVector 'AUC', TNumber, [ prediction.AUC ]
       createVector 'Gini', TNumber, [ prediction.Gini ]

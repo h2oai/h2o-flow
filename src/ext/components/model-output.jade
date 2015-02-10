@@ -47,6 +47,16 @@
   .flow-plot(data-bind='raw:output')
   // /ko
 
+  // ko if:dlTrainingMetrics
+  h4 Training Metrics
+  .flow-plot(data-bind='raw:dlTrainingMetrics')
+  // /ko
+
+  // ko if:dlScoringHistory
+  h4 Scoring History
+  .flow-plot(data-bind='raw:dlScoringHistory')
+  // /ko
+
   // ko if:glmVariableImportancePlot
   h4 Normalized Coefficient Magnitudes
   .flow-plot(data-bind='raw:glmVariableImportancePlot')
