@@ -990,10 +990,12 @@ H2O.Routines = (_) ->
     columnCount = opts.ncols
     useSingleQuotes = opts.singleQuotes
     columnNames = opts.columnNames
+    columnTypes = opts.columnTypes
     deleteOnDone = opts.delete_on_done
     checkHeader = opts.checkHeader
+    chunkSize = opts.chunkSize
 
-    renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, (parseResult, go) ->
+    renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (parseResult, go) ->
       go null, H2O.ParseOutput _, parseResult
 
   buildModel = (algo, opts) ->

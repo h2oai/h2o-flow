@@ -146,7 +146,7 @@ H2O.Proxy = (_) ->
       srcs: encodeArrayForPost sources
     doPost '/2/ParseSetup.json', opts, go
 
-  requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, go) ->
+  requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     opts =
       hex: destinationKey
       srcs: encodeArrayForPost sourceKeys
@@ -155,8 +155,10 @@ H2O.Proxy = (_) ->
       ncols: columnCount
       singleQuotes: useSingleQuotes
       columnNames: encodeArrayForPost columnNames
+      columnTypes: encodeArrayForPost columnTypes
       checkHeader: checkHeader
       delete_on_done: deleteOnDone
+      chunkSize: chunkSize
     doPost '/2/Parse.json', opts, go
 
   patchUpModels = (models) ->
