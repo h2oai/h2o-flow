@@ -69,8 +69,16 @@ H2O.Proxy = (_) ->
     requestWithOpts '/1/Inspect.json', opts, go
 
   requestCreateFrame = (opts, go) ->
-    #requestWithOpts '/2/CreateFrame.json', (encodeObject opts), go
     doPost '/2/CreateFrame.json', opts, go
+
+  requestSplitFrame = (frameKey, splits, go) ->
+    ratios = (item.ratio for item in splits)
+    keys = (item.key for item in splits)
+    opts =
+      dataset: frameKey
+      ratios: encodeArrayForPost ratios
+      destKeys: encodeArrayForPost keys
+    doPost '/2/SplitFrame.json', opts, go
 
   requestFrames = (go) ->
     doGet '/3/Frames.json', (error, result) ->
@@ -280,6 +288,7 @@ H2O.Proxy = (_) ->
   link _.requestPost, doPost
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
+  link _.requestSplitFrame, requestSplitFrame
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
   link _.requestColumnSummary, requestColumnSummary

@@ -881,11 +881,28 @@ H2O.Routines = (_) ->
           else
             go null, extendJob job
 
+  requestSplitFrame = (frameKey, splits, go) ->
+    _.requestSplitFrame frameKey, splits, (error, result) ->
+      if error
+        go error
+      else
+        _.requestJob result.key.name, (error, job) ->
+          if error
+            go error
+          else
+            go null, extendJob job
+
   createFrame = (opts) ->
     if opts
       _fork requestCreateFrame, opts
     else
       assist createFrame
+
+  splitFrame = (frameKey, splits) ->
+    if frameKey and splits
+      _fork requestSplitFrame, frameKey, splits
+    else
+      assist splitFrame
 
   getFrames = ->
     _fork requestFrames  
@@ -1141,6 +1158,8 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.PredictInput, args
         when createFrame
           _fork proceed, H2O.CreateFrameInput, args
+        when splitFrame
+          _fork proceed, H2O.SplitFrameInput, args
         else
           _fork proceed, H2O.NoAssist, []
 
@@ -1197,6 +1216,7 @@ H2O.Routines = (_) ->
   setupParse: setupParse
   parseRaw: parseRaw
   createFrame: createFrame
+  splitFrame: splitFrame
   getFrames: getFrames
   getFrame: getFrame
   getColumnSummary: getColumnSummary
