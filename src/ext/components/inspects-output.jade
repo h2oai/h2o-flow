@@ -14,7 +14,6 @@
       tr
         th(width='1') &nbsp;
         th Name
-        th Description
         th Actions
     tbody
       // ko foreach:tables
@@ -23,7 +22,6 @@
           i.fa.fa-table
         td
           a(href='#' data-bind='text:label, click:grid')
-        td(data-bind='text:description')
         td
           button.flow-button(type='button' data-bind='click:inspect')
             i.fa.fa-list
