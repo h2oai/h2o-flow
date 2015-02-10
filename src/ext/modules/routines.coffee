@@ -340,15 +340,11 @@ H2O.Routines = (_) ->
       origin: "getModel #{stringify model.key.name}"
 
   inspectGLMCoefficientsMagnitude = (model) -> ->
-    #TODO HACK
-    model.output.coefficients_magnitude.columns[0].name = 'Column'
     convertTableToFrame model.output.coefficients_magnitude,
       description: "#{model.output.coefficients_magnitude.name} for GLM model #{model.key.name}"
       origin: "getModel #{stringify model.key.name}"
 
   inspectGLMCoefficientsTable = (model) -> ->
-    #TODO HACK
-    model.output.coefficients_table.columns[0].name = 'Column'
     convertTableToFrame model.output.coefficients_table,
       description: "#{model.output.coefficients_table.name} for GLM model #{model.key.name}"
       origin: "getModel #{stringify model.key.name}"
@@ -411,8 +407,60 @@ H2O.Routines = (_) ->
       'Cluster means': inspectKmeansModelClusterMeans model
 
   extendDeepLearningModel = (model) ->
-    inspect_ model,
-      parameters: inspectModelParameters model
+
+    origin = "getModel #{stringify model.key.name}"
+
+    inspections = {}
+    inspections.parameters = inspectModelParameters model
+
+    if model.output.model_category is 'Binomial'
+      tables = [ model.output.modelSummary, model.output.scoringHistory ]
+      tables.forEach (table) ->
+        inspections[ table.name ] = ->
+          convertTableToFrame table,
+            description: table.name 
+            origin: origin
+
+      if prediction1 = model.output.trainMetrics
+        prediction1.thresholdsAndMetricScores.name = 'Training ' + prediction1.thresholdsAndMetricScores.name
+        prediction1.maxCriteriaAndMetricScores.name = 'Training ' + prediction1.maxCriteriaAndMetricScores.name
+
+        inspections[ 'Training Metrics' ] = inspectBinomialPrediction2 'Training Metrics', prediction1
+
+        inspections[ prediction1.thresholdsAndMetricScores.name ] = -> 
+          convertTableToFrame prediction1.thresholdsAndMetricScores,
+            description: prediction1.thresholdsAndMetricScores.name
+            origin: origin
+            plot: "plot inspect '#{prediction1.thresholdsAndMetricScores.name}', #{origin}"
+
+        inspections[ prediction1.maxCriteriaAndMetricScores.name ] = -> 
+          convertTableToFrame prediction1.maxCriteriaAndMetricScores,
+          description: prediction1.maxCriteriaAndMetricScores.name
+          origin: origin
+          plot: "plot inspect '#{prediction1.maxCriteriaAndMetricScores.name}', #{origin}"
+
+        inspections[ 'Training Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Training Confusion Matrices', prediction1
+
+      if prediction2 = model.output.validMetrics
+        prediction2.thresholdsAndMetricScores.name = 'Validation ' + prediction2.thresholdsAndMetricScores.name
+        prediction2.maxCriteriaAndMetricScores.name = 'Validation ' + prediction2.maxCriteriaAndMetricScores.name
+
+        inspections[ 'Validation Metrics' ] = inspectBinomialPrediction2 'Validation Metrics', prediction2
+        inspections[ prediction2.thresholdsAndMetricScores.name ] = -> 
+          convertTableToFrame prediction2.thresholdsAndMetricScores,
+          description: prediction2.thresholdsAndMetricScores.name
+          origin: origin
+          plot: "plot inspect '#{prediction2.thresholdsAndMetricScores.name}', #{origin}"
+
+        inspections[ prediction2.maxCriteriaAndMetricScores.name ] = -> 
+        convertTableToFrame prediction2.maxCriteriaAndMetricScores,
+          description: prediction2.maxCriteriaAndMetricScores.name
+          origin: origin
+          plot: "plot inspect '#{prediction2.maxCriteriaAndMetricScores.name}', #{origin}"
+
+        inspections[ 'Validation Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Validation Confusion Matrices', prediction2
+
+    inspect_ model, inspections
   
   extendGBMModel = (model) ->
     inspect_ model,
@@ -472,6 +520,25 @@ H2O.Routines = (_) ->
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
       origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
+  inspectBinomialPrediction2 = (frameLabel, prediction) -> ->
+    origin = "getModel #{stringify prediction.model.name}"
+    { frame, model } = prediction
+
+    vectors = [
+      createFactor 'key', TString, [ model.name ]
+      createFactor 'frame', TString, [ frame.name ]
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'AUC', TNumber, [ prediction.AUC ]
+      createVector 'Gini', TNumber, [ prediction.Gini ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
+    ]
+
+    createDataframe frameLabel, vectors, (sequence 1), null,
+      description: frameLabel
+      origin: origin
+
   inspectBinomialPrediction = (prediction) -> ->
     { frame, model } = prediction
 
@@ -489,6 +556,19 @@ H2O.Routines = (_) ->
     createDataframe 'Prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
       origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+
+  inspectBinomialConfusionMatrices2 = (frameLabel, prediction) -> ->
+    origin = "getModel #{stringify prediction.model.name}"
+    vectors = [
+      createList 'CM', prediction.confusion_matrices, formatConfusionMatrix
+      createVector 'TPR', TNumber, map prediction.confusion_matrices, computeTruePositiveRate
+      createVector 'FPR', TNumber, map prediction.confusion_matrices, computeFalsePositiveRate
+    ]
+    createDataframe frameLabel, vectors, (sequence prediction.confusion_matrices.length), null,
+      description: frameLabel
+      origin: origin
+      plot: "plot inspect '#{frameLabel}', #{origin}"
+
 
   inspectBinomialConfusionMatrices = (opts, predictions) -> ->
     vectors = [
