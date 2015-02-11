@@ -416,52 +416,72 @@ H2O.Routines = (_) ->
     inspections = {}
     inspections.parameters = inspectModelParameters model
 
-    if model.output.model_category is 'Binomial'
+    modelCategory = model.output.model_category
+
+    if modelCategory is 'Binomial' or modelCategory is 'Multinomial' or modelCategory is 'Regression'
       tables = [ model.output.modelSummary, model.output.scoringHistory ]
       tables.forEach (table) ->
         inspections[ table.name ] = ->
           convertTableToFrame table,
             description: table.name 
             origin: origin
+            plot: "plot inspect '#{table.name}', #{origin}"
 
-      if prediction1 = model.output.trainMetrics
-        prediction1.thresholdsAndMetricScores.name = 'Training ' + prediction1.thresholdsAndMetricScores.name
-        prediction1.maxCriteriaAndMetricScores.name = 'Training ' + prediction1.maxCriteriaAndMetricScores.name
+    if modelCategory is 'Binomial'
+      if trainMetrics = model.output.trainMetrics
+        trainMetrics.thresholdsAndMetricScores.name = 'Training ' + trainMetrics.thresholdsAndMetricScores.name
+        trainMetrics.maxCriteriaAndMetricScores.name = 'Training ' + trainMetrics.maxCriteriaAndMetricScores.name
 
-        inspections[ 'Training Metrics' ] = inspectBinomialPrediction2 'Training Metrics', prediction1
+        inspections[ 'Training Metrics' ] = inspectBinomialPrediction2 'Training Metrics', trainMetrics
 
-        inspections[ prediction1.thresholdsAndMetricScores.name ] = -> 
-          convertTableToFrame prediction1.thresholdsAndMetricScores,
-            description: prediction1.thresholdsAndMetricScores.name
+        inspections[ trainMetrics.thresholdsAndMetricScores.name ] = -> 
+          convertTableToFrame trainMetrics.thresholdsAndMetricScores,
+            description: trainMetrics.thresholdsAndMetricScores.name
             origin: origin
-            plot: "plot inspect '#{prediction1.thresholdsAndMetricScores.name}', #{origin}"
+            plot: "plot inspect '#{trainMetrics.thresholdsAndMetricScores.name}', #{origin}"
 
-        inspections[ prediction1.maxCriteriaAndMetricScores.name ] = -> 
-          convertTableToFrame prediction1.maxCriteriaAndMetricScores,
-          description: prediction1.maxCriteriaAndMetricScores.name
+        inspections[ trainMetrics.maxCriteriaAndMetricScores.name ] = -> 
+          convertTableToFrame trainMetrics.maxCriteriaAndMetricScores,
+          description: trainMetrics.maxCriteriaAndMetricScores.name
           origin: origin
-          plot: "plot inspect '#{prediction1.maxCriteriaAndMetricScores.name}', #{origin}"
+          plot: "plot inspect '#{trainMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
 
-        inspections[ 'Training Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Training Confusion Matrices', prediction1
+        inspections[ 'Training Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Training Confusion Matrices', trainMetrics
 
-      if prediction2 = model.output.validMetrics
-        prediction2.thresholdsAndMetricScores.name = 'Validation ' + prediction2.thresholdsAndMetricScores.name
-        prediction2.maxCriteriaAndMetricScores.name = 'Validation ' + prediction2.maxCriteriaAndMetricScores.name
+      if validMetrics = model.output.validMetrics
+        validMetrics.thresholdsAndMetricScores.name = 'Validation ' + validMetrics.thresholdsAndMetricScores.name
+        validMetrics.maxCriteriaAndMetricScores.name = 'Validation ' + validMetrics.maxCriteriaAndMetricScores.name
 
-        inspections[ 'Validation Metrics' ] = inspectBinomialPrediction2 'Validation Metrics', prediction2
-        inspections[ prediction2.thresholdsAndMetricScores.name ] = -> 
-          convertTableToFrame prediction2.thresholdsAndMetricScores,
-          description: prediction2.thresholdsAndMetricScores.name
+        inspections[ 'Validation Metrics' ] = inspectBinomialPrediction2 'Validation Metrics', validMetrics
+        inspections[ validMetrics.thresholdsAndMetricScores.name ] = -> 
+          convertTableToFrame validMetrics.thresholdsAndMetricScores,
+          description: validMetrics.thresholdsAndMetricScores.name
           origin: origin
-          plot: "plot inspect '#{prediction2.thresholdsAndMetricScores.name}', #{origin}"
+          plot: "plot inspect '#{validMetrics.thresholdsAndMetricScores.name}', #{origin}"
 
-        inspections[ prediction2.maxCriteriaAndMetricScores.name ] = -> 
-        convertTableToFrame prediction2.maxCriteriaAndMetricScores,
-          description: prediction2.maxCriteriaAndMetricScores.name
+        inspections[ validMetrics.maxCriteriaAndMetricScores.name ] = -> 
+        convertTableToFrame validMetrics.maxCriteriaAndMetricScores,
+          description: validMetrics.maxCriteriaAndMetricScores.name
           origin: origin
-          plot: "plot inspect '#{prediction2.maxCriteriaAndMetricScores.name}', #{origin}"
+          plot: "plot inspect '#{validMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
 
-        inspections[ 'Validation Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Validation Confusion Matrices', prediction2
+        inspections[ 'Validation Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Validation Confusion Matrices', validMetrics
+
+    else if modelCategory is 'Multinomial'
+      if trainMetrics = model.output.trainMetrics
+        inspections[ 'Training Metrics' ] = inspectMultinomialPrediction2 'Training Metrics', trainMetrics
+
+      if validMetrics = model.output.validMetrics
+        inspections[ 'Validation Metrics' ] = inspectMultinomialPrediction2 'Validation Metrics', validMetrics
+
+    else if modelCategory is 'Regression'
+      if trainMetrics = model.output.trainMetrics
+        inspections[ 'Training Metrics' ] = inspectRegressionPrediction2 'Training Metrics', trainMetrics
+
+      if validMetrics = model.output.validMetrics
+        inspections[ 'Validation Metrics' ] = inspectRegressionPrediction2 'Validation Metrics', validMetrics
+
+      
 
     inspect_ model, inspections
   
@@ -508,15 +528,48 @@ H2O.Routines = (_) ->
 
   read = (value) -> if value is 'NaN' then null else value
 
+  inspectMultinomialPrediction2 = (frameLabel, prediction) -> ->
+    { frame, model } = prediction
+    origin = "getModel #{stringify prediction.model.name}"
+
+    vectors = [
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
+    ]
+
+    createDataframe frameLabel, vectors, (sequence 1), null,
+      description: frameLabel
+      origin: origin
+
+  inspectRegressionPrediction2 = (frameLabel, prediction) -> ->
+    { frame, model } = prediction
+    origin = "getModel #{stringify prediction.model.name}"
+
+    vectors = [
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'sigma', TNumber, [ prediction.sigma ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
+    ]
+
+    createDataframe frameLabel, vectors, (sequence 1), null,
+      description: frameLabel
+      origin: origin
+
   inspectRegressionPrediction = (prediction) -> ->
-    { frame, model, predictions } = prediction
+    { frame, model } = prediction
 
     vectors = [
       createFactor 'key', TString, [ model.name ]
       createFactor 'frame', TString, [ frame.name ]
       createFactor 'model_category', TString, [ prediction.model_category ]
-      createVector 'duration_in_ms', TString, [ prediction.duration_in_ms ]
-      createVector 'scoring_time', TString, [ prediction.scoring_time ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'sigma', TNumber, [ prediction.sigma ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
     ]
 
     createDataframe 'prediction', vectors, (sequence 1), null,
@@ -528,8 +581,6 @@ H2O.Routines = (_) ->
     { frame, model } = prediction
 
     vectors = [
-      #createFactor 'key', TString, [ model.name ]
-      #createFactor 'frame', TString, [ frame.name ]
       createFactor 'model_category', TString, [ prediction.model_category ]
       createVector 'AUC', TNumber, [ prediction.AUC ]
       createVector 'Gini', TNumber, [ prediction.Gini ]
