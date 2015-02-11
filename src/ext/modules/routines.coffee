@@ -12,6 +12,9 @@ _assistance =
   getFrames:
     description: 'Get a list of frames in H<sub>2</sub>O'
     icon: 'database'
+  splitFrame:
+    description: 'Split a frame into two or more frames'
+    icon: 'scissors'
   getModels:
     description: 'Get a list of models in H<sub>2</sub>O'
     icon: 'cubes'

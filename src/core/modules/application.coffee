@@ -1,11 +1,11 @@
 Flow.Application = (_, routines) ->
   Flow.ApplicationContext _
-  _routines = routines _
-  _sandbox = Flow.Sandbox _, _routines
-  #XXX support external renderers
+  _sandbox = Flow.Sandbox _, routines _
+  #TODO support external renderers
   _renderers = Flow.Renderers _, _sandbox
+  Flow.Growl _
+  Flow.Autosave _
   _notebook = Flow.Notebook _, _renderers
-  _growl = Flow.Growl _
   
   context: _
   sandbox: _sandbox

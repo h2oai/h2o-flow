@@ -1,5 +1,7 @@
 Flow.ApplicationContext = (_) ->
   _.ready = do slots
+  _.setDirty = do slots
+  _.setPristine = do slots
   _.status = do slot
   _.selectCell = do slot
   _.insertCell = do slot

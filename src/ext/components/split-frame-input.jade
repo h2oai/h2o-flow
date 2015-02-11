@@ -7,12 +7,12 @@
     tbody
       tr
         th
-          label Frame
+          label Frame:
         td
           select(data-bind="options:frames, value:frame, optionsCaption:'(Select)'")
       tr
         th
-          label Splits
+          label Splits:
         td
           table
             thead
@@ -37,7 +37,7 @@
                     +fa('remove')
               // /ko
           div
-            a(data-bind='click:addSplit') Add a split
+            a.flow-pointer(data-bind='click:addSplit') Add a split
 
   .flow-panel
     +button('Create', 'scissors', 'splitFrame')
