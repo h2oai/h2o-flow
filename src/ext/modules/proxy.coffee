@@ -71,13 +71,11 @@ H2O.Proxy = (_) ->
   requestCreateFrame = (opts, go) ->
     doPost '/2/CreateFrame.json', opts, go
 
-  requestSplitFrame = (frameKey, splits, go) ->
-    ratios = (item.ratio for item in splits)
-    keys = (item.key for item in splits)
+  requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
     opts =
       dataset: frameKey
-      ratios: encodeArrayForPost ratios
-      destKeys: encodeArrayForPost keys
+      ratios: encodeArrayForPost splitRatios
+      destKeys: encodeArrayForPost splitKeys
     doPost '/2/SplitFrame.json', opts, go
 
   requestFrames = (go) ->

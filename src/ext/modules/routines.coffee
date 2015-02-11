@@ -881,8 +881,8 @@ H2O.Routines = (_) ->
           else
             go null, extendJob job
 
-  requestSplitFrame = (frameKey, splits, go) ->
-    _.requestSplitFrame frameKey, splits, (error, result) ->
+  requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
+    _.requestSplitFrame frameKey, splitRatios, splitKeys, (error, result) ->
       if error
         go error
       else
@@ -898,9 +898,9 @@ H2O.Routines = (_) ->
     else
       assist createFrame
 
-  splitFrame = (frameKey, splits) ->
-    if frameKey and splits
-      _fork requestSplitFrame, frameKey, splits
+  splitFrame = (frameKey, splitRatios, splitKeys) ->
+    if frameKey and splitRatios and splitKeys
+      _fork requestSplitFrame, frameKey, splitRatios, splitKeys
     else
       assist splitFrame
 
