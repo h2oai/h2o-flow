@@ -427,6 +427,13 @@ H2O.Routines = (_) ->
             origin: origin
             plot: "plot inspect '#{table.name}', #{origin}"
 
+      if variableImportances = model.output.variableImportances
+        inspections[ variableImportances.name ] = ->
+          convertTableToFrame variableImportances,
+            description: variableImportances.name
+            origin: origin
+            plot: "plot inspect '#{variableImportances.name}', #{origin}"
+
     if modelCategory is 'Binomial'
       if trainMetrics = model.output.trainMetrics
         trainMetrics.thresholdsAndMetricScores.name = 'Training ' + trainMetrics.thresholdsAndMetricScores.name

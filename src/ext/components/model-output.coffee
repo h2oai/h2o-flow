@@ -1,9 +1,10 @@
 H2O.ModelOutput = (_, _model) ->
   _isExpanded = signal no
   _output = signal null
+  _glmVariableImportancePlot = signal null
   _dlScoringHistory = signal null
   _dlTrainingMetrics = signal null
-  _glmVariableImportancePlot = signal null
+  _dlVariableImportancePlot = signal null
 
   #TODO use _.enumerate()
   _inputParameters = map _model.parameters, (parameter) ->
@@ -43,7 +44,7 @@ H2O.ModelOutput = (_, _model) ->
               g.position 'Magnitude', 'Column'
             )
             g.from table
-            g.limit 15
+            g.limit 25
           )
     when 'deeplearning'
       if table = _.inspect 'Scoring History', _model
@@ -59,6 +60,17 @@ H2O.ModelOutput = (_, _model) ->
             g.table()
             g.from table
           )
+
+      if table = _.inspect 'Variable Importances', _model
+        renderPlot _dlVariableImportancePlot, _.plot (g) ->
+          g(
+            g.rect(
+              g.position 'Relative Importance', 'Variable'
+            )
+            g.from table
+            g.limit 25
+          )
+
 
   toggle = ->
     _isExpanded not _isExpanded()
@@ -79,6 +91,7 @@ H2O.ModelOutput = (_, _model) ->
   output: _output
   dlScoringHistory: _dlScoringHistory
   dlTrainingMetrics: _dlTrainingMetrics
+  dlVariableImportancePlot: _dlVariableImportancePlot
   glmVariableImportancePlot: _glmVariableImportancePlot
   isExpanded: _isExpanded
   toggle: toggle

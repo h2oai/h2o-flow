@@ -57,7 +57,12 @@
   .flow-plot(data-bind='raw:dlScoringHistory')
   // /ko
 
+  // ko if:dlVariableImportancePlot
+  h4 Variable Importance
+  .flow-plot(data-bind='raw:dlVariableImportancePlot')
+  // /ko
+
   // ko if:glmVariableImportancePlot
-  h4 Normalized Coefficient Magnitudes
+  h4 Variable Importance
   .flow-plot(data-bind='raw:glmVariableImportancePlot')
   // /ko
