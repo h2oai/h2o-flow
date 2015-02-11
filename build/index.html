@@ -687,145 +687,205 @@
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-database"></i>Create a Frame</h3>
         <table class="flow-form">
-          <tr>
-            <th>
-              <label>Destination Key</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:key" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Rows</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:rows" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Columns</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:columns" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Randomize</label>
-            </th>
-            <td>
-              <input type="checkbox" data-bind="checked:randomize">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Seed</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:seed" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Value</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:value" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Factors</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:factors" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Categorical Fraction</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:categoricalFraction" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Integer Fraction</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:integerFraction" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Binary Fraction</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:binaryFraction" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Missing Fraction</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:missingFraction" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Response Factors</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:responseFactors" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Real Range</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:realRange" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Integer Range</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:integerRange" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Has Response?</label>
-            </th>
-            <td>
-              <input type="checkbox" data-bind="checked:hasResponse">
-            </td>
-            <td>(No description available)</td>
-          </tr>
+          <tbody>
+            <tr>
+              <th>
+                <label>Destination Key</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:key" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Rows</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:rows" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Columns</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:columns" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Randomize</label>
+              </th>
+              <td>
+                <input type="checkbox" data-bind="checked:randomize">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Seed</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:seed" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Value</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:value" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Factors</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:factors" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Categorical Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:categoricalFraction" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Integer Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:integerFraction" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Binary Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:binaryFraction" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Missing Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:missingFraction" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Response Factors</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:responseFactors" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Real Range</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:realRange" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Integer Range</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:integerRange" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Has Response?</label>
+              </th>
+              <td>
+                <input type="checkbox" data-bind="checked:hasResponse">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+          </tbody>
         </table>
         <div class="flow-panel">
               <button type="button" data-bind="click:createFrame" class="flow-button"><i class="fa fa-database"></i><span>Create</span>
               </button>
+        </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-split-frame-input">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-scissors"></i>Split Frame</h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th>
+                <label>Frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:frames, value:frame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Splits:</label>
+              </th>
+              <td>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="text-align:left">Ratio</th>
+                      <th>Key</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td data-bind="text:lastSplitRatioText"></td>
+                      <td>
+                        <input type="text" data-bind="value:lastSplitKey" class="flow-textbox">
+                      </td>
+                      <td>&nbsp; </td>
+                    </tr>
+                    <!-- ko foreach:splits-->
+                    <tr>
+                      <td>
+                        <input type="text" data-bind="value:ratioText, valueUpdate:'afterkeydown'" class="flow-textbox">
+                      </td>
+                      <td>
+                        <input type="text" data-bind="value:key" class="flow-textbox">
+                      </td>
+                      <td><span title="Delete this split" data-bind="click:remove" class="flow-pointer"><i class="fa fa-remove"></i></span></td>
+                    </tr>
+                    <!-- /ko-->
+                  </tbody>
+                </table>
+                <div><a data-bind="click:addSplit" class="flow-pointer">Add a split</a></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="flow-panel">
+              <button type="button" data-bind="click:splitFrame" class="flow-button"><i class="fa fa-scissors"></i><span>Create</span>
+              </button>
+          <div style="color:red" data-bind="text:validationMessage"></div>
         </div>
       </div>
     </script>
