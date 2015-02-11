@@ -1071,8 +1071,12 @@
         <h4>Scoring History</h4>
         <div data-bind="raw:dlScoringHistory" class="flow-plot"></div>
         <!-- /ko-->
+        <!-- ko if:dlVariableImportancePlot-->
+        <h4>Variable Importance</h4>
+        <div data-bind="raw:dlVariableImportancePlot" class="flow-plot"></div>
+        <!-- /ko-->
         <!-- ko if:glmVariableImportancePlot-->
-        <h4>Normalized Coefficient Magnitudes</h4>
+        <h4>Variable Importance</h4>
         <div data-bind="raw:glmVariableImportancePlot" class="flow-plot"></div>
         <!-- /ko-->
       </div>
