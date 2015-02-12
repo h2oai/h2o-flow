@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.47';
+    FLOW_VERSION = '0.2.48';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4007,8 +4007,8 @@
         requestRemoveAll = function (go) {
             return doGet('/3/RemoveAll.json', go);
         };
-        requestLogFile = function (nodeIndex, go) {
-            return doGet('/3/Logs.json/nodes/' + nodeIndex + '/files/default', go);
+        requestLogFile = function (nodeIndex, fileType, go) {
+            return doGet('/3/Logs.json/nodes/' + nodeIndex + '/files/' + fileType, go);
         };
         requestAbout = function (go) {
             return doGet('/3/About.json', go);
@@ -4302,7 +4302,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendJob, extendKMeansModel, extendLogFile, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectBinomialConfusionMatrices2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPrediction2, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectGLMCoefficientsMagnitude, inspectGLMCoefficientsTable, inspectGLMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultimodelParameters, inspectMultinomialPrediction2, inspectRegressionPrediction, inspectRegressionPrediction2, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestFrame, requestFrames, requestLogFile, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
+        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendJob, extendKMeansModel, extendLogFile, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectBinomialConfusionMatrices2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPrediction2, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectGLMCoefficientsMagnitude, inspectGLMCoefficientsTable, inspectGLMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultinomialPrediction2, inspectParametersAcrossModels, inspectRegressionPrediction, inspectRegressionPrediction2, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestFrame, requestFrames, requestLogFile, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -4459,9 +4459,9 @@
                 return H2O.StackTraceOutput(_, stackTrace);
             });
         };
-        extendLogFile = function (nodeIndex, logFile) {
+        extendLogFile = function (cloud, nodeIndex, fileType, logFile) {
             return render_(logFile, function () {
-                return H2O.LogFileOutput(_, nodeIndex, logFile);
+                return H2O.LogFileOutput(_, cloud, nodeIndex, fileType, logFile);
             });
         };
         extendProfile = function (profile) {
@@ -4475,24 +4475,44 @@
             });
             return frames;
         };
-        inspectMultimodelParameters = function (models) {
+        inspectParametersAcrossModels = function (models) {
             return function () {
-                var data, i, leader, model, modelKeys, value, vectors;
+                var data, i, leader, model, modelKeys, parameter, value, vectors;
                 leader = lodash.head(models);
                 vectors = function () {
-                    var _i, _ref1, _results;
+                    var _i, _len, _ref1, _results;
+                    _ref1 = leader.parameters;
                     _results = [];
-                    for (i = _i = 0, _ref1 = leader.parameters.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; i = 0 <= _ref1 ? ++_i : --_i) {
+                    for (i = _i = 0, _len = _ref1.length; _i < _len; i = ++_i) {
+                        parameter = _ref1[i];
                         data = function () {
-                            var _j, _len, _results1;
+                            var _j, _len1, _results1;
                             _results1 = [];
-                            for (_j = 0, _len = models.length; _j < _len; _j++) {
+                            for (_j = 0, _len1 = models.length; _j < _len1; _j++) {
                                 model = models[_j];
                                 value = model.parameters[i].actual_value;
-                                if (value != null) {
-                                    _results1.push(value);
-                                } else {
-                                    _results1.push(void 0);
+                                switch (parameter.type) {
+                                case 'Key<Frame>':
+                                case 'Key<Model>':
+                                    if (value != null) {
+                                        _results1.push(value.name);
+                                    } else {
+                                        _results1.push(void 0);
+                                    }
+                                    break;
+                                case 'VecSpecifier':
+                                    if (value != null) {
+                                        _results1.push(value.column_name);
+                                    } else {
+                                        _results1.push(void 0);
+                                    }
+                                    break;
+                                default:
+                                    if (value != null) {
+                                        _results1.push(value);
+                                    } else {
+                                        _results1.push(void 0);
+                                    }
                                 }
                             }
                             return _results1;
@@ -4501,13 +4521,6 @@
                         case 'enum':
                         case 'Frame':
                         case 'string':
-                        case 'string[]':
-                        case 'byte[]':
-                        case 'short[]':
-                        case 'int[]':
-                        case 'long[]':
-                        case 'float[]':
-                        case 'double[]':
                             _results.push(createFactor(parameter.label, Flow.TString, data));
                             break;
                         case 'byte':
@@ -4517,6 +4530,21 @@
                         case 'float':
                         case 'double':
                             _results.push(createVector(parameter.label, Flow.TNumber, data));
+                            break;
+                        case 'string[]':
+                        case 'byte[]':
+                        case 'short[]':
+                        case 'int[]':
+                        case 'long[]':
+                        case 'float[]':
+                        case 'double[]':
+                            _results.push(createList(parameter.label, data, function (a) {
+                                if (a) {
+                                    return a;
+                                } else {
+                                    return void 0;
+                                }
+                            }));
                             break;
                         case 'boolean':
                             _results.push(createList(parameter.label, data, function (a) {
@@ -4538,7 +4566,7 @@
                     _results = [];
                     for (_i = 0, _len = models.length; _i < _len; _i++) {
                         model = models[_i];
-                        _results.push(model.key);
+                        _results.push(model.key.name);
                     }
                     return _results;
                 }();
@@ -4834,11 +4862,12 @@
             });
         };
         extendModels = function (models) {
-            var algos, model, _i, _len;
+            var algos, inspections, model, modelCategories, _i, _len;
             for (_i = 0, _len = models.length; _i < _len; _i++) {
                 model = models[_i];
                 extendModel(model);
             }
+            inspections = {};
             algos = lodash.unique(function () {
                 var _j, _len1, _results;
                 _results = [];
@@ -4849,8 +4878,18 @@
                 return _results;
             }());
             if (algos.length === 1) {
-                inspect_(models, { parameters: inspectMultimodelParameters(models) });
+                inspections.parameters = inspectParametersAcrossModels(models);
             }
+            modelCategories = lodash.unique(function () {
+                var _j, _len1, _results;
+                _results = [];
+                for (_j = 0, _len1 = models.length; _j < _len1; _j++) {
+                    model = models[_j];
+                    _results.push(model.output.model_category);
+                }
+                return _results;
+            }());
+            inspect_(models, inspections);
             return render_(models, function () {
                 return H2O.ModelsOutput(_, models);
             });
@@ -5870,20 +5909,45 @@
         getStackTrace = function () {
             return _fork(requestStackTrace);
         };
-        requestLogFile = function (nodeIndex, go) {
-            return _.requestLogFile(nodeIndex, function (error, logFile) {
+        requestCurrentNodeIndex = function (nodeIndex, go) {
+            if (nodeIndex < 0) {
+                return _.requestCloud(function (error, cloud) {
+                    if (error) {
+                        return go(error);
+                    } else {
+                        return go(null, cloud.node_idx);
+                    }
+                });
+            } else {
+                return go(null, nodeIndex);
+            }
+        };
+        requestLogFile = function (nodeIndex, fileType, go) {
+            return _.requestCloud(function (error, cloud) {
                 if (error) {
                     return go(error);
                 } else {
-                    return go(null, extendLogFile(nodeIndex, logFile));
+                    if (nodeIndex < 0 || nodeIndex >= cloud.nodes.length) {
+                        nodeIndex = cloud.node_idx;
+                    }
+                    return _.requestLogFile(nodeIndex, fileType, function (error, logFile) {
+                        if (error) {
+                            return go(error);
+                        } else {
+                            return go(null, extendLogFile(cloud, nodeIndex, fileType, logFile));
+                        }
+                    });
                 }
             });
         };
-        getLogFile = function (nodeIndex) {
+        getLogFile = function (nodeIndex, fileType) {
             if (nodeIndex == null) {
                 nodeIndex = -1;
             }
-            return _fork(requestLogFile, nodeIndex);
+            if (fileType == null) {
+                fileType = 'debug';
+            }
+            return _fork(requestLogFile, nodeIndex, fileType);
         };
         requestProfile = function (depth, go) {
             return _.requestProfile(depth, function (error, profile) {
@@ -7125,56 +7189,66 @@
     };
 }.call(this));
 (function () {
-    H2O.LogFileOutput = function (_, _nodeIndex, _logFile) {
-        var createNode, initialize, _activeNode, _contents, _exception, _nodes;
+    H2O.LogFileOutput = function (_, _cloud, _nodeIndex, _fileType, _logFile) {
+        var createNode, initialize, _activeFileType, _activeNode, _contents, _exception, _fileTypes, _nodes;
         _exception = Flow.Dataflow.signal(null);
         _contents = Flow.Dataflow.signal('');
-        _activeNode = Flow.Dataflow.signal(null);
         _nodes = Flow.Dataflow.signal([]);
+        _activeNode = Flow.Dataflow.signal(null);
+        _fileTypes = Flow.Dataflow.signal([
+            'trace',
+            'debug',
+            'info',
+            'warn',
+            'error',
+            'fatal',
+            'stdout',
+            'stderr'
+        ]);
+        _activeFileType = Flow.Dataflow.signal(null);
         createNode = function (node, index) {
             return {
-                name: node.h2o.node,
+                name: node.ip_port,
                 index: index
             };
         };
-        initialize = function (nodeIndex, logFile) {
+        initialize = function (cloud, nodeIndex, fileType, logFile) {
+            var i, node, nodes;
+            _activeFileType(fileType);
             _contents(logFile.log);
-            return _.requestCloud(function (error, cloud) {
-                var i, node, nodes;
-                if (!error) {
-                    _nodes(nodes = function () {
-                        var _i, _len, _ref, _results;
-                        _ref = cloud.nodes;
-                        _results = [];
-                        for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-                            node = _ref[i];
-                            _results.push(createNode(node, i));
-                        }
-                        return _results;
-                    }());
-                    if (nodeIndex < nodes.length) {
-                        _activeNode(nodes[nodeIndex]);
-                    }
-                    return Flow.Dataflow.react(_activeNode, function (node) {
-                        if (node) {
-                            return _.requestLogFile(node.index, function (error, logFile) {
-                                if (error) {
-                                    return _contents('Error fetching log file: ' + error.message);
-                                } else {
-                                    return _contents(logFile.log);
-                                }
-                            });
+            _nodes(nodes = function () {
+                var _i, _len, _ref, _results;
+                _ref = cloud.nodes;
+                _results = [];
+                for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                    node = _ref[i];
+                    _results.push(createNode(node, i));
+                }
+                return _results;
+            }());
+            if (nodeIndex < nodes.length) {
+                _activeNode(nodes[nodeIndex]);
+            }
+            return Flow.Dataflow.react(_activeNode, _activeFileType, function (node, fileType) {
+                if (node) {
+                    return _.requestLogFile(node.index, fileType, function (error, logFile) {
+                        if (error) {
+                            return _contents('Error fetching log file: ' + error.message);
                         } else {
-                            return _contents('');
+                            return _contents(logFile.log);
                         }
                     });
+                } else {
+                    return _contents('');
                 }
             });
         };
-        initialize(_nodeIndex, _logFile);
+        initialize(_cloud, _nodeIndex, _fileType, _logFile);
         return {
             nodes: _nodes,
             activeNode: _activeNode,
+            fileTypes: _fileTypes,
+            activeFileType: _activeFileType,
             contents: _contents,
             template: 'flow-log-file-output'
         };

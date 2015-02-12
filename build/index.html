@@ -1859,9 +1859,26 @@
     <script type="text/html" id="flow-log-file-output">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-file-text-o"></i><span>Log</span></h3>
-        <div>Select Node: 
-          <select data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'"></select>
-        </div>
+        <table style="width:auto" class="flow-form">
+          <tbody>
+            <tr>
+              <th>
+                <label>Select Log File Type:</label>
+              </th>
+              <td>
+                <select data-bind="options:fileTypes, value:activeFileType"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Select Node: </label>
+              </th>
+              <td>
+                <select data-bind="options:nodes, optionsText:'name', value:activeNode"></select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <pre data-bind="text:contents"></pre>
       </div>
     </script>
