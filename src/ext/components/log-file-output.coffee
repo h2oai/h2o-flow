@@ -4,7 +4,7 @@ H2O.LogFileOutput = (_, _cloud, _nodeIndex, _fileType, _logFile) ->
   _contents = signal ''
   _nodes = signal []
   _activeNode = signal null
-  _fileTypes = signal ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'stdout', 'stderr']
+  _fileTypes = signal ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'httpd', 'stdout', 'stderr']
   _activeFileType = signal null
 
   createNode = (node, index) ->
