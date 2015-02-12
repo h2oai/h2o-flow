@@ -270,6 +270,13 @@ H2O.Routines = (_) ->
     render_ frames, -> H2O.FramesOutput _, frames
     frames
 
+
+#   inspectOutputsAcrossModels = (modelCategory, models) -> ->
+#     switch modelCategory
+#       when 'Binomial'
+#       when 'Multinomial'
+#       when 'Regression'
+
   inspectParametersAcrossModels = (models) -> ->
     leader = head models
     vectors = for parameter, i in leader.parameters
@@ -532,12 +539,19 @@ H2O.Routines = (_) ->
     for model in models
       extendModel model
 
+    inspections = {}
+
     algos = unique (model.algo for model in models)
     if algos.length is 1
-      inspect_ models,
-        parameters: inspectParametersAcrossModels models 
+      inspections.parameters = inspectParametersAcrossModels models 
 
+    modelCategories = unique (model.output.model_category for model in models)
+    # TODO implement model comparision after 2d table cleanup for model metrics
+    #if modelCategories.length is 1
+    #  inspections.outputs = inspectOutputsAcrossModels (head modelCategories), models
+    
 
+    inspect_ models, inspections
     render_ models, -> H2O.ModelsOutput _, models
 
   read = (value) -> if value is 'NaN' then null else value
