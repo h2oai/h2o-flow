@@ -260,8 +260,8 @@ H2O.Routines = (_) ->
   extendStackTrace = (stackTrace) ->
     render_ stackTrace, -> H2O.StackTraceOutput _, stackTrace
 
-  extendLogFile = (nodeIndex, fileType, logFile) ->
-    render_ logFile, -> H2O.LogFileOutput _, nodeIndex, fileType, logFile
+  extendLogFile = (cloud, nodeIndex, fileType, logFile) ->
+    render_ logFile, -> H2O.LogFileOutput _, cloud, nodeIndex, fileType, logFile
 
   extendProfile = (profile) ->
     render_ profile, -> H2O.ProfileOutput _, profile
@@ -1190,14 +1190,30 @@ H2O.Routines = (_) ->
   getStackTrace = ->
     _fork requestStackTrace
 
+  requestCurrentNodeIndex = (nodeIndex, go) ->
+    if nodeIndex < 0
+      _.requestCloud (error, cloud) ->
+        if error
+          go error
+        else
+          go null, cloud.node_idx
+    else
+      go null, nodeIndex
+
   requestLogFile = (nodeIndex, fileType, go) ->
-    _.requestLogFile nodeIndex, fileType, (error, logFile) ->
+    _.requestCloud (error, cloud) ->
       if error
         go error
       else
-        go null, extendLogFile nodeIndex, fileType, logFile
+        if nodeIndex < 0 or nodeIndex >= cloud.nodes.length
+          nodeIndex = cloud.node_idx
+        _.requestLogFile nodeIndex, fileType, (error, logFile) ->
+          if error
+            go error
+          else
+            go null, extendLogFile cloud, nodeIndex, fileType, logFile
 
-  getLogFile = (nodeIndex=-1, fileType="debug") ->
+  getLogFile = (nodeIndex=-1, fileType='debug') ->
     _fork requestLogFile, nodeIndex, fileType
 
   requestProfile = (depth, go) ->
