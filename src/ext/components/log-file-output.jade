@@ -4,8 +4,12 @@
     span Log
 
   div
+    | Select Log File Type:
+    select(data-bind="options:fileTypes, value:activeFileType")
+
+  div
     | Select Node: 
-    select(data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'")
+    select(data-bind="options:nodes, optionsText:'name', value:activeNode")
 
   pre(data-bind='text:contents')
   
