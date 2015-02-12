@@ -270,24 +270,32 @@ H2O.Routines = (_) ->
     render_ frames, -> H2O.FramesOutput _, frames
     frames
 
-  #TODO rename
-  inspectMultimodelParameters = (models) -> ->
+  inspectParametersAcrossModels = (models) -> ->
     leader = head models
-    vectors = for i in [ 0 ... leader.parameters.length ]
+    vectors = for parameter, i in leader.parameters
       data = for model in models
         value = model.parameters[i].actual_value
-        if value? then value else undefined
+        switch parameter.type
+          when 'Key<Frame>', 'Key<Model>'
+            if value? then value.name else undefined
+          when 'VecSpecifier'
+            if value? then value.column_name else undefined
+          else
+            if value? then value else undefined
+
       switch parameter.type
-        when 'enum', 'Frame', 'string', 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+        when 'enum', 'Frame', 'string'
           createFactor parameter.label, TString, data
         when 'byte', 'short', 'int', 'long', 'float', 'double'
           createVector parameter.label, TNumber, data
+        when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+          createList parameter.label, data, (a) -> if a then a else undefined
         when 'boolean'
           createList parameter.label, data, (a) -> if a then 'true' else 'false'
         else
           createList parameter.label, data
 
-    modelKeys = (model.key for model in models)
+    modelKeys = (model.key.name for model in models)
 
     createDataframe 'parameters', vectors, (sequence models.length), null,
       description: "Parameters for models #{modelKeys.join ', '}"
@@ -377,7 +385,6 @@ H2O.Routines = (_) ->
       createVector 'categorical_column_count', TNumber, [ output.categorical_column_count ]
       createVector 'iterations', TNumber, [ output.iterations ]
       createFactor 'model_category', TString, [ output.model_category ]
-
     ]
 
     createDataframe 'output', vectors, (sequence 1), null,
@@ -528,7 +535,7 @@ H2O.Routines = (_) ->
     algos = unique (model.algo for model in models)
     if algos.length is 1
       inspect_ models,
-        parameters: inspectMultimodelParameters models 
+        parameters: inspectParametersAcrossModels models 
 
 
     render_ models, -> H2O.ModelsOutput _, models
