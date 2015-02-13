@@ -3,9 +3,18 @@
     i.fa.fa-file-text-o
     span Log
 
-  div
-    | Select Node: 
-    select(data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'")
+  table.flow-form(style='width:auto')
+    tbody
+      tr
+        th
+          label Select Log File Type:
+        td 
+          select(data-bind="options:fileTypes, value:activeFileType")
+      tr
+        th
+          label Select Node: 
+        td
+          select(data-bind="options:nodes, optionsText:'name', value:activeNode")
 
   pre(data-bind='text:contents')
   

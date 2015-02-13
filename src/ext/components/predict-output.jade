@@ -3,17 +3,19 @@
 
   table.flow-form
     tbody
-      // ko with:predictionTable
-      // ko foreach:rows
-      tr
-        th(data-bind='text:parameter')
-        td(data-bind='text:value')
-      // /ko
-      // /ko
       tr
         th(width='1')
           label Actions:
         td
           +button('Inspect', 'list', 'inspect')
           +button('View Prediction Frame', 'database', 'viewPredictionFrame')
+
+  // ko if:isBinomial
+  h4 Output
+  .flow-plot(data-bind='raw:predictionRecord')
+
+  h4 ROC Curve
+  .flow-plot(data-bind='raw:rocCurve')  
+
+  // /ko
 

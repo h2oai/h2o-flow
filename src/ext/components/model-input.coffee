@@ -18,12 +18,44 @@ createControl = (kind, parameter) ->
   hasMessage: _hasMessage
   isVisible: _isVisible
 
-createTextboxControl = (parameter) ->
-  _value = signal parameter.actual_value
+createTextboxControl = (parameter, type) ->
+  isArrayValued = isInt = isReal = no
+
+  switch type
+    when 'byte[]', 'short[]', 'int[]', 'long[]'
+      isArrayValued = yes
+      isInt = yes
+    when 'float[]', 'double[]'
+      isArrayValued = yes
+      isReal = yes
+    when 'byte', 'short', 'int', 'long'
+      isInt = yes
+    when 'float', 'double'
+      isReal = yes
+  
+  _text = signal if isArrayValued then join (parameter.actual_value ? []), ', ' else (parameter.actual_value ? '')
+
+  _value = lift _text, (text) ->
+    if isArrayValued
+      vals = []
+      for value in split text, /\s*,\s*/g
+        if isInt
+          unless isNaN parsed = parseInt value, 10
+            vals.push parsed
+        else if isReal
+          unless isNaN parsed = parseFloat value
+            vals.push parsed
+        else
+          vals.push value
+      vals
+    else
+      text
 
   control = createControl 'textbox', parameter
+  control.text = _text
   control.value = _value
-  control.defaultValue = parameter.default_value
+  control.isArrayValued = isArrayValued
+
   control
 
 createDropdownControl = (parameter) ->
@@ -32,14 +64,13 @@ createDropdownControl = (parameter) ->
   control = createControl 'dropdown', parameter
   control.values = signals parameter.values
   control.value = _value
-  control.defaultValue = parameter.default_value
   control
 
 createListControl = (parameter) ->
   _availableSearchTerm = signal ''
   _selectedSearchTerm = signal ''
 
-  createValueView = (value) ->
+  createValueView = ({ label, value }) ->
     _isAvailable = signal yes
     _canInclude = signal yes
     _canExclude = signal yes
@@ -53,6 +84,7 @@ createListControl = (parameter) ->
       _selectedValues.remove self
 
     self =
+      label: label
       value: value
       include: include
       exclude: exclude
@@ -60,7 +92,10 @@ createListControl = (parameter) ->
       canExclude: _canExclude
       isAvailable: _isAvailable
 
-  _values = signals parameter.values
+  _values = signals map parameter.values, (value) ->
+    label: value
+    value: value
+
   _availableValues = lift _values, (vals) -> map vals, createValueView
   _views = {}
   for view in _availableValues()
@@ -126,18 +161,16 @@ createListControl = (parameter) ->
   control.selectedSearchTerm = _selectedSearchTerm
   control.availableValuesCaption = _availableValuesCaption
   control.selectedValuesCaption = _selectedValuesCaption
-  control.defaultValue = parameter.default_value
   control.includeAll = includeAll
   control.excludeAll = excludeAll
   control
 
 createCheckboxControl = (parameter) ->
-  _value = signal parameter.actual_value is 'true' #FIXME
+  _value = signal parameter.actual_value
 
   control = createControl 'checkbox', parameter
   control.clientId = do uniqueId
   control.value = _value
-  control.defaultValue = parameter.default_value is 'true'
   control
 
 createControlFromParameter = (parameter) ->
@@ -149,7 +182,7 @@ createControlFromParameter = (parameter) ->
     when 'boolean'
       createCheckboxControl parameter
     when 'Key<Model>', 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-      createTextboxControl parameter
+      createTextboxControl parameter, parameter.type
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null
@@ -165,22 +198,18 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
   [ criticalControls, secondaryControls, expertControls ] = _controlGroups
 
-  _form = flatten [ 
-    kind: 'group'
-    title: 'Parameters'
-  ,
-    criticalControls
-  ,
-    kind: 'group'
-    title: 'Advanced'
-  ,
-    secondaryControls
-  ,
-    kind: 'group'
-    title: 'Expert'
-  ,
-    expertControls
-  ]
+  _form = []
+  if criticalControls.length
+    _form.push kind: 'group', title: 'Parameters'
+    _form.push control for control in criticalControls
+
+  if secondaryControls.length
+    _form.push kind: 'group', title: 'Advanced'
+    _form.push control for control in secondaryControls
+
+  if expertControls.length
+    _form.push kind: 'group', title: 'Expert'
+    _form.push control for control in expertControls
 
   findControl = (name) ->
     for controls in _controlGroups
@@ -201,9 +230,14 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
           if frameKey
             _.requestFrame frameKey, (error, frame) ->
               unless error
-                columnLabels = map frame.columns, (column) -> column.label
+                columnValues = map frame.columns, (column) -> column.label
+                columnLabels = map frame.columns, (column) -> 
+                  missingPercent = 100 * column.missing / frame.rows
+                  na = if missingPercent is 0 then '' else " (#{round missingPercent}% NA)"
+                  label: "#{column.label}#{na}"
+                  value: column.label
                 if responseColumnParameter
-                  responseColumnParameter.values columnLabels
+                  responseColumnParameter.values columnValues
                 if ignoredColumnsParameter
                   ignoredColumnsParameter.values columnLabels
           return
@@ -220,56 +254,87 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                 parameters[control.name] = value
             when 'list'
               if value.length
-                parameters[control.name] = "[#{value.join ','}]"
+                parameters[control.name] = value
             else
               parameters[control.name] = value
     parameters
 
+  #
+  # The 'checkForErrors' parameter exists so that we can conditionally choose 
+  # to ignore validation errors. This is because we need the show/hide states 
+  # for each field the first time around, but not the errors/warnings/info 
+  # messages. 
+  #
+  # Thus, when this function is called during form init, checkForErrors is 
+  #  passed in as 'false', and during form submission, checkForErrors is 
+  #  passsed in as 'true'.
+  #
   performValidations = (checkForErrors, go) ->
     _exception null
     parameters = collectParameters yes
-    trainingFrameParameter = findFormField 'training_frame'
-    responseColumnParameter = findFormField 'response_column'
-    if trainingFrameParameter and not parameters.training_frame
-      return _validationFailureMessage 'Please specify a training frame.'
-    if responseColumnParameter and not parameters.response_column
-      return _validationFailureMessage 'Please specify a response column.'
     _validationFailureMessage ''
-    return go()
 
     _.requestModelInputValidation _algorithm, parameters, (error, modelBuilder) ->
       if error
         _exception Flow.Failure new Flow.Error 'Error fetching initial model builder state', error
       else
         hasErrors = no
-        for validation in modelBuilder.validation_messages
-          control = findControl validation.field_name
-          if control
-            if validation.message_type is 'HIDE'
-              control.isVisible no
-            else if not checkForErrors
-              switch validation.message_type
-                when 'INFO'
-                  control.isVisible yes
-                  control.message validation.message
-                when 'WARN'
-                  control.isVisible yes
-                  control.message validation.message
-                when 'ERROR'
-                  control.isVisible yes
-                  control.hasError yes
-                  control.message validation.message
-                  hasErrors = yes
-        go() unless hasErrors
+
+        if modelBuilder.validation_messages.length
+          validationsByControlName = groupBy modelBuilder.validation_messages, (validation) -> validation.field_name
+
+          for controls in _controlGroups
+            for control in controls
+              if validations = validationsByControlName[control.name]
+                for validation in validations
+                  if validation.message_type is 'HIDE'
+                    control.isVisible no
+                  else
+                    control.isVisible yes
+                    if checkForErrors
+                      switch validation.message_type
+                        when 'INFO'
+                          control.hasInfo yes
+                          control.message validation.message
+                        when 'WARN'
+                          control.hasWarning yes
+                          control.message validation.message
+                        when 'ERROR'
+                          control.hasError yes
+                          control.message validation.message
+                          hasErrors = yes
+              else
+                control.isVisible yes
+                control.hasInfo no
+                control.hasWarning no
+                control.hasError no
+                control.message ''
+
+        if hasErrors
+          _validationFailureMessage 'Your model parameters have one or more errors. Please fix them and try again.'
+          # Do not pass go(). Do not collect $200.
+        else
+          _validationFailureMessage ''
+          go() # Proceed with form submission
 
   createModel = ->
     _exception null
-    performValidations no, ->
+    performValidations yes, ->
       parameters = collectParameters no
       _.insertAndExecuteCell 'cs', "buildModel '#{_algorithm}', #{stringify parameters}"
 
+  _revalidate = (value) ->
+    if value isnt undefined # HACK: KO seems to be raising change notifications when dropdown boxes are initialized. 
+      performValidations no, ->
+
+  revalidate = throttle _revalidate, 100, leading: no
+
   # Kick off validations (minus error checking) to get hidden parameters
-  # performValidations yes, ->
+  performValidations no, ->
+    for controls in _controlGroups
+      for control in controls
+        react control.value, revalidate
+    return
 
   form: _form
   exception: _exception
@@ -281,7 +346,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 H2O.ModelInput = (_, _algo, _opts) ->
   _exception = signal null
   _algorithms = signal []
-  _algorithm = signal _algo
+  _algorithm = signal null
   _canCreateModel = lift _algorithm, (algorithm) -> if algorithm then yes else no
 
   _modelForm = signal null
@@ -293,7 +358,7 @@ H2O.ModelInput = (_, _algo, _opts) ->
     #
     classificationParameter = find parameters, (parameter) -> parameter.name is 'do_classification'
     if classificationParameter
-      classificationParameter.actual_value = 'true'
+      classificationParameter.actual_value = yes
 
     _.requestFrames (error, frames) ->
       if error
@@ -317,6 +382,7 @@ H2O.ModelInput = (_, _algo, _opts) ->
     _.requestModelBuilders (error, result) ->
       modelBuilders = if error then [] else result.model_builders
       _algorithms (key for key in keys modelBuilders when key isnt 'example')
+      _algorithm _algo
       frameKey = _opts?.training_frame
       act _algorithm, (algorithm) ->
         if algorithm

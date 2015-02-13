@@ -13,6 +13,7 @@ H2O.CreateFrameInput = (_) ->
   _integerRange = signal 1
   _missingFraction = signal 0.01
   _responseFactors = signal 2
+  _hasResponse = signal no
 
   createFrame = ->
     opts =
@@ -30,6 +31,7 @@ H2O.CreateFrameInput = (_) ->
       integer_range: _integerRange()
       missing_fraction: _missingFraction()
       response_factors: _responseFactors()
+      has_response: _hasResponse()
 
     _.insertAndExecuteCell 'cs', "createFrame #{stringify opts}"
 
@@ -47,6 +49,7 @@ H2O.CreateFrameInput = (_) ->
   integerRange: _integerRange
   missingFraction: _missingFraction
   responseFactors: _responseFactors
+  hasResponse: _hasResponse
   createFrame: createFrame
   template: 'flow-create-frame-input'
         

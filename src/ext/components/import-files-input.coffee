@@ -8,7 +8,7 @@ H2O.ImportFilesInput = (_) ->
 
   tryImportFiles = ->
     specifiedPath = _specifiedPath()
-    _.requestFileGlob specifiedPath, 0, (error, result) ->
+    _.requestFileGlob specifiedPath, -1, (error, result) ->
       if error
         _exception error.data.errmsg
       else

@@ -1,30 +1,29 @@
 H2O.FrameOutput = (_, _frame) ->
+
+
   createGrid = (data) ->
     [ grid, table, thead, tbody, tr, th, thr, td, tdr, action ] = Flow.HTML.template '.grid', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt', "+a data-action='summary' data-index='{0}' class='action' href='#'"
     
-    ths = for variable in data.variables
-      switch variable.type
+    ths = for vector in data.vectors
+      switch vector.type
         when TNumber
-          thr escape variable.label
+          thr escape vector.label
         else
-          th escape variable.label
+          th escape vector.label
 
     ths.push th 'Actions'
 
-    trs = for row, rowIndex in data.rows
-      tds = for variable in data.variables
-        #XXX formatting
-        value = row[variable.label]
-        switch variable.type
-          when TFactor
-            td if value is null then '-' else escape variable.domain[value]
+    trs = for i in data.indices
+      tds = for vector, vectorIndex in data.vectors
+        value = vector.format i
+        switch vector.type
+          when TString
+            td if value isnt undefined then escape value else '-'
           when TNumber
-            tdr if value is null then '-' else value
-          when TArray
-            td if value is null then '-' else value.join ', '
+            tdr if value isnt undefined then value else '-'
           else
-            td if value is null then '-' else value
-      tds.push td action 'Summary...', rowIndex
+            td '?'
+      tds.push td action 'Summary...', i
       tr tds
 
     el = Flow.HTML.render 'div',
@@ -40,12 +39,10 @@ H2O.FrameOutput = (_, _frame) ->
       $link = $ @
       action = $link.attr 'data-action'
       index = parseInt ($link.attr 'data-index'), 10
-      switch action
-        when 'summary'
-          if index >= 0
-            row = data.rows[index]
-            if row
-              _.insertAndExecuteCell 'cs', "inspect getColumnSummary #{stringify _frame.key.name}, #{stringify row.label}"
+      if index >= 0
+        switch action
+          when 'summary'
+            _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify _frame.key.name}, #{stringify data.schema.label.valueAt index}"
 
     el
 
@@ -67,6 +64,9 @@ H2O.FrameOutput = (_, _frame) ->
   _grid = createGrid _.inspect 'columns', _frame
 
   key: _frame.key.name
+  rowCount: _frame.rows
+  columnCount: _frame.columns.length
+  size: Flow.Util.formatBytes _frame.byteSize
   grid: _grid
   inspect: inspect
   createModel: createModel

@@ -1,6 +1,12 @@
 H2O.ModelOutput = (_, _model) ->
   _isExpanded = signal no
-  
+  _output = signal null
+  _glmVariableImportancePlot = signal null
+  _dlScoringHistory = signal null
+  _dlTrainingMetrics = signal null
+  _dlVariableImportancePlot = signal null
+
+  #TODO use _.enumerate()
   _inputParameters = map _model.parameters, (parameter) ->
     { type, default_value, actual_value, label, help } = parameter
 
@@ -9,6 +15,8 @@ H2O.ModelOutput = (_, _model) ->
         if actual_value then actual_value.name else null
       when 'VecSpecifier'
         if actual_value then actual_value.column_name else null
+      when 'string[]'
+        if actual_value then join actual_value, ', ' else null
       else
         actual_value
 
@@ -16,6 +24,53 @@ H2O.ModelOutput = (_, _model) ->
     value: value
     help: help
     isModified: default_value is actual_value
+
+  renderPlot = (target, render) ->
+    render (error, vis) ->
+      if error
+        debug error
+      else
+        target vis.element
+
+  if table = _.inspect 'output', _model
+    renderPlot _output, _.enumerate table
+
+  switch _model.algo
+    when 'glm'
+      if table = _.inspect 'Normalized Coefficient Magnitudes', _model
+        renderPlot _glmVariableImportancePlot, _.plot (g) ->
+          g(
+            g.rect(
+              g.position 'Magnitude', 'Column'
+            )
+            g.from table
+            g.limit 25
+          )
+    when 'deeplearning'
+      if table = _.inspect 'Scoring History', _model
+        renderPlot _dlScoringHistory, _.plot (g) ->
+          g(
+            g.table()
+            g.from table
+          )
+
+      if table = _.inspect 'Training Metrics', _model
+        renderPlot _dlTrainingMetrics, _.plot (g) ->
+          g(
+            g.table()
+            g.from table
+          )
+
+      if table = _.inspect 'Variable Importances', _model
+        renderPlot _dlVariableImportancePlot, _.plot (g) ->
+          g(
+            g.rect(
+              g.position 'Relative Importance', 'Variable'
+            )
+            g.from table
+            g.limit 25
+          )
+
 
   toggle = ->
     _isExpanded not _isExpanded()
@@ -33,6 +88,11 @@ H2O.ModelOutput = (_, _model) ->
   key: _model.key
   algo: _model.algo
   inputParameters: _inputParameters
+  output: _output
+  dlScoringHistory: _dlScoringHistory
+  dlTrainingMetrics: _dlTrainingMetrics
+  dlVariableImportancePlot: _dlVariableImportancePlot
+  glmVariableImportancePlot: _glmVariableImportancePlot
   isExpanded: _isExpanded
   toggle: toggle
   cloneModel: cloneModel

@@ -29,10 +29,12 @@ H2O.JobOutput = (_, _job) ->
   _destinationKey = _job.dest.name
   _runTime = signal null
   _progress = signal null
+  _progressMessage = signal null
   _status = signal null
   _statusColor = signal null
   _exception = signal null
   _canView = signal no
+  _canCancel = signal no
 
   isJobRunning = (job) ->
     job.status is 'CREATED' or job.status is 'RUNNING'
@@ -40,10 +42,13 @@ H2O.JobOutput = (_, _job) ->
   updateJob = (job) ->
     _runTime job.msec
     _progress getJobProgressPercent job.progress
+    _progressMessage job.progress_msg
     _status job.status
     _statusColor getJobOutputStatusColor job.status
     _exception if job.exception then Flow.Failure new Flow.Error "Job failure.", new Error job.exception else null
+
     _canView not isJobRunning job
+    _canCancel isJobRunning job
 
   toggleRefresh = ->
     _isLive not _isLive()
@@ -77,6 +82,12 @@ H2O.JobOutput = (_, _job) ->
           when 'model'
             _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
 
+  cancel = ->
+    _.requestCancelJob _key, (error, result) ->
+      if error
+        debug error
+      else
+        updateJob _job
 
   initialize = (job) ->
     updateJob job
@@ -89,12 +100,14 @@ H2O.JobOutput = (_, _job) ->
   destinationKey: _destinationKey
   runTime: _runTime
   progress: _progress
+  progressMessage: _progressMessage
   status: _status
   statusColor: _statusColor
   exception: _exception
   isLive: _isLive
-  toggleRefresh: toggleRefresh
   canView: _canView
+  canCancel: _canCancel
+  cancel: cancel
   view: view
   template: 'flow-job-output'
 

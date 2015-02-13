@@ -3,16 +3,35 @@
     i.fa.fa-database
     span(data-bind="text:key")
 
-  table.flow-form
-    tbody
-      tr 
-        th(width='1') Actions:
-        td
-          +button('View Data', 'list', 'inspectData')
-          +button('Build Model&hellip;', 'cube', 'createModel')
-          +button('Predict', 'bolt', 'predict')
-          +button('Download', 'cloud-download', 'download')
-        td.flow-right
-          +button('Inspect', 'list', 'inspect')
+
+  .flow-margin-after
+    table.flow-form
+      tbody
+        tr 
+          th(width='1') Actions:
+          td
+            +button('View Data', 'list', 'inspectData')
+            +button('Build Model&hellip;', 'cube', 'createModel')
+            +button('Predict', 'bolt', 'predict')
+            +button('Download', 'cloud-download', 'download')
+          td.flow-right
+            +button('Inspect', 'list', 'inspect')
+
+  .flow-margin-after
+    table.flow-form.flow-form-ruled
+      thead
+        tr
+          th &nbsp;
+          th Columns
+          th Rows
+          th Size
+      tbody
+        tr
+          td &nbsp;
+          td(data-bind="text:columnCount")
+          td(data-bind="text:rowCount")
+          td(data-bind="text:size")
+
+
 
   .flow-plot(data-bind='raw:grid')

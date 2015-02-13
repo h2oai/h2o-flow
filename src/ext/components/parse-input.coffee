@@ -51,12 +51,25 @@ parseDelimiters = do ->
 
   concat whitespaceDelimiters, characterDelimiters, otherDelimiters
 
+dataTypes = [
+  'Unknown'
+  'Numeric'
+  'Enum'
+  'Time'
+  'UUID'
+  'Time'
+  'String'
+  'Invalid'
+]
+
 H2O.SetupParseOutput = (_, _result) ->
   _sourceKeys = map _result.srcs, (src) -> src.name
   _parserType =  signal find parserTypes, (parserType) -> parserType.type is _result.pType
   _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
   _useSingleQuotes = signal _result.singleQuotes
-  _columns = map _result.columnNames, (name) -> name: signal name
+  _columns = for columnName, columnIndex in _result.columnNames
+    name: signal columnName
+    type: signal _result.columnTypes[columnIndex]
   _rows = _result.data
   _columnCount = _result.ncols
   _hasColumns = _columnCount > 0
@@ -64,14 +77,17 @@ H2O.SetupParseOutput = (_, _result) ->
   _headerOptions = auto: 0, header: 1, data: -1
   _headerOption = signal if _result.checkHeader is 0 then 'auto' else if _result.checkHeader is -1 then 'data' else 'header'
   _deleteOnDone = signal yes
+  _chunkSize = _result.chunkSize
 
   parseFiles = ->
     columnNames = map _columns, (column) -> column.name()
+    columnTypes = map _columns, (column) -> column.type()
 
-    _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{stringify _sourceKeys}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}"
+    _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{stringify _sourceKeys}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  columnTypes: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}\n  chunkSize: #{_chunkSize}"
 
   sourceKeys: _sourceKeys
   parserTypes: parserTypes
+  dataTypes: dataTypes
   delimiters: parseDelimiters
   parserType: _parserType
   delimiter: _delimiter

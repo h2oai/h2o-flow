@@ -6,14 +6,14 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     div Available:
     div(style='height:25px')
       input.flow-textbox(type='text' placeholder='Search...' data-bind="value:availableSearchTerm, valueUpdate:'afterkeydown'")
-    div(style='margin-bottom:5px;height:200px;overflow:auto;border:1px dotted #ccc')
+    div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
       table
         tbody
           // ko foreach:availableValues
           tr.flow-pointer(data-bind='visible:isAvailable() && canInclude(), click:include')
             td
               i.fa.fa-plus(title='Add')
-            td(data-bind='text:value')
+            td(data-bind='text:label')
           // /ko
     div(data-bind='text:availableValuesCaption')
     div
@@ -22,14 +22,14 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     div Selected:
     div(style='height:25px')
       input.flow-textbox(type='text' placeholder='Search...' data-bind="value:selectedSearchTerm, valueUpdate:'afterkeydown'")
-    div(style='margin-bottom:5px;height:200px;overflow:auto;border:1px dotted #ccc')
+    div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
       table
         tbody
           // ko foreach:selectedValues
           tr.flow-pointer(data-bind='visible:canExclude, click:exclude')
             td
               i.fa.fa-remove.flow-pointer(title='Remove')
-            td(data-bind='text:value')
+            td(data-bind='text:label')
           // /ko
     div(data-bind='text:selectedValuesCaption')
     div

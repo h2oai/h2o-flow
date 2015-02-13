@@ -1,0 +1,45 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-scissors
+    | Split Frame
+
+  table.flow-form
+    tbody
+      tr
+        th
+          label Frame:
+        td
+          select(data-bind="options:frames, value:frame, optionsCaption:'(Select)'")
+      tr
+        th
+          label Splits:
+        td
+          table
+            thead
+              tr
+                th(style='text-align:left') Ratio
+                th Key
+            tbody
+              tr
+                td(data-bind="text:lastSplitRatioText")
+                td
+                  input.flow-textbox(type='text' data-bind="value:lastSplitKey")
+                td &nbsp; 
+                  
+              // ko foreach:splits
+              tr
+                td
+                  input.flow-textbox(type='text' data-bind="value:ratioText, valueUpdate:'afterkeydown'")
+                td
+                  input.flow-textbox(type='text' data-bind="value:key")
+                td 
+                  span.flow-pointer(title='Delete this split' data-bind='click:remove')
+                    +fa('remove')
+              // /ko
+          div
+            a.flow-pointer(data-bind='click:addSplit') Add a split
+
+  .flow-panel
+    +button('Create', 'scissors', 'splitFrame')
+    div(style='color:red' data-bind='text:validationMessage')
+

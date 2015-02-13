@@ -40,6 +40,9 @@
                 td.flow-wide
                   .progress(style='max-width:400px;height:8px;margin:5px 0')
                     .progress-bar(data-bind="style:{background:statusColor,width:progress}")
+              tr
+                td.flow-narrow &nbsp;
+                td.flow-wide(data-bind='text:progressMessage')
 
       tr
         th.flow-narrow Actions
@@ -48,13 +51,18 @@
             i.fa.fa-search
             | View
             
-          button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
-            // ko if:isLive
-            i.fa.fa-refresh.fa-spin
-            span Stop
-            // /ko
-            // ko ifnot:isLive
-            i.fa.fa-refresh
-            span Refresh
-            // /ko
+          //-
+            button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
+              // ko if:isLive
+              i.fa.fa-refresh.fa-spin
+              span Stop
+              // /ko
+              // ko ifnot:isLive
+              i.fa.fa-refresh
+              span Refresh
+              // /ko
+
+          button.flow-button(type='button' data-bind="click:cancel, visible:canCancel")
+            i.fa.fa-ban
+            | Cancel Job
 

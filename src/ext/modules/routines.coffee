@@ -1,3 +1,10 @@
+lightning = window.plot
+
+createVector = lightning.createVector
+createFactor = lightning.createFactor
+createList = lightning.createList
+createDataframe = lightning.createFrame
+
 _assistance =
   importFiles:
     description: 'Import file(s) into H<sub>2</sub>O'
@@ -5,6 +12,9 @@ _assistance =
   getFrames:
     description: 'Get a list of frames in H<sub>2</sub>O'
     icon: 'database'
+  splitFrame:
+    description: 'Split a frame into two or more frames'
+    icon: 'scissors'
   getModels:
     description: 'Get a list of models in H<sub>2</sub>O'
     icon: 'cubes'
@@ -20,6 +30,92 @@ _assistance =
   predict:
     description: 'Make a prediction'
     icon: 'bolt'
+
+
+parseInts = (source) ->
+  for str in source
+    if isNaN value = parseInt str, 10
+      undefined
+    else
+      value
+
+parseFloats = (source) ->
+  for str in source
+    if isNaN value = parseFloat str
+      undefined
+    else
+      value
+
+convertColumnToVector = (column, data) ->
+  switch column.type
+    when 'byte', 'short', 'int', 'long'
+      createVector column.name, TNumber, parseInts data
+    when 'float', 'double'
+      createVector column.name, TNumber, parseFloats data
+    when 'string'
+      createFactor column.name, TString, data
+    else
+      createList column.name, data
+
+convertTableToFrame = (table, metadata) ->
+  #TODO handle format strings and description
+  vectors = for column, i in table.columns
+    convertColumnToVector column, table.data[i]
+  createDataframe table.name, vectors, (sequence table.rowcount), null, metadata
+
+combineTables = (tables) ->
+  leader = head tables
+
+  rowCount = 0
+  columnCount = leader.data.length
+  data = new Array columnCount
+
+  for table in tables
+    rowCount += table.rowcount
+
+  for i in [0 ... columnCount]
+    data[i] = columnData = new Array rowCount
+    index = 0
+    for table in tables
+      for element in table.data[i]
+        columnData[index++] = element
+
+  name: leader.name
+  columns: leader.columns
+  data: data
+  rowcount: rowCount
+
+createArrays = (count, length) ->
+  for i in [0 ... count]
+    new Array length
+
+parseNaNs = (source) ->
+  target = new Array source.length
+  for element, i in source
+    target[i] = if element is 'NaN' then undefined else element
+  target
+
+parseNulls = (source) ->
+  target = new Array source.length
+  for element, i in source
+    target[i] = if element? then element else undefined
+  target
+
+repeatValues = (count, value) ->
+  target = new Array count
+  for i in [0 ... count]
+    target[i] = value
+  target
+
+concatArrays = (arrays) ->
+  switch arrays.length
+    when 0
+      []
+    when 1
+      head arrays
+    else
+      a = head arrays
+      a.concat.apply a, tail arrays
 
 computeTruePositiveRate = (cm) ->
   [[tn, fp], [fn, tp]] = cm
@@ -135,57 +231,25 @@ H2O.Routines = (_) ->
     render_ inspection, -> H2O.InspectOutput _, inspection
     inspection
 
-  __plot = (config, go) ->
-    Flow.Plot config, (error, plot) ->
+  _plot = (plot, go) ->
+    plot (error, vis) ->
       if error
-        go new Flow.Error 'Error rendering plot.', error
+        go new Flow.Error 'Error rendering vis.', error
       else
-        go null, plot
+        go null, vis
 
-  _plot = (config, go) ->
-    #XXX clean up - duplicated in plot() for plot inputs
-    if config.data
-      if _isFuture config.data
-        config.data (error, data) ->
-          if error
-            go new Flow.Error 'Error evaluating data for plot().', error
-          else
-            config.data = data
-            __plot config, go
-      else
-        __plot config, go
+  plot = (f) ->
+    if _isFuture f
+      _fork proceed, H2O.PlotInput, f
     else
-      go new Flow.Error "Cannot plot(): missing 'data'."
+      renderable _plot, (f lightning), (plot, go) ->
+        go null, H2O.PlotOutput _, plot.element
 
-  _plotInput = (config, go) ->
-    if config.data
-      if _isFuture config.data
-        config.data (error, data) ->
-          if error
-            go new Flow.Error 'Error evaluating data for plot().', error
-          else
-            config.data = data
-            go null, config
-      else
-        go null, config
-    else
-      go new Flow.Error "Cannot plot(): missing 'data'."
-
-  plot = (config) ->
-    configKeys = keys config
-    if (configKeys.length is 1) and 'data' is head configKeys
-      renderable _plotInput, config, (config, go) ->
-        go null, H2O.PlotInput _, config
-    else
-      renderable _plot, config, (plot, go) ->
-        go null, H2O.PlotOutput _, plot
-
-  plot.stack = Flow.Plot.stack
-
-  grid = (data) ->
-    plot
-      type: 'text'
-      data: data
+  grid = (f) ->
+    plot (g) -> g(
+      g.table()
+      g.from f
+    )
 
   extendCloud = (cloud) ->
     render_ cloud, -> H2O.CloudOutput _, cloud
@@ -196,8 +260,8 @@ H2O.Routines = (_) ->
   extendStackTrace = (stackTrace) ->
     render_ stackTrace, -> H2O.StackTraceOutput _, stackTrace
 
-  extendLogFile = (nodeIndex, logFile) ->
-    render_ logFile, -> H2O.LogFileOutput _, nodeIndex, logFile
+  extendLogFile = (cloud, nodeIndex, fileType, logFile) ->
+    render_ logFile, -> H2O.LogFileOutput _, cloud, nodeIndex, fileType, logFile
 
   extendProfile = (profile) ->
     render_ profile, -> H2O.ProfileOutput _, profile
@@ -206,169 +270,241 @@ H2O.Routines = (_) ->
     render_ frames, -> H2O.FramesOutput _, frames
     frames
 
-  #TODO rename
-  inspectMultimodelParameters = (models) -> ->
+
+#   inspectOutputsAcrossModels = (modelCategory, models) -> ->
+#     switch modelCategory
+#       when 'Binomial'
+#       when 'Multinomial'
+#       when 'Regression'
+
+  inspectParametersAcrossModels = (models) -> ->
     leader = head models
-    parameters = leader.parameters
-    variables = for parameter in parameters
+    vectors = for parameter, i in leader.parameters
+      data = for model in models
+        value = model.parameters[i].actual_value
+        switch parameter.type
+          when 'Key<Frame>', 'Key<Model>'
+            if value? then value.name else undefined
+          when 'VecSpecifier'
+            if value? then value.column_name else undefined
+          else
+            if value? then value else undefined
+
       switch parameter.type
-        when 'enum', 'Frame', 'string', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-          Flow.Data.Variable parameter.label, TString
+        when 'enum', 'Frame', 'string'
+          createFactor parameter.label, TString, data
         when 'byte', 'short', 'int', 'long', 'float', 'double'
-          Flow.Data.Variable parameter.label, TNumber
-        when 'string[]'
-          Flow.Data.Variable parameter.label, TString
+          createVector parameter.label, TNumber, data
+        when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+          createList parameter.label, data, (a) -> if a then a else undefined
         when 'boolean'
-          Flow.Data.Variable parameter.label, TBoolean
+          createList parameter.label, data, (a) -> if a then 'true' else 'false'
         else
-          Flow.Data.Variable parameter.label, TObject
+          createList parameter.label, data
 
-    Record = Flow.Data.Record variables
+    modelKeys = (model.key.name for model in models)
 
-    rows = new Array models.length
-    for model, i in models
-      rows[i] = row = new Record()
-      for parameter, j in model.parameters
-        variable = variables[j]
-        row[variable.label] = parameter.actual_value
-
-    modelKeys = (model.key for model in models)
-
-    Flow.Data.Table
-      label: 'parameters'
+    createDataframe 'parameters', vectors, (sequence models.length), null,
       description: "Parameters for models #{modelKeys.join ', '}"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModels #{stringify modelKeys}"
+      origin: "getModels #{stringify modelKeys}"
+
 
   inspectModelParameters = (model) -> ->
     parameters = model.parameters
-    variables = [
-      Flow.Data.Variable 'label', TString
-      Flow.Data.Variable 'type', TString
-      Flow.Data.Variable 'level', TString
-      Flow.Data.Variable 'actual_value', TObject
-      Flow.Data.Variable 'default_value', TObject
+
+    attrs = [
+      [ 'label', TString ]
+      [ 'type', TString ]
+      [ 'level', TString ]
+      [ 'actual_value', TObject ]
+      [ 'default_value', TObject ]
     ]
 
-    Record = Flow.Data.Record variables
-    rows = new Array parameters.length
-    for parameter, i in parameters
-      rows[i] = row = new Record()
-      for variable in variables
-        row[variable.label] = parameter[variable.label]
+    vectors = for [ name, type ] in attrs
+      data = new Array parameters.length
 
-    Flow.Data.Table
-      label: 'parameters'
+      for parameter, i in parameters
+        data[i] = parameter[name]
+
+      switch type
+        when TString
+          createFactor name, type, data
+        when TObject
+          createList name, data, stringify
+
+    createDataframe 'parameters', vectors, (sequence parameters.length), null,
       description: "Parameters for model '#{model.key.name}'" #TODO frame key
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
+
+  inspectGLMModelOutput = (model) -> ->
+    output = model.output
+
+    vectors = [
+      createFactor 'model_category', TString, [ output.model_category ]
+      createFactor 'binomial', TString, [ output.binomial ]
+      createVector 'aic', TNumber, [ output.aic ]
+      createVector 'auc', TNumber, [ output.auc ]
+      createVector 'best_lambda_idx', TNumber, [ output.best_lambda_idx ]
+      createVector 'null_degrees_of_freedom', TNumber, [ output.null_degrees_of_freedom ]
+      createVector 'null_deviance', TNumber, [ output.null_deviance ]
+      createVector 'rank', TNumber, [ output.rank ]
+      createVector 'residual_degrees_of_freedom', TNumber, [ output.residual_degrees_of_freedom ]
+      createVector 'residual_deviance', TNumber, [ output.residual_deviance ]
+      createVector 'threshold', TNumber, [ output.threshold ]
+    ]
+
+    createDataframe 'output', vectors, (sequence 1), null,
+      description: "Output for GLM model '#{model.key.name}'"
+      origin: "getModel #{stringify model.key.name}"
+
+  inspectGLMCoefficientsMagnitude = (model) -> ->
+    convertTableToFrame model.output.coefficients_magnitude,
+      description: "#{model.output.coefficients_magnitude.name} for GLM model #{model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
+
+  inspectGLMCoefficientsTable = (model) -> ->
+    convertTableToFrame model.output.coefficients_table,
+      description: "#{model.output.coefficients_table.name} for GLM model #{model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
 
   inspectGBMModelOutput = (model) -> ->
     output = model.output
-    variables = [
-      Flow.Data.Variable 'tree', TNumber
-      Flow.Data.Variable 'mse_train', TObject
-      Flow.Data.Variable 'mse_valid', TObject
+
+    size = output.mse_train.length
+
+    vectors = [
+      createVector 'tree', TNumber, (sequence size)
+      createVector 'mse_train', TNumber, parseNaNs output.mse_train
+      createVector 'mse_valid', TNumber, parseNaNs output.mse_valid
     ]
 
-    Record = Flow.Data.Record variables
-    rows = new Array output.mse_train.length
-    for mse_train, i in output.mse_train
-      rows[i] = new Record i, mse_train, output.mse_valid[i]
-
-    Flow.Data.Table
-      label: 'output'
+    createDataframe 'output', vectors, (sequence size), null,
       description: "Output for GBM model '#{model.key.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
-
+      origin: "getModel #{stringify model.key.name}"
 
   inspectKMeansModelOutput = (model) -> ->
     output = model.output
-    variables = [
-      Flow.Data.Variable 'parameter', TString
-      Flow.Data.Variable 'value', TObject
+
+    vectors = [
+      createVector 'avg_between_ss', TNumber, [ output.avg_between_ss ]
+      createVector 'avg_ss', TNumber, [ output.avg_ss ]
+      createVector 'avg_within_ss', TNumber, [ output.avg_within_ss ]
+      createVector 'categorical_column_count', TNumber, [ output.categorical_column_count ]
+      createVector 'iterations', TNumber, [ output.iterations ]
+      createFactor 'model_category', TString, [ output.model_category ]
     ]
 
-    Record = Flow.Data.Record variables
-    attrs = [ 'iters', 'mse', 'ncats' ]
-    rows = new Array attrs.length
-    for attr, i in attrs
-      rows[i] = new Record attr, output[attr]
-
-    Flow.Data.Table
-      label: 'output'
+    createDataframe 'output', vectors, (sequence 1), null,
       description: "Output for k-means model '#{model.key.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
 
-  inspectKMeansModelClusterDetails = (model) -> ->
+  inspectKmeansModelClusters = (model) -> ->
     output = model.output
-    variables = [
-      Flow.Data.Variable 'cluster', TNumber
-      Flow.Data.Variable 'rows', TNumber
-      Flow.Data.Variable 'mses', TNumber
+
+    vectors = [
+      createFactor 'cluster', TString, head output.centers.data
+      createVector 'size', TNumber, output.size
+      createVector 'within_mse', TNumber, output.within_mse
     ]
-    Record = Flow.Data.Record variables
-    rows = new Array output.clusters.length
-    for cluster, i in output.clusters
-      rows[i] = new Record i, output.rows[i], output.mses[i]
 
-    Flow.Data.Table
-      label: 'cluster_details'
+    createDataframe 'clusters', vectors, (sequence output.size.length), null, 
       description: "Clusters for k-means model '#{model.key.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
+      origin: "getModel #{stringify model.key.name}"
 
-  inspectKMeansModelClusters = (model) -> ->
-    output = model.output
-    { clusters, domains, names } = output
-    variables = [
-      Flow.Data.Variable 'names', TNumber
-    ]
-    for i in [ 0 ... clusters.length ]
-      variables.push Flow.Data.Variable "#{i}", TObject
-
-    Record = Flow.Data.Record variables
-    cluster0 = head clusters
-    rows = new Array cluster0.length
-    for i in [ 0 ... cluster0.length ]
-      rows[i] = row = new Record names[i]
-      for cluster, j in clusters
-        row["#{j}"] = if domain = domains[i] 
-          domain[cluster[i]]
-        else
-          cluster[i]
-
-    Flow.Data.Table
-      label: 'clusters'
-      description: "Clusters for k-means model '#{model.key.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getModel #{stringify model.key.name}"
-
+  inspectKmeansModelClusterMeans = (model) -> ->
+    convertTableToFrame model.output.centers, 
+      description: "Cluster means for k-means model '#{model.key.name}'"
+      origin: "getModel #{stringify model.key.name}"
 
   extendKMeansModel = (model) ->
     inspect_ model,
       parameters: inspectModelParameters model
       output: inspectKMeansModelOutput model
-      clusters: inspectKMeansModelClusters model
-      cluster_details: inspectKMeansModelClusterDetails model
+      clusters: inspectKmeansModelClusters model
+      'Cluster means': inspectKmeansModelClusterMeans model
 
   extendDeepLearningModel = (model) ->
-    inspect_ model,
-      parameters: inspectModelParameters model
+
+    origin = "getModel #{stringify model.key.name}"
+
+    inspections = {}
+    inspections.parameters = inspectModelParameters model
+
+    modelCategory = model.output.model_category
+
+    if modelCategory is 'Binomial' or modelCategory is 'Multinomial' or modelCategory is 'Regression'
+      tables = [ model.output.modelSummary, model.output.scoringHistory ]
+      tables.forEach (table) ->
+        inspections[ table.name ] = ->
+          convertTableToFrame table,
+            description: table.name 
+            origin: origin
+            plot: "plot inspect '#{table.name}', #{origin}"
+
+      if variableImportances = model.output.variableImportances
+        inspections[ variableImportances.name ] = ->
+          convertTableToFrame variableImportances,
+            description: variableImportances.name
+            origin: origin
+            plot: "plot inspect '#{variableImportances.name}', #{origin}"
+
+    if modelCategory is 'Binomial'
+      if trainMetrics = model.output.trainMetrics
+        trainMetrics.thresholdsAndMetricScores.name = 'Training ' + trainMetrics.thresholdsAndMetricScores.name
+        trainMetrics.maxCriteriaAndMetricScores.name = 'Training ' + trainMetrics.maxCriteriaAndMetricScores.name
+
+        inspections[ 'Training Metrics' ] = inspectBinomialPrediction2 'Training Metrics', trainMetrics
+
+        inspections[ trainMetrics.thresholdsAndMetricScores.name ] = -> 
+          convertTableToFrame trainMetrics.thresholdsAndMetricScores,
+            description: trainMetrics.thresholdsAndMetricScores.name
+            origin: origin
+            plot: "plot inspect '#{trainMetrics.thresholdsAndMetricScores.name}', #{origin}"
+
+        inspections[ trainMetrics.maxCriteriaAndMetricScores.name ] = -> 
+          convertTableToFrame trainMetrics.maxCriteriaAndMetricScores,
+          description: trainMetrics.maxCriteriaAndMetricScores.name
+          origin: origin
+          plot: "plot inspect '#{trainMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
+
+        inspections[ 'Training Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Training Confusion Matrices', trainMetrics
+
+      if validMetrics = model.output.validMetrics
+        validMetrics.thresholdsAndMetricScores.name = 'Validation ' + validMetrics.thresholdsAndMetricScores.name
+        validMetrics.maxCriteriaAndMetricScores.name = 'Validation ' + validMetrics.maxCriteriaAndMetricScores.name
+
+        inspections[ 'Validation Metrics' ] = inspectBinomialPrediction2 'Validation Metrics', validMetrics
+        inspections[ validMetrics.thresholdsAndMetricScores.name ] = -> 
+          convertTableToFrame validMetrics.thresholdsAndMetricScores,
+          description: validMetrics.thresholdsAndMetricScores.name
+          origin: origin
+          plot: "plot inspect '#{validMetrics.thresholdsAndMetricScores.name}', #{origin}"
+
+        inspections[ validMetrics.maxCriteriaAndMetricScores.name ] = -> 
+        convertTableToFrame validMetrics.maxCriteriaAndMetricScores,
+          description: validMetrics.maxCriteriaAndMetricScores.name
+          origin: origin
+          plot: "plot inspect '#{validMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
+
+        inspections[ 'Validation Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Validation Confusion Matrices', validMetrics
+
+    else if modelCategory is 'Multinomial'
+      if trainMetrics = model.output.trainMetrics
+        inspections[ 'Training Metrics' ] = inspectMultinomialPrediction2 'Training Metrics', trainMetrics
+
+      if validMetrics = model.output.validMetrics
+        inspections[ 'Validation Metrics' ] = inspectMultinomialPrediction2 'Validation Metrics', validMetrics
+
+    else if modelCategory is 'Regression'
+      if trainMetrics = model.output.trainMetrics
+        inspections[ 'Training Metrics' ] = inspectRegressionPrediction2 'Training Metrics', trainMetrics
+
+      if validMetrics = model.output.validMetrics
+        inspections[ 'Validation Metrics' ] = inspectRegressionPrediction2 'Validation Metrics', validMetrics
+
+      
+
+    inspect_ model, inspections
   
   extendGBMModel = (model) ->
     inspect_ model,
@@ -376,8 +512,15 @@ H2O.Routines = (_) ->
       output: inspectGBMModelOutput model
 
   extendGLMModel = (model) ->
-    inspect_ model,
-      parameters: inspectModelParameters model
+    inspections = {}
+    inspections.parameters = inspectModelParameters model
+    inspections.output = inspectGLMModelOutput model
+    inspections[model.output.coefficients_magnitude.name] = inspectGLMCoefficientsMagnitude model 
+    inspections[model.output.coefficients_table.name] = inspectGLMCoefficientsTable model
+    inspect_ model, inspections
+
+  extendJob = (job) ->
+    render_ job, -> H2O.JobOutput _, job
 
   extendModel = (model) ->
     switch model.algo
@@ -396,333 +539,246 @@ H2O.Routines = (_) ->
     for model in models
       extendModel model
 
+    inspections = {}
+
     algos = unique (model.algo for model in models)
     if algos.length is 1
-      inspect_ models,
-        parameters: inspectMultimodelParameters models 
+      inspections.parameters = inspectParametersAcrossModels models 
 
+    modelCategories = unique (model.output.model_category for model in models)
+    # TODO implement model comparision after 2d table cleanup for model metrics
+    #if modelCategories.length is 1
+    #  inspections.outputs = inspectOutputsAcrossModels (head modelCategories), models
+    
 
+    inspect_ models, inspections
     render_ models, -> H2O.ModelsOutput _, models
 
   read = (value) -> if value is 'NaN' then null else value
 
-  inspectRegressionPrediction = (prediction) -> ->
-    { frame, model, predictions } = prediction
+  inspectMultinomialPrediction2 = (frameLabel, prediction) -> ->
+    { frame, model } = prediction
+    origin = "getModel #{stringify prediction.model.name}"
 
-    variables = [
-      Flow.Data.Variable 'parameter', TString
-      Flow.Data.Variable 'value', TObject
+    vectors = [
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
     ]
 
-    Record = Flow.Data.Record variables
+    createDataframe frameLabel, vectors, (sequence 1), null,
+      description: frameLabel
+      origin: origin
 
-    rows = []
-    rows.push new Record 'key', model.name
-    rows.push new Record 'frame', frame.name
-    rows.push new Record 'model_category', prediction.model_category
-    rows.push new Record 'duration_in_ms', prediction.duration_in_ms
-    rows.push new Record 'scoring_time', prediction.scoring_time
+  inspectRegressionPrediction2 = (frameLabel, prediction) -> ->
+    { frame, model } = prediction
+    origin = "getModel #{stringify prediction.model.name}"
 
-    Flow.Data.Table
-      label: 'prediction'
+    vectors = [
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'sigma', TNumber, [ prediction.sigma ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
+    ]
+
+    createDataframe frameLabel, vectors, (sequence 1), null,
+      description: frameLabel
+      origin: origin
+
+  inspectRegressionPrediction = (prediction) -> ->
+    { frame, model } = prediction
+
+    vectors = [
+      createFactor 'key', TString, [ model.name ]
+      createFactor 'frame', TString, [ frame.name ]
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'sigma', TNumber, [ prediction.sigma ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
+    ]
+
+    createDataframe 'prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+      origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
 
+  inspectBinomialPrediction2 = (frameLabel, prediction) -> ->
+    origin = "getModel #{stringify prediction.model.name}"
+    { frame, model } = prediction
+
+    vectors = [
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'AUC', TNumber, [ prediction.AUC ]
+      createVector 'Gini', TNumber, [ prediction.Gini ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
+    ]
+
+    createDataframe frameLabel, vectors, (sequence 1), null,
+      description: frameLabel
+      origin: origin
 
   inspectBinomialPrediction = (prediction) -> ->
-    { frame, model, auc } = prediction
+    { frame, model } = prediction
 
-    variables = [
-      Flow.Data.Variable 'parameter', TString
-      Flow.Data.Variable 'value', TObject
+    vectors = [
+      createFactor 'key', TString, [ model.name ]
+      createFactor 'frame', TString, [ frame.name ]
+      createFactor 'model_category', TString, [ prediction.model_category ]
+      createVector 'AUC', TNumber, [ prediction.AUC ]
+      createVector 'Gini', TNumber, [ prediction.Gini ]
+      createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
+      createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
     ]
 
-    Record = Flow.Data.Record variables
-
-    rows = []
-    rows.push new Record 'key', model.name
-    rows.push new Record 'frame', frame.name
-    rows.push new Record 'model_category', prediction.model_category
-    rows.push new Record 'duration_in_ms', prediction.duration_in_ms
-    rows.push new Record 'scoring_time', prediction.scoring_time
-    rows.push new Record 'AUC', auc.AUC
-    rows.push new Record 'Gini', auc.Gini
-    rows.push new Record 'threshold_criterion', auc.threshold_criterion
-
-    Flow.Data.Table
-      label: 'prediction'
+    createDataframe 'Prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+      origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+
+  inspectBinomialConfusionMatrices2 = (frameLabel, prediction) -> ->
+    origin = "getModel #{stringify prediction.model.name}"
+    vectors = [
+      createList 'CM', prediction.confusion_matrices, formatConfusionMatrix
+      createVector 'TPR', TNumber, map prediction.confusion_matrices, computeTruePositiveRate
+      createVector 'FPR', TNumber, map prediction.confusion_matrices, computeFalsePositiveRate
+    ]
+    createDataframe frameLabel, vectors, (sequence prediction.confusion_matrices.length), null,
+      description: frameLabel
+      origin: origin
+      plot: "plot inspect '#{frameLabel}', #{origin}"
+
+
+  inspectBinomialConfusionMatrices = (opts, predictions) -> ->
+    vectors = [
+      createList 'CM', (concatArrays (prediction.confusion_matrices for prediction in predictions)), formatConfusionMatrix
+      createVector 'TPR', TNumber, concatArrays (map prediction.confusion_matrices, computeTruePositiveRate for prediction in predictions)
+      createVector 'FPR', TNumber, concatArrays (map prediction.confusion_matrices, computeFalsePositiveRate for prediction in predictions)
+      createFactor 'key', TString, concatArrays (repeatValues prediction.confusion_matrices.length, prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
+    ]
+
+    createDataframe 'Confusion Matrices', vectors, (sequence (head vectors).count()), null,
+      description: "Confusion matrices for the selected predictions"
+      origin: formulateGetPredictionsOrigin opts
+      plot: "plot inspect 'Confusion Matrices', #{formulateGetPredictionsOrigin opts}"
 
   inspectBinomialMetrics = (opts, predictions) -> ->
-    variables = [
-      Flow.Data.Variable 'criteria', TString
-      Flow.Data.Variable 'threshold', TNumber
-      Flow.Data.Variable 'F1', TNumber
-      Flow.Data.Variable 'F2', TNumber
-      Flow.Data.Variable 'F0point5', TNumber
-      Flow.Data.Variable 'accuracy', TNumber
-      Flow.Data.Variable 'error', TNumber
-      Flow.Data.Variable 'precision', TNumber
-      Flow.Data.Variable 'recall', TNumber
-      Flow.Data.Variable 'specificity', TNumber
-      Flow.Data.Variable 'mcc', TNumber
-      Flow.Data.Variable 'max_per_class_error', TNumber
-      Flow.Data.Variable 'confusion_matrix', TObject, null, formatConfusionMatrix
-      Flow.Data.Variable 'TPR', TNumber
-      Flow.Data.Variable 'FPR', TNumber
-      Flow.Data.Variable 'key', TString
-      Flow.Data.Variable 'model', TString
-      Flow.Data.Variable 'frame', TString
-    ]
-
-    Record = Flow.Data.Record variables
-
-    rows = []
-    for prediction in predictions
-      { frame, model, auc } = prediction
-      for i in [ 0 ... auc.threshold_criteria.length ]
-        rows.push new Record(
-          auc.threshold_criteria[i]
-          read auc.threshold_for_criteria[i]
-          read auc.F1_for_criteria[i]
-          read auc.F2_for_criteria[i]
-          read auc.F0point5_for_criteria[i]
-          read auc.accuracy_for_criteria[i]
-          read auc.error_for_criteria[i]
-          read auc.precision_for_criteria[i]
-          read auc.recall_for_criteria[i]
-          read auc.specificity_for_criteria[i]
-          read auc.mcc_for_criteria[i]
-          read auc.max_per_class_error_for_criteria[i]
-          cm = auc.confusion_matrix_for_criteria[i] 
-          computeTruePositiveRate cm
-          computeFalsePositiveRate cm
-          model.name + ' on ' + frame.name
-          model.name
-          frame.name
-        )
-
-    Flow.Data.Table
-      label: 'metrics'
+    inspectionFrame = combineTables (prediction.maxCriteriaAndMetricScores for prediction in predictions)
+    convertTableToFrame inspectionFrame,
       description: "Metrics for the selected predictions"
-      variables: variables
-      rows: rows
-      meta:
-        origin: formulateGetPredictionsOrigin opts
-        plot: """
-        plot
-          data: inspect 'metrics', #{formulateGetPredictionsOrigin opts}
-        """
+      origin: formulateGetPredictionsOrigin opts
+      plot: "plot inspect '#{inspectionFrame.label}', #{formulateGetPredictionsOrigin opts}"
 
   inspectBinomialPredictions = (opts, predictions) -> ->
-    variables = [
-      Flow.Data.Variable 'key', TString
-      Flow.Data.Variable 'model', TString
-      Flow.Data.Variable 'frame', TString
-      Flow.Data.Variable 'model_category', TString
-      Flow.Data.Variable 'duration_in_ms', TNumber
-      Flow.Data.Variable 'scoring_time', TNumber
-      #Flow.Data.Variable 'AUC', TNumber
-      #Flow.Data.Variable 'Gini', TNumber
-      #Flow.Data.Variable 'threshold_criterion', TString
+    vectors = [
+      createFactor 'key', TString, (prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
+      createFactor 'frame', TString, (prediction.frame.name for prediction in predictions)
+      createFactor 'model_category', TString, (prediction.model_category for prediction in predictions)
+      createVector 'AUC', TNumber, (prediction.AUC for prediction in predictions)
+      createVector 'Gini', TNumber, (prediction.Gini for prediction in predictions)
+      createVector 'mse', TNumber, (prediction.mse for prediction in predictions)
+      createVector 'duration_in_ms', TNumber, (prediction.duration_in_ms for prediction in predictions)
+      createVector 'scoring_time', TNumber, (prediction.scoring_time for prediction in predictions)
     ]
 
-    Record = Flow.Data.Record variables
-    
-    rows = new Array predictions.length
-    for prediction, i in predictions
-      { frame, model, auc } = prediction
-      rows[i] = row = new Record(
-        model.name + ' on ' + frame.name
-        model.name
-        frame.name
-        prediction.model_category
-        prediction.duration_in_ms
-        prediction.scoring_time
-        #auc.AUC
-        #auc.Gini
-        #auc.threshold_criterion
-      )
-
-    Flow.Data.Table
-      label: 'predictions'
+    createDataframe 'predictions', vectors, (sequence predictions.length), null,
       description: "Prediction output for selected predictions."
-      variables: variables
-      rows: rows
-      meta:
-        origin: formulateGetPredictionsOrigin opts
-        plot: """
-        plot
-          data: inspect 'predictions', #{formulateGetPredictionsOrigin opts}
-        """
+      origin: formulateGetPredictionsOrigin opts
+      plot: "plot inspect 'predictions', #{formulateGetPredictionsOrigin opts}"
 
   extendPredictions = (opts, predictions) ->
     render_ predictions, -> H2O.PredictsOutput _, opts, predictions
-    inspect_ predictions,
-      predictions: inspectBinomialPredictions opts, predictions
-      #metrics: inspectBinomialMetrics opts, predictions
-      #scores: inspectBinomialScores opts, predictions
+    if (every predictions, (prediction) -> prediction.model_category is 'Binomial')
+      inspections = {}
+      inspections['Prediction' ] = inspectBinomialPredictions opts, predictions
+      inspections[ (head predictions).thresholdsAndMetricScores.name ] = inspectBinomialScores opts, predictions
+      inspections[ (head predictions).maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, predictions
+      inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, predictions
+      inspect_ predictions, inspections
+    else
+      inspect_ predictions, 
+        prediction: inspectBinomialPredictions opts, predictions
 
   inspectBinomialScores = (opts, predictions) -> ->
-
-    variables = [
-      Flow.Data.Variable 'thresholds', TNumber
-      Flow.Data.Variable 'F1', TNumber
-      Flow.Data.Variable 'F2', TNumber
-      Flow.Data.Variable 'F0point5', TNumber
-      Flow.Data.Variable 'accuracy', TNumber
-      Flow.Data.Variable 'errorr', TNumber
-      Flow.Data.Variable 'precision', TNumber
-      Flow.Data.Variable 'recall', TNumber
-      Flow.Data.Variable 'specificity', TNumber
-      Flow.Data.Variable 'mcc', TNumber
-      Flow.Data.Variable 'max_per_class_error', TNumber
-      Flow.Data.Variable 'confusion_matrices', TObject, null, formatConfusionMatrix
-      Flow.Data.Variable 'TPR', TNumber
-      Flow.Data.Variable 'FPR', TNumber
-      Flow.Data.Variable 'key', TString
-      Flow.Data.Variable 'model', TString
-      Flow.Data.Variable 'frame', TString
-    ]
-
-    Record = Flow.Data.Record variables
-    rows = []
-    for prediction in predictions
-      { frame, model, auc } = prediction
-      for i in [ 0 ... auc.thresholds.length ]
-        rows.push new Record(
-          read auc.thresholds[i]
-          read auc.F1[i]
-          read auc.F2[i]
-          read auc.F0point5[i]
-          read auc.accuracy[i]
-          read auc.errorr[i]
-          read auc.precision[i]
-          read auc.recall[i]
-          read auc.specificity[i]
-          read auc.mcc[i]
-          read auc.max_per_class_error[i]
-          cm = auc.confusion_matrices[i]
-          computeTruePositiveRate cm
-          computeFalsePositiveRate cm
-          model.name + ' on ' + frame.name
-          model.name
-          frame.name
-        )
-
-    Flow.Data.Table
-      label: 'scores'
+    inspectionFrame = combineTables (prediction.thresholdsAndMetricScores for prediction in predictions)
+    convertTableToFrame inspectionFrame,
       description: "Scores for the selected predictions"
-      variables: variables
-      rows: rows
-      meta:
-        origin: formulateGetPredictionsOrigin opts
-        plot: """
-        plot
-          data: inspect 'scores', #{formulateGetPredictionsOrigin opts}
-        """
+      origin: formulateGetPredictionsOrigin opts
+      plot: "plot inspect '#{inspectionFrame.label}', #{formulateGetPredictionsOrigin opts}"
     
   extendPrediction = (modelKey, frameKey, prediction) ->
+    opts = { model: modelKey, frame: frameKey }
     render_ prediction, -> H2O.PredictOutput _, prediction
     switch prediction.model_category
-      when 'Regression', 'Multinomial'
+      when 'Regression', 'Multinomial', 'Clustering'
         inspect_ prediction,
           prediction: inspectRegressionPrediction prediction
       else
-        inspect_ prediction,
-          prediction: inspectBinomialPrediction prediction
-          scores: inspectBinomialScores { model: modelKey, frame: frameKey }, [ prediction ]
-          metrics: inspectBinomialMetrics { model: modelKey, frame: frameKey }, [ prediction ]
+        inspections = {}
+        inspections[ 'Prediction' ] = inspectBinomialPrediction prediction
+        inspections[ prediction.thresholdsAndMetricScores.name ] = inspectBinomialScores opts, [ prediction ]
+        inspections[ prediction.maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, [ prediction ]
+        inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, [ prediction ]
+        inspect_ prediction, inspections
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
-    variables = [
-      Flow.Data.Variable 'label', TString
-      Flow.Data.Variable 'missing', TNumber
-      Flow.Data.Variable 'zeros', TNumber
-      Flow.Data.Variable 'pinfs', TNumber
-      Flow.Data.Variable 'ninfs', TNumber
-      Flow.Data.Variable 'min', TNumber
-      Flow.Data.Variable 'max', TNumber
-      Flow.Data.Variable 'mean', TNumber
-      Flow.Data.Variable 'sigma', TNumber
-      Flow.Data.Variable 'type', TString
-      Flow.Data.Variable 'cardinality', TNumber
+    attrs = [
+      'label'
+      'missing'
+      'zeros'
+      'pinfs'
+      'ninfs'
+      'min'
+      'max'
+      'mean'
+      'sigma'
+      'type'
+      'cardinality'
     ]
 
-    Record = Flow.Data.Record variables
-    rows = for column in frameColumns
-      row = new Record()
-      for variable in variables
-        label = variable.label
-        switch label
-          when 'min'
-            row[label] = head column.mins
-          when 'max'
-            row[label] = head column.maxs
-          when 'cardinality'
-            row[label] = if domain = column.domain then domain.length else null
-          else
-            row[label] = column[label] 
-      row
-
-    Flow.Data.Table
-      label: tableLabel
+    vectors = for name in attrs
+      switch name
+        when 'min'
+          createVector name, TNumber, (head column.mins for column in frameColumns)
+        when 'max'
+          createVector name, TNumber, (head column.maxs for column in frameColumns)
+        when 'cardinality'
+          createVector name, TNumber, ((if domain = column.domain then domain.length else undefined) for column in frameColumns)
+        when 'label', 'type'
+          createFactor name, TString, (column[name] for column in frameColumns)
+        else
+          createVector name, TNumber, (column[name] for column in frameColumns)
+         
+    createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getFrame #{stringify frameKey}"
-        plot: """
-        plot
-          data: inspect '#{tableLabel}', getFrame #{stringify frameKey}
-        """
+      origin: "getFrame #{stringify frameKey}"
+      plot: "plot inspect '#{tableLabel}', getFrame #{stringify frameKey}"
+
 
   inspectFrameData = (frameKey, frame) -> ->
     frameColumns = frame.columns
-    variables = for column in frameColumns
+
+    vectors = for column in frameColumns
       #XXX format functions
       switch column.type
-        when 'int'
-          Flow.Data.Variable column.label, TNumber
-        when 'real'
-          Flow.Data.Variable column.label, TNumber
+        when 'int', 'real'
+          createVector column.label, TNumber, parseNaNs column.data
         when 'enum'
-          Flow.Data.Factor column.label, column.domain
-        when 'uuid', 'string'
-          Flow.Data.Variable column.label, TString
+          domain = column.domain
+          createFactor column.label, TString, ((if index? then domain[index] else undefined) for index in column.data)
         when 'time'
-          Flow.Data.Variable column.label, TDate
-        else
-          Flow.Data.Variable column.label, TObject
+          createVector column.label, TNumber, parseNaNs column.data
+        when 'string'
+          createList column.label, parseNulls column.str_data
+        else # uuid / etc.
+          createList column.label, parseNulls column.data
 
-    Record = Flow.Data.Record variables
-    rowCount = (head frameColumns).data.length
-    rows = for i in [0 ... rowCount]
-      row = new Record()
-      for variable, j in variables
-        value = frameColumns[j].data[i]
-        switch variable.type
-          when TNumber, TNumber
-            #TODO handle +-Inf
-            row[variable.label] = if value is 'NaN' then null else value
-          else
-            row[variable.label] = value
-      row
-    
-    Flow.Data.Table
-      label: 'data'
+    createDataframe 'data', vectors, (sequence frame.len - frame.off), null,
       description: 'A partial list of rows in the H2O Frame.'
-      variables: variables
-      rows: rows
-      meta:
-        origin: "getFrame #{stringify frameKey}"
+      origin: "getFrame #{stringify frameKey}"
 
   extendFrame = (frameKey, frame) ->
     inspections =
@@ -739,39 +795,16 @@ H2O.Routines = (_) ->
     rowCount = frame.rows
 
     inspectPercentiles = ->
-      percentiles = frame.default_pctiles
-      percentileValues = column.pctiles
-
-      variables = [
-        Flow.Data.Variable 'percentile', TNumber
-        Flow.Data.Variable 'value', TNumber #TODO depends on type of variable?
+      vectors = [
+        createVector 'percentile', TNumber, frame.default_pctiles
+        createVector 'value', TNumber, column.pctiles
       ]
 
-      Record = Flow.Data.Record variables
-      rows = for percentile, i in percentiles
-        row = new Record()
-        row.percentile = percentile
-        row.value = percentileValues[i]
-        row
-
-      Flow.Data.Table
-        label: 'percentiles'
+      createDataframe 'percentiles', vectors, (sequence frame.default_pctiles.length), null, 
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectDistribution = ->
-      variables = [
-        Flow.Data.Variable 'interval', TString
-        Flow.Data.Variable 'width', TNumber
-        Flow.Data.Variable 'count', TNumber
-      ]
-
-      Record = Flow.Data.Record variables
-      
       minBinCount = 32
       { base, stride, bins } = column
       width = Math.floor bins.length / minBinCount
@@ -780,6 +813,9 @@ H2O.Routines = (_) ->
       rows = []
       if width > 0
         binCount = minBinCount + if bins.length % width > 0 then 1 else 0
+        intervalData = new Array binCount
+        widthData = new Array binCount
+        countData = new Array binCount
         for i in [0 ... binCount]
           m = i * width
           n = m + width
@@ -787,96 +823,51 @@ H2O.Routines = (_) ->
           for binIndex in [m ... n] when n < bins.length
             count += bins[binIndex]
 
-          row = new Record()
-          row.interval = base + i * interval
-          row.width = interval
-          row.count = count
-          rows.push row
+          intervalData[i] = base + i * interval
+          widthData[i] = interval
+          countData[i] = count
       else
+        binCount = bins.length
+        intervalData = new Array binCount
+        widthData = new Array binCount
+        countData = new Array binCount
         for count, i in bins
-          row = new Record()
-          row.interval = base + i * stride
-          row.width = stride
-          row.count = count
-          rows.push row
+          intervalData[i] = base + i * stride
+          widthData[i] = stride
+          countData[i] = count
 
-      Flow.Data.Table
-        label: 'distribution'
+      vectors = [
+        createFactor 'interval', TString, intervalData
+        createVector 'width', TNumber, widthData
+        createVector 'count', TNumber, countData
+      ]
+
+      createDataframe 'distribution', vectors, (sequence binCount), null, 
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-          plot: """
-          plot
-            data: inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-            type: 'interval'
-            x: 'interval'
-            y: 'count'
-          """
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        plot: "plot inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectCharacteristics = ->
       { missing, zeros, pinfs, ninfs } = column
       other = rowCount - missing - zeros - pinfs - ninfs
 
-      variables = [
-        label: 'label'
-        type: TString
-      ,
-        label: 'characteristic'
-        type: TString
-      ,
-        label: 'count'
-        type: TNumber
-        domain: [ 0, rowCount ]
-      ,
-        label: 'percent'
-        type: TNumber
-        domain: [ 0, 100 ]
+      characteristicData = [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
+      countData = [ missing, ninfs, zeros, pinfs, other ]
+      percentData = for count in countData
+        100 * count / rowCount
+
+      vectors = [
+        createFactor 'characteristic', TString, characteristicData
+        createVector 'count', TNumber, countData
+        createVector 'percent', TNumber, percentData
       ]
 
-      characteristics = [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
-      rows = for count, i in [ missing, ninfs, zeros, pinfs, other ]
-        label: column.label
-        characteristic: characteristics[i]
-        count: count
-        percent: 100 * count / rowCount
-
-      Flow.Data.Table
-        label: 'characteristics'
+      createDataframe 'characteristics', vectors, (sequence characteristicData.length), null,
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-          plot: """
-          plot
-            title: 'Characteristics for #{frameKey} : #{column.label}'
-            type: 'interval'
-            data: inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-            x: plot.stack 'count'
-            y: 'label'
-            color: 'characteristic'
-          """
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        plot: "plot inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectSummary = ->
-      variables = [
-        label: 'mean'
-        type: TNumber
-      ,
-        label: 'q1'
-        type: TNumber
-      ,
-        label: 'q2'
-        type: TNumber
-      ,
-        label: 'q3'
-        type: TNumber
-      ,
-        label: 'outliers'
-        type: TArray
-      ]
-
       defaultPercentiles = frame.default_pctiles
       percentiles = column.pctiles
 
@@ -885,67 +876,60 @@ H2O.Routines = (_) ->
       q2 = percentiles[defaultPercentiles.indexOf 0.5]
       q3 = percentiles[defaultPercentiles.indexOf 0.75]
       outliers = unique concat column.mins, column.maxs
+      minimum = head column.mins
+      maximum = head column.maxs
 
-      row =
-        mean: mean
-        q1: q1
-        q2: q2
-        q3: q3
-        outliers: outliers
+      vectors = [
+        createFactor 'column', TString, [ columnName ]
+        createVector 'mean', TNumber, [ mean ]
+        createVector 'q1', TNumber, [ q1 ]
+        createVector 'q2', TNumber, [ q2 ]
+        createVector 'q3', TNumber, [ q3 ]
+        createVector 'min', TNumber, [ minimum ]
+        createVector 'max', TNumber, [ maximum ]
+      ]
 
-      Flow.Data.Table
-        label: 'summary'
+      createDataframe 'summary', vectors, (sequence 1), null, 
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: [ row ]
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        plot: "plot inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectDomain = ->
       levels = map column.bins, (count, index) -> count: count, index: index
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
-      variables = [
-        Flow.Data.Variable 'label', TString
-        countVariable = Flow.Data.Variable 'count', TNumber
-        Flow.Data.Variable 'percent', TNumber, [ 0, 100 ]
+      top15Levels = head sortedLevels, 15
+
+      [ labels, counts, percents ] = createArrays 3, top15Levels.length
+
+      for level, i in top15Levels
+        labels[i] = column.domain[level.index]
+        counts[i] = level.count
+        percents[i] = 100 * level.count / rowCount
+
+      vectors = [
+        createFactor 'label', TString, labels
+        createVector 'count', TNumber, counts
+        createVector 'percent', TNumber, percents
       ]
 
-      Record = Flow.Data.Record variables
-      rows = for level in sortedLevels
-        row = new Record()
-        row.label = column.domain[level.index]
-        row.count = countVariable.read level.count
-        row.percent = 100 * level.count / rowCount
-        row
-
-      Flow.Data.Table
-        label: 'domain'
+      createDataframe 'domain', vectors, (sequence top15Levels.length), null,
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
-        variables: variables
-        rows: rows
-        meta:
-          origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
-          plot: """
-          plot
-            title: 'Domain for #{frameKey} : #{column.label}'
-            type: 'interval'
-            data: inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}
-            x: 'count'
-            y: 'label'
-          """
+        origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+        plot: "plot inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspections =
       characteristics: inspectCharacteristics
     if column.type is 'int' or column.type is 'real'
       inspections.summary = inspectSummary
       inspections.distribution = inspectDistribution
+      inspections.percentiles = inspectPercentiles
     else
       inspections.domain = inspectDomain
 
     inspect_ frame, inspections
-    render_ frame, -> go null, H2O.ColumnSummaryOutput _, frameKey, frame, columnName
+    render_ frame, -> H2O.ColumnSummaryOutput _, frameKey, frame, columnName
 
   requestFrame = (frameKey, go) ->
     _.requestFrame frameKey, (error, frame) ->
@@ -973,13 +957,34 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        go null, result #XXX
+        _.requestJob result.key.name, (error, job) ->
+          if error
+            go error
+          else
+            go null, extendJob job
+
+  requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
+    _.requestSplitFrame frameKey, splitRatios, splitKeys, (error, result) ->
+      if error
+        go error
+      else
+        _.requestJob result.key.name, (error, job) ->
+          if error
+            go error
+          else
+            go null, extendJob job
 
   createFrame = (opts) ->
     if opts
       _fork requestCreateFrame, opts
     else
       assist createFrame
+
+  splitFrame = (frameKey, splitRatios, splitKeys) ->
+    if frameKey and splitRatios and splitKeys
+      _fork requestSplitFrame, frameKey, splitRatios, splitKeys
+    else
+      assist splitFrame
 
   getFrames = ->
     _fork requestFrames  
@@ -1067,10 +1072,12 @@ H2O.Routines = (_) ->
     columnCount = opts.ncols
     useSingleQuotes = opts.singleQuotes
     columnNames = opts.columnNames
+    columnTypes = opts.columnTypes
     deleteOnDone = opts.delete_on_done
     checkHeader = opts.checkHeader
+    chunkSize = opts.chunkSize
 
-    renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, (parseResult, go) ->
+    renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (parseResult, go) ->
       go null, H2O.ParseOutput _, parseResult
 
   buildModel = (algo, opts) ->
@@ -1134,7 +1141,7 @@ H2O.Routines = (_) ->
           go error
         else
           # De-dupe predictions
-          uniquePredictions = values indexBy (flatten predictions, yes), (prediction) -> prediction.model.key + prediction.frame.key.name
+          uniquePredictions = values indexBy (flatten predictions, yes), (prediction) -> prediction.model.name + prediction.frame.name
           go null, extendPredictions opts, uniquePredictions
     else
       { model: modelKey, frame: frameKey } = opts
@@ -1183,15 +1190,31 @@ H2O.Routines = (_) ->
   getStackTrace = ->
     _fork requestStackTrace
 
-  requestLogFile = (nodeIndex, go) ->
-    _.requestLogFile nodeIndex, (error, logFile) ->
+  requestCurrentNodeIndex = (nodeIndex, go) ->
+    if nodeIndex < 0
+      _.requestCloud (error, cloud) ->
+        if error
+          go error
+        else
+          go null, cloud.node_idx
+    else
+      go null, nodeIndex
+
+  requestLogFile = (nodeIndex, fileType, go) ->
+    _.requestCloud (error, cloud) ->
       if error
         go error
       else
-        go null, extendLogFile nodeIndex, logFile
+        if nodeIndex < 0 or nodeIndex >= cloud.nodes.length
+          nodeIndex = cloud.node_idx
+        _.requestLogFile nodeIndex, fileType, (error, logFile) ->
+          if error
+            go error
+          else
+            go null, extendLogFile cloud, nodeIndex, fileType, logFile
 
-  getLogFile = (nodeIndex=-1) ->
-    _fork requestLogFile, nodeIndex
+  getLogFile = (nodeIndex=-1, fileType='debug') ->
+    _fork requestLogFile, nodeIndex, fileType
 
   requestProfile = (depth, go) ->
     _.requestProfile depth, (error, profile) ->
@@ -1207,7 +1230,6 @@ H2O.Routines = (_) ->
   loadScript = (path, go) ->
     onDone = (script, status) -> go null, script:script, status:status
     onFail = (jqxhr, settings, error) -> go error #TODO use framework error
-
     $.getScript path
       .done onDone
       .fail onFail
@@ -1236,12 +1258,24 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.PredictInput, args
         when createFrame
           _fork proceed, H2O.CreateFrameInput, args
+        when splitFrame
+          _fork proceed, H2O.SplitFrameInput, args
         else
           _fork proceed, H2O.NoAssist, []
 
   link _.ready, ->
     link _.inspect, inspect
-    link _.plot, __plot
+    link _.plot, (plot) -> plot lightning
+    link _.grid, (frame) ->
+      lightning(
+        lightning.table()
+        lightning.from frame
+      )
+    link _.enumerate, (frame) ->
+      lightning(
+        lightning.record 0
+        lightning.from frame
+      )
 
   # fork/join 
   fork: _fork
@@ -1282,6 +1316,7 @@ H2O.Routines = (_) ->
   setupParse: setupParse
   parseRaw: parseRaw
   createFrame: createFrame
+  splitFrame: splitFrame
   getFrames: getFrames
   getFrame: getFrame
   getColumnSummary: getColumnSummary

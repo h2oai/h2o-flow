@@ -10,8 +10,15 @@ describeCount = (count, singular, plural) ->
 
 fromNow = (date) -> (moment date).fromNow()
 
+formatBytes = (bytes) ->
+  sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  return '0 Byte' if bytes is 0
+  i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)))
+  Math.round(bytes / Math.pow(1024, i), 2) + sizes[i]
+
 Flow.Util =
   describeCount: describeCount
   fromNow: fromNow
+  formatBytes: formatBytes
 
 

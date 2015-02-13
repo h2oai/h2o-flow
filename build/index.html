@@ -169,11 +169,16 @@
           <li class="dropdown"><a href="#" data-toggle="dropdown" class="dropdown-toggle"><span data-bind="text:label"></span><span class="caret"></span></a>
             <ul role="menu" class="dropdown-menu">
               <!-- ko foreach:items-->
-              <!-- ko if:isAction-->
-              <li data-bind="css:{ 'disabled':isDisabled }"><a href="#" data-bind="click:action"><span data-bind="text:label"></span></a></li>
+              <!-- ko ifnot:action-->
+              <!-- ko if:label-->
+              <li data-bind="text:label" class="dropdown-header"></li>
               <!-- /ko-->
-              <!-- ko ifnot:isAction-->
+              <!-- ko ifnot:label-->
               <li class="divider"></li>
+              <!-- /ko-->
+              <!-- /ko-->
+              <!-- ko if:action-->
+              <li data-bind="css:{ 'disabled':isDisabled }"><a href="#" data-bind="click:action"><span data-bind="text:label"></span></a></li>
               <!-- /ko-->
               <!-- /ko-->
             </ul>
@@ -211,92 +216,97 @@
     </script>
     <script type="text/html" id="flow-help">
       <h4 class="flow-hint"><i class="fa fa-lightbulb-o"></i>Help</h4>
-      <blockquote>Using Flow for the first time?<br>
-        <div style="margin-top:10px">
-              <button type="button" data-bind="click:assist" class="flow-button"><i class="fa fa-support"></i><span>Assist Me!</span>
-              </button>
-        </div>
-      </blockquote>
-      <p><em>H<sub>2</sub>O Flow</em> is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like <a href="http://ipython.org/notebook.html" target="_blank">IPython Notebooks</a>.</p>
-      <p>Flow is a <em>modal</em> editor, which means that you are either in <em>edit mode</em> or <em>command mode</em>.  A <em>Flow</em> is composed of a series of executable <em>cells</em>. Each <em>cell</em> has an input and one or more outputs.</p>
-      <p>To get started, just memorize these six simple keyboard shortcuts: <kbd>enter</kbd>, <kbd>esc</kbd>, <kbd>ctrl</kbd><kbd>enter</kbd>, <kbd>a</kbd>, <kbd>b</kbd> and <kbd>d</kbd><kbd>d</kbd></p>
-      <ul>
-        <li>To edit a cell, press <kbd>enter</kbd> to get into <em>edit mode</em>.</li>
-        <li>When you're done editing, press <kbd>esc</kbd> to get back into <em>command mode</em>. </li>
-        <li>To execute a cell, press <kbd>ctrl</kbd> <kbd>enter</kbd></li>
-        <li><kbd>a</kbd> adds a new cell <u>a</u>bove the current cell.</li>
-        <li><kbd>b</kbd> adds a new cell <u>b</u>elow the current cell.</li>
-        <li><kbd>d</kbd><kbd>d</kbd> <u>d</u>eletes the current cell. Yes, you need to press <kbd>d</kbd> twice.</li>
-      </ul>
-      <p>Finally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code><a href='#' data-bind='click:assist'>assist</a></code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!</p>
+      <div class="flow-help-toolbar"><a href="#" data-bind="click:goHome" class="flow-help-toolbar-button"><i class="fa fa-home"></i></a>
+        <!-- ko if:canGoBack--><a href="#" data-bind="click:goBack" class="flow-help-toolbar-button"><i class="fa fa-arrow-left"></i></a>
+        <!-- /ko-->
+        <!-- ko ifnot:canGoBack-->
+        <div class="flow-help-toolbar-button"><i class="fa fa-arrow-left"></i></div>
+        <!-- /ko-->
+        <!-- ko if:canGoForward--><a href="#" data-bind="click:goForward" class="flow-help-toolbar-button"><i class="fa fa-arrow-right"></i></a>
+        <!-- /ko-->
+        <!-- ko ifnot:canGoForward-->
+        <div class="flow-help-toolbar-button"><i class="fa fa-arrow-right"></i></div>
+        <!-- /ko-->
+      </div>
+      <div class="flow-sidebar-content">
+        <div data-bind="raw:content" class="flow-help"></div>
+      </div>
     </script>
     <script type="text/html" id="flow-outline">
-      <div class="flow-outline">
-        <h4>Outline</h4>
-        <table>
-          <tbody>
-            <!-- ko foreach:cells-->
-            <tr data-bind="click:navigate" class="flow-pointer">
-              <td width="1" class="flow-right"><span data-bind="text:type, css:{'active':isSelected}"></span></td>
-              <td>
-                <pre data-bind="text:input, attr:{title:input}"></pre>
-              </td>
-            </tr>
-            <!-- /ko-->
-          </tbody>
-        </table>
+      <h4 class="flow-hint"><i class="fa fa-list"></i>Outline</h4>
+      <div class="flow-sidebar-content">
+        <div class="flow-outline">
+          <table>
+            <tbody>
+              <!-- ko foreach:cells-->
+              <tr data-bind="click:navigate" class="flow-pointer">
+                <td width="1" class="flow-right"><span data-bind="text:type, css:{'active':isSelected}"></span></td>
+                <td>
+                  <pre data-bind="text:input, attr:{title:input}"></pre>
+                </td>
+              </tr>
+              <!-- /ko-->
+            </tbody>
+          </table>
+        </div>
       </div>
     </script>
     <script type="text/html" id="flow-browser">
-      <div class="flow-browser">
-        <!-- ko ifnot:hasDocs-->
-        <p>You have no saved notebooks. To save a notebook, click the <i class="fa fa-save"></i>&nbsp;icon, or choose File <i class="fa fa-angle-right"></i>&nbsp;Save from the application menu.</p>
-        <!-- /ko-->
-        <!-- ko if:hasDocs-->
-        <table>
-          <tbody>
-            <!-- ko foreach:docs-->
-            <tr>
-              <td><i class="fa fa-file-o"></i></td>
-              <td>
-                <div><a href="#" data-bind="text:title, click:load"></a>
-                </div>
-                <div data-bind="text:fromNow, attr:{title:date}" class="flow-small"></div>
-              </td>
-              <td><i data-bind="click:purge" class="fa fa-trash-o flow-pointer"></i></td>
-            </tr>
-            <!-- /ko-->
-          </tbody>
-        </table>
-        <!-- /ko-->
-        <div style="margin-top:10px">
-              <button type="button" data-bind="click:loadNotebooks" class="flow-button"><i class="fa fa-refresh"></i><span>Refresh</span>
-              </button>
+      <h4 class="flow-hint"><i class="fa fa-files-o"></i>Flows</h4>
+      <div class="flow-sidebar-content">
+        <div class="flow-browser">
+          <!-- ko ifnot:hasDocs-->
+          <p>You have no saved notebooks. To save a notebook, click the <i class="fa fa-save"></i>&nbsp;icon, or choose File <i class="fa fa-angle-right"></i>&nbsp;Save from the application menu.</p>
+          <!-- /ko-->
+          <!-- ko if:hasDocs-->
+          <table>
+            <tbody>
+              <!-- ko foreach:docs-->
+              <tr>
+                <td><i class="fa fa-file-o"></i></td>
+                <td>
+                  <div><a href="#" data-bind="text:title, click:load"></a>
+                  </div>
+                  <div data-bind="text:fromNow, attr:{title:date}" class="flow-small"></div>
+                </td>
+                <td><i data-bind="click:purge" class="fa fa-trash-o flow-pointer"></i></td>
+              </tr>
+              <!-- /ko-->
+            </tbody>
+          </table>
+          <!-- /ko-->
+          <div style="margin-top:10px">
+                <button type="button" data-bind="click:loadNotebooks" class="flow-button"><i class="fa fa-refresh"></i><span>Refresh</span>
+                </button>
+          </div>
         </div>
       </div>
     </script>
     <script type="text/html" id="flow-clipboard">
-      <div class="flow-clipboard">
-        <h4>My Clips <span data-bind="text:userClipCount"></span></h4>
-        <!-- ko if:hasUserClips-->
-        <div data-bind="template:{ name:'flow-clips', data:userClips }"></div>
-        <!-- /ko-->
-        <!-- ko ifnot:hasUserClips-->
-        <p>You have no clips. To save a clip into this list, click the <i class="fa fa-paperclip"></i>&nbsp; paperclip next to the cell.<br><br>Click on a clip to insert it into your notebook. Click the <i class="fa fa-play-circle"></i>&nbsp;button to insert and execute the clip.</p>
-        <!-- /ko-->
-        <h4>System <span data-bind="text:systemClipCount"></span></h4>
-        <div data-bind="template:{ name:'flow-clips', data:systemClips }"></div>
-        <h4>Trash <span data-bind="text:trashClipCount"></span></h4>
-        <!-- ko if:hasTrashClips-->
-        <div data-bind="template:{ name:'flow-clips', data:trashClips }"></div>
-        <div style="margin-top:10px">
-              <button type="button" data-bind="click:emptyTrash" class="flow-button"><i class="fa fa-trash"></i><span>Empty Trash</span>
-              </button>
+      <h4 class="flow-hint"><i class="fa fa-clipboard"></i>Clipboard</h4>
+      <div class="flow-sidebar-content">
+        <div class="flow-clipboard">
+          <h6>My Clips <span data-bind="text:userClipCount"></span></h6>
+          <!-- ko if:hasUserClips-->
+          <div data-bind="template:{ name:'flow-clips', data:userClips }"></div>
+          <!-- /ko-->
+          <!-- ko ifnot:hasUserClips-->
+          <p>You have no clips. To save a clip into this list, click the <i class="fa fa-paperclip"></i>&nbsp; paperclip next to the cell.<br><br>Click on a clip to insert it into your notebook. Click the <i class="fa fa-play-circle"></i>&nbsp;button to insert and execute the clip.</p>
+          <!-- /ko-->
+          <h6>System <span data-bind="text:systemClipCount"></span></h6>
+          <div data-bind="template:{ name:'flow-clips', data:systemClips }"></div>
+          <h6>Trash <span data-bind="text:trashClipCount"></span></h6>
+          <!-- ko if:hasTrashClips-->
+          <div data-bind="template:{ name:'flow-clips', data:trashClips }"></div>
+          <div style="margin-top:10px">
+                <button type="button" data-bind="click:emptyTrash" class="flow-button"><i class="fa fa-trash"></i><span>Empty Trash</span>
+                </button>
+          </div>
+          <!-- /ko-->
+          <!-- ko ifnot:hasTrashClips-->
+          <p>Trash is empty. Cells that you cut or delete from your notebook appear here.</p>
+          <!-- /ko-->
         </div>
-        <!-- /ko-->
-        <!-- ko ifnot:hasTrashClips-->
-        <p>Trash is empty. Cells that you cut or delete from your notebook appear here.</p>
-        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-clips">
@@ -562,7 +572,6 @@
             <tr>
               <th width="1">&nbsp;</th>
               <th>Name</th>
-              <th>Description</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -571,7 +580,6 @@
             <tr>
               <td><i class="fa fa-table"></i></td>
               <td><a href="#" data-bind="text:label, click:grid"></a></td>
-              <td data-bind="text:description"></td>
               <td>
                 <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span></button>
                 <!-- ko if:canPlot-->
@@ -598,7 +606,7 @@
             </tr>
           </thead>
           <tbody>
-            <!-- ko foreach:variables-->
+            <!-- ko foreach:vectors-->
             <tr>
               <td><i class="fa fa-ellipsis-v"></i>
               </td>
@@ -641,7 +649,7 @@
               <label>X-Axis:</label>
             </th>
             <td>
-              <select data-bind="options:variables, value:x, optionsCaption:'(Select)'"></select>
+              <select data-bind="options:vectors, value:x, optionsCaption:'(Select)'"></select>
             </td>
           </tr>
           <tr>
@@ -649,7 +657,7 @@
               <label>Y-Axis:</label>
             </th>
             <td>
-              <select data-bind="options:variables, value:y, optionsCaption:'(Select)'"></select>
+              <select data-bind="options:vectors, value:y, optionsCaption:'(Select)'"></select>
             </td>
           </tr>
           <tr>
@@ -657,7 +665,7 @@
               <label>Color:</label>
             </th>
             <td>
-              <select data-bind="options:variables, value:color, optionsCaption:'(Select)'"></select>
+              <select data-bind="options:vectors, value:color, optionsCaption:'(Select)'"></select>
             </td>
           </tr>
           <tr>
@@ -679,136 +687,205 @@
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-database"></i>Create a Frame</h3>
         <table class="flow-form">
-          <tr>
-            <th>
-              <label>Destination Key</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:key" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Rows</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:rows" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Columns</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:columns" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Randomize</label>
-            </th>
-            <td>
-              <input type="checkbox" data-bind="checked:randomize">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Seed</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:seed" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Value</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:value" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Factors</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:factors" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Categorical Fraction</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:categoricalFraction" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Integer Fraction</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:integerFraction" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Binary Fraction</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:binaryFraction" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Missing Fraction</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:missingFraction" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Response Factors</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:responseFactors" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Real Range</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:realRange" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
-          <tr>
-            <th>
-              <label>Integer Range</label>
-            </th>
-            <td>
-              <input type="text" data-bind="value:integerRange" class="flow-textbox">
-            </td>
-            <td>(No description available)</td>
-          </tr>
+          <tbody>
+            <tr>
+              <th>
+                <label>Destination Key</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:key" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Rows</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:rows" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Columns</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:columns" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Randomize</label>
+              </th>
+              <td>
+                <input type="checkbox" data-bind="checked:randomize">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Seed</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:seed" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Value</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:value" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Factors</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:factors" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Categorical Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:categoricalFraction" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Integer Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:integerFraction" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Binary Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:binaryFraction" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Missing Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:missingFraction" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Response Factors</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:responseFactors" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Real Range</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:realRange" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Integer Range</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:integerRange" class="flow-textbox">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Has Response?</label>
+              </th>
+              <td>
+                <input type="checkbox" data-bind="checked:hasResponse">
+              </td>
+              <td>(No description available)</td>
+            </tr>
+          </tbody>
         </table>
         <div class="flow-panel">
               <button type="button" data-bind="click:createFrame" class="flow-button"><i class="fa fa-database"></i><span>Create</span>
               </button>
+        </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-split-frame-input">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-scissors"></i>Split Frame</h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th>
+                <label>Frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:frames, value:frame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Splits:</label>
+              </th>
+              <td>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="text-align:left">Ratio</th>
+                      <th>Key</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td data-bind="text:lastSplitRatioText"></td>
+                      <td>
+                        <input type="text" data-bind="value:lastSplitKey" class="flow-textbox">
+                      </td>
+                      <td>&nbsp; </td>
+                    </tr>
+                    <!-- ko foreach:splits-->
+                    <tr>
+                      <td>
+                        <input type="text" data-bind="value:ratioText, valueUpdate:'afterkeydown'" class="flow-textbox">
+                      </td>
+                      <td>
+                        <input type="text" data-bind="value:key" class="flow-textbox">
+                      </td>
+                      <td><span title="Delete this split" data-bind="click:remove" class="flow-pointer"><i class="fa fa-remove"></i></span></td>
+                    </tr>
+                    <!-- /ko-->
+                  </tbody>
+                </table>
+                <div><a data-bind="click:addSplit" class="flow-pointer">Add a split</a></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="flow-panel">
+              <button type="button" data-bind="click:splitFrame" class="flow-button"><i class="fa fa-scissors"></i><span>Create</span>
+              </button>
+          <div style="color:red" data-bind="text:validationMessage"></div>
         </div>
       </div>
     </script>
@@ -893,6 +970,13 @@
                 </td>
                 <!-- /ko-->
               </tr>
+              <tr>
+                <!-- ko foreach:columns-->
+                <td>
+                  <select data-bind="options:$parent.dataTypes, value:type"></select>
+                </td>
+                <!-- /ko-->
+              </tr>
             </thead>
             <tbody>
               <!-- ko foreach:rows-->
@@ -944,6 +1028,7 @@
             </tbody>
           </table>
         </div>
+        <h4>Model Parameters</h4>
         <div data-bind="css:{ 'flow-unhide':isExpanded }">
           <div class="flow-right flow-margin-after">
             <!-- ko ifnot:isExpanded-->
@@ -974,6 +1059,26 @@
             </tbody>
           </table>
         </div>
+        <!-- ko if:output-->
+        <h4>Model Output</h4>
+        <div data-bind="raw:output" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:dlTrainingMetrics-->
+        <h4>Training Metrics</h4>
+        <div data-bind="raw:dlTrainingMetrics" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:dlScoringHistory-->
+        <h4>Scoring History</h4>
+        <div data-bind="raw:dlScoringHistory" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:dlVariableImportancePlot-->
+        <h4>Variable Importance</h4>
+        <div data-bind="raw:dlVariableImportancePlot" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:glmVariableImportancePlot-->
+        <h4>Variable Importance</h4>
+        <div data-bind="raw:glmVariableImportancePlot" class="flow-plot"></div>
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-parse-output">
@@ -1103,7 +1208,7 @@
           <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
         </th>
         <td>
-          <input type="text" data-bind="value:value" class="flow-textbox">
+          <input type="text" data-bind="value:text" class="flow-textbox">
         </td>
         <td><span data-bind="text:description"></span></td>
       </tr>
@@ -1137,13 +1242,13 @@
           <div style="height:25px">
             <input type="text" placeholder="Search..." data-bind="value:availableSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
           </div>
-          <div style="margin-bottom:5px;height:200px;overflow:auto;border:1px dotted #ccc">
+          <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
             <table>
               <tbody>
                 <!-- ko foreach:availableValues-->
                 <tr data-bind="visible:isAvailable() &amp;&amp; canInclude(), click:include" class="flow-pointer">
                   <td><i title="Add" class="fa fa-plus"></i></td>
-                  <td data-bind="text:value"></td>
+                  <td data-bind="text:label"></td>
                 </tr>
                 <!-- /ko-->
               </tbody>
@@ -1160,13 +1265,13 @@
           <div style="height:25px">
             <input type="text" placeholder="Search..." data-bind="value:selectedSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
           </div>
-          <div style="margin-bottom:5px;height:200px;overflow:auto;border:1px dotted #ccc">
+          <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
             <table>
               <tbody>
                 <!-- ko foreach:selectedValues-->
                 <tr data-bind="visible:canExclude, click:exclude" class="flow-pointer">
                   <td><i title="Remove" class="fa fa-remove flow-pointer"></i></td>
-                  <td data-bind="text:value"></td>
+                  <td data-bind="text:label"></td>
                 </tr>
                 <!-- /ko-->
               </tbody>
@@ -1379,35 +1484,55 @@
     <script type="text/html" id="flow-frame-output">
       <div class="flow-widget flow-frame-output">
         <h3 class="flow-hint"><i class="fa fa-database"></i><span data-bind="text:key"></span></h3>
-        <table class="flow-form">
-          <tbody>
-            <tr>
-              <th width="1">Actions:</th>
-              <td>
-                    <button type="button" data-bind="click:inspectData" class="flow-button"><i class="fa fa-list"></i><span>View Data</span>
-                    </button>
-                    <button type="button" data-bind="click:createModel" class="flow-button"><i class="fa fa-cube"></i><span>Build Model&hellip;</span>
-                    </button>
-                    <button type="button" data-bind="click:predict" class="flow-button"><i class="fa fa-bolt"></i><span>Predict</span>
-                    </button>
-                    <button type="button" data-bind="click:download" class="flow-button"><i class="fa fa-cloud-download"></i><span>Download</span>
-                    </button>
-              </td>
-              <td class="flow-right">
-                    <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
-                    </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="flow-margin-after">
+          <table class="flow-form">
+            <tbody>
+              <tr>
+                <th width="1">Actions:</th>
+                <td>
+                      <button type="button" data-bind="click:inspectData" class="flow-button"><i class="fa fa-list"></i><span>View Data</span>
+                      </button>
+                      <button type="button" data-bind="click:createModel" class="flow-button"><i class="fa fa-cube"></i><span>Build Model&hellip;</span>
+                      </button>
+                      <button type="button" data-bind="click:predict" class="flow-button"><i class="fa fa-bolt"></i><span>Predict</span>
+                      </button>
+                      <button type="button" data-bind="click:download" class="flow-button"><i class="fa fa-cloud-download"></i><span>Download</span>
+                      </button>
+                </td>
+                <td class="flow-right">
+                      <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
+                      </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flow-margin-after">
+          <table class="flow-form flow-form-ruled">
+            <thead>
+              <tr>
+                <th>&nbsp;</th>
+                <th>Columns</th>
+                <th>Rows</th>
+                <th>Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>&nbsp;</td>
+                <td data-bind="text:columnCount"></td>
+                <td data-bind="text:rowCount"></td>
+                <td data-bind="text:size"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div data-bind="raw:grid" class="flow-plot"></div>
       </div>
     </script>
     <script type="text/html" id="flow-column-summary-output">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-pie-chart"></i>Summary: <span data-bind="text:label"></span></h3>
-        <h4>Characteristics</h4>
-        <div data-bind="raw:characteristicsPlot" class="flow-plot"></div>
         <table class="flow-form">
           <tbody>
             <tr>
@@ -1419,6 +1544,22 @@
             </tr>
           </tbody>
         </table>
+        <!-- ko if:characteristicsPlot-->
+        <h4>Characteristics</h4>
+        <div data-bind="raw:characteristicsPlot" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:summaryPlot-->
+        <h4>Summary</h4>
+        <div data-bind="raw:summaryPlot" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:distributionPlot-->
+        <h4>Distribution</h4>
+        <div data-bind="raw:distributionPlot" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:domainPlot-->
+        <h4>Domain (Top 15)</h4>
+        <div data-bind="raw:domainPlot" class="flow-plot"></div>
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-job-output">
@@ -1468,6 +1609,10 @@
                         </div>
                       </td>
                     </tr>
+                    <tr>
+                      <td class="flow-narrow">&nbsp;</td>
+                      <td data-bind="text:progressMessage" class="flow-wide"></td>
+                    </tr>
                   </tbody>
                 </table>
               </td>
@@ -1476,12 +1621,7 @@
               <th class="flow-narrow">Actions</th>
               <td class="flow-wide">
                 <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-search"></i>View</button>
-                <button type="button" data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }" class="flow-button">
-                  <!-- ko if:isLive--><i class="fa fa-refresh fa-spin"></i><span>Stop</span>
-                  <!-- /ko-->
-                  <!-- ko ifnot:isLive--><i class="fa fa-refresh"></i><span>Refresh</span>
-                  <!-- /ko-->
-                </button>
+                <button type="button" data-bind="click:cancel, visible:canCancel" class="flow-button"><i class="fa fa-ban"></i>Cancel Job</button>
               </td>
             </tr>
           </tbody>
@@ -1587,14 +1727,6 @@
             </h3>
         <table class="flow-form">
           <tbody>
-            <!-- ko with:predictionTable-->
-            <!-- ko foreach:rows-->
-            <tr>
-              <th data-bind="text:parameter"></th>
-              <td data-bind="text:value"></td>
-            </tr>
-            <!-- /ko-->
-            <!-- /ko-->
             <tr>
               <th width="1">
                 <label>Actions:</label>
@@ -1608,6 +1740,12 @@
             </tr>
           </tbody>
         </table>
+        <!-- ko if:isBinomial-->
+        <h4>Output</h4>
+        <div data-bind="raw:predictionRecord" class="flow-plot"></div>
+        <h4>ROC Curve</h4>
+        <div data-bind="raw:rocCurve" class="flow-plot"> </div>
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-cloud-output">
@@ -1721,9 +1859,26 @@
     <script type="text/html" id="flow-log-file-output">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-file-text-o"></i><span>Log</span></h3>
-        <div>Select Node: 
-          <select data-bind="options:nodes, optionsText:'name', value:activeNode, optionsCaption:'(Select)'"></select>
-        </div>
+        <table style="width:auto" class="flow-form">
+          <tbody>
+            <tr>
+              <th>
+                <label>Select Log File Type:</label>
+              </th>
+              <td>
+                <select data-bind="options:fileTypes, value:activeFileType"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Select Node: </label>
+              </th>
+              <td>
+                <select data-bind="options:nodes, optionsText:'name', value:activeNode"></select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <pre data-bind="text:contents"></pre>
       </div>
     </script>

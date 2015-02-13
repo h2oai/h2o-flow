@@ -1,15 +1,15 @@
-H2O.InspectOutput = (_, _table) ->
+H2O.InspectOutput = (_, _frame) ->
   
   view = ->
-    _.insertAndExecuteCell 'cs', "grid inspect #{stringify _table.label}, #{_table.meta.origin}"
+    _.insertAndExecuteCell 'cs', "grid inspect #{stringify _frame.label}, #{_frame.metadata.origin}"
 
   plot = ->
-    _.insertAndExecuteCell 'cs', _table.meta.plot
+    _.insertAndExecuteCell 'cs', _frame.metadata.plot
 
-  label: _table.label
-  variables: _table.variables
+  label: _frame.label
+  vectors: _frame.vectors
   view: view
-  canPlot: if _table.meta.plot then yes else no
+  canPlot: if _frame.metadata.plot then yes else no
   plot: plot
   template: 'flow-inspect-output'
 

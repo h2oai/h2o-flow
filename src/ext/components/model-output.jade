@@ -19,6 +19,7 @@
             +button('Clone this model&hellip;', 'copy', 'cloneModel')
             +button('Inspect', 'list', 'inspect')
       
+  h4 Model Parameters
   div(data-bind="css:{ 'flow-unhide':isExpanded }")
     .flow-right.flow-margin-after 
       // ko ifnot:isExpanded
@@ -40,3 +41,28 @@
           td(data-bind='text:value')
           td(data-bind='text:help')
         // /ko
+
+  // ko if:output
+  h4 Model Output
+  .flow-plot(data-bind='raw:output')
+  // /ko
+
+  // ko if:dlTrainingMetrics
+  h4 Training Metrics
+  .flow-plot(data-bind='raw:dlTrainingMetrics')
+  // /ko
+
+  // ko if:dlScoringHistory
+  h4 Scoring History
+  .flow-plot(data-bind='raw:dlScoringHistory')
+  // /ko
+
+  // ko if:dlVariableImportancePlot
+  h4 Variable Importance
+  .flow-plot(data-bind='raw:dlVariableImportancePlot')
+  // /ko
+
+  // ko if:glmVariableImportancePlot
+  h4 Variable Importance
+  .flow-plot(data-bind='raw:glmVariableImportancePlot')
+  // /ko

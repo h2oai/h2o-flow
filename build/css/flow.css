@@ -458,12 +458,24 @@ table.flow-form-ruled tr:first-child {
   margin: 10px 0 20px 0;
   font-size: 85%;
 }
-.flow-plot table tbody > tr:nth-child(odd) {
+.flow-plot table tr:nth-child(odd) {
   background-color: #eee;
 }
 .flow-plot table td,
 .flow-plot table th {
   padding: 2px 5px;
+}
+.flow-plot .lightning-tooltip table {
+  font-family: monospace !important;
+  margin: 0 !important;
+  font-size: 100% !important;
+}
+.flow-plot .lightning-tooltip table tr:nth-child(odd) {
+  background-color: inherit !important;
+}
+.flow-plot .lightning-tooltip table td,
+.flow-plot .lightning-tooltip table th {
+  padding: 0px 4px !important;
 }
 .flow-plot table.flow-matrix {
   margin: 0;
@@ -551,9 +563,20 @@ table.flow-form-ruled tr:first-child {
   right: 0;
   bottom: 0;
   left: 0;
-  overflow: auto;
 }
 .flow-sidebar .flow-sidebar-body > div {
+  padding: 10px;
+}
+.flow-sidebar .flow-sidebar-body .flow-sidebar-content {
+  overflow: auto;
+  position: absolute;
+  display: block;
+  top: 45px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+.flow-sidebar .flow-sidebar-body .flow-sidebar-content > div {
   padding: 10px;
 }
 .flow-browser p {
@@ -628,6 +651,47 @@ table.flow-form-ruled tr:first-child {
 .flow-clipboard .fa-trash-o:hover,
 .flow-outline .fa-trash-o:hover {
   color: #f00;
+}
+.flow-help mark {
+  display: inline-block;
+  font-size: 10px;
+  text-transform: uppercase;
+  padding: 0 6px;
+  background: #faf185;
+}
+.flow-help ul {
+  padding: 0 0 0 20px;
+}
+.flow-help h5 {
+  font-weight: 300;
+  font-size: 18px;
+  color: #999;
+}
+.flow-help h6 {
+  font-size: 10px;
+  text-transform: uppercase;
+  border-bottom: 1px dotted #aaa;
+  margin-top: 25px;
+}
+.flow-help small {
+  color: #999;
+}
+.flow-help-toolbar {
+  position: absolute;
+  top: 17px;
+  right: 10px;
+}
+.flow-help-toolbar .flow-help-toolbar-button {
+  display: inline-block;
+  margin-left: 10px;
+  color: #ccc;
+}
+.flow-help-toolbar a.flow-help-toolbar-button {
+  cursor: pointer;
+  color: #999;
+}
+.flow-help-toolbar a.flow-help-toolbar-button:hover {
+  color: #777;
 }
 .flow-outline pre {
   max-width: 240px;

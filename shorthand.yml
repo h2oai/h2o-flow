@@ -213,6 +213,10 @@ indexBy:
 countBy:
   type: qualify
   object: lodash
+sequence:
+  type: qualify
+  object: lodash
+  property: range
 shuffle:
   type: qualify
   object: lodash

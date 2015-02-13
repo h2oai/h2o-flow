@@ -303,6 +303,14 @@ Flow.Notebook = (_, _renderers) ->
   displayAbout = ->
     $('#aboutDialog').modal()
 
+  shutdown = ->
+    _.requestShutdown (error, result) ->
+      if error
+        _.growl "Shutdown failed: #{error.message}", 'danger'
+      else
+        _.growl 'Shutdown complete!', 'warning'
+
+
   showHelp = ->
     _isSidebarHidden no
     _.showHelp()
@@ -348,13 +356,16 @@ Flow.Notebook = (_, _renderers) ->
     label: label
     items: items
 
+  createMenuHeader = (label) ->
+    label: label
+    action: null
+
   createMenuItem = (label, action, isDisabled=no) ->
     label: label
     action: action
-    isAction: yes
     isDisabled: isDisabled
 
-  menuDivider = isAction: no
+  menuDivider = label: null, action: null
 
   _menus = [
     createMenu 'Flow', [
@@ -431,14 +442,15 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Jobs', executeCommand 'getJobs'
       createMenuItem 'Water Meter (CPU meter)', goToUrl '/perfbar.html'
       menuDivider
-      createMenuItem '(Logs)', ->
+      createMenuHeader 'Logs'
       createMenuItem 'View Log', executeCommand 'getLogFile'
       createMenuItem 'Download Logs', goToUrl '/Logs/download'
       menuDivider
-      createMenuItem '(Advanced Debugging)', ->
+      createMenuHeader 'Advanced'
       createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
       createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
       createMenuItem 'Timeline', executeCommand 'getTimeline'
+      createMenuItem 'Shut Down', shutdown
     ]
   ,
     createMenu 'Help', [
@@ -555,8 +567,8 @@ Flow.Notebook = (_, _renderers) ->
   ]
   
   toKeyboardHelp = (shortcut) ->
-    [ sequence, caption ] = shortcut
-    keystrokes = join (map (split sequence, /\+/g), (key) -> "<kbd>#{key}</kbd>"), ' '
+    [ seq, caption ] = shortcut
+    keystrokes = join (map (split seq, /\+/g), (key) -> "<kbd>#{key}</kbd>"), ' '
     keystrokes: keystrokes
     caption: caption
 
@@ -586,6 +598,8 @@ Flow.Notebook = (_, _renderers) ->
 
     link _.insertCell, (type, input) ->
       defer insertCellBelow, type, input
+
+    _.setDirty() #TODO setPristine() when autosave is implemented.
 
   link _.ready, initialize
 

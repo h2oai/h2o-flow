@@ -16,16 +16,20 @@ H2O.Proxy = (_) ->
     req.fail (xhr, status, error) ->
       _.status 'server', 'error', path
 
-      message = if xhr.responseJSON?.errmsg
-        xhr.responseJSON.errmsg
+      response = xhr.responseJSON
+      
+      cause = if response?.exception_msg
+        serverError = new Flow.Error response.exception_msg
+        serverError.stack = "#{response.dev_msg} (#{response.exception_type})" + "\n  " + response.stacktrace.join "\n  "
+        serverError
       else if error?.message
-        error.message
+        new Flow.Error error.message
       else if status is 0
-        'Could not connect to H2O'
+        new Flow.Error 'Could not connect to H2O'
       else
-        'Unknown error'
+        new Flow.Error 'Unknown error'
 
-      go new Flow.Error message, new Flow.Error if opts then "Error calling POST #{path} with opts #{JSON.stringify opts}" else "Error calling GET #{path}"
+      go new Flow.Error (if opts then "Error calling POST #{path} with opts #{JSON.stringify opts}" else "Error calling GET #{path}"), cause
 
   doGet = (path, go) -> http path, null, go
   doPost = http
@@ -46,7 +50,7 @@ H2O.Proxy = (_) ->
   requestWithOpts = (path, opts, go) ->
     doGet (composePath path, opts), go
 
-  encodeArray = (array) -> "[#{join (map array, encodeURIComponent), ','}]"
+  encodeArrayForPost = (array) -> if array.length is 0 then null else "[#{join (map array, (element) -> if isNumber element then element else "\"#{element}\""), ','}]"
 
   encodeObject = (source) ->
     target = {}
@@ -54,12 +58,25 @@ H2O.Proxy = (_) ->
       target[k] = encodeURIComponent v
     target
 
+  encodeObjectForPost = (source) ->
+    target = {}
+    for k, v of source
+      target[k] = if isArray v then encodeArrayForPost v else v
+    target
+
   requestInspect = (key, go) ->
     opts = key: encodeURIComponent key
-    requestWithOpts '/Inspect.json', opts, go
+    requestWithOpts '/1/Inspect.json', opts, go
 
   requestCreateFrame = (opts, go) ->
-    requestWithOpts '/2/CreateFrame.json', (encodeObject opts), go
+    doPost '/2/CreateFrame.json', opts, go
+
+  requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
+    opts =
+      dataset: frameKey
+      ratios: encodeArrayForPost splitRatios
+      destKeys: encodeArrayForPost splitKeys
+    doPost '/2/SplitFrame.json', opts, go
 
   requestFrames = (go) ->
     doGet '/3/Frames.json', (error, result) ->
@@ -83,7 +100,7 @@ H2O.Proxy = (_) ->
         go null, head result.frames
 
   requestJobs = (go) ->
-    doGet '/3/Jobs.json', (error, result) ->
+    doGet '/2/Jobs.json', (error, result) ->
       if error
         go new Flow.Error 'Error fetching jobs', error
       else
@@ -92,17 +109,25 @@ H2O.Proxy = (_) ->
   requestJob = (key, go) ->
     #opts = key: encodeURIComponent key
     #requestWithOpts '/Job.json', opts, go
-    doGet "/3/Jobs.json/#{encodeURIComponent key}", (error, result) ->
+    doGet "/2/Jobs.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go new Flow.Error "Error fetching job '#{key}'", error
       else
         go null, head result.jobs
 
+  requestCancelJob = (key, go) ->
+    doPost "/2/Jobs.json/#{encodeURIComponent key}/cancel", {}, (error, result) ->
+      if error
+        go new Flow.Error "Error canceling job '#{key}'", error
+      else
+        debug result
+        go null
+
   requestFileGlob = (path, limit, go) ->
     opts =
       src: encodeURIComponent path
       limit: limit
-    requestWithOpts '/Typeahead.json/files', opts, go
+    requestWithOpts '/2/Typeahead.json/files', opts, go
 
   requestImportFiles = (paths, go) ->
     tasks = map paths, (path) ->
@@ -112,26 +137,27 @@ H2O.Proxy = (_) ->
 
   requestImportFile = (path, go) ->
     opts = path: encodeURIComponent path
-    requestWithOpts '/ImportFiles.json', opts, go
+    requestWithOpts '/2/ImportFiles.json', opts, go
 
   requestParseSetup = (sources, go) ->
-    encodedPaths = map sources, encodeURIComponent
     opts =
-      srcs: "[#{join encodedPaths, ','}]"
-    requestWithOpts '/ParseSetup.json', opts, go
+      srcs: encodeArrayForPost sources
+    doPost '/2/ParseSetup.json', opts, go
 
-  requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, deleteOnDone, checkHeader, go) ->
+  requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     opts =
-      hex: encodeURIComponent destinationKey
-      srcs: encodeArray sourceKeys
+      hex: destinationKey
+      srcs: encodeArrayForPost sourceKeys
       pType: parserType
       sep: separator
       ncols: columnCount
       singleQuotes: useSingleQuotes
-      columnNames: encodeArray columnNames
+      columnNames: encodeArrayForPost columnNames
+      columnTypes: encodeArrayForPost columnTypes
       checkHeader: checkHeader
       delete_on_done: deleteOnDone
-    requestWithOpts '/Parse.json', opts, go
+      chunkSize: chunkSize
+    doPost '/2/Parse.json', opts, go
 
   patchUpModels = (models) ->
     for model in models
@@ -159,16 +185,16 @@ H2O.Proxy = (_) ->
         go error, head patchUpModels result.models
 
   requestModelBuilders = (go) ->
-    doGet "/2/ModelBuilders.json", go
+    doGet "/3/ModelBuilders.json", go
 
   requestModelBuilder = (algo, go) ->
-    doGet "/2/ModelBuilders.json/#{algo}", go
+    doGet "/3/ModelBuilders.json/#{algo}", go
 
   requestModelInputValidation = (algo, parameters, go) ->
-    doPost "/2/ModelBuilders.json/#{algo}/parameters", parameters, go
+    doPost "/3/ModelBuilders.json/#{algo}/parameters", (encodeObjectForPost parameters), go
 
   requestModelBuild = (algo, parameters, go) ->
-    doPost "/2/ModelBuilders.json/#{algo}", parameters, go
+    doPost "/3/ModelBuilders.json/#{algo}", (encodeObjectForPost parameters), go
 
   requestPredict = (modelKey, frameKey, go) ->
     doPost "/3/Predictions.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", {}, (error, result) ->
@@ -193,9 +219,9 @@ H2O.Proxy = (_) ->
         # TODO workaround for a filtering bug in the API
         # 
         predictions = for prediction in result.model_metrics
-          if modelKey and prediction.model.key isnt modelKey
+          if modelKey and prediction.model.name isnt modelKey
             null
-          else if frameKey and prediction.frame.key.name isnt frameKey
+          else if frameKey and prediction.frame.name isnt frameKey
             null
           else
             prediction
@@ -223,35 +249,52 @@ H2O.Proxy = (_) ->
     go null, Flow.LocalStorage.write type, id, obj
 
   requestCloud = (go) ->
-    doGet '/3/Cloud.json', go
+    doGet '/1/Cloud.json', go
 
   requestTimeline = (go) ->
-    doGet '/3/Timeline.json', go
+    doGet '/2/Timeline.json', go
 
   requestProfile = (depth, go) ->
-    doGet "/3/Profiler.json?depth=#{depth}", go
+    doGet "/2/Profiler.json?depth=#{depth}", go
 
   requestStackTrace = (go) ->
-    doGet '/3/JStack.json', go
+    doGet '/2/JStack.json', go
 
   requestRemoveAll = (go) ->
     doGet '/3/RemoveAll.json', go
 
-  requestLogFile = (nodeIndex, go) ->
-    doGet "/3/Logs.json/nodes/#{nodeIndex}/files/default", go
+  requestLogFile = (nodeIndex, fileType, go) ->
+    doGet "/3/Logs.json/nodes/#{nodeIndex}/files/#{fileType}", go
 
   requestAbout = (go) ->
     doGet '/3/About.json', go
+
+  requestShutdown = (go) ->
+    doPost "/2/Shutdown", {}, go
+
+  requestEndpoints = (go) ->
+    doGet '/1/Metadata/endpoints.json', go
+
+  requestEndpoint = (index, go) ->
+    doGet "/1/Metadata/endpoints.json/#{index}", go
+
+  requestSchemas = (go) ->
+    doGet '/1/Metadata/schemas.json', go
+
+  requestSchema = (name, go) ->
+    doGet "/1/Metadata/schemas.json/#{encodeURIComponent name}", go
 
   link _.requestGet, doGet
   link _.requestPost, doPost
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
+  link _.requestSplitFrame, requestSplitFrame
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
   link _.requestColumnSummary, requestColumnSummary
   link _.requestJobs, requestJobs
   link _.requestJob, requestJob
+  link _.requestCancelJob, requestCancelJob
   link _.requestFileGlob, requestFileGlob
   link _.requestImportFiles, requestImportFiles
   link _.requestImportFile, requestImportFile
@@ -277,5 +320,10 @@ H2O.Proxy = (_) ->
   link _.requestRemoveAll, requestRemoveAll
   link _.requestLogFile, requestLogFile
   link _.requestAbout, requestAbout
+  link _.requestShutdown, requestShutdown
+  link _.requestEndpoints, requestEndpoints
+  link _.requestEndpoint, requestEndpoint
+  link _.requestSchemas, requestSchemas
+  link _.requestSchema, requestSchema
 
 

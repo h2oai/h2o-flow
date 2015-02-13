@@ -1,6 +1,6 @@
 {
   "name": "h2o-flow",
-  "version": "0.2.27",
+  "version": "0.2.48",
   "homepage": "https://github.com/h2oai/h2o-flow",
   "authors": [
     "Prithvi Prabhu <prithvi@h2o.ai>"
@@ -46,8 +46,8 @@
     "highlight": "~7.0.1",
     "bootstrap": "~3.2.0",
     "knockoutjs": "~3.2.0",
+    "chroma-js": "~0.6.1",
     "stacktrace-js": "~0.6.2",
-    "vega": "~1.4.2",
     "node-uuid": "~1.4.1"
   }
 }
