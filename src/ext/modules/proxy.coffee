@@ -50,7 +50,14 @@ H2O.Proxy = (_) ->
   requestWithOpts = (path, opts, go) ->
     doGet (composePath path, opts), go
 
-  encodeArrayForPost = (array) -> if array.length is 0 then null else "[#{join (map array, (element) -> if isNumber element then element else "\"#{element}\""), ','}]"
+  encodeArrayForPost = (array) -> 
+    if array
+      if array.length is 0
+        null 
+      else 
+        "[#{join (map array, (element) -> if isNumber element then element else "\"#{element}\""), ','}]"
+    else
+      null
 
   encodeObject = (source) ->
     target = {}
