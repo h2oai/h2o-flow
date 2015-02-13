@@ -1081,6 +1081,14 @@
         <h4>Variable Importance</h4>
         <div data-bind="raw:glmVariableImportancePlot" class="flow-plot"></div>
         <!-- /ko-->
+        <!-- ko if:gbmVariableImportancePlot-->
+        <h4>Variable Importance</h4>
+        <div data-bind="raw:gbmVariableImportancePlot" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- ko if:gbmTrees-->
+        <h4>Trees</h4>
+        <div data-bind="raw:gbmTrees" class="flow-plot"></div>
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-parse-output">

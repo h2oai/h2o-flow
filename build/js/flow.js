@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.50';
+    FLOW_VERSION = '0.2.51';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -3404,8 +3404,8 @@
         }
     };
     purgeAll = function (type) {
-        var i, key, _i, _len;
-        lodash.keys = function () {
+        var allKeys, i, key, _i, _len;
+        allKeys = function () {
             var _i, _ref, _results;
             _results = [];
             for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
@@ -3413,8 +3413,8 @@
             }
             return _results;
         }();
-        for (_i = 0, _len = lodash.keys.length; _i < _len; _i++) {
-            key = lodash.keys[_i];
+        for (_i = 0, _len = allKeys.length; _i < _len; _i++) {
+            key = allKeys[_i];
             if (type === lodash.head(key.split(':'))) {
                 _ls.removeItem(key);
             }
@@ -4829,10 +4829,21 @@
             return inspect_(model, inspections);
         };
         extendGBMModel = function (model) {
-            return inspect_(model, {
-                parameters: inspectModelParameters(model),
-                output: inspectGBMModelOutput(model)
-            });
+            var inspections, origin, variableImportances;
+            origin = 'getModel ' + Flow.Prelude.stringify(model.key.name);
+            inspections = {};
+            inspections.parameters = inspectModelParameters(model);
+            inspections.output = inspectGBMModelOutput(model);
+            if (variableImportances = model.output.variableImportances) {
+                inspections[variableImportances.name] = function () {
+                    return convertTableToFrame(variableImportances, {
+                        description: variableImportances.name,
+                        origin: origin,
+                        plot: 'plot inspect \'' + variableImportances.name + '\', ' + origin
+                    });
+                };
+            }
+            return inspect_(model, inspections);
         };
         extendGLMModel = function (model) {
             var inspections;
@@ -7865,13 +7876,15 @@
 }.call(this));
 (function () {
     H2O.ModelOutput = function (_, _model) {
-        var cloneModel, inspect, predict, renderPlot, table, toggle, _dlScoringHistory, _dlTrainingMetrics, _dlVariableImportancePlot, _glmVariableImportancePlot, _inputParameters, _isExpanded, _output;
+        var cloneModel, inspect, predict, renderPlot, table, toggle, _dlScoringHistory, _dlTrainingMetrics, _dlVariableImportancePlot, _gbmTrees, _gbmVariableImportancePlot, _glmVariableImportancePlot, _inputParameters, _isExpanded, _output;
         _isExpanded = Flow.Dataflow.signal(false);
         _output = Flow.Dataflow.signal(null);
         _glmVariableImportancePlot = Flow.Dataflow.signal(null);
         _dlScoringHistory = Flow.Dataflow.signal(null);
         _dlTrainingMetrics = Flow.Dataflow.signal(null);
         _dlVariableImportancePlot = Flow.Dataflow.signal(null);
+        _gbmTrees = Flow.Dataflow.signal(null);
+        _gbmVariableImportancePlot = Flow.Dataflow.signal(null);
         _inputParameters = lodash.map(_model.parameters, function (parameter) {
             var actual_value, default_value, help, label, type, value;
             type = parameter.type, default_value = parameter.default_value, actual_value = parameter.actual_value, label = parameter.label, help = parameter.help;
@@ -7946,6 +7959,18 @@
                     return g(g.rect(g.position('Relative Importance', 'Variable')), g.from(table), g.limit(25));
                 }));
             }
+            break;
+        case 'gbm':
+            if (table = _.inspect('output', _model)) {
+                renderPlot(_gbmTrees, _.plot(function (g) {
+                    return g(g.table(), g.from(table));
+                }));
+            }
+            if (table = _.inspect('Variable Importances', _model)) {
+                renderPlot(_gbmVariableImportancePlot, _.plot(function (g) {
+                    return g(g.rect(g.position('Relative Importance', 'Variable')), g.from(table), g.limit(25));
+                }));
+            }
         }
         toggle = function () {
             return _isExpanded(!_isExpanded());
@@ -7968,6 +7993,8 @@
             dlTrainingMetrics: _dlTrainingMetrics,
             dlVariableImportancePlot: _dlVariableImportancePlot,
             glmVariableImportancePlot: _glmVariableImportancePlot,
+            gbmTrees: _gbmTrees,
+            gbmVariableImportancePlot: _gbmVariableImportancePlot,
             isExpanded: _isExpanded,
             toggle: toggle,
             cloneModel: cloneModel,
@@ -8655,8 +8682,8 @@
             return _results;
         };
         collectKeys = function () {
-            var entry;
-            lodash.keys = function () {
+            var entry, splitKeys;
+            splitKeys = function () {
                 var _i, _len, _ref, _results;
                 _ref = _splits();
                 _results = [];
@@ -8666,8 +8693,8 @@
                 }
                 return _results;
             }();
-            lodash.keys.push(_lastSplitKey().trim());
-            return lodash.keys;
+            splitKeys.push(_lastSplitKey().trim());
+            return splitKeys;
         };
         updateLastSplit = function () {
             var ratio, totalRatio, _i, _len, _ref;
