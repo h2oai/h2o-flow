@@ -42,38 +42,9 @@
           td(data-bind='text:help')
         // /ko
 
-  // ko if:output
-  h4 Model Output
-  .flow-plot(data-bind='raw:output')
-  // /ko
-
-  // ko if:dlTrainingMetrics
-  h4 Training Metrics
-  .flow-plot(data-bind='raw:dlTrainingMetrics')
-  // /ko
-
-  // ko if:dlScoringHistory
-  h4 Scoring History
-  .flow-plot(data-bind='raw:dlScoringHistory')
-  // /ko
-
-  // ko if:dlVariableImportancePlot
-  h4 Variable Importance
-  .flow-plot(data-bind='raw:dlVariableImportancePlot')
-  // /ko
-
-  // ko if:glmVariableImportancePlot
-  h4 Variable Importance
-  .flow-plot(data-bind='raw:glmVariableImportancePlot')
-  // /ko
-
-  // ko if:gbmVariableImportancePlot
-  h4 Variable Importance
-  .flow-plot(data-bind='raw:gbmVariableImportancePlot')
-  // /ko
-
-  // ko if:gbmTrees
-  h4 Trees
-  .flow-plot(data-bind='raw:gbmTrees')
+  
+  // ko foreach:plots
+  h4(data-bind='text:title')
+  .flow-plot(data-bind='raw:plot')
   // /ko
 

@@ -1,12 +1,6 @@
 H2O.ModelOutput = (_, _model) ->
   _isExpanded = signal no
-  _output = signal null
-  _glmVariableImportancePlot = signal null
-  _dlScoringHistory = signal null
-  _dlTrainingMetrics = signal null
-  _dlVariableImportancePlot = signal null
-  _gbmTrees = signal null
-  _gbmVariableImportancePlot = signal null
+  _plots = signals []
 
   #TODO use _.enumerate()
   _inputParameters = map _model.parameters, (parameter) ->
@@ -27,20 +21,24 @@ H2O.ModelOutput = (_, _model) ->
     help: help
     isModified: default_value is actual_value
 
-  renderPlot = (target, render) ->
+  renderPlot = (title, render) ->
+    container = signal null
+
     render (error, vis) ->
       if error
         debug error
       else
-        target vis.element
+        container vis.element
+
+    _plots.push title: title, plot: container
 
   if table = _.inspect 'output', _model
-    renderPlot _output, _.enumerate table
+    renderPlot 'Output', _.enumerate table
 
   switch _model.algo
     when 'glm'
       if table = _.inspect 'Normalized Coefficient Magnitudes', _model
-        renderPlot _glmVariableImportancePlot, _.plot (g) ->
+        renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
           g(
             g.rect(
               g.position 'Magnitude', 'Column'
@@ -50,21 +48,28 @@ H2O.ModelOutput = (_, _model) ->
           )
     when 'deeplearning'
       if table = _.inspect 'Scoring History', _model
-        renderPlot _dlScoringHistory, _.plot (g) ->
+        renderPlot 'Scoring History', _.plot (g) ->
           g(
             g.table()
             g.from table
           )
 
       if table = _.inspect 'Training Metrics', _model
-        renderPlot _dlTrainingMetrics, _.plot (g) ->
+        renderPlot 'Training Metrics', _.plot (g) ->
+          g(
+            g.table()
+            g.from table
+          )
+
+      if table = _.inspect 'Status of Neuron Layers', _model
+        renderPlot 'Status of Neuron Layers', _.plot (g) ->
           g(
             g.table()
             g.from table
           )
 
       if table = _.inspect 'Variable Importances', _model
-        renderPlot _dlVariableImportancePlot, _.plot (g) ->
+        renderPlot 'Variable Importances', _.plot (g) ->
           g(
             g.rect(
               g.position 'Relative Importance', 'Variable'
@@ -75,14 +80,14 @@ H2O.ModelOutput = (_, _model) ->
 
     when 'gbm'
       if table = _.inspect 'output', _model
-        renderPlot _gbmTrees, _.plot (g) ->
+        renderPlot 'Output', _.plot (g) ->
           g(
             g.table()
             g.from table
           )
 
       if table = _.inspect 'Variable Importances', _model
-        renderPlot _gbmVariableImportancePlot, _.plot (g) ->
+        renderPlot 'Variable Importances', _.plot (g) ->
           g(
             g.rect(
               g.position 'Relative Importance', 'Variable'
@@ -106,14 +111,8 @@ H2O.ModelOutput = (_, _model) ->
 
   key: _model.key
   algo: _model.algo
+  plots: _plots
   inputParameters: _inputParameters
-  output: _output
-  dlScoringHistory: _dlScoringHistory
-  dlTrainingMetrics: _dlTrainingMetrics
-  dlVariableImportancePlot: _dlVariableImportancePlot
-  glmVariableImportancePlot: _glmVariableImportancePlot
-  gbmTrees: _gbmTrees
-  gbmVariableImportancePlot: _gbmVariableImportancePlot
   isExpanded: _isExpanded
   toggle: toggle
   cloneModel: cloneModel
