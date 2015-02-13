@@ -12,10 +12,10 @@ H2O.SplitFrameInput = (_, frameKey) ->
       entry.ratio()
 
   collectKeys = ->
-    keys = for entry in _splits()
+    splitKeys = for entry in _splits()
       entry.key().trim()
-    keys.push _lastSplitKey().trim()
-    keys
+    splitKeys.push _lastSplitKey().trim()
+    splitKeys
 
   updateLastSplit = ->
     totalRatio = 0

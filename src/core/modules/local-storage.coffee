@@ -31,10 +31,10 @@ purge = (type, id) ->
     purgeAll type
 
 purgeAll = (type) ->
-  keys = for i in [ 0 ... _ls.length ]
+  allKeys = for i in [ 0 ... _ls.length ]
     _ls.key i
 
-  for key in keys when type is head key.split ':'
+  for key in allKeys when type is head key.split ':'
     _ls.removeItem key
   return
 
