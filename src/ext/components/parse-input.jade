@@ -60,14 +60,16 @@
     table.flow-form.flow-monospace
       thead
         tr
-          // ko foreach:columns
+          // ko if:hasColumnNames
+          // ko foreach:columnNames
           td(style='min-width:100px')
-            input.flow-textbox(type='textbox' data-bind="value:name, attr:{'title':name}")
+            input.flow-textbox(type='textbox' data-bind="value:$data, attr:{'title':$data}")
+          // /ko
           // /ko
         tr
-          // ko foreach:columns
+          // ko foreach:columnTypes
           td
-            select(data-bind="options:$parent.dataTypes, value:type")
+            select(data-bind="options:$parent.dataTypes, value:$data")
           // /ko
 
       tbody

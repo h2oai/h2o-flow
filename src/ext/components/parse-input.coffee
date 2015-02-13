@@ -67,11 +67,11 @@ H2O.SetupParseOutput = (_, _result) ->
   _parserType =  signal find parserTypes, (parserType) -> parserType.type is _result.pType
   _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
   _useSingleQuotes = signal _result.singleQuotes
-  _columns = for columnName, columnIndex in _result.columnNames
-    name: signal columnName
-    type: signal _result.columnTypes[columnIndex]
-  _rows = _result.data
   _columnCount = _result.ncols
+  _hasColumnNames = if _result.columnNames then yes else no
+  _columnNames = if _hasColumnNames then (signal columnName for columnName in _result.columnNames)  else null
+  _columnTypes = (signal columnType for columnType in _result.columnTypes)
+  _rows = _result.data
   _hasColumns = _columnCount > 0
   _destinationKey = signal _result.hexName
   _headerOptions = auto: 0, header: 1, data: -1
@@ -80,8 +80,8 @@ H2O.SetupParseOutput = (_, _result) ->
   _chunkSize = _result.chunkSize
 
   parseFiles = ->
-    columnNames = map _columns, (column) -> column.name()
-    columnTypes = map _columns, (column) -> column.type()
+    columnNames = if _hasColumnNames then (columnName() for columnName in _columnNames) else null
+    columnTypes = (columnType() for columnType in _columnTypes)
 
     _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{stringify _sourceKeys}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  columnTypes: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}\n  chunkSize: #{_chunkSize}"
 
@@ -92,7 +92,9 @@ H2O.SetupParseOutput = (_, _result) ->
   parserType: _parserType
   delimiter: _delimiter
   useSingleQuotes: _useSingleQuotes
-  columns: _columns
+  hasColumnNames: _hasColumnNames
+  columnNames: _columnNames
+  columnTypes: _columnTypes
   rows: _rows
   columnCount: _columnCount
   hasColumns: _hasColumns
