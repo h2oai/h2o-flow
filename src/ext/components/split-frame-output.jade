@@ -1,0 +1,19 @@
+.flow-widget
+  +subtitle('Split Frames', 'database')
+
+  table.flow-form
+    thead
+      tr
+        th(width='1') Type
+        th Key
+        th.flow-right(width='1') Ratio
+    tbody
+      // ko foreach:frames
+      tr
+        td
+          i.fa.fa-database
+        td
+          a(href='#' data-bind='text:key, click:view')
+        td.flow-right(data-bind='text:ratio')
+      // /ko
+
