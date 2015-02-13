@@ -466,9 +466,9 @@ H2O.Routines = (_) ->
 
         inspections[ trainMetrics.maxCriteriaAndMetricScores.name ] = -> 
           convertTableToFrame trainMetrics.maxCriteriaAndMetricScores,
-          description: trainMetrics.maxCriteriaAndMetricScores.name
-          origin: origin
-          plot: "plot inspect '#{trainMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
+            description: trainMetrics.maxCriteriaAndMetricScores.name
+            origin: origin
+            plot: "plot inspect '#{trainMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
 
         inspections[ 'Training Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Training Confusion Matrices', trainMetrics
 
@@ -479,15 +479,15 @@ H2O.Routines = (_) ->
         inspections[ 'Validation Metrics' ] = inspectBinomialPrediction2 'Validation Metrics', validMetrics
         inspections[ validMetrics.thresholdsAndMetricScores.name ] = -> 
           convertTableToFrame validMetrics.thresholdsAndMetricScores,
-          description: validMetrics.thresholdsAndMetricScores.name
-          origin: origin
-          plot: "plot inspect '#{validMetrics.thresholdsAndMetricScores.name}', #{origin}"
+            description: validMetrics.thresholdsAndMetricScores.name
+            origin: origin
+            plot: "plot inspect '#{validMetrics.thresholdsAndMetricScores.name}', #{origin}"
 
         inspections[ validMetrics.maxCriteriaAndMetricScores.name ] = -> 
-        convertTableToFrame validMetrics.maxCriteriaAndMetricScores,
-          description: validMetrics.maxCriteriaAndMetricScores.name
-          origin: origin
-          plot: "plot inspect '#{validMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
+          convertTableToFrame validMetrics.maxCriteriaAndMetricScores,
+            description: validMetrics.maxCriteriaAndMetricScores.name
+            origin: origin
+            plot: "plot inspect '#{validMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
 
         inspections[ 'Validation Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Validation Confusion Matrices', validMetrics
 
