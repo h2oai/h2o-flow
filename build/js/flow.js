@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.48';
+    FLOW_VERSION = '0.2.49';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1287,6 +1287,7 @@
                 createMenuItem('Contents', showHelp),
                 createMenuItem('Keyboard Shortcuts', displayKeyboardShortcuts),
                 menuDivider,
+                createMenuItem('What is H2O?', goToUrl('/starwars.html')),
                 createMenuItem('H2O Documentation', displayDocumentation),
                 createMenuItem('h2o.ai', goToUrl('http://h2o.ai/')),
                 menuDivider,
@@ -5945,7 +5946,7 @@
                 nodeIndex = -1;
             }
             if (fileType == null) {
-                fileType = 'debug';
+                fileType = 'info';
             }
             return _fork(requestLogFile, nodeIndex, fileType);
         };
@@ -7202,6 +7203,7 @@
             'warn',
             'error',
             'fatal',
+            'httpd',
             'stdout',
             'stderr'
         ]);
@@ -8175,7 +8177,7 @@
         'Invalid'
     ];
     H2O.SetupParseOutput = function (_, _result) {
-        var columnIndex, columnName, parseFiles, _chunkSize, _columnCount, _columns, _deleteOnDone, _delimiter, _destinationKey, _hasColumns, _headerOption, _headerOptions, _parserType, _rows, _sourceKeys, _useSingleQuotes;
+        var columnName, columnType, parseFiles, _chunkSize, _columnCount, _columnNames, _columnTypes, _deleteOnDone, _delimiter, _destinationKey, _hasColumnNames, _hasColumns, _headerOption, _headerOptions, _parserType, _rows, _sourceKeys, _useSingleQuotes;
         _sourceKeys = lodash.map(_result.srcs, function (src) {
             return src.name;
         });
@@ -8186,21 +8188,29 @@
             return delimiter.charCode === _result.sep;
         }));
         _useSingleQuotes = Flow.Dataflow.signal(_result.singleQuotes);
-        _columns = function () {
+        _columnCount = _result.ncols;
+        _hasColumnNames = _result.columnNames ? true : false;
+        _columnNames = _hasColumnNames ? function () {
             var _i, _len, _ref, _results;
             _ref = _result.columnNames;
             _results = [];
-            for (columnIndex = _i = 0, _len = _ref.length; _i < _len; columnIndex = ++_i) {
-                columnName = _ref[columnIndex];
-                _results.push({
-                    name: Flow.Dataflow.signal(columnName),
-                    type: Flow.Dataflow.signal(_result.columnTypes[columnIndex])
-                });
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                columnName = _ref[_i];
+                _results.push(Flow.Dataflow.signal(columnName));
+            }
+            return _results;
+        }() : null;
+        _columnTypes = function () {
+            var _i, _len, _ref, _results;
+            _ref = _result.columnTypes;
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                columnType = _ref[_i];
+                _results.push(Flow.Dataflow.signal(columnType));
             }
             return _results;
         }();
         _rows = _result.data;
-        _columnCount = _result.ncols;
         _hasColumns = _columnCount > 0;
         _destinationKey = Flow.Dataflow.signal(_result.hexName);
         _headerOptions = {
@@ -8213,12 +8223,24 @@
         _chunkSize = _result.chunkSize;
         parseFiles = function () {
             var columnNames, columnTypes;
-            columnNames = lodash.map(_columns, function (column) {
-                return column.name();
-            });
-            columnTypes = lodash.map(_columns, function (column) {
-                return column.type();
-            });
+            columnNames = _hasColumnNames ? function () {
+                var _i, _len, _results;
+                _results = [];
+                for (_i = 0, _len = _columnNames.length; _i < _len; _i++) {
+                    columnName = _columnNames[_i];
+                    _results.push(columnName());
+                }
+                return _results;
+            }() : null;
+            columnTypes = function () {
+                var _i, _len, _results;
+                _results = [];
+                for (_i = 0, _len = _columnTypes.length; _i < _len; _i++) {
+                    columnType = _columnTypes[_i];
+                    _results.push(columnType());
+                }
+                return _results;
+            }();
             return _.insertAndExecuteCell('cs', 'parseRaw\n  srcs: ' + Flow.Prelude.stringify(_sourceKeys) + '\n  hex: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  pType: ' + Flow.Prelude.stringify(_parserType().type) + '\n  sep: ' + _delimiter().charCode + '\n  ncols: ' + _columnCount + '\n  singleQuotes: ' + _useSingleQuotes() + '\n  columnNames: ' + Flow.Prelude.stringify(columnNames) + '\n  columnTypes: ' + Flow.Prelude.stringify(columnTypes) + '\n  delete_on_done: ' + _deleteOnDone() + '\n  checkHeader: ' + _headerOptions[_headerOption()] + '\n  chunkSize: ' + _chunkSize);
         };
         return {
@@ -8229,7 +8251,9 @@
             parserType: _parserType,
             delimiter: _delimiter,
             useSingleQuotes: _useSingleQuotes,
-            columns: _columns,
+            hasColumnNames: _hasColumnNames,
+            columnNames: _columnNames,
+            columnTypes: _columnTypes,
             rows: _rows,
             columnCount: _columnCount,
             hasColumns: _hasColumns,
