@@ -1213,7 +1213,7 @@ H2O.Routines = (_) ->
           else
             go null, extendLogFile cloud, nodeIndex, fileType, logFile
 
-  getLogFile = (nodeIndex=-1, fileType='debug') ->
+  getLogFile = (nodeIndex=-1, fileType='info') ->
     _fork requestLogFile, nodeIndex, fileType
 
   requestProfile = (depth, go) ->
