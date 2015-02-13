@@ -41,7 +41,7 @@ H2O.ModelOutput = (_, _model) ->
         renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
           g(
             g.rect(
-              g.position 'Magnitude', 'Column'
+              g.position 'Magnitude', 'Variable'
             )
             g.from table
             g.limit 25
