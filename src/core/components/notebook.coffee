@@ -446,6 +446,7 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Contents', showHelp
       createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
       menuDivider
+      createMenuItem 'What is H2O?', goToUrl '/starwars.html'
       createMenuItem 'H2O Documentation', displayDocumentation
       createMenuItem 'h2o.ai', goToUrl 'http://h2o.ai/'
       menuDivider
