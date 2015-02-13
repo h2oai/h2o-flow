@@ -498,6 +498,7 @@ H2O.Routines = (_) ->
       if validMetrics = model.output.validMetrics
         inspections[ 'Validation Metrics' ] = inspectMultinomialPrediction2 'Validation Metrics', validMetrics
 
+
     else if modelCategory is 'Regression'
       if trainMetrics = model.output.trainMetrics
         inspections[ 'Training Metrics' ] = inspectRegressionPrediction2 'Training Metrics', trainMetrics
@@ -787,6 +788,8 @@ H2O.Routines = (_) ->
           createList column.label, parseNulls column.str_data
         else # uuid / etc.
           createList column.label, parseNulls column.data
+
+    vectors.unshift createVector 'Row', TNumber, (rowIndex + 1 for rowIndex in [frame.off ... frame.len])
 
     createDataframe 'data', vectors, (sequence frame.len - frame.off), null,
       description: 'A partial list of rows in the H2O Frame.'
