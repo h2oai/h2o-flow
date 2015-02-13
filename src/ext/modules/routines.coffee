@@ -502,14 +502,23 @@ H2O.Routines = (_) ->
       if validMetrics = model.output.validMetrics
         inspections[ 'Validation Metrics' ] = inspectRegressionPrediction2 'Validation Metrics', validMetrics
 
-      
-
     inspect_ model, inspections
   
   extendGBMModel = (model) ->
-    inspect_ model,
-      parameters: inspectModelParameters model
-      output: inspectGBMModelOutput model
+    origin = "getModel #{stringify model.key.name}"
+
+    inspections = {}
+    inspections.parameters = inspectModelParameters model
+    inspections.output = inspectGBMModelOutput model
+
+    if variableImportances = model.output.variableImportances
+      inspections[variableImportances.name] = ->
+        convertTableToFrame variableImportances,
+          description: variableImportances.name
+          origin: origin
+          plot: "plot inspect '#{variableImportances.name}', #{origin}"
+
+    inspect_ model, inspections
 
   extendGLMModel = (model) ->
     inspections = {}

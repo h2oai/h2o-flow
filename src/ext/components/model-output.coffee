@@ -5,6 +5,8 @@ H2O.ModelOutput = (_, _model) ->
   _dlScoringHistory = signal null
   _dlTrainingMetrics = signal null
   _dlVariableImportancePlot = signal null
+  _gbmTrees = signal null
+  _gbmVariableImportancePlot = signal null
 
   #TODO use _.enumerate()
   _inputParameters = map _model.parameters, (parameter) ->
@@ -71,6 +73,23 @@ H2O.ModelOutput = (_, _model) ->
             g.limit 25
           )
 
+    when 'gbm'
+      if table = _.inspect 'output', _model
+        renderPlot _gbmTrees, _.plot (g) ->
+          g(
+            g.table()
+            g.from table
+          )
+
+      if table = _.inspect 'Variable Importances', _model
+        renderPlot _gbmVariableImportancePlot, _.plot (g) ->
+          g(
+            g.rect(
+              g.position 'Relative Importance', 'Variable'
+            )
+            g.from table
+            g.limit 25
+          )
 
   toggle = ->
     _isExpanded not _isExpanded()
@@ -93,6 +112,8 @@ H2O.ModelOutput = (_, _model) ->
   dlTrainingMetrics: _dlTrainingMetrics
   dlVariableImportancePlot: _dlVariableImportancePlot
   glmVariableImportancePlot: _glmVariableImportancePlot
+  gbmTrees: _gbmTrees
+  gbmVariableImportancePlot: _gbmVariableImportancePlot
   isExpanded: _isExpanded
   toggle: toggle
   cloneModel: cloneModel

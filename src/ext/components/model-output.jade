@@ -66,3 +66,14 @@
   h4 Variable Importance
   .flow-plot(data-bind='raw:glmVariableImportancePlot')
   // /ko
+
+  // ko if:gbmVariableImportancePlot
+  h4 Variable Importance
+  .flow-plot(data-bind='raw:gbmVariableImportancePlot')
+  // /ko
+
+  // ko if:gbmTrees
+  h4 Trees
+  .flow-plot(data-bind='raw:gbmTrees')
+  // /ko
+
