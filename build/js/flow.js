@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.49';
+    FLOW_VERSION = '0.2.50';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -3718,16 +3718,20 @@
             return doGet(composePath(path, opts), go);
         };
         encodeArrayForPost = function (array) {
-            if (array.length === 0) {
-                return null;
+            if (array) {
+                if (array.length === 0) {
+                    return null;
+                } else {
+                    return '[' + lodash.map(array, function (element) {
+                        if (lodash.isNumber(element)) {
+                            return element;
+                        } else {
+                            return '"' + element + '"';
+                        }
+                    }).join(',') + ']';
+                }
             } else {
-                return '[' + lodash.map(array, function (element) {
-                    if (lodash.isNumber(element)) {
-                        return element;
-                    } else {
-                        return '"' + element + '"';
-                    }
-                }).join(',') + ']';
+                return null;
             }
         };
         encodeObject = function (source) {
