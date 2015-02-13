@@ -11,21 +11,25 @@ H2O.LogFileOutput = (_, _cloud, _nodeIndex, _fileType, _logFile) ->
     name: node.ip_port
     index: index
 
+  refreshActiveView = (node, fileType) ->
+    if node
+      _.requestLogFile node.index, fileType, (error, logFile) ->
+        if error
+          _contents "Error fetching log file: #{error.message}"
+        else
+          _contents logFile.log
+    else
+      _contents ''
+
+  refresh = ->
+    refreshActiveView _activeNode(), _activeFileType()
+
   initialize = (cloud, nodeIndex, fileType, logFile) ->
     _activeFileType fileType
     _contents logFile.log
     _nodes nodes = (createNode node, i for node, i in cloud.nodes)
     _activeNode nodes[nodeIndex] if nodeIndex < nodes.length
-
-    react _activeNode, _activeFileType, (node, fileType) ->
-      if node
-        _.requestLogFile node.index, fileType, (error, logFile) ->
-          if error
-            _contents "Error fetching log file: #{error.message}"
-          else
-            _contents logFile.log
-      else
-        _contents ''
+    react _activeNode, _activeFileType, refreshActiveView
 
   initialize _cloud, _nodeIndex, _fileType, _logFile
 
@@ -34,4 +38,5 @@ H2O.LogFileOutput = (_, _cloud, _nodeIndex, _fileType, _logFile) ->
   fileTypes: _fileTypes
   activeFileType: _activeFileType
   contents: _contents  
+  refresh: refresh
   template: 'flow-log-file-output'

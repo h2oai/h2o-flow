@@ -10,12 +10,26 @@
           label Select Log File Type:
         td 
           select(data-bind="options:fileTypes, value:activeFileType")
-      tr
         th
           label Select Node: 
         td
           select(data-bind="options:nodes, optionsText:'name', value:activeNode")
+        td
+          +button('Refresh', 'refresh', 'refresh')
 
   pre(data-bind='text:contents')
-  
+
+  table.flow-form(style='width:auto')
+    tbody
+      tr
+        th
+          label Select Log File Type:
+        td 
+          select(data-bind="options:fileTypes, value:activeFileType")
+        th
+          label Select Node: 
+        td
+          select(data-bind="options:nodes, optionsText:'name', value:activeNode")
+        td
+          +button('Refresh', 'refresh', 'refresh')
 
