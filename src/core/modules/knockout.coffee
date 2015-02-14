@@ -1,3 +1,35 @@
+#
+# Custom Knockout.js binding handlers
+#
+# init:
+#   This will be called when the binding is first applied to an element
+#   Set up any initial state, event handlers, etc. here
+#
+# update:
+#   This will be called once when the binding is first applied to an element,
+#    and again whenever the associated observable changes value.
+#   Update the DOM element based on the supplied values here.
+#
+# Registering a callback on the disposal of an element
+# 
+# To register a function to run when a node is removed, you can call ko.utils.domNodeDisposal.addDisposeCallback(node, callback). As an example, suppose you create a custom binding to instantiate a widget. When the element with the binding is removed, you may want to call the destroy method of the widget:
+# 
+# ko.bindingHandlers.myWidget = {
+#     init: function(element, valueAccessor) {
+#         var options = ko.unwrap(valueAccessor()),
+#             $el = $(element);
+#  
+#         $el.myWidget(options);
+#  
+#         ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
+#             // This will be called when the element is removed by Knockout or
+#             // if some other part of your code calls ko.removeNode(element)
+#             $el.myWidget("destroy");
+#         });
+#     }
+# };
+# 
+
 return unless window?.ko?
 
 ko.bindingHandlers.raw =
@@ -90,6 +122,40 @@ ko.bindingHandlers.scrollIntoView =
 
     return
 
+ko.bindingHandlers.collapse =
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    caretDown = 'fa-caret-down'
+    caretRight = 'fa-caret-right'
+    isCollapsed = ko.unwrap valueAccessor()
+    caretEl = document.createElement 'i'
+    caretEl.className = 'fa'
+    caretEl.style.marginRight = '3px'
+    element.insertBefore caretEl, element.firstChild
+    $el = $ element
+    $nextEl = $el.next()
+    throw new Error 'No collapsible sibling found' unless $nextEl.length
+    $caretEl = $ caretEl
+    toggle = ->
+      if isCollapsed
+        $caretEl
+          .removeClass caretDown
+          .addClass caretRight
+        $nextEl.hide()
+      else
+        $caretEl
+          .removeClass caretRight
+          .addClass caretDown
+        $nextEl.show()
+      isCollapsed = not isCollapsed
+
+    $el.css 'cursor', 'pointer'
+    $el.attr 'title', 'Click to expand/collapse'
+    $el.on 'click', toggle
+    toggle()
+    ko.utils.domNodeDisposal.addDisposeCallback element, ->
+      $el.off 'click'
+    return
+ 
 ko.bindingHandlers.dom =
   update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
     arg = ko.unwrap valueAccessor()
