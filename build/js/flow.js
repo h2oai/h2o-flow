@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.51';
+    FLOW_VERSION = '0.2.52';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4307,7 +4307,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendJob, extendKMeansModel, extendLogFile, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectBinomialConfusionMatrices2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPrediction2, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectGLMCoefficientsMagnitude, inspectGLMCoefficientsTable, inspectGLMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultinomialPrediction2, inspectParametersAcrossModels, inspectRegressionPrediction, inspectRegressionPrediction2, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestFrame, requestFrames, requestLogFile, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
+        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendJob, extendKMeansModel, extendLogFile, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectBinomialConfusionMatrices2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPrediction2, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectGLMCoefficientsMagnitude, inspectGLMCoefficientsTable, inspectGLMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultinomialConfusionMatrix, inspectMultinomialPrediction2, inspectParametersAcrossModels, inspectRegressionPrediction, inspectRegressionPrediction2, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestFrame, requestFrames, requestLogFile, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -4479,6 +4479,12 @@
                 return H2O.FramesOutput(_, frames);
             });
             return frames;
+        };
+        extendSplitFrameResult = function (result) {
+            render_(result, function () {
+                return H2O.SplitFrameOutput(_, result);
+            });
+            return result;
         };
         inspectParametersAcrossModels = function (models) {
             return function () {
@@ -4741,7 +4747,7 @@
             });
         };
         extendDeepLearningModel = function (model) {
-            var inspections, modelCategory, origin, tables, trainMetrics, validMetrics, variableImportances;
+            var inspections, modelCategory, origin, table, tables, trainMetrics, validMetrics, variableImportances;
             origin = 'getModel ' + Flow.Prelude.stringify(model.key.name);
             inspections = {};
             inspections.parameters = inspectModelParameters(model);
@@ -4803,20 +4809,26 @@
                         });
                     };
                     inspections[validMetrics.maxCriteriaAndMetricScores.name] = function () {
+                        return convertTableToFrame(validMetrics.maxCriteriaAndMetricScores, {
+                            description: validMetrics.maxCriteriaAndMetricScores.name,
+                            origin: origin,
+                            plot: 'plot inspect \'' + validMetrics.maxCriteriaAndMetricScores.name + '\', ' + origin
+                        });
                     };
-                    convertTableToFrame(validMetrics.maxCriteriaAndMetricScores, {
-                        description: validMetrics.maxCriteriaAndMetricScores.name,
-                        origin: origin,
-                        plot: 'plot inspect \'' + validMetrics.maxCriteriaAndMetricScores.name + '\', ' + origin
-                    });
                     inspections['Validation Confusion Matrices'] = inspectBinomialConfusionMatrices2('Validation Confusion Matrices', validMetrics);
                 }
             } else if (modelCategory === 'Multinomial') {
                 if (trainMetrics = model.output.trainMetrics) {
                     inspections['Training Metrics'] = inspectMultinomialPrediction2('Training Metrics', trainMetrics);
+                    if (table = trainMetrics.cm.table) {
+                        inspectMultinomialConfusionMatrix('Training Metrics Confusion Matrix', table, origin, inspections);
+                    }
                 }
                 if (validMetrics = model.output.validMetrics) {
                     inspections['Validation Metrics'] = inspectMultinomialPrediction2('Validation Metrics', validMetrics);
+                    if (table = validMetrics.cm.table) {
+                        inspectMultinomialConfusionMatrix('Validation Metrics Confusion Matrix', table, origin, inspections);
+                    }
                 }
             } else if (modelCategory === 'Regression') {
                 if (trainMetrics = model.output.trainMetrics) {
@@ -5007,6 +5019,15 @@
                 return createDataframe('Prediction', vectors, lodash.range(1), null, {
                     description: 'Prediction output for model \'' + model.name + '\' on frame \'' + frame.name + '\'',
                     origin: 'getPrediction ' + Flow.Prelude.stringify(model.name) + ', ' + Flow.Prelude.stringify(frame.name)
+                });
+            };
+        };
+        inspectMultinomialConfusionMatrix = function (name, table, origin, inspections) {
+            table.name = name;
+            return inspections[table.name] = function () {
+                return convertTableToFrame(table, {
+                    description: table.name,
+                    origin: origin
                 });
             };
         };
@@ -5327,7 +5348,7 @@
         };
         inspectFrameData = function (frameKey, frame) {
             return function () {
-                var column, domain, frameColumns, index, vectors;
+                var column, domain, frameColumns, index, rowIndex, vectors;
                 frameColumns = frame.columns;
                 vectors = function () {
                     var _i, _len, _results;
@@ -5364,6 +5385,14 @@
                     }
                     return _results;
                 }();
+                vectors.unshift(createVector('Row', Flow.TNumber, function () {
+                    var _i, _ref1, _ref2, _results;
+                    _results = [];
+                    for (rowIndex = _i = _ref1 = frame.off, _ref2 = frame.len; _ref1 <= _ref2 ? _i < _ref2 : _i > _ref2; rowIndex = _ref1 <= _ref2 ? ++_i : --_i) {
+                        _results.push(rowIndex + 1);
+                    }
+                    return _results;
+                }()));
                 return createDataframe('data', vectors, lodash.range(frame.len - frame.off), null, {
                     description: 'A partial list of rows in the H2O Frame.',
                     origin: 'getFrame ' + Flow.Prelude.stringify(frameKey)
@@ -5613,13 +5642,7 @@
                 if (error) {
                     return go(error);
                 } else {
-                    return _.requestJob(result.key.name, function (error, job) {
-                        if (error) {
-                            return go(error);
-                        } else {
-                            return go(null, extendJob(job));
-                        }
-                    });
+                    return go(null, extendSplitFrameResult(result));
                 }
             });
         };
@@ -7206,7 +7229,7 @@
 }.call(this));
 (function () {
     H2O.LogFileOutput = function (_, _cloud, _nodeIndex, _fileType, _logFile) {
-        var createNode, initialize, _activeFileType, _activeNode, _contents, _exception, _fileTypes, _nodes;
+        var createNode, initialize, refresh, refreshActiveView, _activeFileType, _activeNode, _contents, _exception, _fileTypes, _nodes;
         _exception = Flow.Dataflow.signal(null);
         _contents = Flow.Dataflow.signal('');
         _nodes = Flow.Dataflow.signal([]);
@@ -7229,6 +7252,22 @@
                 index: index
             };
         };
+        refreshActiveView = function (node, fileType) {
+            if (node) {
+                return _.requestLogFile(node.index, fileType, function (error, logFile) {
+                    if (error) {
+                        return _contents('Error fetching log file: ' + error.message);
+                    } else {
+                        return _contents(logFile.log);
+                    }
+                });
+            } else {
+                return _contents('');
+            }
+        };
+        refresh = function () {
+            return refreshActiveView(_activeNode(), _activeFileType());
+        };
         initialize = function (cloud, nodeIndex, fileType, logFile) {
             var i, node, nodes;
             _activeFileType(fileType);
@@ -7246,19 +7285,7 @@
             if (nodeIndex < nodes.length) {
                 _activeNode(nodes[nodeIndex]);
             }
-            return Flow.Dataflow.react(_activeNode, _activeFileType, function (node, fileType) {
-                if (node) {
-                    return _.requestLogFile(node.index, fileType, function (error, logFile) {
-                        if (error) {
-                            return _contents('Error fetching log file: ' + error.message);
-                        } else {
-                            return _contents(logFile.log);
-                        }
-                    });
-                } else {
-                    return _contents('');
-                }
-            });
+            return Flow.Dataflow.react(_activeNode, _activeFileType, refreshActiveView);
         };
         initialize(_cloud, _nodeIndex, _fileType, _logFile);
         return {
@@ -7267,6 +7294,7 @@
             fileTypes: _fileTypes,
             activeFileType: _activeFileType,
             contents: _contents,
+            refresh: refresh,
             template: 'flow-log-file-output'
         };
     };
@@ -7876,15 +7904,9 @@
 }.call(this));
 (function () {
     H2O.ModelOutput = function (_, _model) {
-        var cloneModel, inspect, predict, renderPlot, table, toggle, _dlScoringHistory, _dlTrainingMetrics, _dlVariableImportancePlot, _gbmTrees, _gbmVariableImportancePlot, _glmVariableImportancePlot, _inputParameters, _isExpanded, _output;
+        var cloneModel, inspect, predict, renderPlot, table, toggle, _inputParameters, _isExpanded, _plots;
         _isExpanded = Flow.Dataflow.signal(false);
-        _output = Flow.Dataflow.signal(null);
-        _glmVariableImportancePlot = Flow.Dataflow.signal(null);
-        _dlScoringHistory = Flow.Dataflow.signal(null);
-        _dlTrainingMetrics = Flow.Dataflow.signal(null);
-        _dlVariableImportancePlot = Flow.Dataflow.signal(null);
-        _gbmTrees = Flow.Dataflow.signal(null);
-        _gbmVariableImportancePlot = Flow.Dataflow.signal(null);
+        _plots = Flow.Dataflow.signals([]);
         _inputParameters = lodash.map(_model.parameters, function (parameter) {
             var actual_value, default_value, help, label, type, value;
             type = parameter.type, default_value = parameter.default_value, actual_value = parameter.actual_value, label = parameter.label, help = parameter.help;
@@ -7923,52 +7945,70 @@
                 isModified: default_value === actual_value
             };
         });
-        renderPlot = function (target, render) {
-            return render(function (error, vis) {
+        renderPlot = function (title, render) {
+            var container;
+            container = Flow.Dataflow.signal(null);
+            render(function (error, vis) {
                 if (error) {
                     return console.debug(error);
                 } else {
-                    return target(vis.element);
+                    return container(vis.element);
                 }
             });
+            return _plots.push({
+                title: title,
+                plot: container
+            });
         };
-        if (table = _.inspect('output', _model)) {
-            renderPlot(_output, _.enumerate(table));
-        }
         switch (_model.algo) {
         case 'glm':
+            if (table = _.inspect('output', _model)) {
+                renderPlot('Output', _.plot(function (g) {
+                    return g(g.table(), g.from(table));
+                }));
+            }
             if (table = _.inspect('Normalized Coefficient Magnitudes', _model)) {
-                renderPlot(_glmVariableImportancePlot, _.plot(function (g) {
-                    return g(g.rect(g.position('Magnitude', 'Column')), g.from(table), g.limit(25));
+                renderPlot('Normalized Coefficient Magnitudes', _.plot(function (g) {
+                    return g(g.rect(g.position('Scaled', 'Variable')), g.from(table), g.limit(25));
                 }));
             }
             break;
         case 'deeplearning':
+            if (table = _.inspect('output', _model)) {
+                renderPlot('Output', _.plot(function (g) {
+                    return g(g.table(), g.from(table));
+                }));
+            }
             if (table = _.inspect('Scoring History', _model)) {
-                renderPlot(_dlScoringHistory, _.plot(function (g) {
+                renderPlot('Scoring History', _.plot(function (g) {
                     return g(g.table(), g.from(table));
                 }));
             }
             if (table = _.inspect('Training Metrics', _model)) {
-                renderPlot(_dlTrainingMetrics, _.plot(function (g) {
+                renderPlot('Training Metrics', _.plot(function (g) {
+                    return g(g.table(), g.from(table));
+                }));
+            }
+            if (table = _.inspect('Status of Neuron Layers', _model)) {
+                renderPlot('Status of Neuron Layers', _.plot(function (g) {
                     return g(g.table(), g.from(table));
                 }));
             }
             if (table = _.inspect('Variable Importances', _model)) {
-                renderPlot(_dlVariableImportancePlot, _.plot(function (g) {
-                    return g(g.rect(g.position('Relative Importance', 'Variable')), g.from(table), g.limit(25));
+                renderPlot('Variable Importances', _.plot(function (g) {
+                    return g(g.rect(g.position('Scaled Importance', 'Variable')), g.from(table), g.limit(25));
                 }));
             }
             break;
         case 'gbm':
             if (table = _.inspect('output', _model)) {
-                renderPlot(_gbmTrees, _.plot(function (g) {
-                    return g(g.table(), g.from(table));
+                renderPlot('Output', _.plot(function (g) {
+                    return g(g.path(g.position('tree', 'mse_train'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('tree', 'mse_valid'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
                 }));
             }
             if (table = _.inspect('Variable Importances', _model)) {
-                renderPlot(_gbmVariableImportancePlot, _.plot(function (g) {
-                    return g(g.rect(g.position('Relative Importance', 'Variable')), g.from(table), g.limit(25));
+                renderPlot('Variable Importances', _.plot(function (g) {
+                    return g(g.rect(g.position('Scaled Importance', 'Variable')), g.from(table), g.limit(25));
                 }));
             }
         }
@@ -7987,14 +8027,8 @@
         return {
             key: _model.key,
             algo: _model.algo,
+            plots: _plots,
             inputParameters: _inputParameters,
-            output: _output,
-            dlScoringHistory: _dlScoringHistory,
-            dlTrainingMetrics: _dlTrainingMetrics,
-            dlVariableImportancePlot: _dlVariableImportancePlot,
-            glmVariableImportancePlot: _glmVariableImportancePlot,
-            gbmTrees: _gbmTrees,
-            gbmVariableImportancePlot: _gbmVariableImportancePlot,
             isExpanded: _isExpanded,
             toggle: toggle,
             cloneModel: cloneModel,
@@ -8802,6 +8836,53 @@
             splitFrame: splitFrame,
             validationMessage: _validationMessage,
             template: 'flow-split-frame-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.SplitFrameOutput = function (_, _splitFrameResult) {
+        var computeRatios, createFrameView, index, key, _frames, _ratios;
+        computeRatios = function (sourceRatios) {
+            var ratio, ratios, total;
+            total = 0;
+            ratios = function () {
+                var _i, _len, _results;
+                _results = [];
+                for (_i = 0, _len = sourceRatios.length; _i < _len; _i++) {
+                    ratio = sourceRatios[_i];
+                    total += ratio;
+                    _results.push(ratio);
+                }
+                return _results;
+            }();
+            ratios.push(1 - total);
+            return ratios;
+        };
+        createFrameView = function (key, ratio) {
+            var self, view;
+            view = function () {
+                return _.insertAndExecuteCell('cs', 'getFrame ' + Flow.Prelude.stringify(key));
+            };
+            return self = {
+                key: key,
+                ratio: ratio,
+                view: view
+            };
+        };
+        _ratios = computeRatios(_splitFrameResult.ratios);
+        _frames = function () {
+            var _i, _len, _ref, _results;
+            _ref = _splitFrameResult.destKeys;
+            _results = [];
+            for (index = _i = 0, _len = _ref.length; _i < _len; index = ++_i) {
+                key = _ref[index];
+                _results.push(createFrameView(key.name, _ratios[index]));
+            }
+            return _results;
+        }();
+        return {
+            frames: _frames,
+            template: 'flow-split-frame-output'
         };
     };
 }.call(this));

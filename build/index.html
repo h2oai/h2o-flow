@@ -889,6 +889,30 @@
         </div>
       </div>
     </script>
+    <script type="text/html" id="flow-split-frame-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-database"></i>Split Frames
+            </h3>
+        <table class="flow-form">
+          <thead>
+            <tr>
+              <th width="1">Type</th>
+              <th>Key</th>
+              <th width="1" class="flow-right">Ratio</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ko foreach:frames-->
+            <tr>
+              <td><i class="fa fa-database"></i></td>
+              <td><a href="#" data-bind="text:key, click:view"></a></td>
+              <td data-bind="text:ratio" class="flow-right"></td>
+            </tr>
+            <!-- /ko-->
+          </tbody>
+        </table>
+      </div>
+    </script>
     <script type="text/html" id="flow-parse-raw-input">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-cog"></i>Setup Parse</h3>
@@ -1061,33 +1085,9 @@
             </tbody>
           </table>
         </div>
-        <!-- ko if:output-->
-        <h4>Model Output</h4>
-        <div data-bind="raw:output" class="flow-plot"></div>
-        <!-- /ko-->
-        <!-- ko if:dlTrainingMetrics-->
-        <h4>Training Metrics</h4>
-        <div data-bind="raw:dlTrainingMetrics" class="flow-plot"></div>
-        <!-- /ko-->
-        <!-- ko if:dlScoringHistory-->
-        <h4>Scoring History</h4>
-        <div data-bind="raw:dlScoringHistory" class="flow-plot"></div>
-        <!-- /ko-->
-        <!-- ko if:dlVariableImportancePlot-->
-        <h4>Variable Importance</h4>
-        <div data-bind="raw:dlVariableImportancePlot" class="flow-plot"></div>
-        <!-- /ko-->
-        <!-- ko if:glmVariableImportancePlot-->
-        <h4>Variable Importance</h4>
-        <div data-bind="raw:glmVariableImportancePlot" class="flow-plot"></div>
-        <!-- /ko-->
-        <!-- ko if:gbmVariableImportancePlot-->
-        <h4>Variable Importance</h4>
-        <div data-bind="raw:gbmVariableImportancePlot" class="flow-plot"></div>
-        <!-- /ko-->
-        <!-- ko if:gbmTrees-->
-        <h4>Trees</h4>
-        <div data-bind="raw:gbmTrees" class="flow-plot"></div>
+        <!-- ko foreach:plots-->
+        <h4 data-bind="text:title"></h4>
+        <div data-bind="raw:plot" class="flow-plot"></div>
         <!-- /ko-->
       </div>
     </script>
@@ -1522,16 +1522,16 @@
             <thead>
               <tr>
                 <th>&nbsp;</th>
-                <th>Columns</th>
                 <th>Rows</th>
-                <th>Size</th>
+                <th>Columns</th>
+                <th>Compressed Size</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>&nbsp;</td>
-                <td data-bind="text:columnCount"></td>
                 <td data-bind="text:rowCount"></td>
+                <td data-bind="text:columnCount"></td>
                 <td data-bind="text:size"></td>
               </tr>
             </tbody>
@@ -1878,18 +1878,42 @@
               <td>
                 <select data-bind="options:fileTypes, value:activeFileType"></select>
               </td>
-            </tr>
-            <tr>
               <th>
                 <label>Select Node: </label>
               </th>
               <td>
                 <select data-bind="options:nodes, optionsText:'name', value:activeNode"></select>
               </td>
+              <td>
+                    <button type="button" data-bind="click:refresh" class="flow-button"><i class="fa fa-refresh"></i><span>Refresh</span>
+                    </button>
+              </td>
             </tr>
           </tbody>
         </table>
         <pre data-bind="text:contents"></pre>
+        <table style="width:auto" class="flow-form">
+          <tbody>
+            <tr>
+              <th>
+                <label>Select Log File Type:</label>
+              </th>
+              <td>
+                <select data-bind="options:fileTypes, value:activeFileType"></select>
+              </td>
+              <th>
+                <label>Select Node: </label>
+              </th>
+              <td>
+                <select data-bind="options:nodes, optionsText:'name', value:activeNode"></select>
+              </td>
+              <td>
+                    <button type="button" data-bind="click:refresh" class="flow-button"><i class="fa fa-refresh"></i><span>Refresh</span>
+                    </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </script>
     <script src="js/flow-lib.js"></script>
