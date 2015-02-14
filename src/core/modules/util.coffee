@@ -16,9 +16,20 @@ formatBytes = (bytes) ->
   i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)))
   Math.round(bytes / Math.pow(1024, i), 2) + sizes[i]
 
+padTime = (n) -> "#{if n < 10 then '0' else ''}#{n}"
+formatMilliseconds = (s) ->
+  ms = s % 1000
+  s = (s - ms) / 1000
+  secs = s % 60
+  s = (s - secs) / 60
+  mins = s % 60
+  hrs = (s - mins) / 60
+  "#{padTime hrs}:#{padTime mins}:#{padTime secs}.#{ms}"
+
 Flow.Util =
   describeCount: describeCount
   fromNow: fromNow
   formatBytes: formatBytes
+  formatMilliseconds: formatMilliseconds
 
 

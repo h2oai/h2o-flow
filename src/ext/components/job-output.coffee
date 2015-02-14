@@ -40,7 +40,7 @@ H2O.JobOutput = (_, _job) ->
     job.status is 'CREATED' or job.status is 'RUNNING'
 
   updateJob = (job) ->
-    _runTime job.msec
+    _runTime Flow.Util.formatMilliseconds job.msec
     _progress getJobProgressPercent job.progress
     _progressMessage job.progress_msg
     _status job.status
