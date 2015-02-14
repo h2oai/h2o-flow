@@ -492,12 +492,16 @@ H2O.Routines = (_) ->
         inspections[ 'Validation Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Validation Confusion Matrices', validMetrics
 
     else if modelCategory is 'Multinomial'
+
       if trainMetrics = model.output.trainMetrics
         inspections[ 'Training Metrics' ] = inspectMultinomialPrediction2 'Training Metrics', trainMetrics
+        if table = trainMetrics.cm.table
+          inspectMultinomialConfusionMatrix 'Training Metrics Confusion Matrix', table, origin, inspections
 
       if validMetrics = model.output.validMetrics
         inspections[ 'Validation Metrics' ] = inspectMultinomialPrediction2 'Validation Metrics', validMetrics
-
+        if table = validMetrics.cm.table
+          inspectMultinomialConfusionMatrix 'Validation Metrics Confusion Matrix', table, origin, inspections
 
     else if modelCategory is 'Regression'
       if trainMetrics = model.output.trainMetrics
@@ -651,6 +655,13 @@ H2O.Routines = (_) ->
     createDataframe 'Prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
       origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+
+  inspectMultinomialConfusionMatrix = (name, table, origin, inspections) ->
+    table.name = name
+    inspections[ table.name ] = ->
+      convertTableToFrame table,
+        description: table.name
+        origin: origin
 
   inspectBinomialConfusionMatrices2 = (frameLabel, prediction) -> ->
     origin = "getModel #{stringify prediction.model.name}"
