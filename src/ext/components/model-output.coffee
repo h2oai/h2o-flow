@@ -32,11 +32,15 @@ H2O.ModelOutput = (_, _model) ->
 
     _plots.push title: title, plot: container
 
-  if table = _.inspect 'output', _model
-    renderPlot 'Output', _.enumerate table
-
   switch _model.algo
     when 'glm'
+      if table = _.inspect 'output', _model
+        renderPlot 'Output', _.plot (g) ->
+          g(
+            g.table()
+            g.from table
+          )
+
       if table = _.inspect 'Normalized Coefficient Magnitudes', _model
         renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
           g(
@@ -46,7 +50,15 @@ H2O.ModelOutput = (_, _model) ->
             g.from table
             g.limit 25
           )
+
     when 'deeplearning'
+      if table = _.inspect 'output', _model
+        renderPlot 'Output', _.plot (g) ->
+          g(
+            g.table()
+            g.from table
+          )
+
       if table = _.inspect 'Scoring History', _model
         renderPlot 'Scoring History', _.plot (g) ->
           g(
