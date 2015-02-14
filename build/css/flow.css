@@ -451,7 +451,7 @@ table.flow-form-ruled tr:first-child {
   white-space: nowrap;
 }
 .flow-plot {
-  overflow: auto;
+  overflow: visible;
   margin-bottom: 20px;
 }
 .flow-plot table {

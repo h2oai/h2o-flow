@@ -1054,7 +1054,7 @@
             </tbody>
           </table>
         </div>
-        <h4>Model Parameters</h4>
+        <h4 data-bind="collapse:true">Model Parameters</h4>
         <div data-bind="css:{ 'flow-unhide':isExpanded }">
           <div class="flow-right flow-margin-after">
             <!-- ko ifnot:isExpanded-->
@@ -1086,7 +1086,7 @@
           </table>
         </div>
         <!-- ko foreach:plots-->
-        <h4 data-bind="text:title"></h4>
+        <h4 data-bind="text:title, collapse:false"></h4>
         <div data-bind="raw:plot" class="flow-plot"></div>
         <!-- /ko-->
       </div>
