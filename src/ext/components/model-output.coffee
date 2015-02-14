@@ -94,7 +94,14 @@ H2O.ModelOutput = (_, _model) ->
       if table = _.inspect 'output', _model
         renderPlot 'Output', _.plot (g) ->
           g(
-            g.table()
+            g.path(
+              g.position 'tree', 'mse_train'
+              g.strokeColor g.value '#1f77b4'
+            )
+            g.path(
+              g.position 'tree', 'mse_valid'
+              g.strokeColor g.value '#ff7f0e'
+            )
             g.from table
           )
 
