@@ -19,7 +19,7 @@
             +button('Clone this model&hellip;', 'copy', 'cloneModel')
             +button('Inspect', 'list', 'inspect')
       
-  h4 Model Parameters
+  h4(data-bind='collapse:true') Model Parameters
   div(data-bind="css:{ 'flow-unhide':isExpanded }")
     .flow-right.flow-margin-after 
       // ko ifnot:isExpanded
@@ -44,7 +44,7 @@
 
   
   // ko foreach:plots
-  h4(data-bind='text:title')
+  h4(data-bind='text:title, collapse:false')
   .flow-plot(data-bind='raw:plot')
   // /ko
 
