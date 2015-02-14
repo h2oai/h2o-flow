@@ -45,7 +45,7 @@ H2O.ModelOutput = (_, _model) ->
         renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
           g(
             g.rect(
-              g.position 'Magnitude', 'Variable'
+              g.position 'Scaled', 'Variable'
             )
             g.from table
             g.limit 25
@@ -84,7 +84,7 @@ H2O.ModelOutput = (_, _model) ->
         renderPlot 'Variable Importances', _.plot (g) ->
           g(
             g.rect(
-              g.position 'Relative Importance', 'Variable'
+              g.position 'Scaled Importance', 'Variable'
             )
             g.from table
             g.limit 25
@@ -102,7 +102,7 @@ H2O.ModelOutput = (_, _model) ->
         renderPlot 'Variable Importances', _.plot (g) ->
           g(
             g.rect(
-              g.position 'Relative Importance', 'Variable'
+              g.position 'Scaled Importance', 'Variable'
             )
             g.from table
             g.limit 25
