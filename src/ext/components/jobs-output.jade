@@ -9,6 +9,7 @@
     thead
       tr
         th &nbsp;
+        th Type
         th Key
         th Description
         th Status
@@ -17,10 +18,11 @@
       tr
         td
           +fa('tasks')
+        td(data-bind='text:type')
         td
-          a(href='#' data-bind='text:job.key.name, click:view')
-        td(data-bind='text:job.description')
-        td(data-bind='text:job.status')
+          a(href='#' data-bind='text:key, click:view')
+        td(data-bind='text:description')
+        td(data-bind='text:status')
       // /ko
   // /ko
   // ko ifnot:hasJobViews

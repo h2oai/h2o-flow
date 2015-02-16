@@ -9,7 +9,18 @@ H2O.JobsOutput = (_, jobs) ->
     view = ->
       _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
 
-    job: job
+    type = switch job.dest.type
+      when 'Key<Frame>'
+        'Frame'
+      when 'Key<Model>'
+        'Model'
+      else
+        'Unknown'
+
+    key: job.dest.name
+    type: type
+    description: job.description
+    status: job.status
     view: view
 
   toggleRefresh = ->
