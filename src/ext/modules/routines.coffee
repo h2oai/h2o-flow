@@ -1126,6 +1126,16 @@ H2O.Routines = (_) ->
       else
         assist setupParse
 
+  extendParseResult = (parseResult) ->
+    render_ parseResult, -> H2O.ParseOutput _, parseResult
+
+  requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
+    _.requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
+      if error
+        go error
+      else
+        go null, extendParseResult parseResult
+
   parseRaw = (opts) -> #XXX review args
     #XXX validation
 
@@ -1141,8 +1151,7 @@ H2O.Routines = (_) ->
     checkHeader = opts.checkHeader
     chunkSize = opts.chunkSize
 
-    renderable _.requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (parseResult, go) ->
-      go null, H2O.ParseOutput _, parseResult
+    _fork requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
 
   buildModel = (algo, opts) ->
     if algo and opts and keys(opts).length > 1
