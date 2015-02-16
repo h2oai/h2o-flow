@@ -539,6 +539,11 @@ H2O.Routines = (_) ->
   extendJob = (job) ->
     render_ job, -> H2O.JobOutput _, job
 
+  extendJobs = (jobs) ->
+    for job in jobs
+      extendJob job
+    render_ jobs, -> H2O.JobsOutput _, jobs
+
   extendModel = (model) ->
     switch model.algo
       when 'kmeans'
@@ -1057,15 +1062,27 @@ H2O.Routines = (_) ->
       else
         assist getModel
 
+  requestJob = (key, go) ->
+    _.requestJobByDestinationKey key, (error, job) ->
+      if error
+        go error
+      else
+        go null, extendJob job
+
+  requestJobs = (go) ->
+    _.requestJobs (error, jobs) ->
+      if error
+        go error
+      else
+        go null, extendJobs jobs
+
   getJobs = ->
-    renderable _.requestJobs, (jobs, go) ->
-      go null, H2O.JobsOutput _, jobs    
+    _fork requestJobs
 
   getJob = (arg) ->
     switch typeOf arg
       when 'String'
-        renderable _.requestJobByDestinationKey, arg, (job, go) ->
-          go null, H2O.JobOutput _, job
+        _fork requestJob, arg
       when 'Object'
         if arg.key?
           getJob arg.key
