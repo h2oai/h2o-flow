@@ -27,6 +27,7 @@ H2O.JobOutput = (_, _job) ->
   _key = _job.key.name
   _description = _job.description
   _destinationKey = _job.dest.name
+  _destinationType = _job.dest.type
   _runTime = signal null
   _progress = signal null
   _progressMessage = signal null
@@ -72,15 +73,11 @@ H2O.JobOutput = (_, _job) ->
 
   view = ->
     return unless _canView()
-    _.requestInspect _destinationKey, (error, result) ->
-      if error
-        _exception Flow.Failure new Flow.Error "Error inspecting job target.", error
-      else
-        switch result.kind
-          when 'frame'
-            _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
-          when 'model'
-            _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
+    switch _destinationType
+      when 'Key<Frame>'
+        _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
+      when 'Key<Model>'
+        _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
 
   cancel = ->
     _.requestCancelJob _key, (error, result) ->
