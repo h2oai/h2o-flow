@@ -27,7 +27,14 @@ H2O.JobOutput = (_, _job) ->
   _key = _job.key.name
   _description = _job.description
   _destinationKey = _job.dest.name
-  _destinationType = _job.dest.type
+  _destinationType = switch _job.dest.type
+      when 'Key<Frame>'
+        'Frame'
+      when 'Key<Model>'
+        'Model'
+      else
+        'Unknown'
+
   _runTime = signal null
   _progress = signal null
   _progressMessage = signal null
@@ -46,7 +53,7 @@ H2O.JobOutput = (_, _job) ->
     _progressMessage job.progress_msg
     _status job.status
     _statusColor getJobOutputStatusColor job.status
-    _exception if job.exception then Flow.Failure new Flow.Error "Job failure.", new Error job.exception else null
+    _exception if job.exception then Flow.Failure new Flow.Error 'Job failure.', new Error job.exception else null
 
     _canView not isJobRunning job
     _canCancel isJobRunning job
@@ -74,9 +81,9 @@ H2O.JobOutput = (_, _job) ->
   view = ->
     return unless _canView()
     switch _destinationType
-      when 'Key<Frame>'
+      when 'Frame'
         _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
-      when 'Key<Model>'
+      when 'Model'
         _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
 
   cancel = ->
@@ -95,6 +102,7 @@ H2O.JobOutput = (_, _job) ->
   key: _key
   description: _description
   destinationKey: _destinationKey
+  destinationType: _destinationType
   runTime: _runTime
   progress: _progress
   progressMessage: _progressMessage

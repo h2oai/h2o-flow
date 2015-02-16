@@ -8,16 +8,10 @@
   table.flow-form
     tbody
       tr
-        th.flow-narrow Description
-        td.flow-wide(data-bind='text:description')
-      tr
-        th.flow-narrow Status
-        td.flow-wide(data-bind='text:status')
+        th.flow-narrow Type
+        td.flow-wide(data-bind='text:destinationType')
       tr
         th.flow-narrow Key
-        td.flow-wide(data-bind='text:key')
-      tr
-        th.flow-narrow Destination Key
         td.flow-wide
           // ko ifnot:canView
           span(data-bind='text:destinationKey')
@@ -27,6 +21,12 @@
             i.fa.fa-search
             a(href='#' data-bind='text:destinationKey, click:view')
           // /ko
+      tr
+        th.flow-narrow Description
+        td.flow-wide(data-bind='text:description')
+      tr
+        th.flow-narrow Status
+        td.flow-wide(data-bind='text:status')
       tr
         th.flow-narrow Run Time
         td.flow-wide(data-bind='text:runTime')
