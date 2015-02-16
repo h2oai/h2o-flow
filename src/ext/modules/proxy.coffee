@@ -114,13 +114,20 @@ H2O.Proxy = (_) ->
         go null, result.jobs 
 
   requestJob = (key, go) ->
-    #opts = key: encodeURIComponent key
-    #requestWithOpts '/Job.json', opts, go
     doGet "/2/Jobs.json/#{encodeURIComponent key}", (error, result) ->
       if error
         go new Flow.Error "Error fetching job '#{key}'", error
       else
         go null, head result.jobs
+
+  requestJobByDestinationKey = (key, go) ->
+    requestJobs (error, jobs) ->
+      if error
+        go error
+      else
+        for job in jobs when job.dest.name is key
+          return go null, job
+        go new Flow.Error "Could not find job with destination key [#{key}]."
 
   requestCancelJob = (key, go) ->
     doPost "/2/Jobs.json/#{encodeURIComponent key}/cancel", {}, (error, result) ->
@@ -301,6 +308,7 @@ H2O.Proxy = (_) ->
   link _.requestColumnSummary, requestColumnSummary
   link _.requestJobs, requestJobs
   link _.requestJob, requestJob
+  link _.requestJobByDestinationKey, requestJobByDestinationKey
   link _.requestCancelJob, requestCancelJob
   link _.requestFileGlob, requestFileGlob
   link _.requestImportFiles, requestImportFiles

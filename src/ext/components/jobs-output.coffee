@@ -7,7 +7,7 @@ H2O.JobsOutput = (_, jobs) ->
 
   createJobView = (job) ->
     view = ->
-      _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
+      _.insertAndExecuteCell 'cs', "getJob #{stringify job.dest.name}" 
 
     type = switch job.dest.type
       when 'Key<Frame>'

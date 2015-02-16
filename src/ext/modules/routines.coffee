@@ -1064,7 +1064,7 @@ H2O.Routines = (_) ->
   getJob = (arg) ->
     switch typeOf arg
       when 'String'
-        renderable _.requestJob, arg, (job, go) ->
+        renderable _.requestJobByDestinationKey, arg, (job, go) ->
           go null, H2O.JobOutput _, job
       when 'Object'
         if arg.key?
