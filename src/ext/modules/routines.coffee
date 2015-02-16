@@ -1091,11 +1091,20 @@ H2O.Routines = (_) ->
       else
         assist getJob
 
+  extendImportResults = (importResults) ->
+    render_ importResults, -> H2O.ImportFilesOutput _, importResults
+
+  requestImportFiles = (paths, go) ->
+    _.requestImportFiles paths, (error, importResults) ->
+      if error
+        go error
+      else
+        go null, extendImportResults importResults
+
   importFiles = (paths) ->
     switch typeOf paths
       when 'Array'
-        renderable _.requestImportFiles, paths, (importResults, go) ->
-          go null, H2O.ImportFilesOutput _, importResults
+        _fork requestImportFiles, paths
       else
         assist importFiles
 
