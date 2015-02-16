@@ -231,19 +231,28 @@ H2O.Routines = (_) ->
     render_ inspection, -> H2O.InspectOutput _, inspection
     inspection
 
-  _plot = (plot, go) ->
-    plot (error, vis) ->
+  _plot = (render, go) ->
+    render (error, vis) ->
       if error
         go new Flow.Error 'Error rendering vis.', error
       else
         go null, vis
 
+  extendPlot = (vis) ->
+    render_ vis, -> H2O.PlotOutput _, vis.element
+
+  requestPlot = (f, go) ->
+    _plot (f lightning), (error, vis) ->
+      if error
+        go error
+      else
+        go null, extendPlot vis
+
   plot = (f) ->
     if _isFuture f
       _fork proceed, H2O.PlotInput, f
     else
-      renderable _plot, (f lightning), (plot, go) ->
-        go null, H2O.PlotOutput _, plot.element
+      _fork requestPlot, f
 
   grid = (f) ->
     plot (g) -> g(
