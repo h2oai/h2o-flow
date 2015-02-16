@@ -19,11 +19,6 @@ _applicate = (go) ->
   (error, args) ->
     apply go, null, [ error ].concat args if isFunction go
 
-renderable = (f, args..., render) ->
-  ft = _fork f, args
-  ft.render = render
-  ft
-
 _fork = (f, args) ->
   self = (go) ->
     canGo = isFunction go
@@ -216,7 +211,6 @@ Flow.Async =
   createBuffer: createBuffer #XXX rename
   noop: _noop
   applicate: _applicate
-  renderable: renderable
   isFuture: _isFuture
   fork: _fork
   join: _join
