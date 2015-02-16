@@ -1153,14 +1153,21 @@ H2O.Routines = (_) ->
 
     _fork requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
 
-  buildModel = (algo, opts) ->
-    if algo and opts and keys(opts).length > 1
-      renderable _.requestModelBuild, algo, opts, (result, go) ->
+  requestModelBuild = (algo, opts, go) ->
+    _.requestModelBuild algo, opts, (error, result) ->
+      if error
+        go error
+      else
         if result.validation_error_count > 0
           messages = (validation.message for validation in result.validation_messages)
           go new Flow.Error "Model build failure: #{messages.join '; '}"
         else
-          go null, H2O.JobOutput _, head result.jobs
+          go null, extendJob head result.jobs
+
+
+  buildModel = (algo, opts) ->
+    if algo and opts and keys(opts).length > 1
+      _fork requestModelBuild, algo, opts
     else
       assist buildModel, algo, opts
 
