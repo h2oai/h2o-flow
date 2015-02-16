@@ -174,14 +174,14 @@ H2O.Routines = (_) ->
   proceed = (func, args, go) ->
     go null, render_ {}, -> apply func, null, [_].concat args or []
 
-  renderable = Flow.Async.renderable #XXX obsolete
+  extendGuiForm = (form) ->
+    render_ form, -> Flow.Form _, form
 
-  form = (controls, go) ->
-    go null, signals controls or []
+  createGui = (controls, go) ->
+    go null, extendGuiForm signals controls or []
 
   gui = (controls) ->
-    Flow.Async.renderable form, controls, (form, go) ->
-      go null, Flow.Form _, form
+    _fork createGui, controls
 
   gui[name] = f for name, f of Flow.Gui
 
@@ -241,7 +241,7 @@ H2O.Routines = (_) ->
   extendPlot = (vis) ->
     render_ vis, -> H2O.PlotOutput _, vis.element
 
-  requestPlot = (f, go) ->
+  createPlot = (f, go) ->
     _plot (f lightning), (error, vis) ->
       if error
         go error
@@ -252,7 +252,7 @@ H2O.Routines = (_) ->
     if _isFuture f
       _fork proceed, H2O.PlotInput, f
     else
-      _fork requestPlot, f
+      _fork createPlot, f
 
   grid = (f) ->
     plot (g) -> g(
