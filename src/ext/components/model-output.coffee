@@ -52,15 +52,8 @@ H2O.ModelOutput = (_, _model) ->
           )
 
     when 'deeplearning'
-      if table = _.inspect 'output', _model
-        renderPlot 'Output', _.plot (g) ->
-          g(
-            g.table()
-            g.from table
-          )
-
-      if table = _.inspect 'Scoring History', _model
-        renderPlot 'Scoring History', _.plot (g) ->
+      if table = _.inspect 'Status of Neuron Layers', _model
+        renderPlot 'Status of Neuron Layers', _.plot (g) ->
           g(
             g.table()
             g.from table
@@ -73,8 +66,22 @@ H2O.ModelOutput = (_, _model) ->
             g.from table
           )
 
-      if table = _.inspect 'Status of Neuron Layers', _model
-        renderPlot 'Status of Neuron Layers', _.plot (g) ->
+      if table = _.inspect 'Training Confusion Matrix', _model
+        renderPlot 'Training Confusion Matrix', _.plot (g) ->
+          g(
+            g.table()
+            g.from table
+          )
+
+      if table = _.inspect 'Validation Metrics', _model
+        renderPlot 'Validation Metrics', _.plot (g) ->
+          g(
+            g.table()
+            g.from table
+          )
+
+      if table = _.inspect 'Validation Confusion Matrix', _model
+        renderPlot 'Validation Confusion Matrix', _.plot (g) ->
           g(
             g.table()
             g.from table
@@ -88,6 +95,13 @@ H2O.ModelOutput = (_, _model) ->
             )
             g.from table
             g.limit 25
+          )
+
+      if table = _.inspect 'Scoring History', _model
+        renderPlot 'Scoring History', _.plot (g) ->
+          g(
+            g.table()
+            g.from table
           )
 
     when 'gbm'

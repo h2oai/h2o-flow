@@ -496,12 +496,12 @@ H2O.Routines = (_) ->
       if trainMetrics = model.output.trainMetrics
         inspections[ 'Training Metrics' ] = inspectMultinomialPrediction2 'Training Metrics', trainMetrics
         if table = trainMetrics.cm.table
-          inspectMultinomialConfusionMatrix 'Training Metrics Confusion Matrix', table, origin, inspections
+          inspectMultinomialConfusionMatrix 'Training Confusion Matrix', table, origin, inspections
 
       if validMetrics = model.output.validMetrics
         inspections[ 'Validation Metrics' ] = inspectMultinomialPrediction2 'Validation Metrics', validMetrics
         if table = validMetrics.cm.table
-          inspectMultinomialConfusionMatrix 'Validation Metrics Confusion Matrix', table, origin, inspections
+          inspectMultinomialConfusionMatrix 'Validation Confusion Matrix', table, origin, inspections
 
     else if modelCategory is 'Regression'
       if trainMetrics = model.output.trainMetrics
