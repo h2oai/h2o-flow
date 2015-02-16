@@ -41,7 +41,7 @@ Flow.Browser = (_) ->
           _docs.splice index, 1, createDocView [ 'notebook', id, doc ]
           go null, id
     else
-      id = uuid()
+      id = Flow.Util.uuid()
       _.requestPutObject 'notebook', id, doc, (error) ->
         if error
           go error

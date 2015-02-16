@@ -31,5 +31,6 @@ Flow.Util =
   fromNow: fromNow
   formatBytes: formatBytes
   formatMilliseconds: formatMilliseconds
+  uuid: uuid
 
 
