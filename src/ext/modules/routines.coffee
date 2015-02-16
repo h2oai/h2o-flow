@@ -1108,11 +1108,21 @@ H2O.Routines = (_) ->
       else
         assist importFiles
 
+  extendParseSetupResults = (parseSetupResults) ->
+    render_ parseSetupResults, -> H2O.SetupParseOutput _, parseSetupResults
+
+  requestParseSetup = (sourceKeys, go) ->
+    _.requestParseSetup sourceKeys, (error, parseSetupResults) ->
+      if error
+        go error
+      else
+        go null, extendParseSetupResults parseSetupResults
+
+
   setupParse = (sourceKeys) ->
     switch typeOf sourceKeys
       when 'Array'
-        renderable _.requestParseSetup, sourceKeys, (parseSetupResults, go) ->
-          go null, H2O.SetupParseOutput _, parseSetupResults
+        _fork requestParseSetup, sourceKeys
       else
         assist setupParse
 
