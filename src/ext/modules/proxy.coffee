@@ -100,13 +100,6 @@ H2O.Proxy = (_) ->
         go null, head result.frames
 
   requestRDDs = (go) ->
-
-    go null, [
-      id: 5
-      name: 'foo'
-      partitions: 10
-    ]
-    return
     doGet '/3/RDDs.json', (error, result) ->
       if error
         go error
