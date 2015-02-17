@@ -736,17 +736,22 @@ H2O.Routines = (_) ->
   extendPrediction = (modelKey, frameKey, prediction) ->
     opts = { model: modelKey, frame: frameKey }
     render_ prediction, -> H2O.PredictOutput _, prediction
+
+    inspections = {}
     switch prediction.model_category
-      when 'Regression', 'Multinomial', 'Clustering'
-        inspect_ prediction,
-          prediction: inspectRegressionPrediction prediction
+      when 'Regression', 'Clustering'
+        inspections.prediction = inspectRegressionPrediction prediction
+
+      when 'Multinomial'
+        inspections.prediction = inspectRegressionPrediction prediction
+        inspectMultinomialConfusionMatrix 'Confusion Matrix', prediction.cm.table, "getPrediction #{stringify modelKey}, #{stringify frameKey}", inspections 
       else
-        inspections = {}
         inspections[ 'Prediction' ] = inspectBinomialPrediction prediction
         inspections[ prediction.thresholdsAndMetricScores.name ] = inspectBinomialScores opts, [ prediction ]
         inspections[ prediction.maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, [ prediction ]
         inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, [ prediction ]
-        inspect_ prediction, inspections
+
+    inspect_ prediction, inspections
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
