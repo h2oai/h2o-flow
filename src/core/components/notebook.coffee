@@ -286,7 +286,7 @@ Flow.Notebook = (_, _renderers) ->
     return no # prevent arrow keys from scrolling the page
 
   displayKeyboardShortcuts = ->
-    $('#keyboardShortcutsDialog').modal()
+    $('#keyboardHelpDialog').modal()
 
   displayDocumentation = ->
     hash = if Flow.Version
