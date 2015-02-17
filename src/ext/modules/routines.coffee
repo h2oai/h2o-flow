@@ -31,7 +31,6 @@ _assistance =
     description: 'Make a prediction'
     icon: 'bolt'
 
-
 parseInts = (source) ->
   for str in source
     if isNaN value = parseInt str, 10
@@ -1249,6 +1248,20 @@ H2O.Routines = (_) ->
   getLogFile = (nodeIndex=-1, fileType='info') ->
     _fork requestLogFile, nodeIndex, fileType
 
+  extendRDDs = (rdds) ->
+    render_ rdds, -> H2O.RDDsOutput _, rdds
+    rdds
+
+  requestRDDs = (go) ->
+    _.requestRDDs (error, rdds) ->
+      if error
+        go error
+      else
+        go null, extendRDDs rdds
+
+  getRDDs = ->
+    _fork requestRDDs
+
   requestProfile = (depth, go) ->
     _.requestProfile depth, (error, profile) ->
       if error
@@ -1310,6 +1323,16 @@ H2O.Routines = (_) ->
         lightning.from frame
       )
 
+    #TODO Hack for sparkling-water
+    _.requestEndpoints (error, response) ->
+      unless error
+        for route in response.routes
+          if route.url_pattern is '/3/RDDs'
+            _assistance.getRDDs =
+              description: 'Get a list of RDDs in H<sub>2</sub>O'
+              icon: 'database'
+
+
   # fork/join 
   fork: _fork
   join: _join
@@ -1352,6 +1375,7 @@ H2O.Routines = (_) ->
   splitFrame: splitFrame
   getFrames: getFrames
   getFrame: getFrame
+  getRDDs: getRDDs
   getColumnSummary: getColumnSummary
   buildModel: buildModel
   getModels: getModels
