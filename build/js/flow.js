@@ -12,7 +12,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.54';
+    FLOW_VERSION = '0.2.55';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -3673,6 +3673,7 @@
         _.requestParseSetup = Flow.Dataflow.slot();
         _.requestFrames = Flow.Dataflow.slot();
         _.requestFrame = Flow.Dataflow.slot();
+        _.requestRDDs = Flow.Dataflow.slot();
         _.requestColumnSummary = Flow.Dataflow.slot();
         _.requestModelBuilder = Flow.Dataflow.slot();
         _.requestModelBuilders = Flow.Dataflow.slot();
@@ -3716,7 +3717,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doGet, doPost, encodeArrayForPost, encodeObject, encodeObjectForPost, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestWithOpts;
+        var composePath, doGet, doPost, encodeArrayForPost, encodeObject, encodeObjectForPost, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestWithOpts;
         http = function (path, opts, go) {
             var req;
             _.status('server', 'request', path);
@@ -3833,6 +3834,21 @@
                     return go(error);
                 } else {
                     return go(null, lodash.head(result.frames));
+                }
+            });
+        };
+        requestRDDs = function (go) {
+            go(null, [{
+                    id: 5,
+                    name: 'foo',
+                    partitions: 10
+                }]);
+            return;
+            return doGet('/3/RDDs.json', function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, result.rdds);
                 }
             });
         };
@@ -4089,6 +4105,7 @@
         Flow.Dataflow.link(_.requestSplitFrame, requestSplitFrame);
         Flow.Dataflow.link(_.requestFrames, requestFrames);
         Flow.Dataflow.link(_.requestFrame, requestFrame);
+        Flow.Dataflow.link(_.requestRDDs, requestRDDs);
         Flow.Dataflow.link(_.requestColumnSummary, requestColumnSummary);
         Flow.Dataflow.link(_.requestJobs, requestJobs);
         Flow.Dataflow.link(_.requestJob, requestJob);
@@ -4356,7 +4373,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendJob, extendKMeansModel, extendLogFile, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectBinomialConfusionMatrices2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPrediction2, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectGLMCoefficientsMagnitude, inspectGLMCoefficientsTable, inspectGLMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultinomialConfusionMatrix, inspectMultinomialPrediction2, inspectParametersAcrossModels, inspectRegressionPrediction, inspectRegressionPrediction2, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestFrame, requestFrames, requestLogFile, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
+        var assist, buildModel, createFrame, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendJob, extendKMeansModel, extendLogFile, extendModel, extendModels, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, form, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectBinomialConfusionMatrices2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPrediction2, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectGLMCoefficientsMagnitude, inspectGLMCoefficientsTable, inspectGLMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultinomialConfusionMatrix, inspectMultinomialPrediction2, inspectParametersAcrossModels, inspectRegressionPrediction, inspectRegressionPrediction2, inspect_, loadScript, name, parseRaw, plot, predict, proceed, read, render_, renderable, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestFrame, requestFrames, requestLogFile, requestModel, requestModels, requestModelsByKeys, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -6041,6 +6058,24 @@
             }
             return _fork(requestLogFile, nodeIndex, fileType);
         };
+        extendRDDs = function (rdds) {
+            render_(rdds, function () {
+                return H2O.RDDsOutput(_, rdds);
+            });
+            return rdds;
+        };
+        requestRDDs = function (go) {
+            return _.requestRDDs(function (error, rdds) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendRDDs(rdds));
+                }
+            });
+        };
+        getRDDs = function () {
+            return _fork(requestRDDs);
+        };
         requestProfile = function (depth, go) {
             return _.requestProfile(depth, function (error, profile) {
                 if (error) {
@@ -6115,8 +6150,27 @@
             Flow.Dataflow.link(_.grid, function (frame) {
                 return lightning(lightning.table(), lightning.from(frame));
             });
-            return Flow.Dataflow.link(_.enumerate, function (frame) {
+            Flow.Dataflow.link(_.enumerate, function (frame) {
                 return lightning(lightning.record(0), lightning.from(frame));
+            });
+            return _.requestEndpoints(function (error, response) {
+                var route, _i, _len, _ref1, _results;
+                if (!error) {
+                    _ref1 = response.routes;
+                    _results = [];
+                    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                        route = _ref1[_i];
+                        if (route.url_pattern === '/3/RDDs') {
+                            _results.push(_assistance.getRDDs = {
+                                description: 'Get a list of RDDs in H<sub>2</sub>O',
+                                icon: 'database'
+                            });
+                        } else {
+                            _results.push(void 0);
+                        }
+                    }
+                    return _results;
+                }
             });
         });
         return {
@@ -6149,6 +6203,7 @@
             splitFrame: splitFrame,
             getFrames: getFrames,
             getFrame: getFrame,
+            getRDDs: getRDDs,
             getColumnSummary: getColumnSummary,
             buildModel: buildModel,
             getModels: getModels,
@@ -8753,6 +8808,25 @@
             nodes: _nodes,
             activeNode: _activeNode,
             template: 'flow-profile-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.RDDsOutput = function (_, _rDDs) {
+        var createRDDView, _rDDViews;
+        _rDDViews = Flow.Dataflow.signal([]);
+        createRDDView = function (rDD) {
+            return {
+                id: rDD.id,
+                name: rDD.name,
+                partitions: rDD.partitions
+            };
+        };
+        _rDDViews(lodash.map(_rDDs, createRDDView));
+        return {
+            rDDViews: _rDDViews,
+            hasRDDs: _rDDs.length > 0,
+            template: 'flow-rdds-output'
         };
     };
 }.call(this));
