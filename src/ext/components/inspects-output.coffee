@@ -1,4 +1,4 @@
-H2O.InspectsOutput = (_, _tables) ->
+H2O.InspectsOutput = (_, _go, _tables) ->
   createTableView = (table) ->
     inspect = -> 
       _.insertAndExecuteCell 'cs', "inspect #{stringify table.label}, #{table.metadata.origin}"
@@ -16,6 +16,8 @@ H2O.InspectsOutput = (_, _tables) ->
     grid: grid
     canPlot: if table.metadata.plot then yes else no
     plot: plot
+
+  defer _go
 
   hasTables: _tables.length > 0
   tables: map _tables, createTableView

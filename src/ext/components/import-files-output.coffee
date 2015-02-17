@@ -1,4 +1,4 @@
-H2O.ImportFilesOutput = (_, _importResults) ->
+H2O.ImportFilesOutput = (_, _go, _importResults) ->
   _allKeys = flatten compact map _importResults, ( [ error, result ] ) ->
     if error then null else result.keys
   _canParse = _allKeys.length > 0
@@ -25,6 +25,8 @@ H2O.ImportFilesOutput = (_, _importResults) ->
 
   buildModel = ->
     _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify head _allKeys}"
+
+  defer _go
 
   title: _title
   importViews: _importViews

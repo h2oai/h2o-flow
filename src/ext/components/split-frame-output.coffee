@@ -1,4 +1,4 @@
-H2O.SplitFrameOutput = (_, _splitFrameResult) ->
+H2O.SplitFrameOutput = (_, _go, _splitFrameResult) ->
 
   computeRatios = (sourceRatios) ->
     total = 0
@@ -20,6 +20,8 @@ H2O.SplitFrameOutput = (_, _splitFrameResult) ->
   _ratios = computeRatios _splitFrameResult.ratios
   _frames = for key, index in _splitFrameResult.destKeys
     createFrameView key.name, _ratios[index]
+
+  defer _go
 
   frames: _frames
   template: 'flow-split-frame-output'

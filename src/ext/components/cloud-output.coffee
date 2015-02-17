@@ -1,4 +1,4 @@
-H2O.CloudOutput = (_, _cloud) ->
+H2O.CloudOutput = (_, _go, _cloud) ->
   _exception = signal null #TODO Display in .jade
   _isLive = signal no
   _isBusy = signal no
@@ -175,6 +175,8 @@ H2O.CloudOutput = (_, _cloud) ->
     updateCloud _cloud, isExpanded
 
   updateCloud _cloud, _isExpanded()
+
+  defer _go
 
   name: _name
   size: _size

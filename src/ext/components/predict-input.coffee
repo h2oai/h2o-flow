@@ -1,4 +1,4 @@
-H2O.PredictInput = (_, _modelArg, _frameArg) ->
+H2O.PredictInput = (_, _go, _modelArg, _frameArg) ->
   _selectedModels = if _modelArg then (if isArray _modelArg then _modelArg else [ _modelArg ]) else []
   _selectedFrames = if _frameArg then (if isArray _frameArg then _frameArg else [ _frameArg ]) else []
 
@@ -41,6 +41,8 @@ H2O.PredictInput = (_, _modelArg, _frameArg) ->
       frameArg = _selectedFrame()
 
     _.insertAndExecuteCell 'cs', "predict #{stringify modelArg}, #{stringify frameArg}"
+
+  defer _go
 
   exception: _exception
   hasModels: _hasModels

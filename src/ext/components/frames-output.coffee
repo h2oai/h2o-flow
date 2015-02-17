@@ -1,4 +1,4 @@
-H2O.FramesOutput = (_, _frames) ->
+H2O.FramesOutput = (_, _go, _frames) ->
   _frameViews = signal []
   _checkAllFrames = signal no
   _canCompareFrames = signal no
@@ -37,6 +37,8 @@ H2O.FramesOutput = (_, _frames) ->
 
     createModel = ->
       _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify frame.key.name}"
+
+    defer _go
 
     key: frame.key.name
     isChecked: _isChecked

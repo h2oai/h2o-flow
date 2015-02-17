@@ -343,7 +343,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   hasValidationFailures: _hasValidationFailures
   validationFailureMessage: _validationFailureMessage
 
-H2O.ModelInput = (_, _algo, _opts) ->
+H2O.ModelInput = (_, _go, _algo, _opts) ->
   _exception = signal null
   _algorithms = signal []
   _algorithm = signal null
@@ -397,6 +397,8 @@ H2O.ModelInput = (_, _algo, _opts) ->
           _modelForm null
 
   createModel = -> _modelForm().createModel()
+
+  defer _go
 
   parentException: _exception #XXX hacky
   algorithms: _algorithms

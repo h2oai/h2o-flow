@@ -1,4 +1,4 @@
-H2O.ColumnSummaryOutput = (_, frameKey, frame, columnName) ->
+H2O.ColumnSummaryOutput = (_, _go, frameKey, frame, columnName) ->
   column = head frame.columns
 
   debug frame
@@ -56,6 +56,8 @@ H2O.ColumnSummaryOutput = (_, frameKey, frame, columnName) ->
 
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getColumnSummary #{stringify frameKey}, #{stringify columnName}"
+
+  defer _go
 
   label: column.label
   characteristicsPlot: _characteristicsPlot

@@ -1,4 +1,4 @@
-H2O.LogFileOutput = (_, _cloud, _nodeIndex, _fileType, _logFile) ->
+H2O.LogFileOutput = (_, _go, _cloud, _nodeIndex, _fileType, _logFile) ->
   _exception = signal null #TODO Display in .jade
 
   _contents = signal ''
@@ -30,6 +30,7 @@ H2O.LogFileOutput = (_, _cloud, _nodeIndex, _fileType, _logFile) ->
     _nodes nodes = (createNode node, i for node, i in cloud.nodes)
     _activeNode nodes[nodeIndex] if nodeIndex < nodes.length
     react _activeNode, _activeFileType, refreshActiveView
+    defer _go
 
   initialize _cloud, _nodeIndex, _fileType, _logFile
 

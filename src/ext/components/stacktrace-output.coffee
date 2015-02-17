@@ -1,4 +1,4 @@
-H2O.StackTraceOutput = (_, _stackTrace) ->
+H2O.StackTraceOutput = (_, _go, _stackTrace) ->
   _activeNode = signal null
 
   createThread = (thread) ->
@@ -20,6 +20,8 @@ H2O.StackTraceOutput = (_, _stackTrace) ->
     createNode node 
 
   _activeNode head _nodes
+
+  defer _go
 
   nodes: _nodes
   activeNode: _activeNode

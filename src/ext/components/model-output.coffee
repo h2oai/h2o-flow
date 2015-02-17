@@ -1,4 +1,4 @@
-H2O.ModelOutput = (_, _model) ->
+H2O.ModelOutput = (_, _go, _model) ->
   _isExpanded = signal no
   _plots = signals []
 
@@ -141,6 +141,8 @@ H2O.ModelOutput = (_, _model) ->
 
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.key.name}"
+
+  defer _go
 
   key: _model.key
   algo: _model.algo

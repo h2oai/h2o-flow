@@ -1,4 +1,4 @@
-H2O.SplitFrameInput = (_, frameKey) ->
+H2O.SplitFrameInput = (_, _go, frameKey) ->
   _frames = signal []
   _frame = signal null
   _lastSplitRatio = signal 1
@@ -82,6 +82,7 @@ H2O.SplitFrameInput = (_, frameKey) ->
         sort frameKeys
         _frames frameKeys
     addSplit()
+    defer _go
 
   initialize()
 

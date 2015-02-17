@@ -1,5 +1,4 @@
-H2O.FrameOutput = (_, _frame) ->
-
+H2O.FrameOutput = (_, _go, _frame) ->
 
   createGrid = (data) ->
     [ grid, table, thead, tbody, tr, th, thr, td, tdr, action ] = Flow.HTML.template '.grid', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt', "+a data-action='summary' data-index='{0}' class='action' href='#'"
@@ -62,6 +61,8 @@ H2O.FrameOutput = (_, _frame) ->
     window.open "/3/DownloadDataset?key=#{encodeURIComponent _frame.key.name}", '_blank'
 
   _grid = createGrid _.inspect 'columns', _frame
+
+  defer _go
 
   key: _frame.key.name
   rowCount: _frame.rows

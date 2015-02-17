@@ -1,4 +1,4 @@
-H2O.TimelineOutput = (_, _timeline) ->
+H2O.TimelineOutput = (_, _go, _timeline) ->
   _isLive = signal no
   _isBusy = signal no
 
@@ -80,6 +80,8 @@ H2O.TimelineOutput = (_, _timeline) ->
     refresh() if isLive
 
   updateTimeline _timeline 
+
+  defer _go
 
   data: _data
   isLive: _isLive

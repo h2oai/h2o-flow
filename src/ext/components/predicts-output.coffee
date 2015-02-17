@@ -1,4 +1,4 @@
-H2O.PredictsOutput = (_, opts, _predictions) ->
+H2O.PredictsOutput = (_, _go, opts, _predictions) ->
 
   _predictionViews = signal []
   _checkAllPredictions = signal no
@@ -77,6 +77,8 @@ H2O.PredictsOutput = (_, opts, _predictions) ->
 #    _.plot rocCurveConfig, (error, el) ->
 #      unless error
 #        _rocCurve el
+
+    defer _go
 
   initialize _predictions
   

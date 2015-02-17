@@ -338,12 +338,28 @@ Flow.Notebook = (_, _renderers) ->
   goToUrl = (url) -> ->
     window.open url, '_blank'
 
+  executeAllCells = (go) ->
+    cells = slice _cells(), 0
+
+    executeNextCell = ->
+      cell = shift cells
+      if cell
+        #TODO Progress tracking
+        #TODO Continuation should be EFC, and passing an error should abort 'run all'
+        cell.execute -> delay executeNextCell, 3000
+      else
+        go()
+
+    executeNextCell()
+
+  runAllCells = ->
+    executeAllCells -> #TODO Progress completion
+
   notImplemented = -> # noop
   printPreview = notImplemented
   pasteCellandReplace = notImplemented
   mergeCellAbove = notImplemented
   switchToPresentationMode = notImplemented 
-  runAllCells = notImplemented
   clearCell = notImplemented
   clearAllCells = notImplemented
   startTour = notImplemented
@@ -430,7 +446,7 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Run and Select Below', runCellAndSelectBelow
       createMenuItem 'Run and Insert Below', runCellAndInsertBelow
       menuDivider
-      createMenuItem 'Run All', runAllCells, yes
+      createMenuItem 'Run All', runAllCells
       menuDivider
       createMenuItem 'Clear Cell', clearCell, yes
       menuDivider

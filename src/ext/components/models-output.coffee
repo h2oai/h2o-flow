@@ -1,4 +1,4 @@
-H2O.ModelsOutput = (_, _models) ->
+H2O.ModelsOutput = (_, _go, _models) ->
   _modelViews = signal []
   _checkAllModels = signal no
   _canCompareModels = signal no
@@ -60,6 +60,7 @@ H2O.ModelsOutput = (_, _models) ->
 
   initialize = (models) ->
     _modelViews map models, createModelView
+    defer _go
 
   initialize _models
 

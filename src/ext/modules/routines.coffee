@@ -171,11 +171,15 @@ H2O.Routines = (_) ->
   _async = Flow.Async.async
   _get = Flow.Async.get
 
+  #XXX obsolete
   proceed = (func, args, go) ->
     go null, render_ {}, -> apply func, null, [_].concat args or []
 
+  proceed = (func, args, go) ->
+    go null, apply render_, null, [ {}, func, ].concat args or []
+
   extendGuiForm = (form) ->
-    render_ form, -> Flow.Form _, form
+    render_ form, Flow.Form, form
 
   createGui = (controls, go) ->
     go null, extendGuiForm signals controls or []
@@ -188,8 +192,15 @@ H2O.Routines = (_) ->
   flow_ = (raw) ->
     raw._flow_ or raw._flow_ = _cache_: {}
 
+  #XXX obsolete
   render_ = (raw, render) ->
     (flow_ raw).render = render
+    raw
+
+  render_ = (raw, render, args...) ->
+    (flow_ raw).render = (go) ->
+      # Prepend current context (_) and a continuation (go)
+      apply render, null, [_, go].concat args
     raw
 
   inspect_ = (raw, inspectors) ->
@@ -213,7 +224,7 @@ H2O.Routines = (_) ->
         inspections = []
         for attr, f of inspectors
           inspections.push inspect$2 attr, obj
-        render_ inspections, -> H2O.InspectsOutput _, inspections
+        render_ inspections, H2O.InspectsOutput, inspections
         inspections
       else
         {}
@@ -228,7 +239,7 @@ H2O.Routines = (_) ->
     return unless f = inspectors[attr]
     return unless isFunction f
     root._cache_[key] = inspection = f()
-    render_ inspection, -> H2O.InspectOutput _, inspection
+    render_ inspection, H2O.InspectOutput, inspection
     inspection
 
   _plot = (render, go) ->
@@ -239,7 +250,7 @@ H2O.Routines = (_) ->
         go null, vis
 
   extendPlot = (vis) ->
-    render_ vis, -> H2O.PlotOutput _, vis.element
+    render_ vis, H2O.PlotOutput, vis.element
 
   createPlot = (f, go) ->
     _plot (f lightning), (error, vis) ->
@@ -263,26 +274,26 @@ H2O.Routines = (_) ->
     )
 
   extendCloud = (cloud) ->
-    render_ cloud, -> H2O.CloudOutput _, cloud
+    render_ cloud, H2O.CloudOutput, cloud
 
   extendTimeline = (timeline) ->
-    render_ timeline, -> H2O.TimelineOutput _, timeline
+    render_ timeline, H2O.TimelineOutput, timeline
 
   extendStackTrace = (stackTrace) ->
-    render_ stackTrace, -> H2O.StackTraceOutput _, stackTrace
+    render_ stackTrace, H2O.StackTraceOutput, stackTrace
 
   extendLogFile = (cloud, nodeIndex, fileType, logFile) ->
-    render_ logFile, -> H2O.LogFileOutput _, cloud, nodeIndex, fileType, logFile
+    render_ logFile, H2O.LogFileOutput, cloud, nodeIndex, fileType, logFile
 
   extendProfile = (profile) ->
-    render_ profile, -> H2O.ProfileOutput _, profile
+    render_ profile, H2O.ProfileOutput, profile
 
   extendFrames = (frames) ->
-    render_ frames, -> H2O.FramesOutput _, frames
+    render_ frames, H2O.FramesOutput, frames
     frames
 
   extendSplitFrameResult = (result) ->
-    render_ result, -> H2O.SplitFrameOutput _, result
+    render_ result, H2O.SplitFrameOutput, result
     result
 
 #   inspectOutputsAcrossModels = (modelCategory, models) -> ->
@@ -548,12 +559,12 @@ H2O.Routines = (_) ->
     inspect_ model, inspections
 
   extendJob = (job) ->
-    render_ job, -> H2O.JobOutput _, job
+    render_ job, H2O.JobOutput, job
 
   extendJobs = (jobs) ->
     for job in jobs
       extendJob job
-    render_ jobs, -> H2O.JobsOutput _, jobs
+    render_ jobs, H2O.JobsOutput, jobs
 
   extendModel = (model) ->
     switch model.algo
@@ -566,7 +577,7 @@ H2O.Routines = (_) ->
       when 'glm'
         extendGLMModel model
 
-    render_ model, -> H2O.ModelOutput _, model
+    render_ model, H2O.ModelOutput, model
 
   extendModels = (models) ->
     for model in models
@@ -585,7 +596,7 @@ H2O.Routines = (_) ->
     
 
     inspect_ models, inspections
-    render_ models, -> H2O.ModelsOutput _, models
+    render_ models, H2O.ModelsOutput, models
 
   read = (value) -> if value is 'NaN' then null else value
 
@@ -730,7 +741,7 @@ H2O.Routines = (_) ->
       plot: "plot inspect 'predictions', #{formulateGetPredictionsOrigin opts}"
 
   extendPredictions = (opts, predictions) ->
-    render_ predictions, -> H2O.PredictsOutput _, opts, predictions
+    render_ predictions, H2O.PredictsOutput, opts, predictions
     if (every predictions, (prediction) -> prediction.model_category is 'Binomial')
       inspections = {}
       inspections['Prediction' ] = inspectBinomialPredictions opts, predictions
@@ -751,7 +762,7 @@ H2O.Routines = (_) ->
     
   extendPrediction = (modelKey, frameKey, prediction) ->
     opts = { model: modelKey, frame: frameKey }
-    render_ prediction, -> H2O.PredictOutput _, prediction
+    render_ prediction, H2O.PredictOutput, prediction
     switch prediction.model_category
       when 'Regression', 'Multinomial', 'Clustering'
         inspect_ prediction,
@@ -830,7 +841,7 @@ H2O.Routines = (_) ->
     enumColumns = (column for column in frame.columns when column.type is 'enum')
     inspections.factors = inspectFrameColumns 'factors', frameKey, frame, enumColumns if enumColumns.length > 0
     inspect_ frame, inspections
-    render_ frame, -> H2O.FrameOutput _, frame
+    render_ frame, H2O.FrameOutput, frame
 
   extendColumnSummary = (frameKey, frame, columnName) ->
     column = head frame.columns
@@ -971,7 +982,7 @@ H2O.Routines = (_) ->
       inspections.domain = inspectDomain
 
     inspect_ frame, inspections
-    render_ frame, -> H2O.ColumnSummaryOutput _, frameKey, frame, columnName
+    render_ frame, H2O.ColumnSummaryOutput, frameKey, frame, columnName
 
   requestFrame = (frameKey, go) ->
     _.requestFrame frameKey, (error, frame) ->
@@ -1103,7 +1114,7 @@ H2O.Routines = (_) ->
         assist getJob
 
   extendImportResults = (importResults) ->
-    render_ importResults, -> H2O.ImportFilesOutput _, importResults
+    render_ importResults, H2O.ImportFilesOutput, importResults
 
   requestImportFiles = (paths, go) ->
     _.requestImportFiles paths, (error, importResults) ->
@@ -1120,7 +1131,7 @@ H2O.Routines = (_) ->
         assist importFiles
 
   extendParseSetupResults = (parseSetupResults) ->
-    render_ parseSetupResults, -> H2O.SetupParseOutput _, parseSetupResults
+    render_ parseSetupResults, H2O.SetupParseOutput, parseSetupResults
 
   requestParseSetup = (sourceKeys, go) ->
     _.requestParseSetup sourceKeys, (error, parseSetupResults) ->
@@ -1138,7 +1149,7 @@ H2O.Routines = (_) ->
         assist setupParse
 
   extendParseResult = (parseResult) ->
-    render_ parseResult, -> H2O.ParseOutput _, parseResult
+    render_ parseResult, H2O.ParseOutput, parseResult
 
   requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     _.requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
@@ -1327,8 +1338,7 @@ H2O.Routines = (_) ->
 
   dumpFuture = (result, go) ->
     debug result
-    go null, render_ (result or {}), ->
-      Flow.ObjectBrowser 'dump', result
+    go null, render_ (result or {}), Flow.ObjectBrowser, 'dump', result
 
   dump = (f) ->
     if f?.isFuture

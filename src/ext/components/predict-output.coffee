@@ -1,4 +1,4 @@
-H2O.PredictOutput = (_, prediction) ->
+H2O.PredictOutput = (_, _go, prediction) ->
   { frame, model } = prediction
   _isBinomial = signal prediction.model_category is 'Binomial'
   _isMultinomial = signal prediction.model_category is 'Multinomial'
@@ -31,6 +31,8 @@ H2O.PredictOutput = (_, prediction) ->
 
   viewPredictionFrame = ->
     _.insertAndExecuteCell 'cs', "getFrame #{stringify prediction.predictions.key.name}"
+
+  defer _go
 
   isBinomial: _isBinomial
   isMultinomial: _isMultinomial

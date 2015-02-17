@@ -1,4 +1,4 @@
-H2O.ImportFilesInput = (_) ->
+H2O.ImportFilesInput = (_, _go) ->
   #
   # Search files/dirs
   #
@@ -85,6 +85,8 @@ H2O.ImportFilesInput = (_) ->
   processImportResult = (result) -> 
     files = createFileItems result
     _importedFiles files
+
+  defer _go
 
   specifiedPath: _specifiedPath
   hasErrorMessage: _hasErrorMessage #XXX obsolete

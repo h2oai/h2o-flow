@@ -22,13 +22,14 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         ft (error, result) ->
           if error
             output.error new Flow.Error 'Error evaluating cell', error
+            output.end()
           else
             if result?._flow_?.render
-              output.data result._flow_.render()
+              output.data result._flow_.render -> output.end()
             else
-              output.data Flow.ObjectBrowser 'output', result
+              output.data Flow.ObjectBrowser 'output', result, -> output.end()
       else
-        output.data Flow.ObjectBrowser 'output', ft
+        output.data Flow.ObjectBrowser 'output', ft, -> output.end()
 
     outputBuffer.subscribe evaluate
 
@@ -45,7 +46,6 @@ Flow.Coffeescript = (_, guid, sandbox) ->
     ]
     (Flow.Async.pipe tasks) input, (error) ->
       output.error error if error
-      output.end()
 
       result = cellResult.result()
       if isFunction result
@@ -54,7 +54,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         else
           evaluate result
       else
-        output.close Flow.ObjectBrowser 'result', result
+        output.close Flow.ObjectBrowser 'result', result, -> output.end()
 
   render.isCode = yes
   render

@@ -1,4 +1,4 @@
-H2O.PlotInput = (_, _frame) ->
+H2O.PlotInput = (_, _go, _frame) ->
   _types = [ 'point', 'path', 'rect' ]
   _vectors = for vector in _frame.vectors when vector.type is TString or vector.type is TNumber
     vector.label
@@ -31,6 +31,7 @@ H2O.PlotInput = (_, _frame) ->
       """
     _.insertAndExecuteCell 'cs', command
 
+  defer _go
 
   types: _types
   type: _type

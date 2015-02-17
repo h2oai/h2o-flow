@@ -20,7 +20,7 @@ getJobOutputStatusColor = (status) ->
 getJobProgressPercent = (progress) ->
   "#{Math.ceil 100 * progress}%"
 
-H2O.JobOutput = (_, _job) ->
+H2O.JobOutput = (_, _go, _job) ->
   _isBusy = signal no
   _isLive = signal no
 
@@ -58,9 +58,6 @@ H2O.JobOutput = (_, _job) ->
     _canView not isJobRunning job
     _canCancel isJobRunning job
 
-  toggleRefresh = ->
-    _isLive not _isLive()
-
   refresh = ->
     _isBusy yes
     _.requestJob _key, (error, job) ->
@@ -73,7 +70,8 @@ H2O.JobOutput = (_, _job) ->
         if isJobRunning job
           delay refresh, 1000 if _isLive()
         else
-          toggleRefresh()
+          _isLive no
+          defer _go if _go
 
   act _isLive, (isLive) ->
     refresh() if isLive
@@ -95,7 +93,10 @@ H2O.JobOutput = (_, _job) ->
 
   initialize = (job) ->
     updateJob job
-    toggleRefresh() if isJobRunning job
+    if isJobRunning job
+      _isLive yes
+    else
+      defer _go if _go
 
   initialize _job
 

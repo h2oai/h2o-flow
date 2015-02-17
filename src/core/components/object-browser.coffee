@@ -56,6 +56,9 @@ Flow.ObjectBrowserElement = (key, object) ->
   isExpanded: _isExpanded
   canExpand: _canExpand
 
-Flow.ObjectBrowser = (key, object) ->
+Flow.ObjectBrowser = (key, object, _go) ->
+
+  defer _go
+
   object: Flow.ObjectBrowserElement key, object
   template: 'flow-object'

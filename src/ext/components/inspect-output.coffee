@@ -1,10 +1,12 @@
-H2O.InspectOutput = (_, _frame) ->
+H2O.InspectOutput = (_, _go, _frame) ->
   
   view = ->
     _.insertAndExecuteCell 'cs', "grid inspect #{stringify _frame.label}, #{_frame.metadata.origin}"
 
   plot = ->
     _.insertAndExecuteCell 'cs', _frame.metadata.plot
+
+  defer _go
 
   label: _frame.label
   vectors: _frame.vectors

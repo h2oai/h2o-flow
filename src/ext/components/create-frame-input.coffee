@@ -1,4 +1,4 @@
-H2O.CreateFrameInput = (_) ->
+H2O.CreateFrameInput = (_, _go) ->
   _key = signal ''
   _rows = signal 10000
   _columns = signal 100
@@ -34,6 +34,8 @@ H2O.CreateFrameInput = (_) ->
       has_response: _hasResponse()
 
     _.insertAndExecuteCell 'cs', "createFrame #{stringify opts}"
+
+  defer _go
 
   key: _key
   rows: _rows

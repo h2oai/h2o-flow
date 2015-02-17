@@ -1,4 +1,4 @@
-H2O.JobsOutput = (_, jobs) ->
+H2O.JobsOutput = (_, _go, jobs) ->
   _jobViews = signals []
   _hasJobViews = lift _jobViews, (jobViews) -> jobViews.length > 0
   _isLive = signal no
@@ -42,6 +42,7 @@ H2O.JobsOutput = (_, jobs) ->
 
   initialize = ->
     _jobViews map jobs, createJobView
+    defer _go
 
   initialize()
 

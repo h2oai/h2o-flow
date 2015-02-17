@@ -1,4 +1,4 @@
-H2O.ProfileOutput = (_, _profile) ->
+H2O.ProfileOutput = (_, _go, _profile) ->
   _activeNode = signal null
 
   createNode = (node) ->
@@ -18,6 +18,8 @@ H2O.ProfileOutput = (_, _profile) ->
     createNode node
 
   _activeNode head _nodes
+
+  defer _go
 
   nodes: _nodes
   activeNode: _activeNode
