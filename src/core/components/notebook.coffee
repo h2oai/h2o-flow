@@ -346,7 +346,7 @@ Flow.Notebook = (_, _renderers) ->
       if cell
         #TODO Progress tracking
         #TODO Continuation should be EFC, and passing an error should abort 'run all'
-        cell.execute -> delay executeNextCell, 3000
+        cell.execute -> executeNextCell()
       else
         go()
 
