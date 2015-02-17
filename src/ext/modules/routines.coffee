@@ -251,8 +251,10 @@ H2O.Routines = (_) ->
   plot = (f) ->
     if _isFuture f
       _fork proceed, H2O.PlotInput, f
-    else
+    else if isFunction f
       _fork createPlot, f
+    else
+      assist plot
 
   grid = (f) ->
     plot (g) -> g(
