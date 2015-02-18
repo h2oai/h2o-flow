@@ -14,4 +14,7 @@ Flow.ApplicationContext = (_) ->
   _.loadNotebook = do slot
   _.storeNotebook = do slot
   _.growl = do slot
+  _.confirm = do slot
+  _.alert = do slot
+  _.dialog = do slot
 

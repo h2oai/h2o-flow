@@ -32,6 +32,7 @@ Flow.Notebook = (_, _renderers) ->
   _status = Flow.Status _
   _sidebar = Flow.Sidebar _, _cells
   _about = Flow.About _
+  _dialogs = Flow.Dialogs _
 
   serialize = ->
     cells = for cell in _cells()
@@ -635,5 +636,6 @@ Flow.Notebook = (_, _renderers) ->
     normalMode: normalModeKeyboardShortcutsHelp
     editMode: editModeKeyboardShortcutsHelp
   about: _about
+  dialogs: _dialogs
   templateOf: (view) -> view.template
 
