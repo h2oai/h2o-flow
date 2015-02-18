@@ -77,7 +77,7 @@ H2O.CloudOutput = (_, _cloud) ->
   createNodeRow = (node) ->
     [
       node.healthy
-      node.h2o.node
+      node.ip_port
       (moment new Date node.last_ping).fromNow()
       node.num_cpus
       format3f node.sys_load
