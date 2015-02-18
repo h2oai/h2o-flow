@@ -12,7 +12,9 @@ Flow.Browser = (_) ->
     _fromNow = lift _date, Flow.Util.fromNow
 
     load = ->
-      _.loadNotebook id, doc
+      _.confirm 'Are you sure you want to load this notebook?', { acceptCaption: 'Load Notebook', declineCaption: 'Cancel' }, (response) ->
+        if response
+          _.loadNotebook id, doc
 
     purge = ->
       _.requestDeleteObject type, id, (error) ->
