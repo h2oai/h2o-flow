@@ -1,9 +1,17 @@
 H2O.Proxy = (_) ->
   
-  http = (path, opts, go) ->
+  http = (method, path, opts, go) ->
     _.status 'server', 'request', path
 
-    req = if opts then $.post path, opts else $.getJSON path
+    req = switch method
+      when 'GET'
+        $.getJSON path
+      when 'POST'
+        $.post path, opts
+      when 'PUT'
+        $.ajax url: path, type: method, data: opts
+      when 'DELETE'
+        $.ajax url: path, type: method
 
     req.done (data, status, xhr) ->
       _.status 'server', 'response', path
@@ -11,7 +19,7 @@ H2O.Proxy = (_) ->
       try
         go null, data
       catch error
-        go new Flow.Error (if opts then "Error processing POST #{path}" else "Error processing GET #{path}"), error
+        go new Flow.Error "Error processing #{method} #{path}", error
 
     req.fail (xhr, status, error) ->
       _.status 'server', 'error', path
@@ -29,10 +37,12 @@ H2O.Proxy = (_) ->
       else
         new Flow.Error 'Unknown error'
 
-      go new Flow.Error (if opts then "Error calling POST #{path} with opts #{JSON.stringify opts}" else "Error calling GET #{path}"), cause
+      go new Flow.Error "Error calling #{method} #{path} with opts #{JSON.stringify opts}", cause
 
-  doGet = (path, go) -> http path, null, go
-  doPost = http
+  doGet = (path, go) -> http 'GET', path, null, go
+  doPost = (path, opts, go) -> http 'POST', path, opts, go
+  doPut = (path, opts, go) -> http 'PUT', path, opts, go
+  doDelete = (path, go) -> http 'DELETE', path, null, go
 
   mapWithKey = (obj, f) ->
     result = []
@@ -70,6 +80,14 @@ H2O.Proxy = (_) ->
     for k, v of source
       target[k] = if isArray v then encodeArrayForPost v else v
     target
+
+  unwrap = (go, transform) ->
+    (error, result) ->
+      if error
+        go error
+      else
+        go null, transform result
+
 
   requestInspect = (key, go) ->
     opts = key: encodeURIComponent key
@@ -250,17 +268,31 @@ H2O.Proxy = (_) ->
     else
       doGet "/3/ModelMetrics.json", go
 
+#  requestObjects = (type, go) ->
+#    go null, Flow.LocalStorage.list type
+#
+#  requestObject = (type, id, go) ->
+#    go null, Flow.LocalStorage.read type, id
+#
+#  requestDeleteObject = (type, id, go) ->
+#    go null, Flow.LocalStorage.purge type, id
+#
+#  requestPutObject = (type, id, obj, go) ->
+#    go null, Flow.LocalStorage.write type, id, obj
+
   requestObjects = (type, go) ->
-    go null, Flow.LocalStorage.list type
+    doGet "/3/NodePersistentStorage.json/#{encodeURIComponent type}", unwrap go, (result) -> result.entries
 
-  requestObject = (type, id, go) ->
-    go null, Flow.LocalStorage.read type, id
+  requestObject = (type, name, go) ->
+    doGet "/3/NodePersistentStorage.json/#{encodeURIComponent type}/#{encodeURIComponent name}", unwrap go, (result) -> result.value
 
-  requestDeleteObject = (type, id, go) ->
-    go null, Flow.LocalStorage.purge type, id
+  requestDeleteObject = (type, name, go) ->
+    doDelete "/3/NodePersistentStorage.json/#{encodeURIComponent type}/#{encodeURIComponent name}", go
 
-  requestPutObject = (type, id, obj, go) ->
-    go null, Flow.LocalStorage.write type, id, obj
+  requestPutObject = (type, name, value, go) ->
+    uri = "/3/NodePersistentStorage.json/#{encodeURIComponent type}"
+    uri += "/#{encodeURIComponent name}" if name
+    doPost uri, { value: JSON.stringify value }, unwrap go, (result) -> result.name
 
   requestCloud = (go) ->
     doGet '/1/Cloud.json', go
