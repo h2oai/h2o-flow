@@ -6,13 +6,14 @@
             window.flow = Flow.Application(context, H2O.Routines);
             H2O.Application(context);
             ko.applyBindings(window.flow);
-            return context.ready();
+            context.ready();
+            return context.initialized();
         });
     }
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.56';
+    FLOW_VERSION = '0.2.57';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1806,6 +1807,7 @@
 (function () {
     Flow.ApplicationContext = function (_) {
         _.ready = Flow.Dataflow.slots();
+        _.initialized = Flow.Dataflow.slots();
         _.setDirty = Flow.Dataflow.slots();
         _.setPristine = Flow.Dataflow.slots();
         _.status = Flow.Dataflow.slot();
@@ -6144,9 +6146,11 @@
             Flow.Dataflow.link(_.grid, function (frame) {
                 return lightning(lightning.table(), lightning.from(frame));
             });
-            Flow.Dataflow.link(_.enumerate, function (frame) {
+            return Flow.Dataflow.link(_.enumerate, function (frame) {
                 return lightning(lightning.record(0), lightning.from(frame));
             });
+        });
+        Flow.Dataflow.link(_.initialized, function () {
             return _.requestEndpoints(function (error, response) {
                 var route, _i, _len, _ref1, _results;
                 if (!error) {
@@ -6385,7 +6389,7 @@
         createNodeRow = function (node) {
             return [
                 node.healthy,
-                node.h2o.node,
+                node.ip_port,
                 moment(new Date(node.last_ping)).fromNow(),
                 node.num_cpus,
                 format3f(node.sys_load),
