@@ -17,4 +17,5 @@ if window?.$?
     H2O.Application context
     ko.applyBindings window.flow
     context.ready()
+    context.initialized()
   

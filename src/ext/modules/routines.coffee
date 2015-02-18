@@ -1323,6 +1323,7 @@ H2O.Routines = (_) ->
         lightning.from frame
       )
 
+  link _.initialized, ->
     #TODO Hack for sparkling-water
     _.requestEndpoints (error, response) ->
       unless error
