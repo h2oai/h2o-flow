@@ -117,6 +117,13 @@ H2O.Proxy = (_) ->
       else
         go null, head result.frames
 
+  requestRDDs = (go) ->
+    doGet '/3/RDDs.json', (error, result) ->
+      if error
+        go error
+      else
+        go null, result.rdds
+
   requestColumnSummary = (key, column, go) ->
     doGet "/3/Frames.json/#{encodeURIComponent key}/columns/#{encodeURIComponent column}/summary", (error, result) ->
       if error
@@ -337,6 +344,7 @@ H2O.Proxy = (_) ->
   link _.requestSplitFrame, requestSplitFrame
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
+  link _.requestRDDs, requestRDDs
   link _.requestColumnSummary, requestColumnSummary
   link _.requestJobs, requestJobs
   link _.requestJob, requestJob

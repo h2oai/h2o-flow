@@ -1,0 +1,26 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-database
+    | RDDs
+
+  // ko ifnot:hasRDDs
+  blockquote Your H<sub>2</sub>O cloud has no RDDs.
+  // /ko
+
+  // ko if:hasRDDs
+  table.flow-form.flow-form-ruled
+    thead
+      tr
+        th(width='1') ID
+        th(width='1') Name
+        th(width='1') Partitions
+    tbody
+      // ko foreach:rDDViews
+      tr
+        td.flow-right(data-bind='text:id')
+        td(data-bind='text:name')
+        td(data-bind='text:partitions')
+      // /ko
+  // /ko
+
+

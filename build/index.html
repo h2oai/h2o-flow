@@ -1426,6 +1426,34 @@
         <!-- /ko-->
       </div>
     </script>
+    <script type="text/html" id="flow-rdds-output">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-database"></i>RDDs</h3>
+        <!-- ko ifnot:hasRDDs-->
+        <blockquote>Your H<sub>2</sub>O cloud has no RDDs.</blockquote>
+        <!-- /ko-->
+        <!-- ko if:hasRDDs-->
+        <table class="flow-form flow-form-ruled">
+          <thead>
+            <tr>
+              <th width="1">ID</th>
+              <th width="1">Name</th>
+              <th width="1">Partitions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ko foreach:rDDViews-->
+            <tr>
+              <td data-bind="text:id" class="flow-right"></td>
+              <td data-bind="text:name"></td>
+              <td data-bind="text:partitions"></td>
+            </tr>
+            <!-- /ko-->
+          </tbody>
+        </table>
+        <!-- /ko-->
+      </div>
+    </script>
     <script type="text/html" id="flow-model-input">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-cube"></i>Build a Model</h3>

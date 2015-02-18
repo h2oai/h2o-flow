@@ -11,6 +11,7 @@ H2O.ApplicationContext = (_) ->
   _.requestParseSetup = do slot
   _.requestFrames = do slot
   _.requestFrame = do slot
+  _.requestRDDs = do slot
   _.requestColumnSummary = do slot
   _.requestModelBuilder = do slot
   _.requestModelBuilders = do slot
