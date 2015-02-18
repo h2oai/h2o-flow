@@ -1,0 +1,15 @@
+// ko with:confirmDialog
+#confirmDialog.modal.fade(tabindex='-1', role='dialog')
+  .modal-dialog
+    .modal-content
+      .modal-header
+        button.close(type='button', data-dismiss='modal')
+          span ×
+          span.sr-only Close
+        h4.modal-title(data-bind='text:title')
+      .modal-body
+        div(data-bind='text:message')
+      .modal-footer
+        button.btn.btn-primary(type='button' data-bind='text:acceptCaption, click:accept') 
+        button.btn.btn-default(type='button' data-bind='text:declineCaption, click:decline')
+// /ko
