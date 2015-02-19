@@ -1,4 +1,4 @@
-Flow.AlertDialog = (_, _message, _opts, _go) ->
+Flow.AlertDialog = (_, _message, _opts={}, _go) ->
 
   defaults _opts,
     title: 'Alert'

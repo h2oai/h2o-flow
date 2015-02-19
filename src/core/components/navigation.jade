@@ -3,14 +3,14 @@ nav.navbar.navbar-default(role='navigation')
     .flow-navbar(data-bind="template: { name:'flow-navbar', data:$data }")
 .container-fluid
   .flow-titlebar
-    // ko if:isEditingTitle
+    // ko if:isEditingName
     div
-      input(type='text' data-bind="value:title, valueUpdate:'afterkeydown', enterKey:saveTitle")
-      i.fa.fa-check.flow-pointer(data-bind='click:saveTitle')
+      input(type='text' data-bind="value:name, valueUpdate:'afterkeydown', enterKey:saveName")
+      i.fa.fa-check.flow-pointer(data-bind='click:saveName')
     // /ko
-    // ko ifnot:isEditingTitle
-    .flow-pointer(data-bind='click:editTitle' title='Edit title...')
-      span(data-bind='text:title') 
+    // ko ifnot:isEditingName
+    .flow-pointer(data-bind='click:editName' title='Edit notebook name...')
+      span(data-bind='text:name') 
       i.fa.fa-pencil
     // /ko
   .flow-toolbar(data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px")

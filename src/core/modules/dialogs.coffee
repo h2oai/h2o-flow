@@ -9,7 +9,7 @@ Flow.Dialogs = (_) ->
       unless responded
         responded = yes
         $dialog.modal 'hide'
-        _go response
+        _go response if _go
 
     dialogSignal apply ctor, null, [_].concat(args).concat go
 
@@ -18,7 +18,7 @@ Flow.Dialogs = (_) ->
     $dialog.on 'hidden.bs.modal', (e) ->
       unless responded
         responded = yes
-        _go null 
+        _go null if _go
     return
 
   link _.dialog, (id, data, go) ->

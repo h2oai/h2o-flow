@@ -291,7 +291,7 @@ H2O.Proxy = (_) ->
     doGet "/3/NodePersistentStorage.json/#{encodeURIComponent type}", unwrap go, (result) -> result.entries
 
   requestObject = (type, name, go) ->
-    doGet "/3/NodePersistentStorage.json/#{encodeURIComponent type}/#{encodeURIComponent name}", unwrap go, (result) -> result.value
+    doGet "/3/NodePersistentStorage.json/#{encodeURIComponent type}/#{encodeURIComponent name}", unwrap go, (result) -> JSON.parse result.value
 
   requestDeleteObject = (type, name, go) ->
     doDelete "/3/NodePersistentStorage.json/#{encodeURIComponent type}/#{encodeURIComponent name}", go

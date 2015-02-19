@@ -1,6 +1,8 @@
 Flow.ApplicationContext = (_) ->
   _.ready = do slots
   _.initialized = do slots
+  _.load = do slot
+  _.saved = do slot
   _.setDirty = do slots
   _.setPristine = do slots
   _.status = do slot
@@ -12,8 +14,6 @@ Flow.ApplicationContext = (_) ->
   _.showBrowser = do slot
   _.showClipboard = do slot
   _.saveClip = do slot
-  _.loadNotebook = do slot
-  _.storeNotebook = do slot
   _.growl = do slot
   _.confirm = do slot
   _.alert = do slot

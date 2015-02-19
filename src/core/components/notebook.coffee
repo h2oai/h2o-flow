@@ -10,16 +10,12 @@ Flow.Renderers = (_, _sandbox) ->
   raw: -> Flow.Raw _
 
 Flow.Notebook = (_, _renderers) ->
-  _id = signal ''
-  _title = signal 'Untitled Flow'
-  _createdDate = signal new Date()
-  _modifiedDate = signal new Date()
+  _localName = signal 'Untitled Flow'
+  _remoteName = signal null
 
-  _isEditingTitle = signal no
-  editTitle = ->
-    _isEditingTitle yes
-  saveTitle = ->
-    _isEditingTitle no
+  _isEditingName = signal no
+  editName = -> _isEditingName yes
+  saveName = -> _isEditingName no
 
   _cells = signals []
   _selectedCell = null
@@ -39,16 +35,12 @@ Flow.Notebook = (_, _renderers) ->
       type: cell.type()
       input: cell.input()
 
-    title: _title()
+    version: '1.0.0'
     cells: cells
-    createdDate: _createdDate().getTime()
-    modifiedDate: (new Date()).getTime()
 
-  deserialize = (id, doc) ->
-    _id id
-    _title doc.title
-    _createdDate new Date doc.createdDate
-    _modifiedDate new Date doc.modifiedDate
+  deserialize = (localName, remoteName, doc) ->
+    _localName localName
+    _remoteName remoteName
 
     cells = for cell in doc.cells
       createCell cell.type, cell.input
@@ -230,12 +222,42 @@ Flow.Notebook = (_, _renderers) ->
     _selectedCell.execute -> selectNextCell()
     no
 
-  saveNotebook = ->
-    _.storeNotebook _id(), serialize(), (error, id) ->
+  sanitizeName = (name) ->
+    name.replace(/([^a-z0-9_-])/gi, '-').trim()
+
+  checkIfNameIsInUse = (name, go) ->
+    _.requestObject 'notebook', name, (error) ->
+      go if error then no else yes
+
+  storeNotebook = (localName, remoteName) ->
+    _.requestPutObject 'notebook', localName, serialize(), (error) ->
       if error
-        debug error
+        _.alert "Error saving notebook: #{error.message}"
       else
-        _id id
+        _remoteName localName
+        _localName localName
+        if remoteName isnt localName # renamed document
+          _.requestDeleteObject 'notebook', remoteName, (error) ->
+            if error
+              _.alert "Error deleting remote notebook [#{remoteName}]: #{error.message}"
+            _.saved()
+        else
+          _.saved()
+
+  saveNotebook = ->
+    localName = sanitizeName _localName()
+    return _.alert 'Invalid notebook name.' if localName is ''
+
+    remoteName = _remoteName()
+    if remoteName # saved document
+      storeNotebook localName, remoteName
+    else # unsaved document
+      checkIfNameIsInUse localName, (isNameInUse) ->
+        if isNameInUse
+          _.alert 'A notebook with that name already exists. Rename this notebook and try again.'
+        else
+          storeNotebook localName, remoteName
+    return
 
   toggleInput = ->
     _selectedCell.toggleInput()
@@ -318,23 +340,17 @@ Flow.Notebook = (_, _renderers) ->
 
   createNotebook = ->
     currentTime = (new Date()).getTime()
-
-    deserialize null,
-      title: 'Untitled Flow'
+    deserialize 'Untitled Flow', null,
       cells: [
         type: 'cs'
         input: ''
       ]
-      createdDate: currentTime
-      modifiedDate: currentTime
 
   duplicateNotebook = ->
-    doc = serialize()
-    doc.title = "Copy of #{doc.title}"
-    doc.createdDate = doc.modifiedDate
+    deserialize "Copy of #{_localName()}", null, serialize()
 
-    deserialize null, doc
-    saveNotebook()
+  loadNotebook = (name, doc) ->
+    deserialize name, name, doc
 
   goToUrl = (url) -> ->
     window.open url, '_blank'
@@ -606,7 +622,7 @@ Flow.Notebook = (_, _renderers) ->
    
     insertNewCellBelow()
 
-    link _.loadNotebook, deserialize
+    link _.load, loadNotebook
 
     link _.selectCell, selectCell
 
@@ -620,10 +636,10 @@ Flow.Notebook = (_, _renderers) ->
 
   link _.ready, initialize
 
-  title: _title
-  isEditingTitle: _isEditingTitle
-  editTitle: editTitle
-  saveTitle: saveTitle
+  name: _localName
+  isEditingName: _isEditingName
+  editName: editName
+  saveName: saveName
   menus: _menus
   sidebar: _sidebar
   status: _status
