@@ -10,3 +10,4 @@ Flow.AlertDialog = (_, _message, _opts={}, _go) ->
   acceptCaption: _opts.acceptCaption
   message: _message
   accept: accept
+  template: 'alert'
