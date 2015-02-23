@@ -275,17 +275,19 @@ H2O.Proxy = (_) ->
     else
       doGet "/3/ModelMetrics.json", go
 
+#
 #  requestObjects = (type, go) ->
 #    go null, Flow.LocalStorage.list type
 #
-#  requestObject = (type, id, go) ->
-#    go null, Flow.LocalStorage.read type, id
+#  requestObject = (type, name, go) ->
+#    go null, Flow.LocalStorage.read type, name
 #
-#  requestDeleteObject = (type, id, go) ->
-#    go null, Flow.LocalStorage.purge type, id
+#  requestDeleteObject = (type, name, go) ->
+#    go null, Flow.LocalStorage.purge type, name
 #
-#  requestPutObject = (type, id, obj, go) ->
-#    go null, Flow.LocalStorage.write type, id, obj
+#  requestPutObject = (type, name, obj, go) ->
+#    go null, Flow.LocalStorage.write type, name, obj
+#
 
   requestObjects = (type, go) ->
     doGet "/3/NodePersistentStorage.json/#{encodeURIComponent type}", unwrap go, (result) -> result.entries

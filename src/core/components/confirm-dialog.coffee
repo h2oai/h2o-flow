@@ -1,5 +1,4 @@
 Flow.ConfirmDialog = (_, _message, _opts={}, _go) ->
-
   defaults _opts,
     title: 'Alert'
     acceptCaption: 'Yes'
@@ -15,5 +14,5 @@ Flow.ConfirmDialog = (_, _message, _opts={}, _go) ->
   message: _message
   accept: accept
   decline: decline
-  template: 'confirm'
+  template: 'confirm-dialog'
 

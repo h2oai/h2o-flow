@@ -1,5 +1,4 @@
-// ko with:confirmDialog
-#confirmDialog.modal.fade(tabindex='-1', role='dialog')
+#confirm-dialog.modal.fade(tabindex='-1', role='dialog')
   .modal-dialog
     .modal-content
       .modal-header
@@ -12,4 +11,3 @@
       .modal-footer
         button.btn.btn-default(type='button' data-bind='text:declineCaption, click:decline')
         button.btn.btn-primary(type='button' data-bind='text:acceptCaption, click:accept') 
-// /ko

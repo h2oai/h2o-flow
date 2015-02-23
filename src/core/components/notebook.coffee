@@ -259,6 +259,8 @@ Flow.Notebook = (_, _renderers) ->
           storeNotebook localName, remoteName
     return
 
+  openNotebook = ->
+
   toggleInput = ->
     _selectedCell.toggleInput()
 
@@ -374,6 +376,7 @@ Flow.Notebook = (_, _renderers) ->
 
   notImplemented = -> # noop
   printPreview = notImplemented
+  exportNotebook = notImplemented
   pasteCellandReplace = notImplemented
   mergeCellAbove = notImplemented
   switchToPresentationMode = notImplemented 
@@ -403,11 +406,13 @@ Flow.Notebook = (_, _renderers) ->
   _menus = [
     createMenu 'Flow', [
       createMenuItem 'New', createNotebook
+      createMenuItem 'Open...', openNotebook
       createMenuItem 'Save', saveNotebook
       menuDivider
       createMenuItem 'Duplicate', duplicateNotebook
       menuDivider
       createMenuItem 'Print Preview', printPreview, yes
+      createMenuItem 'Export...', exportNotebook, yes
     ]
   ,
     createMenu 'Edit', [

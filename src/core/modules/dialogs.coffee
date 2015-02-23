@@ -1,9 +1,7 @@
 Flow.Dialogs = (_) ->
+  _dialog = signal null
 
-  _alertDialog = signal null
-  _confirmDialog = signal null
-
-  showDialog = (dialogSignal, ctor, args..., _go) ->
+  showDialog = (ctor, args, _go) ->
     responded = no
     go = (response) ->
       unless responded
@@ -11,24 +9,26 @@ Flow.Dialogs = (_) ->
         $dialog.modal 'hide'
         _go response if _go
 
-    dialogSignal dialog = apply ctor, null, [_].concat(args).concat go
+    _dialog dialog = apply ctor, null, [_].concat(args).concat go
 
-    $dialog = $ "##{dialog.template}Dialog"
+    $dialog = $ "##{dialog.template}"
     $dialog.modal()
     $dialog.on 'hidden.bs.modal', (e) ->
       unless responded
         responded = yes
+        _dialog null
         _go null if _go
     return
 
-  link _.dialog, (id, data, go) ->
+  link _.dialog, (ctor, args..., go) ->
+    showDialog ctor, args, go
 
   link _.confirm, (message, opts, go) ->
-    showDialog _confirmDialog, Flow.ConfirmDialog, message, opts, go
+    showDialog Flow.ConfirmDialog, [ message, opts ], go
 
   link _.alert, (message, opts, go) ->
-    showDialog _alertDialog, Flow.AlertDialog, message, opts, go
+    showDialog Flow.AlertDialog, [ message, opts ], go
 
-  alertDialog: _alertDialog
-  confirmDialog: _confirmDialog
+  dialog: _dialog
+  template: (dialog) -> 'flow-' + dialog.template
 
