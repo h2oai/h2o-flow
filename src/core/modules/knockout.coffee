@@ -169,3 +169,16 @@ ko.bindingHandlers.dump =
   init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
     object = ko.unwrap valueAccessor()
 
+ko.bindingHandlers.element =
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    valueAccessor() element
+
+ko.bindingHandlers.file =
+  init: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
+    file = valueAccessor()
+    if file
+      $file = $ element
+      $file.change -> file @files[0]
+    return
+
+

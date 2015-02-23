@@ -35,12 +35,6 @@ include about-dialog.jade
 //- Core Templates
 //-
 
-script(type="text/html" id="flow-alert-dialog")
-  include alert-dialog.jade
-
-script(type="text/html" id="flow-confirm-dialog")
-  include confirm-dialog.jade
-
 script(type="text/html" id="flow-keyboard-shortcut-table")
   include keyboard-help-table.jade
 
@@ -143,4 +137,13 @@ script(type="text/html" id="flow-failure")
 script(type="text/html" id="flow-cell")
   include cell.jade
 
+//- 
+//- Dialog Templates
+//-
+
+script(type="text/html" id="flow-alert-dialog")
+  include alert-dialog.jade
+
+script(type="text/html" id="flow-confirm-dialog")
+  include confirm-dialog.jade
 

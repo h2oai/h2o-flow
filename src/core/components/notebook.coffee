@@ -260,6 +260,13 @@ Flow.Notebook = (_, _renderers) ->
     return
 
   openNotebook = ->
+    extension = '.flow'
+    _.dialog Flow.FileOpenDialog, extension, ({ formData, file }) ->
+      if formData and file
+        fileName = file.name.substr 0, file.name.length - extension.length
+        #TODO check if filename already exists
+        _.requestUploadObject 'notebook', fileName, formData, (error, fileName) ->
+          debug error, fileName
 
   toggleInput = ->
     _selectedCell.toggleInput()
@@ -406,13 +413,15 @@ Flow.Notebook = (_, _renderers) ->
   _menus = [
     createMenu 'Flow', [
       createMenuItem 'New', createNotebook
-      createMenuItem 'Open...', openNotebook
+      # TODO
+      #createMenuItem 'Open...', openNotebook
       createMenuItem 'Save', saveNotebook
       menuDivider
       createMenuItem 'Duplicate', duplicateNotebook
       menuDivider
       createMenuItem 'Print Preview', printPreview, yes
-      createMenuItem 'Export...', exportNotebook, yes
+      # TODO
+      #createMenuItem 'Export...', exportNotebook, yes
     ]
   ,
     createMenu 'Edit', [

@@ -12,6 +12,14 @@ H2O.Proxy = (_) ->
         $.ajax url: path, type: method, data: opts
       when 'DELETE'
         $.ajax url: path, type: method
+      when 'UPLOAD'
+        $.ajax
+          url: path
+          type: 'POST'
+          data: opts
+          cache: no
+          contentType: no
+          processData: no
 
     req.done (data, status, xhr) ->
       _.status 'server', 'response', path
@@ -42,6 +50,7 @@ H2O.Proxy = (_) ->
   doGet = (path, go) -> http 'GET', path, null, go
   doPost = (path, opts, go) -> http 'POST', path, opts, go
   doPut = (path, opts, go) -> http 'PUT', path, opts, go
+  doUpload = (path, formData, go) -> http 'UPLOAD', path, formData, go
   doDelete = (path, go) -> http 'DELETE', path, null, go
 
   mapWithKey = (obj, f) ->
@@ -303,6 +312,11 @@ H2O.Proxy = (_) ->
     uri += "/#{encodeURIComponent name}" if name
     doPost uri, { value: JSON.stringify value }, unwrap go, (result) -> result.name
 
+  requestUploadObject = (type, name, formData, go) ->
+    uri = "/3/NodePersistentStorage.json/#{encodeURIComponent type}"
+    uri += "/#{encodeURIComponent name}" if name
+    doUpload uri, formData, unwrap go, (result) -> result.name
+
   requestCloud = (go) ->
     doGet '/1/Cloud.json', go
 
@@ -370,6 +384,7 @@ H2O.Proxy = (_) ->
   link _.requestObject, requestObject
   link _.requestDeleteObject, requestDeleteObject
   link _.requestPutObject, requestPutObject
+  link _.requestUploadObject, requestUploadObject
   link _.requestCloud, requestCloud
   link _.requestTimeline, requestTimeline
   link _.requestProfile, requestProfile
