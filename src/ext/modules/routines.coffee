@@ -741,16 +741,19 @@ H2O.Routines = (_) ->
 
   extendPredictions = (opts, predictions) ->
     render_ predictions, H2O.PredictsOutput, opts, predictions
-    if (every predictions, (prediction) -> prediction.model_category is 'Binomial')
-      inspections = {}
-      inspections['Prediction' ] = inspectBinomialPredictions opts, predictions
-      inspections[ (head predictions).thresholdsAndMetricScores.name ] = inspectBinomialScores opts, predictions
-      inspections[ (head predictions).maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, predictions
-      inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, predictions
-      inspect_ predictions, inspections
-    else
-      inspect_ predictions, 
-        prediction: inspectBinomialPredictions opts, predictions
+    if predictions.length
+      if (every predictions, (prediction) -> prediction.model_category is 'Binomial')
+        inspections = {}
+        inspections['Prediction' ] = inspectBinomialPredictions opts, predictions
+        inspections[ (head predictions).thresholdsAndMetricScores.name ] = inspectBinomialScores opts, predictions
+        inspections[ (head predictions).maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, predictions
+        inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, predictions
+        inspect_ predictions, inspections
+      else
+        inspect_ predictions, 
+          prediction: inspectBinomialPredictions opts, predictions
+
+    predictions
 
   inspectBinomialScores = (opts, predictions) -> ->
     inspectionFrame = combineTables (prediction.thresholdsAndMetricScores for prediction in predictions)
