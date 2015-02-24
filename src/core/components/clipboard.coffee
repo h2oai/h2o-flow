@@ -43,6 +43,7 @@ Flow.Clipboard = (_) ->
   removeClip = (list, clip) ->
     if list is _userClips
       _userClips.remove clip
+      saveUserClips()
       _trashClips.push createClip _trashClips, clip.type, clip.input
     else
       _trashClips.remove clip
@@ -50,16 +51,36 @@ Flow.Clipboard = (_) ->
   emptyTrash = ->
     _trashClips.removeAll()
 
+  loadUserClips = ->
+    _.requestObject 'environment', 'clips', (error, doc) ->
+      unless error
+        _userClips map doc.clips, (clip) ->
+          createClip _userClips, clip.type, clip.input
+
+  serializeUserClips = ->
+    version: '1.0.0'
+    clips: map _userClips(), (clip) ->
+      type: clip.type
+      input: clip.input
+
+  saveUserClips = ->
+    _.requestPutObject 'environment', 'clips', serializeUserClips(), (error) ->
+      if error
+        _.alert "Error saving clips: #{error.message}"
+      return
+
   initialize = ->
     _systemClips map SystemClips, (input) -> 
       createClip _systemClips, 'cs', input, no
 
     link _.ready, ->
+      loadUserClips()
       link _.saveClip, (category, type, input) ->
         input = input.trim()
         if input
           if category is 'user'
             addClip _userClips, type, input
+            saveUserClips()
           else
             addClip _trashClips, type, input
 
