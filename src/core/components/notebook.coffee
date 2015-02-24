@@ -139,6 +139,9 @@ Flow.Notebook = (_, _renderers) ->
   insertBelow = (cell) ->
     insertCell _selectedCellIndex + 1, cell
 
+  appendCell = (cell) ->
+    insertCell _cells().length, cell
+
   insertCellAbove = (type, input) ->
     insertAbove createCell type, input
 
@@ -160,6 +163,12 @@ Flow.Notebook = (_, _renderers) ->
     cell = insertBelow createCell type, input
     cell.execute()
     cell
+
+  appendCellAndRun = (type, input) ->
+    cell = appendCell createCell type, input 
+    cell.execute()
+    cell
+
 
   moveCellDown = ->
     cells = _cells()
@@ -641,7 +650,7 @@ Flow.Notebook = (_, _renderers) ->
     link _.selectCell, selectCell
 
     link _.insertAndExecuteCell, (type, input) ->
-      defer insertCellBelowAndRun, type, input
+      defer appendCellAndRun, type, input
 
     link _.insertCell, (type, input) ->
       defer insertCellBelow, type, input
