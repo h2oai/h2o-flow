@@ -278,6 +278,7 @@ Flow.Notebook = (_, _renderers) ->
           _.alert error.message ? error
         else
           loadNotebook filename
+          _.loaded()
 
   toggleInput = ->
     _selectedCell.toggleInput()

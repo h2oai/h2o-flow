@@ -3,6 +3,7 @@ Flow.ApplicationContext = (_) ->
   _.initialized = do slots
   _.load = do slot
   _.saved = do slots
+  _.loaded = do slots
   _.setDirty = do slots
   _.setPristine = do slots
   _.status = do slot

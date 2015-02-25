@@ -41,8 +41,8 @@ Flow.Browser = (_) ->
   link _.ready, ->
     loadNotebooks()
 
-    link _.saved, ->
-      loadNotebooks()
+    link _.saved, -> loadNotebooks()
+    link _.loaded, -> loadNotebooks()
 
   docs: _sortedDocs
   hasDocs: _hasDocs
