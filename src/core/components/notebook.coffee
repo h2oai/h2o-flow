@@ -271,13 +271,13 @@ Flow.Notebook = (_, _renderers) ->
     return
 
   openNotebook = ->
-    extension = '.flow'
-    _.dialog Flow.FileOpenDialog, extension, ({ formData, file }) ->
-      if formData and file
-        fileName = file.name.substr 0, file.name.length - extension.length
-        #TODO check if filename already exists
-        _.requestUploadObject 'notebook', fileName, formData, (error, fileName) ->
-          debug error, fileName
+    _.dialog Flow.FileOpenDialog, (result) ->
+      if result
+        { error, filename } = result
+        if error
+          _.alert error.message ? error
+        else
+          loadNotebook filename
 
   toggleInput = ->
     _selectedCell.toggleInput()
@@ -369,8 +369,12 @@ Flow.Notebook = (_, _renderers) ->
   duplicateNotebook = ->
     deserialize "Copy of #{_localName()}", null, serialize()
 
-  loadNotebook = (name, doc) ->
-    deserialize name, name, doc
+  loadNotebook = (name) ->
+    _.requestObject 'notebook', name, (error, doc) ->
+      if error
+        _.alert error.message ? error
+      else
+        deserialize name, name, doc
 
   exportNotebook = ->
     if remoteName = _remoteName()

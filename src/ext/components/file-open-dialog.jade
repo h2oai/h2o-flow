@@ -8,8 +8,18 @@
         h4.modal-title Open File...
       .modal-body
         form(enctype='multipart/form-data' data-bind='element:form')
-          input(name='value' type='file' data-bind='file:file')
+          input(name='file' type='file' data-bind='file:file')
+
+        // ko if:overwrite
+        p(style='color:red') A notebook with that name already exists. Do you want to replace it?
+        // /ko
+
       .modal-footer
         button.btn.btn-default(type='button' data-bind='click:decline') Cancel
+        // ko ifnot:overwrite
         button.btn.btn-primary(type='button' data-bind='click:accept, enable:canAccept') Open
+        // /ko
 
+        // ko if:overwrite
+        button.btn.btn-danger(type='button' data-bind='click:accept, enable:canAccept') Replace
+        // /ko

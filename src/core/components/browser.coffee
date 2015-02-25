@@ -14,11 +14,7 @@ Flow.Browser = (_) ->
     load = ->
       _.confirm 'This action will replace your active notebook.\nAre you sure you want to continue?', { acceptCaption: 'Load Notebook', declineCaption: 'Cancel' }, (accept) ->
         if accept
-          _.requestObject 'notebook', _name, (error, doc) ->
-            if error
-              _.alert error.message
-            else
-              _.load _name, doc
+          _.load _name
 
     purge = ->
       _.requestDeleteObject 'notebook', _name, (error) ->
