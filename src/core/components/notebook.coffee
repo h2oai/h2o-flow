@@ -263,7 +263,9 @@ Flow.Notebook = (_, _renderers) ->
     else # unsaved document
       checkIfNameIsInUse localName, (isNameInUse) ->
         if isNameInUse
-          _.alert 'A notebook with that name already exists. Rename this notebook and try again.'
+          _.confirm "A notebook with that name already exists.\nDo you want to replace it with the one you're saving?", { acceptCaption: 'Replace', declineCaption: 'Cancel' }, (accept) ->
+            if accept
+              storeNotebook localName, remoteName
         else
           storeNotebook localName, remoteName
     return
