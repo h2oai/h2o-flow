@@ -11,7 +11,7 @@ Flow.ConfirmDialog = (_, _message, _opts={}, _go) ->
   title: _opts.title
   acceptCaption: _opts.acceptCaption
   declineCaption: _opts.declineCaption
-  message: _message
+  message: Flow.Util.multilineTextToHTML _message
   accept: accept
   decline: decline
   template: 'confirm-dialog'

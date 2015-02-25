@@ -26,11 +26,16 @@ formatMilliseconds = (s) ->
   hrs = (s - mins) / 60
   "#{padTime hrs}:#{padTime mins}:#{padTime secs}.#{ms}"
 
+EOL = "\n"
+multilineTextToHTML = (text) ->
+  join (map (split text, EOL), (str) -> escape str), '<br/>'
+
 Flow.Util =
   describeCount: describeCount
   fromNow: fromNow
   formatBytes: formatBytes
   formatMilliseconds: formatMilliseconds
+  multilineTextToHTML: multilineTextToHTML
   uuid: uuid
 
 
