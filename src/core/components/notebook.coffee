@@ -657,6 +657,9 @@ Flow.Notebook = (_, _renderers) ->
     link _.insertCell, (type, input) ->
       defer insertCellBelow, type, input
 
+    link _.saved, ->
+      _.growl 'Notebook saved.'
+
     _.setDirty() #TODO setPristine() when autosave is implemented.
 
   link _.ready, initialize
