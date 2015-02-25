@@ -12,7 +12,7 @@ Flow.Browser = (_) ->
     _fromNow = lift _date, Flow.Util.fromNow
 
     load = ->
-      _.confirm 'Are you sure you want to load this notebook?', { acceptCaption: 'Load Notebook', declineCaption: 'Cancel' }, (accept) ->
+      _.confirm 'This action will replace your active notebook.\nAre you sure you want to continue?', { acceptCaption: 'Load Notebook', declineCaption: 'Cancel' }, (accept) ->
         if accept
           _.requestObject 'notebook', _name, (error, doc) ->
             if error
