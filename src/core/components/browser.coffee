@@ -17,11 +17,14 @@ Flow.Browser = (_) ->
           _.load _name
 
     purge = ->
-      _.requestDeleteObject 'notebook', _name, (error) ->
-        if error
-          debug error
-        else
-          _docs.remove self
+      _.confirm "Are you sure you want to delete this notebook?\n\"#{_name}\"", { acceptCaption: 'Delete', declineCaption: 'Keep' }, (accept) ->
+        if accept
+          _.requestDeleteObject 'notebook', _name, (error) ->
+            if error
+              _alert error.message ? error
+            else
+              _docs.remove self
+              _.growl 'Notebook deleted.'
 
     self =
       name: _name

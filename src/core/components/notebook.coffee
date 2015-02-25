@@ -668,6 +668,9 @@ Flow.Notebook = (_, _renderers) ->
     link _.saved, ->
       _.growl 'Notebook saved.'
 
+    link _.loaded, ->
+      _.growl 'Notebook loaded.'
+
     _.setDirty() #TODO setPristine() when autosave is implemented.
 
   link _.ready, initialize
