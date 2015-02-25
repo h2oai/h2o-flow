@@ -64,26 +64,31 @@
         </nav>
         <div class="container-fluid">
           <div class="flow-titlebar">
-            <!-- ko if:isEditingTitle-->
+            <!-- ko if:isEditingName-->
             <div>
-              <input type="text" data-bind="value:title, valueUpdate:'afterkeydown', enterKey:saveTitle"><i data-bind="click:saveTitle" class="fa fa-check flow-pointer"></i>
+              <input type="text" data-bind="value:name, valueUpdate:'afterkeydown', enterKey:saveName"><i data-bind="click:saveName" class="fa fa-check flow-pointer"></i>
             </div>
             <!-- /ko-->
-            <!-- ko ifnot:isEditingTitle-->
-            <div data-bind="click:editTitle" title="Edit title..." class="flow-pointer"><span data-bind="text:title"></span><i class="fa fa-pencil"></i></div>
+            <!-- ko ifnot:isEditingName-->
+            <div data-bind="click:editName" title="Edit notebook name..." class="flow-pointer"><span data-bind="text:name"></span><i class="fa fa-pencil"></i></div>
             <!-- /ko-->
           </div>
           <div data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px" class="flow-toolbar"></div>
         </div>
       </div>
     </div>
+    <!-- ko with:dialogs-->
+    <!-- ko if:dialog-->
+    <div data-bind="template:{name:template, data:dialog}"></div>
+    <!-- /ko-->
+    <!-- /ko-->
     <!-- ko with:shortcutsHelp-->
-    <div id="keyboardShortcutsDialog" tabindex="-1" role="dialog" aria-labelledby="keyboardShortcutsDialogLabel" aria-hidden="true" class="modal fade">
+    <div id="keyboardHelpDialog" tabindex="-1" role="dialog" aria-labelledby="keyboardHelpDialogLabel" aria-hidden="true" class="modal fade">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" data-dismiss="modal" class="close"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
-            <h4 id="keyboardShortcutsDialogLabel" class="modal-title">Keyboard Shortcuts</h4>
+            <h4 id="keyboardHelpDialogLabel" class="modal-title">Keyboard Shortcuts</h4>
           </div>
           <div class="modal-body">
             <table class="flow-form">
@@ -265,7 +270,7 @@
               <tr>
                 <td><i class="fa fa-file-o"></i></td>
                 <td>
-                  <div><a href="#" data-bind="text:title, click:load"></a>
+                  <div><a href="#" data-bind="text:name, click:load"></a>
                   </div>
                   <div data-bind="text:fromNow, attr:{title:date}" class="flow-small"></div>
                 </td>
@@ -524,6 +529,43 @@
           <div data-bind="template:{ name: templateOf, data:result }" class="flow-cell-result"></div>
           <!-- /ko-->
           <div data-bind="template: { name: templateOf, foreach:outputs }" class="flow-cell-outputs"></div>
+        </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-alert-dialog">
+      <div id="alert-dialog" tabindex="-1" role="dialog" class="modal fade">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" data-dismiss="modal" class="close"><span>×</span><span class="sr-only">Close</span></button>
+              <h4 data-bind="html:title" class="modal-title"></h4>
+            </div>
+            <div class="modal-body">
+              <div data-bind="text:message"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" data-bind="click:accept" class="btn btn-primary">OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-confirm-dialog">
+      <div id="confirm-dialog" tabindex="-1" role="dialog" class="modal fade">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" data-dismiss="modal" class="close"><span>×</span><span class="sr-only">Close</span></button>
+              <h4 data-bind="text:title" class="modal-title"></h4>
+            </div>
+            <div class="modal-body">
+              <div data-bind="html:message"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" data-bind="text:declineCaption, click:decline" class="btn btn-default"></button>
+              <button type="button" data-bind="text:acceptCaption, click:accept" class="btn btn-primary"></button>
+            </div>
+          </div>
         </div>
       </div>
     </script>
@@ -1488,6 +1530,7 @@
           <thead>
             <tr>
               <th>&nbsp;</th>
+              <th>Type</th>
               <th>Key</th>
               <th>Description</th>
               <th>Status</th>
@@ -1498,9 +1541,10 @@
             <tr>
               <td><i class="fa fa-tasks"></i>
               </td>
-              <td><a href="#" data-bind="text:job.key.name, click:view"></a></td>
-              <td data-bind="text:job.description"></td>
-              <td data-bind="text:job.status"></td>
+              <td data-bind="text:type"></td>
+              <td><a href="#" data-bind="text:key, click:view"></a></td>
+              <td data-bind="text:description"></td>
+              <td data-bind="text:status"></td>
             </tr>
             <!-- /ko-->
           </tbody>
@@ -1609,19 +1653,11 @@
         <table class="flow-form">
           <tbody>
             <tr>
-              <th class="flow-narrow">Description</th>
-              <td data-bind="text:description" class="flow-wide"></td>
-            </tr>
-            <tr>
-              <th class="flow-narrow">Status</th>
-              <td data-bind="text:status" class="flow-wide"></td>
+              <th class="flow-narrow">Type</th>
+              <td data-bind="text:destinationType" class="flow-wide"></td>
             </tr>
             <tr>
               <th class="flow-narrow">Key</th>
-              <td data-bind="text:key" class="flow-wide"></td>
-            </tr>
-            <tr>
-              <th class="flow-narrow">Destination Key</th>
               <td class="flow-wide">
                 <!-- ko ifnot:canView--><span data-bind="text:destinationKey"></span>
                 <!-- /ko-->
@@ -1629,6 +1665,14 @@
                 <div class="flow-hint"><i class="fa fa-search"></i><a href="#" data-bind="text:destinationKey, click:view"></a></div>
                 <!-- /ko-->
               </td>
+            </tr>
+            <tr>
+              <th class="flow-narrow">Description</th>
+              <td data-bind="text:description" class="flow-wide"></td>
+            </tr>
+            <tr>
+              <th class="flow-narrow">Status</th>
+              <td data-bind="text:status" class="flow-wide"></td>
             </tr>
             <tr>
               <th class="flow-narrow">Run Time</th>
@@ -1942,6 +1986,35 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </script>
+    <script type="text/html" id="flow-file-open-dialog">
+      <div id="file-open-dialog" tabindex="-1" role="dialog" class="modal fade">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" data-dismiss="modal" class="close"><span>×</span><span class="sr-only">Close</span></button>
+              <h4 class="modal-title">Open File...</h4>
+            </div>
+            <div class="modal-body">
+              <form enctype="multipart/form-data" data-bind="element:form">
+                <input name="file" type="file" data-bind="file:file">
+              </form>
+              <!-- ko if:overwrite-->
+              <p style="color:red">A notebook with that name already exists. Do you want to replace it?</p>
+              <!-- /ko-->
+            </div>
+            <div class="modal-footer">
+              <button type="button" data-bind="click:decline" class="btn btn-default">Cancel</button>
+              <!-- ko ifnot:overwrite-->
+              <button type="button" data-bind="click:accept, enable:canAccept" class="btn btn-primary">Open</button>
+              <!-- /ko-->
+              <!-- ko if:overwrite-->
+              <button type="button" data-bind="click:accept, enable:canAccept" class="btn btn-danger">Replace</button>
+              <!-- /ko-->
+            </div>
+          </div>
+        </div>
       </div>
     </script>
     <script src="js/flow-lib.js"></script>
