@@ -372,6 +372,12 @@ Flow.Notebook = (_, _renderers) ->
   loadNotebook = (name, doc) ->
     deserialize name, name, doc
 
+  exportNotebook = ->
+    if remoteName = _remoteName()
+      window.open "/3/NodePersistentStorage.bin/notebook/#{remoteName}", '_blank'
+    else
+      _.alert "Please save this notebook before exporting."
+
   goToUrl = (url) -> ->
     window.open url, '_blank'
 
@@ -394,7 +400,6 @@ Flow.Notebook = (_, _renderers) ->
 
   notImplemented = -> # noop
   printPreview = notImplemented
-  exportNotebook = notImplemented
   pasteCellandReplace = notImplemented
   mergeCellAbove = notImplemented
   switchToPresentationMode = notImplemented 
@@ -424,15 +429,13 @@ Flow.Notebook = (_, _renderers) ->
   _menus = [
     createMenu 'Flow', [
       createMenuItem 'New', createNotebook
-      # TODO
-      #createMenuItem 'Open...', openNotebook
+      createMenuItem 'Open...', openNotebook
       createMenuItem 'Save', saveNotebook
       menuDivider
       createMenuItem 'Duplicate', duplicateNotebook
       menuDivider
       createMenuItem 'Print Preview', printPreview, yes
-      # TODO
-      #createMenuItem 'Export...', exportNotebook, yes
+      createMenuItem 'Export...', exportNotebook 
     ]
   ,
     createMenu 'Edit', [
