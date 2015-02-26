@@ -1,4 +1,5 @@
 H2O.PredictInput = (_, _go, opt) ->
+  _destinationKey = signal opt.destination_key ? ''
 
   _selectedModels = if opt.models
     opt.models
@@ -54,10 +55,15 @@ H2O.PredictInput = (_, _go, opt) ->
       modelArg = _selectedModel()
       frameArg = _selectedFrame()
 
-    _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}"
+    destinationKey = _destinationKey()
+    if destinationKey
+      _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}, destination_key: #{stringify destinationKey}"
+    else
+      _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}"
 
   defer _go
 
+  destinationKey: _destinationKey
   exception: _exception
   hasModels: _hasModels
   hasFrames: _hasFrames

@@ -1199,8 +1199,8 @@ H2O.Routines = (_) ->
     else
       assist buildModel, algo, opts
 
-  requestPredict = (modelKey, frameKey, go) ->
-    _.requestPredict modelKey, frameKey, (error, prediction) ->
+  requestPredict = (destinationKey, modelKey, frameKey, go) ->
+    _.requestPredict destinationKey, modelKey, frameKey, (error, prediction) ->
       if error
         go error
       else
@@ -1209,7 +1209,7 @@ H2O.Routines = (_) ->
   requestPredicts = (opts, go) ->
     futures = map opts, (opt) ->
       { model: modelKey, frame: frameKey } = opt
-      _fork _.requestPredict, modelKey, frameKey
+      _fork _.requestPredict, null, modelKey, frameKey
 
     Flow.Async.join futures, (error, predictions) ->
       if error
@@ -1218,7 +1218,7 @@ H2O.Routines = (_) ->
         go null, extendPredictions opts, predictions
 
   predict = (opts={}) ->
-    { model, models, frame, frames } = opts 
+    { destination_key, model, models, frame, frames } = opts 
     if models or frames
       unless models
         if model
@@ -1235,12 +1235,12 @@ H2O.Routines = (_) ->
 
         _fork requestPredicts, combos
       else
-        assist predict, models: models, frames: frames
+        assist predict, destination_key: destination_key, models: models, frames: frames
     else
       if model and frame
-        _fork requestPredict, model, frame
+        _fork requestPredict, destination_key, model, frame
       else 
-        assist predict, model: model, frame: frame
+        assist predict, destination_key: destination_key, model: model, frame: frame
 
   requestPrediction = (modelKey, frameKey, go) ->
     _.requestPrediction modelKey, frameKey, (error, prediction) ->
@@ -1270,11 +1270,11 @@ H2O.Routines = (_) ->
           go null, extendPredictions opts, predictions
 
   getPrediction = (opts={}) ->
-    { model, frame } = opts
+    { destination_key, model, frame } = opts
     if model and frame
       _fork requestPrediction, model, frame
     else
-      assist getPrediction, model: model, frame: frame
+      assist getPrediction, destination_key: destination_key, model: model, frame: frame
 
   getPredictions = (opts={}) ->
     _fork requestPredictions, opts 
