@@ -55,7 +55,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
     _.insertAndExecuteCell 'cs', "grid inspect 'data', getFrame #{stringify _frame.key.name}"
 
   predict = ->
-    _.insertAndExecuteCell 'cs', "predict null, #{stringify _frame.key.name}"
+    _.insertAndExecuteCell 'cs', "predict frame: #{stringify _frame.key.name}"
 
   download = ->
     window.open "/3/DownloadDataset?key=#{encodeURIComponent _frame.key.name}", '_blank'

@@ -1,6 +1,20 @@
-H2O.PredictInput = (_, _go, _modelArg, _frameArg) ->
-  _selectedModels = if _modelArg then (if isArray _modelArg then _modelArg else [ _modelArg ]) else []
-  _selectedFrames = if _frameArg then (if isArray _frameArg then _frameArg else [ _frameArg ]) else []
+H2O.PredictInput = (_, _go, opt) ->
+
+  _selectedModels = if opt.models
+    opt.models
+  else
+    if opt.model
+      [ opt.model ]
+    else
+      []
+
+  _selectedFrames = if opt.frames
+    opt.frames
+  else
+    if opt.frame
+      [ opt.frame ]
+    else
+      []
 
   _selectedModelsCaption = join _selectedModels, ', '
   _selectedFramesCaption = join _selectedFrames, ', '
@@ -40,7 +54,7 @@ H2O.PredictInput = (_, _go, _modelArg, _frameArg) ->
       modelArg = _selectedModel()
       frameArg = _selectedFrame()
 
-    _.insertAndExecuteCell 'cs', "predict #{stringify modelArg}, #{stringify frameArg}"
+    _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}"
 
   defer _go
 

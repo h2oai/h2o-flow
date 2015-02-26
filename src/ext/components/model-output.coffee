@@ -137,7 +137,7 @@ H2O.ModelOutput = (_, _go, _model) ->
     alert 'Not implemented'
 
   predict = ->
-    _.insertAndExecuteCell 'cs', "predict #{stringify _model.key.name}"
+    _.insertAndExecuteCell 'cs', "predict model: #{stringify _model.key.name}"
 
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.key.name}"

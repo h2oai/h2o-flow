@@ -29,10 +29,10 @@ H2O.PredictsOutput = (_, _go, opts, _predictions) ->
       _canComparePredictions arePredictionsComparable checkedViews
 
     view = ->
-      _.insertAndExecuteCell 'cs', "getPrediction #{stringify _modelKey}, #{stringify _frameKey}"
+      _.insertAndExecuteCell 'cs', "getPrediction model: #{stringify _modelKey}, frame: #{stringify _frameKey}"
 
     inspect = ->
-      _.insertAndExecuteCell 'cs', "inspect getPrediction #{stringify _modelKey}, #{stringify _frameKey}"
+      _.insertAndExecuteCell 'cs', "inspect getPrediction model: #{stringify _modelKey}, frame: #{stringify _frameKey}"
 
     modelKey: _modelKey
     frameKey: _frameKey

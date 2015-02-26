@@ -27,7 +27,7 @@ H2O.PredictOutput = (_, _go, prediction) ->
 
   inspect = ->
     #XXX get this from prediction table
-    _.insertAndExecuteCell 'cs', "inspect getPrediction #{stringify model.name}, #{stringify frame.name}"
+    _.insertAndExecuteCell 'cs', "inspect getPrediction model: #{stringify model.name}, frame: #{stringify frame.name}"
 
   viewPredictionFrame = ->
     _.insertAndExecuteCell 'cs', "getFrame #{stringify prediction.predictions.key.name}"

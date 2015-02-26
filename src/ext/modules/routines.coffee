@@ -645,7 +645,7 @@ H2O.Routines = (_) ->
 
     createDataframe 'prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
-      origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+      origin: "getPrediction model: #{stringify model.name}, frame: #{stringify frame.name}"
 
   inspectBinomialPrediction2 = (frameLabel, prediction) -> ->
     origin = "getModel #{stringify prediction.model.name}"
@@ -680,7 +680,7 @@ H2O.Routines = (_) ->
 
     createDataframe 'Prediction', vectors, (sequence 1), null,
       description: "Prediction output for model '#{model.name}' on frame '#{frame.name}'"
-      origin: "getPrediction #{stringify model.name}, #{stringify frame.name}"
+      origin: "getPrediction model: #{stringify model.name}, frame: #{stringify frame.name}"
 
   inspectMultinomialConfusionMatrix = (name, table, origin, inspections) ->
     table.name = name
@@ -1217,20 +1217,30 @@ H2O.Routines = (_) ->
       else
         go null, extendPredictions opts, predictions
 
-  predict = (model, frame) ->
-    if model and frame
-      if (isString model) and (isString frame)
-        _fork requestPredict, model, frame
+  predict = (opts={}) ->
+    { model, models, frame, frames } = opts 
+    if models or frames
+      unless models
+        if model
+          models = [ model ]
+      unless frames
+        if frame
+          frames = [ frame ]
+
+      if frames and models
+        combos = []
+        for model in models
+          for frame in frames
+            combos.push model: model, frame: frame
+
+        _fork requestPredicts, combos
       else
-        model = [ model ] if isString model
-        frame = [ frame ] if isString frame
-        opts = []
-        for modelKey in model
-          for frameKey in frame
-            opts.push model: modelKey, frame: frameKey
-        _fork requestPredicts, opts
+        assist predict, models: models, frames: frames
     else
-      assist predict, model, frame
+      if model and frame
+        _fork requestPredict, model, frame
+      else 
+        assist predict, model: model, frame: frame
 
   requestPrediction = (modelKey, frameKey, go) ->
     _.requestPrediction modelKey, frameKey, (error, prediction) ->
@@ -1259,11 +1269,12 @@ H2O.Routines = (_) ->
         else
           go null, extendPredictions opts, predictions
 
-  getPrediction = (modelKey, frameKey) ->
-    if modelKey and frameKey
-      _fork requestPrediction, modelKey, frameKey
+  getPrediction = (opts={}) ->
+    { model, frame } = opts
+    if model and frame
+      _fork requestPrediction, model, frame
     else
-      assist getPrediction, modelKey, frameKey
+      assist getPrediction, model: model, frame: frame
 
   getPredictions = (opts={}) ->
     _fork requestPredictions, opts 

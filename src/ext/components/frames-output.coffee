@@ -30,7 +30,7 @@ H2O.FramesOutput = (_, _go, _frames) ->
         _.insertAndExecuteCell 'cs', "getFrame #{stringify frame.key.name}"
 
     predict = ->
-      _.insertAndExecuteCell 'cs', "predict null, #{stringify frame.key.name}"
+      _.insertAndExecuteCell 'cs', "predict frame: #{stringify frame.key.name}"
 
     inspect = ->
       _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify frame.key.name}"
@@ -57,7 +57,7 @@ H2O.FramesOutput = (_, _go, _frames) ->
 
   predictOnFrames = ->
     selectedKeys = (view.key for view in _frameViews() when view.isChecked())
-    _.insertAndExecuteCell 'cs', "predict null, #{stringify selectedKeys}"
+    _.insertAndExecuteCell 'cs', "predict frames: #{stringify selectedKeys}"
 
   _frameViews map _frames, createFrameView
 
