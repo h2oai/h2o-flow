@@ -38,7 +38,6 @@ H2O.FramesOutput = (_, _go, _frames) ->
     createModel = ->
       _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify frame.key.name}"
 
-    defer _go
 
     key: frame.key.name
     isChecked: _isChecked
@@ -60,6 +59,8 @@ H2O.FramesOutput = (_, _go, _frames) ->
     _.insertAndExecuteCell 'cs', "predict frames: #{stringify selectedKeys}"
 
   _frameViews map _frames, createFrameView
+
+  defer _go
 
   frameViews: _frameViews
   hasFrames: _frames.length > 0
