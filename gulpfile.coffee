@@ -16,7 +16,7 @@ jade = require 'gulp-jade'
 stylus = require 'gulp-stylus'
 nib = require 'nib'
 yaml = require 'js-yaml'
-shorthand = require './tools/shorthand/shorthand.coffee'
+desugar = require 'desugar'
 
 clog = through.obj (file, enc, cb) ->
   console.log file.path
@@ -28,16 +28,15 @@ expand = (yml) ->
       cb null, file
       return
     if file.isStream()
-      cb new gutil.PluginError 'gulp-shorthand', 'Streaming not supported'
+      cb new gutil.PluginError 'gulp-desugar', 'Streaming not supported'
       return
 
     symbols = yaml.safeLoad fs.readFileSync yml, encoding: 'utf8'
-    implicits = [ 'console', 'Math', 'lodash', 'Flow', 'Flow.Prelude', 'Flow.Dataflow' ]
     try
-      file.contents = new Buffer shorthand symbols, file.contents.toString(), implicits: implicits
+      file.contents = new Buffer desugar symbols, file.contents.toString()
       cb null, file
     catch error
-      cb new gutil.PluginError 'gulp-shorthand', error, fileName: file.path
+      cb new gutil.PluginError 'gulp-desugar', error, fileName: file.path
 
 config =
   dir:
@@ -86,7 +85,7 @@ gulp.task 'build-scripts', ->
     .pipe ignore.exclude /tests.coffee$/
     .pipe coffee bare: no
     .pipe concat 'flow.js'
-    .pipe expand 'shorthand.yml'
+    .pipe expand 'desugar.yml'
     .pipe header '"use strict";(function(){ var lodash = window._; window.Flow={}; window.H2O={};'
     .pipe footer '}).call(this);'
     .pipe gulp.dest config.dir.deploy + '/js/'
@@ -95,7 +94,7 @@ gulp.task 'build-tests', ->
   gulp.src [ 'src/**/*.coffee' ]
     .pipe coffee bare: no
     .pipe concat 'flow-tests.js'
-    .pipe expand 'shorthand.yml'
+    .pipe expand 'desugar.yml'
     .pipe header '"use strict";(function(){ var lodash = require(\'lodash\'); var test = require(\'tape\'); var Flow={}; var H2O={};'
     .pipe footer '}).call(this);'
     .pipe gulp.dest './build/js/'
