@@ -1,14 +1,17 @@
 H2O.ModelsOutput = (_, _go, _models) ->
   _modelViews = signal []
   _checkAllModels = signal no
-  _canCompareModels = signal no
+  _checkedModelCount = signal 0
+  _canCompareModels = lift _checkedModelCount, (count) -> count > 1
+  _hasSelectedModels = lift _checkedModelCount, (count) -> count > 0
 
   _isCheckingAll = no
   react _checkAllModels, (checkAll) ->
     _isCheckingAll = yes
-    for view in _modelViews()
+    views = _modelViews()
+    for view in views
       view.isChecked checkAll
-    _canCompareModels checkAll
+    _checkedModelCount if checkAll then views.length else 0
     _isCheckingAll = no
     return
 
@@ -18,7 +21,7 @@ H2O.ModelsOutput = (_, _go, _models) ->
     react _isChecked, ->
       return if _isCheckingAll
       checkedViews = (view for view in _modelViews() when view.isChecked())
-      _canCompareModels checkedViews.length > 1
+      _checkedModelCount checkedViews.length
 
     predict = ->
       _.insertAndExecuteCell 'cs', "predict model: #{stringify model.key.name}"
@@ -44,14 +47,21 @@ H2O.ModelsOutput = (_, _go, _models) ->
   buildModel = ->
     _.insertAndExecuteCell 'cs', 'buildModel'
 
-  getSelectedModelKeys = ->
-    (view.key for view in _modelViews() when view.isChecked())
+  collectSelectedKeys = ->
+    for view in _modelViews() when view.isChecked()
+      view.key 
 
   compareModels = ->
-    _.insertAndExecuteCell 'cs', "inspect getModels #{stringify getSelectedModelKeys()}"
+    _.insertAndExecuteCell 'cs', "inspect getModels #{stringify collectSelectedKeys()}"
 
   predictUsingModels = ->
-    _.insertAndExecuteCell 'cs', "predict models: #{stringify getSelectedModelKeys()}"
+    _.insertAndExecuteCell 'cs', "predict models: #{stringify collectSelectedKeys()}"
+
+  deleteModels = ->
+    _.confirm 'Are you sure you want to delete these models?', { acceptCaption: 'Delete Models', declineCaption: 'Cancel' }, (accept) ->
+      if accept
+        _.insertAndExecuteCell 'cs', "deleteModels #{stringify collectSelectedKeys()}"
+
 
   inspectAll = ->
     allKeys = (view.key for view in _modelViews())
@@ -69,7 +79,10 @@ H2O.ModelsOutput = (_, _go, _models) ->
   buildModel: buildModel
   compareModels: compareModels
   predictUsingModels: predictUsingModels
+  deleteModels: deleteModels
+  checkedModelCount: _checkedModelCount
   canCompareModels: _canCompareModels
+  hasSelectedModels: _hasSelectedModels
   checkAllModels: _checkAllModels
   inspect: inspectAll
   template: 'flow-models-output'
