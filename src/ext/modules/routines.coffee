@@ -1128,6 +1128,24 @@ H2O.Routines = (_) ->
     else
       assist deleteModel
 
+  requestDeleteModels = (modelKeys, go) ->
+    futures = map modelKeys, (modelKey) ->
+      _fork _.requestDeleteModel, modelKey
+    Flow.Async.join futures, (error, results) ->
+      if error
+        go error
+      else
+        go null, results
+
+  deleteModels = (modelKeys...) ->
+    switch modelKeys.length
+      when 0
+        assist deleteModels
+      when 1
+        deleteModel head modelKeys
+      else
+        _fork requestDeleteModels, modelKeys
+
   requestJob = (key, go) ->
     _.requestJobByDestinationKey key, (error, job) ->
       if error
@@ -1507,6 +1525,7 @@ H2O.Routines = (_) ->
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
+  deleteModels: deleteModels
   deleteModel: deleteModel
   predict: predict
   getPrediction: getPrediction
