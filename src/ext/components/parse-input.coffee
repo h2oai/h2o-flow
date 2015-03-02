@@ -57,7 +57,6 @@ dataTypes = [
   'Enum'
   'Time'
   'UUID'
-  'Time'
   'String'
   'Invalid'
 ]
