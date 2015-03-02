@@ -232,7 +232,7 @@ Flow.Notebook = (_, _renderers) ->
     no
 
   sanitizeName = (name) ->
-    name.replace(/([^a-z0-9_-])/gi, '-').trim()
+    name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim()
 
   checkIfNameIsInUse = (name, go) ->
     _.requestObject 'notebook', name, (error) ->
@@ -271,7 +271,7 @@ Flow.Notebook = (_, _renderers) ->
     return
 
   openNotebook = ->
-    _.dialog Flow.FileOpenDialog, (result) ->
+    _.dialog Flow.FileOpenDialog, sanitizeName, (result) ->
       if result
         { error, filename } = result
         if error

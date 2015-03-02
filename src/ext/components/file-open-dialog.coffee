@@ -1,4 +1,4 @@
-Flow.FileOpenDialog = (_, _go) ->
+Flow.FileOpenDialog = (_, sanitizeName, _go) ->
   extension = '.flow'
   _overwrite = signal no
   _form = signal null
@@ -8,7 +8,7 @@ Flow.FileOpenDialog = (_, _go) ->
     -1 isnt filename.indexOf extension, filename.length - extension.length
 
   getFileBaseName = (filename) ->
-    filename.substr 0, filename.length - extension.length
+    sanitizeName filename.substr 0, filename.length - extension.length
 
   _canAccept = lift _file, (file) ->
     if file?.name
