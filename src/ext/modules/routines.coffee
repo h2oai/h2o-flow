@@ -1079,7 +1079,7 @@ H2O.Routines = (_) ->
       else
         go null, extendDeletedKeys frameKeys
 
-  deleteFrames = (frameKeys...) ->
+  deleteFrames = (frameKeys) ->
     switch frameKeys.length
       when 0
         assist deleteFrames
@@ -1140,7 +1140,7 @@ H2O.Routines = (_) ->
       else
         go null, extendDeletedKeys modelKeys
 
-  deleteModels = (modelKeys...) ->
+  deleteModels = (modelKeys) ->
     switch modelKeys.length
       when 0
         assist deleteModels
