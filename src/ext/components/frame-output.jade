@@ -10,12 +10,13 @@
         tr 
           th(width='1') Actions:
           td
-            +button('View Data', 'list', 'inspectData')
+            +button('View Data', 'table', 'inspectData')
+            +button('Inspect', 'list', 'inspect')
             +button('Build Model&hellip;', 'cube', 'createModel')
             +button('Predict', 'bolt', 'predict')
             +button('Download', 'cloud-download', 'download')
           td.flow-right
-            +button('Inspect', 'list', 'inspect')
+            +button('Delete', 'trash-o', 'deleteFrame')
 
   .flow-margin-after
     table.flow-form.flow-form-ruled

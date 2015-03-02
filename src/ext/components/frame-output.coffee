@@ -60,6 +60,11 @@ H2O.FrameOutput = (_, _go, _frame) ->
   download = ->
     window.open "/3/DownloadDataset?key=#{encodeURIComponent _frame.key.name}", '_blank'
 
+  deleteFrame = ->
+    _.confirm 'Are you sure you want to delete this frame?', { acceptCaption: 'Delete Frame', declineCaption: 'Cancel' }, (accept) ->
+      if accept
+        _.insertAndExecuteCell 'cs', "deleteFrame #{stringify _frame.key.name}"
+
   _grid = createGrid _.inspect 'columns', _frame
 
   defer _go
@@ -74,5 +79,6 @@ H2O.FrameOutput = (_, _go, _frame) ->
   inspectData: inspectData
   predict: predict
   download: download
+  deleteFrame: deleteFrame
   template: 'flow-frame-output'
 
