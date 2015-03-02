@@ -1,6 +1,6 @@
 Flow.ConfirmDialog = (_, _message, _opts={}, _go) ->
   defaults _opts,
-    title: 'Alert'
+    title: 'Confirm'
     acceptCaption: 'Yes'
     declineCaption: 'No'
 
