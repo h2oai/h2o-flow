@@ -1067,6 +1067,24 @@ H2O.Routines = (_) ->
     else
       assist deleteFrame
 
+  requestDeleteFrames = (frameKeys, go) ->
+    futures = map frameKeys, (frameKey) ->
+      _fork _.requestDeleteFrame, frameKey
+    Flow.Async.join futures, (error, results) ->
+      if error
+        go error
+      else
+        go null, results
+
+  deleteFrames = (frameKeys...) ->
+    switch frameKeys.length
+      when 0
+        assist deleteFrames
+      when 1
+        deleteFrame head frameKeys
+      else
+        _fork requestDeleteFrames, frameKeys
+
   getColumnSummary = (frameKey, columnName) ->
     _fork requestColumnSummary, frameKey, columnName
 
@@ -1482,6 +1500,7 @@ H2O.Routines = (_) ->
   splitFrame: splitFrame
   getFrames: getFrames
   getFrame: getFrame
+  deleteFrames: deleteFrames
   deleteFrame: deleteFrame
   getRDDs: getRDDs
   getColumnSummary: getColumnSummary
