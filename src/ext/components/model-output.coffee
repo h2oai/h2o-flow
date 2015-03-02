@@ -142,6 +142,11 @@ H2O.ModelOutput = (_, _go, _model) ->
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.key.name}"
 
+  deleteModel = ->
+    _.confirm 'Are you sure you want to delete this model?', { acceptCaption: 'Delete Model', declineCaption: 'Cancel' }, (accept) ->
+      if accept
+        _.insertAndExecuteCell 'cs', "deleteModel #{stringify _model.key.name}"
+
   defer _go
 
   key: _model.key
@@ -153,5 +158,6 @@ H2O.ModelOutput = (_, _go, _model) ->
   cloneModel: cloneModel
   predict: predict
   inspect: inspect
+  deleteModel: deleteModel
   template: 'flow-model-output'
 
