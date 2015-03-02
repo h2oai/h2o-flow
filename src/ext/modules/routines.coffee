@@ -1100,6 +1100,16 @@ H2O.Routines = (_) ->
       else
         assist getModel
 
+  requestDeleteModel = (modelKey, go) ->
+    _.requestDeleteModel modelKey, (error, result) ->
+      if error then go error else go null, result
+
+  deleteModel = (modelKey) ->
+    if modelKey
+      _fork requestDeleteModel, modelKey
+    else
+      assist deleteModel
+
   requestJob = (key, go) ->
     _.requestJobByDestinationKey key, (error, job) ->
       if error
@@ -1478,6 +1488,7 @@ H2O.Routines = (_) ->
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
+  deleteModel: deleteModel
   predict: predict
   getPrediction: getPrediction
   getPredictions: getPredictions
