@@ -565,6 +565,9 @@ H2O.Routines = (_) ->
       extendJob job
     render_ jobs, H2O.JobsOutput, jobs
 
+  extendDeletedKeys = (keys) ->
+    render_ keys, H2O.DeleteObjectsOutput, keys
+
   extendModel = (model) ->
     switch model.algo
       when 'kmeans'
@@ -1059,7 +1062,7 @@ H2O.Routines = (_) ->
 
   requestDeleteFrame = (frameKey, go) ->
     _.requestDeleteFrame frameKey, (error, result) ->
-      if error then go error else go null, result
+      if error then go error else go null, extendDeletedKeys [ frameKey ]
 
   deleteFrame = (frameKey) ->
     if frameKey
@@ -1074,7 +1077,7 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        go null, results
+        go null, extendDeletedKeys frameKeys
 
   deleteFrames = (frameKeys...) ->
     switch frameKeys.length
@@ -1120,7 +1123,7 @@ H2O.Routines = (_) ->
 
   requestDeleteModel = (modelKey, go) ->
     _.requestDeleteModel modelKey, (error, result) ->
-      if error then go error else go null, result
+      if error then go error else go null, extendDeletedKeys [ modelKey ]
 
   deleteModel = (modelKey) ->
     if modelKey
@@ -1135,7 +1138,7 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        go null, results
+        go null, extendDeletedKeys modelKeys
 
   deleteModels = (modelKeys...) ->
     switch modelKeys.length
