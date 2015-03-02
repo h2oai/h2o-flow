@@ -341,7 +341,7 @@ H2O.Proxy = (_) ->
     doGet '/2/JStack.json', go
 
   requestRemoveAll = (go) ->
-    doGet '/3/RemoveAll.json', go
+    doDelete '/1/RemoveAll.json', go
 
   requestLogFile = (nodeIndex, fileType, go) ->
     doGet "/3/Logs.json/nodes/#{nodeIndex}/files/#{fileType}", go

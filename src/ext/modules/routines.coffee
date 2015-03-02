@@ -1394,6 +1394,16 @@ H2O.Routines = (_) ->
   getLogFile = (nodeIndex=-1, fileType='info') ->
     _fork requestLogFile, nodeIndex, fileType
 
+  requestRemoveAll = (go) ->
+    _.requestRemoveAll (error, result) ->
+      if error
+        go error
+      else
+        go null, extendDeletedKeys []
+
+  deleteAll = ->
+    _fork requestRemoveAll
+
   extendRDDs = (rdds) ->
     render_ rdds, -> H2O.RDDsOutput _, rdds
     rdds
@@ -1538,4 +1548,5 @@ H2O.Routines = (_) ->
   getProfile: getProfile
   getStackTrace: getStackTrace
   getLogFile: getLogFile
+  deleteAll: deleteAll
 
