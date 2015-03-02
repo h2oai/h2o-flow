@@ -47,7 +47,7 @@ H2O.TimelineOutput = (_, _go, _timeline) ->
         ]
 
   updateTimeline = (timeline) ->
-    [ grid, table, thead, tbody, tr, th, td ] = Flow.HTML.template '.grid', 'table', '=thead', 'tbody', 'tr', '=th', '=td'
+    [ grid, table, thead, tbody, tr, th, td ] = Flow.HTML.template '.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td'
 
     ths = (th header for header in _headers)
 

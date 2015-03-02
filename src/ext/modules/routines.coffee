@@ -126,7 +126,7 @@ computeFalsePositiveRate = (cm) ->
 
 formatConfusionMatrix = (cm) ->
   [[tn, fp], [fn, tp]] = cm
-  [ table, tbody, tr, td ] = Flow.HTML.template 'table.flow-matrix', 'tbody', 'tr', '=td'
+  [ table, tbody, tr, td ] = Flow.HTML.template 'table.flow-matrix', 'tbody', 'tr', 'td'
 
   table [ 
     tbody [

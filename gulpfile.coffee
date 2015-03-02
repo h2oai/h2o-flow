@@ -62,6 +62,7 @@ config =
       'lib/marked/lib/marked.js'
       'lib/knockoutjs/dist/knockout.debug.js'
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
+      'lib/diecut/diecut.js'
       'vendor/h2oai/lightning.min.js'
     ]
     css: [

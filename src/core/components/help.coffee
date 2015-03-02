@@ -115,7 +115,7 @@ Flow.Help = (_) ->
     return
   
   displayEndpoints = (routes) ->
-    [ div, mark, h5, p, action, code ] = Flow.HTML.template 'div', '=mark', '=h5', '=p', "+a href='#' data-action='endpoint' data-index='{0}'", '=code'
+    [ div, mark, h5, p, action, code ] = Flow.HTML.template 'div', 'mark', 'h5', 'p', "a href='#' data-action='endpoint' data-index='$1'", 'code'
     els = [
       mark 'API'
       h5 'List of Routes'
@@ -130,7 +130,7 @@ Flow.Help = (_) ->
     displayMarkdown _homeMarkdown
 
   displayEndpoint = (route) ->
-    [ div, mark, h5, h6, p, action, code ] = Flow.HTML.template 'div', '=mark', '=h5', '=h6', '=p', "+a href='#' data-action='schema' data-schema='{0}'", '=code'
+    [ div, mark, h5, h6, p, action, code ] = Flow.HTML.template 'div', 'mark', 'h5', 'h6', 'p', "a href='#' data-action='schema' data-schema='$1'", 'code'
 
     displayHtml Flow.HTML.render 'div', div [
       mark 'Route'
@@ -155,7 +155,7 @@ Flow.Help = (_) ->
 
   displaySchemas = (schemas) ->
 
-    [ div, h5, ul, li, variable, mark, code, action ] = Flow.HTML.template 'div', '=h5', 'ul', '=li', '=var', '=mark', '=code', "+a href='#' data-action='schema' data-schema='{0}'"
+    [ div, h5, ul, li, variable, mark, code, action ] = Flow.HTML.template 'div', 'h5', 'ul', 'li', 'var', 'mark', 'code', "a href='#' data-action='schema' data-schema='$1'"
 
     els = [
       mark 'API'
@@ -166,7 +166,7 @@ Flow.Help = (_) ->
     displayHtml Flow.HTML.render 'div', div els
 
   displaySchema = (schema) ->
-    [ div, mark, h5, h6, p, code, variable, small ] = Flow.HTML.template 'div', '=mark', '=h5', '=h6', '=p', '=code', '=var', '=small'
+    [ div, mark, h5, h6, p, code, variable, small ] = Flow.HTML.template 'div', 'mark', 'h5', 'h6', 'p', 'code', 'var', 'small'
 
     content = [
       mark 'Schema'

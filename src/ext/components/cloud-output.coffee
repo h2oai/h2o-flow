@@ -118,7 +118,7 @@ H2O.CloudOutput = (_, _go, _cloud) ->
     ]
 
   createGrid = (cloud, isExpanded) ->
-    [ grid, table, thead, tbody, tr, th, td, success, danger] = Flow.HTML.template '.grid', 'table', '=thead', 'tbody', 'tr', '=th', '=td', '=i.fa.fa-check-circle.text-success', '=i.fa.fa-exclamation-circle.text-danger'
+    [ grid, table, thead, tbody, tr, th, td, success, danger] = Flow.HTML.template '.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'i.fa.fa-check-circle.text-success', 'i.fa.fa-exclamation-circle.text-danger'
     nodeRows = map cloud.nodes, createNodeRow
     nodeRows.push createTotalRow cloud
 

@@ -1,7 +1,7 @@
 H2O.FrameOutput = (_, _go, _frame) ->
 
   createGrid = (data) ->
-    [ grid, table, thead, tbody, tr, th, thr, td, tdr, action ] = Flow.HTML.template '.grid', 'table', '=thead', 'tbody', 'tr', '=th', '=th.rt', '=td', '=td.rt', "+a data-action='summary' data-index='{0}' class='action' href='#'"
+    [ grid, table, thead, tbody, tr, th, thr, td, tdr, action ] = Flow.HTML.template '.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'th.rt', 'td', 'td.rt', "a data-action='summary' data-index='$1' class='action' href='#'"
     
     ths = for vector in data.vectors
       switch vector.type
