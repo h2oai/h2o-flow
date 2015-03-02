@@ -1057,6 +1057,16 @@ H2O.Routines = (_) ->
       else
         assist getFrame
 
+  requestDeleteFrame = (frameKey, go) ->
+    _.requestDeleteFrame frameKey, (error, result) ->
+      if error then go error else go null, result
+
+  deleteFrame = (frameKey) ->
+    if frameKey
+      _fork requestDeleteFrame, frameKey
+    else
+      assist deleteFrame
+
   getColumnSummary = (frameKey, columnName) ->
     _fork requestColumnSummary, frameKey, columnName
 
@@ -1462,6 +1472,7 @@ H2O.Routines = (_) ->
   splitFrame: splitFrame
   getFrames: getFrames
   getFrame: getFrame
+  deleteFrame: deleteFrame
   getRDDs: getRDDs
   getColumnSummary: getColumnSummary
   buildModel: buildModel

@@ -126,6 +126,9 @@ H2O.Proxy = (_) ->
       else
         go null, head result.frames
 
+  requestDeleteFrame = (key, go) ->
+    doDelete "/3/Frames.json/#{encodeURIComponent key}", go
+
   requestRDDs = (go) ->
     doGet '/3/RDDs.json', (error, result) ->
       if error
@@ -231,6 +234,9 @@ H2O.Proxy = (_) ->
         go error, result
       else
         go error, head patchUpModels result.models
+
+  requestDeleteModel = (key, go) ->
+    doDelete "/3/Models.json/#{encodeURIComponent key}", go
 
   requestModelBuilders = (go) ->
     doGet "/3/ModelBuilders.json", go
@@ -365,6 +371,7 @@ H2O.Proxy = (_) ->
   link _.requestSplitFrame, requestSplitFrame
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
+  link _.requestDeleteFrame, requestDeleteFrame
   link _.requestRDDs, requestRDDs
   link _.requestColumnSummary, requestColumnSummary
   link _.requestJobs, requestJobs
@@ -378,6 +385,7 @@ H2O.Proxy = (_) ->
   link _.requestParseFiles, requestParseFiles
   link _.requestModels, requestModels
   link _.requestModel, requestModel
+  link _.requestDeleteModel, requestDeleteModel
   link _.requestModelBuilder, requestModelBuilder
   link _.requestModelBuilders, requestModelBuilders
   link _.requestModelBuild, requestModelBuild
