@@ -20,6 +20,7 @@ _applicate = (go) ->
     apply go, null, [ error ].concat args if isFunction go
 
 _fork = (f, args) ->
+  throw new Error "Not a function." unless isFunction f
   self = (go) ->
     canGo = isFunction go
     if self.settled
