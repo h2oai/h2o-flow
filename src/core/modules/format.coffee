@@ -31,4 +31,5 @@ Flow.Format =
   Digits: Digits
   Real: formatReal
   Date: formatDate
+  Time: formatTime
 

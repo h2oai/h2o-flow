@@ -20,6 +20,9 @@ H2O.JobsOutput = (_, _go, jobs) ->
     key: job.dest.name
     type: type
     description: job.description
+    startTime: Flow.Format.Time new Date job.start_time
+    endTime: Flow.Format.Time new Date job.start_time + job.msec
+    elapsedTime: Flow.Util.formatMilliseconds job.msec
     status: job.status
     view: view
 

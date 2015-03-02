@@ -12,6 +12,9 @@
         th Type
         th Key
         th Description
+        th Start Time
+        th End Time
+        th Run Time
         th Status
     tbody
       // ko foreach:jobViews
@@ -22,6 +25,9 @@
         td
           a(href='#' data-bind='text:key, click:view')
         td(data-bind='text:description')
+        td(data-bind='text:startTime')
+        td(data-bind='text:endTime')
+        td(data-bind='text:elapsedTime')
         td(data-bind='text:status')
       // /ko
   // /ko
