@@ -1,14 +1,14 @@
 H2O.FramesOutput = (_, _go, _frames) ->
   _frameViews = signal []
   _checkAllFrames = signal no
-  _canCompareFrames = signal no
+  _hasSelectedFrames = signal no
 
   _isCheckingAll = no
   react _checkAllFrames, (checkAll) ->
     _isCheckingAll = yes
     for view in _frameViews()
       view.isChecked checkAll
-    _canCompareFrames checkAll
+    _hasSelectedFrames checkAll
     _isCheckingAll = no
     return
 
@@ -18,7 +18,7 @@ H2O.FramesOutput = (_, _go, _frames) ->
     react _isChecked, ->
       return if _isCheckingAll
       checkedViews = (view for view in _frameViews() when view.isChecked())
-      _canCompareFrames checkedViews.length > 0
+      _hasSelectedFrames checkedViews.length > 0
 
     columnLabels = head (map frame.columns, (column) -> column.label), 15
     description = 'Columns: ' + (columnLabels.join ', ') + if frame.columns.length > columnLabels.length then "... (#{frame.columns.length - columnLabels.length} more columns)" else ''
@@ -54,9 +54,19 @@ H2O.FramesOutput = (_, _go, _frames) ->
   importFiles = ->
     _.insertAndExecuteCell 'cs', 'importFiles'
 
+  collectSelectedKeys = ->
+    for view in _frameViews() when view.isChecked()
+      view.key
+
   predictOnFrames = ->
-    selectedKeys = (view.key for view in _frameViews() when view.isChecked())
-    _.insertAndExecuteCell 'cs', "predict frames: #{stringify selectedKeys}"
+    _.insertAndExecuteCell 'cs', "predict frames: #{stringify collectSelectedKeys()}"
+
+  deleteFrames = ->
+    _.confirm 'Are you sure you want to delete these frames?', { acceptCaption: 'Delete Frames', declineCaption: 'Cancel' }, (accept) ->
+      if accept
+        _.insertAndExecuteCell 'cs', "deleteFrames #{stringify collectSelectedKeys()}"
+    
+
 
   _frameViews map _frames, createFrameView
 
@@ -66,7 +76,8 @@ H2O.FramesOutput = (_, _go, _frames) ->
   hasFrames: _frames.length > 0
   importFiles: importFiles
   predictOnFrames: predictOnFrames
-  canCompareFrames: _canCompareFrames
+  deleteFrames: deleteFrames
+  hasSelectedFrames: _hasSelectedFrames
   checkAllFrames: _checkAllFrames
   template: 'flow-frames-output'
 

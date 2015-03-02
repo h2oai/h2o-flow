@@ -50,6 +50,7 @@
         td.flow-right(data-bind='text:size')
       // /ko
   .flow-panel
-    +button('Predict on selected frames&hellip;', 'bolt', 'predictOnFrames', 'canCompareFrames')
+    +button('Predict on selected frames&hellip;', 'bolt', 'predictOnFrames', 'hasSelectedFrames')
+    +button('Delete selected frames', 'trash-o', 'deleteFrames', 'hasSelectedFrames')
   // /ko
 
