@@ -1091,6 +1091,8 @@
                       </button>
                       <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
                       </button>
+                      <button type="button" data-bind="click:deleteModel" class="flow-button"><i class="fa fa-trash-o"></i><span>Delete</span>
+                      </button>
                 </td>
               </tr>
             </tbody>
@@ -1395,11 +1397,13 @@
           </tbody>
         </table>
         <div class="flow-panel">
-              <button type="button" data-bind="click:compareModels, enable:canCompareModels" class="flow-button"><i class="fa fa-area-chart"></i><span>Compare selected models&hellip;</span>
+              <button type="button" data-bind="click:compareModels, enable:canCompareModels" class="flow-button"><i class="fa fa-area-chart"></i><span>Compare selected&hellip;</span>
               </button>
               <button type="button" data-bind="click:predictUsingModels, enable:canCompareModels" class="flow-button"><i class="fa fa-bolt"></i><span>Predict using selected models&hellip;</span>
               </button>
               <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
+              </button>
+              <button type="button" data-bind="click:deleteModels, enable:hasSelectedModels" class="flow-button"><i class="fa fa-trash"></i><span>Delete selected</span>
               </button>
         </div>
         <!-- /ko-->
@@ -1462,7 +1466,9 @@
           </tbody>
         </table>
         <div class="flow-panel">
-              <button type="button" data-bind="click:predictOnFrames, enable:canCompareFrames" class="flow-button"><i class="fa fa-bolt"></i><span>Predict on selected frames&hellip;</span>
+              <button type="button" data-bind="click:predictOnFrames, enable:hasSelectedFrames" class="flow-button"><i class="fa fa-bolt"></i><span>Predict on selected frames&hellip;</span>
+              </button>
+              <button type="button" data-bind="click:deleteFrames, enable:hasSelectedFrames" class="flow-button"><i class="fa fa-trash-o"></i><span>Delete selected frames</span>
               </button>
         </div>
         <!-- /ko-->
@@ -1533,6 +1539,9 @@
               <th>Type</th>
               <th>Key</th>
               <th>Description</th>
+              <th>Start Time</th>
+              <th>End Time</th>
+              <th>Run Time</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -1544,6 +1553,9 @@
               <td data-bind="text:type"></td>
               <td><a href="#" data-bind="text:key, click:view"></a></td>
               <td data-bind="text:description"></td>
+              <td data-bind="text:startTime"></td>
+              <td data-bind="text:endTime"></td>
+              <td data-bind="text:elapsedTime"></td>
               <td data-bind="text:status"></td>
             </tr>
             <!-- /ko-->
@@ -1572,7 +1584,9 @@
               <tr>
                 <th width="1">Actions:</th>
                 <td>
-                      <button type="button" data-bind="click:inspectData" class="flow-button"><i class="fa fa-list"></i><span>View Data</span>
+                      <button type="button" data-bind="click:inspectData" class="flow-button"><i class="fa fa-table"></i><span>View Data</span>
+                      </button>
+                      <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
                       </button>
                       <button type="button" data-bind="click:createModel" class="flow-button"><i class="fa fa-cube"></i><span>Build Model&hellip;</span>
                       </button>
@@ -1582,7 +1596,7 @@
                       </button>
                 </td>
                 <td class="flow-right">
-                      <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
+                      <button type="button" data-bind="click:deleteFrame" class="flow-button"><i class="fa fa-trash-o"></i><span>Delete</span>
                       </button>
                 </td>
               </tr>
@@ -1715,6 +1729,14 @@
             <h3 class="flow-hint"><i class="fa fa-bolt"></i>Predict
             </h3>
         <table class="flow-form">
+          <tr>
+            <th width="1">
+              <label>Key:</label>
+            </th>
+            <td>
+              <input data-bind="value:destinationKey">
+            </td>
+          </tr>
           <tr>
             <th width="1">
               <label>Model:</label>
@@ -2015,6 +2037,23 @@
             </div>
           </div>
         </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-delete-objects-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-trash-o"></i>Deleted
+            </h3>
+        <!-- ko ifnot:hasKeys-->
+        <blockquote>All keys deleted.</blockquote>
+        <!-- /ko-->
+        <!-- ko if:hasKeys-->
+        <p>The following keys were deleted from your H<sub>2</sub>O cloud:</p>
+        <ul>
+          <!-- ko foreach:keys-->
+          <li data-bind="text:$data"></li>
+          <!-- /ko-->
+        </ul>
+        <!-- /ko-->
       </div>
     </script>
     <script src="js/flow-lib.js"></script>
