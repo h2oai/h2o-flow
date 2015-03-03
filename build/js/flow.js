@@ -13,7 +13,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.59';
+    FLOW_VERSION = '0.2.60';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5106,7 +5106,7 @@
             inspections = {};
             inspections.parameters = inspectModelParameters(model);
             modelCategory = model.output.model_category;
-            if (modelCategory === 'Binomial' || modelCategory === 'Multinomial' || modelCategory === 'Regression') {
+            if (modelCategory === 'Binomial' || modelCategory === 'Multinomial' || modelCategory === 'Regression' || modelCategory === 'AutoEncoder') {
                 tables = [
                     model.output.modelSummary,
                     model.output.scoringHistory
