@@ -472,8 +472,8 @@ Flow.Notebook = (_, _renderers) ->
       menuDivider
       createMenuItem 'Toggle Sidebar', toggleSidebar
       createMenuItem 'Outline', showOutline
-      createMenuItem 'Files', showBrowser
-      createMenuItem 'Clipboard', showClipboard
+      createMenuItem 'Flows', showBrowser
+      createMenuItem 'Clips', showClipboard
       menuDivider
       createMenuItem 'Presentation Mode', switchToPresentationMode, yes
     ]
