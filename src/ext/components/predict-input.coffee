@@ -1,5 +1,5 @@
 H2O.PredictInput = (_, _go, opt) ->
-  _destinationKey = signal opt.destination_key ? ''
+  _destinationKey = signal opt.destination_key ? "prediction-#{Flow.Util.uuid()}"
 
   _selectedModels = if opt.models
     opt.models

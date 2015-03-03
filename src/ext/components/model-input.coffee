@@ -353,10 +353,16 @@ H2O.ModelInput = (_, _go, _algo, _opts) ->
 
   populateFramesAndColumns = (frameKey, algorithm, parameters, go) ->
 
+    destinationKeyParameter = find parameters, (parameter) -> parameter.name is 'destination_key'
+
+    if destinationKeyParameter and not destinationKeyParameter.actual_value
+      destinationKeyParameter.actual_value = "#{algorithm}-#{Flow.Util.uuid()}"
+
     #
     # Force classification.
     #
     classificationParameter = find parameters, (parameter) -> parameter.name is 'do_classification'
+
     if classificationParameter
       classificationParameter.actual_value = yes
 
