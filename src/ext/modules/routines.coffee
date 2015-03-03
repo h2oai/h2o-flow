@@ -456,7 +456,7 @@ H2O.Routines = (_) ->
 
     modelCategory = model.output.model_category
 
-    if modelCategory is 'Binomial' or modelCategory is 'Multinomial' or modelCategory is 'Regression'
+    if modelCategory is 'Binomial' or modelCategory is 'Multinomial' or modelCategory is 'Regression' or modelCategory is 'AutoEncoder'
       tables = [ model.output.modelSummary, model.output.scoringHistory ]
       tables.forEach (table) ->
         inspections[ table.name ] = ->
