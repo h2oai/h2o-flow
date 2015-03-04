@@ -13,7 +13,7 @@
 }.call(this));
 (function () {
     var FLOW_VERSION;
-    FLOW_VERSION = '0.2.60';
+    FLOW_VERSION = '0.2.61';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1397,8 +1397,8 @@
                 menuDivider,
                 createMenuItem('Toggle Sidebar', toggleSidebar),
                 createMenuItem('Outline', showOutline),
-                createMenuItem('Files', showBrowser),
-                createMenuItem('Clipboard', showClipboard),
+                createMenuItem('Flows', showBrowser),
+                createMenuItem('Clips', showClipboard),
                 menuDivider,
                 createMenuItem('Presentation Mode', switchToPresentationMode, true)
             ]),
@@ -8516,7 +8516,13 @@
         });
         _modelForm = Flow.Dataflow.signal(null);
         populateFramesAndColumns = function (frameKey, algorithm, parameters, go) {
-            var classificationParameter;
+            var classificationParameter, destinationKeyParameter;
+            destinationKeyParameter = lodash.find(parameters, function (parameter) {
+                return parameter.name === 'destination_key';
+            });
+            if (destinationKeyParameter && !destinationKeyParameter.actual_value) {
+                destinationKeyParameter.actual_value = '' + algorithm + '-' + Flow.Util.uuid();
+            }
             classificationParameter = lodash.find(parameters, function (parameter) {
                 return parameter.name === 'do_classification';
             });
@@ -9149,7 +9155,7 @@
 (function () {
     H2O.PredictInput = function (_, _go, opt) {
         var predict, _canPredict, _destinationKey, _exception, _frames, _hasFrames, _hasModels, _models, _ref, _selectedFrame, _selectedFrames, _selectedFramesCaption, _selectedModel, _selectedModels, _selectedModelsCaption;
-        _destinationKey = Flow.Dataflow.signal((_ref = opt.destination_key) != null ? _ref : '');
+        _destinationKey = Flow.Dataflow.signal((_ref = opt.destination_key) != null ? _ref : 'prediction-' + Flow.Util.uuid());
         _selectedModels = opt.models ? opt.models : opt.model ? [opt.model] : [];
         _selectedFrames = opt.frames ? opt.frames : opt.frame ? [opt.frame] : [];
         _selectedModelsCaption = _selectedModels.join(', ');
