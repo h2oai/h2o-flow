@@ -1064,7 +1064,7 @@
       </div>
     </script>
     <script type="text/html" id="flow-import-file-output">
-      <!-- ko foreach:keys-->
+      <!-- ko foreach:files-->
       <div class="flow-hint"><i class="fa fa-key"></i><span data-bind="text:$data"></span></div>
       <!-- /ko-->
     </script>
@@ -1141,7 +1141,7 @@
         <table class="flow-form">
           <tbody>
             <tr>
-              <th class="flow-narrow">Keys</th>
+              <th class="flow-narrow">Files</th>
               <td class="flow-wide">
                 <div data-bind="template: { name:templateOf, foreach:importViews }"></div>
               </td>
@@ -1151,8 +1151,6 @@
               <th class="flow-narrow">Actions</th>
               <td class="flow-wide">
                     <button type="button" data-bind="click:parse, enable:canParse" class="flow-button"><i class="fa fa-cog"></i><span>Parse these files&hellip;</span>
-                    </button>
-                    <button type="button" data-bind="click:buildModel, enable:canBuildModel" class="flow-button"><i class="fa fa-cube"></i><span>Build a model&hellip;</span>
                     </button>
               </td>
             </tr>
@@ -1426,7 +1424,12 @@
                 <!-- /ko-->
               </td>
               <td>
-                <p><a href="#" data-bind="text:key, click:view"></a></p>
+                <p>
+                  <!-- ko if:isText--><span data-bind="text:key"></span>
+                  <!-- /ko-->
+                  <!-- ko ifnot:isText--><a href="#" data-bind="text:key, click:view"></a>
+                  <!-- /ko-->
+                </p>
                 <p data-bind="text:description" class="flow-small"></p>
                 <!-- ko ifnot:isText-->
                 <p>
@@ -2046,13 +2049,13 @@
     <script src="js/flow-lib.js"></script>
     <script src="js/flow.js"></script>
     <script>
-      (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
-      function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
-      e=o.createElement(i);r=o.getElementsByTagName(i)[0];
-      e.src='//www.google-analytics.com/analytics.js';
-      r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
-      ga('create','UA-29263631-3');ga('send','pageview', { 'title': 'h2o-steam' });
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
       
+      ga('create', 'UA-44624604-2', 'auto');
+      ga('send', 'pageview');
       
     </script>
   </body>
