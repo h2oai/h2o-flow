@@ -514,6 +514,7 @@ Flow.Notebook = (_, _renderers) ->
       menuDivider
       createMenuHeader 'Advanced'
       createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
+      createMenuItem 'Network Test', executeCommand 'testNetwork'
       createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
       createMenuItem 'Timeline', executeCommand 'getTimeline'
       createMenuItem 'Shut Down', shutdown

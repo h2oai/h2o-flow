@@ -284,6 +284,16 @@ H2O.Routines = (_) ->
   extendLogFile = (cloud, nodeIndex, fileType, logFile) ->
     render_ logFile, H2O.LogFileOutput, cloud, nodeIndex, fileType, logFile
 
+  inspectNetworkTestResult = (testResult) -> ->
+    convertTableToFrame testResult.table,
+      description: testResult.table.name
+      origin: "testNetwork"
+
+  extendNetworkTest = (testResult) ->
+    inspect_ testResult,
+      result: inspectNetworkTestResult testResult
+    render_ testResult, H2O.NetworkTestOutput, testResult
+
   extendProfile = (profile) ->
     render_ profile, H2O.ProfileOutput, profile
 
@@ -1394,6 +1404,16 @@ H2O.Routines = (_) ->
   getLogFile = (nodeIndex=-1, fileType='info') ->
     _fork requestLogFile, nodeIndex, fileType
 
+  requestNetworkTest = (go) ->
+    _.requestNetworkTest (error, result) ->
+      if error
+        go error
+      else
+        go null, extendNetworkTest result
+
+  testNetwork = ->
+    _fork requestNetworkTest
+
   requestRemoveAll = (go) ->
     _.requestRemoveAll (error, result) ->
       if error
@@ -1548,5 +1568,6 @@ H2O.Routines = (_) ->
   getProfile: getProfile
   getStackTrace: getStackTrace
   getLogFile: getLogFile
+  testNetwork: testNetwork
   deleteAll: deleteAll
 
