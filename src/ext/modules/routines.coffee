@@ -31,26 +31,25 @@ _assistance =
     description: 'Make a prediction'
     icon: 'bolt'
 
-parseInts = (source) ->
-  for str in source
-    if isNaN value = parseInt str, 10
+parseNumbers = (source) ->
+  target = new Array source.length
+  for value, i in source
+    target[i] = if value is 'NaN'
       undefined
+    else if value is 'Inf'
+      Number.POSITIVE_INFINITY #TODO handle formatting
+    else if value is '-Inf'
+      Number.NEGATIVE_INFINITY #TODO handle formatting
     else
       value
-
-parseFloats = (source) ->
-  for str in source
-    if isNaN value = parseFloat str
-      undefined
-    else
-      value
+  target
 
 convertColumnToVector = (column, data) ->
   switch column.type
     when 'byte', 'short', 'int', 'long'
-      createVector column.name, TNumber, parseInts data
+      createVector column.name, TNumber, parseNumbers data
     when 'float', 'double'
-      createVector column.name, TNumber, parseFloats data
+      createVector column.name, TNumber, parseNumbers data
     when 'string'
       createFactor column.name, TString, data
     else
