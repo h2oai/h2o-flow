@@ -1135,25 +1135,6 @@
         <!-- /ko-->
       </div>
     </script>
-    <script type="text/html" id="flow-parse-output">
-      <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-indent"></i>Parse Job Created</h3>
-        <table class="flow-form">
-          <tbody>
-            <tr>
-              <th class="flow-narrow">Job Key</th>
-              <td class="flow-wide"><a href="#" data-bind="text:result.job.key.name, click:viewJob"></a></td>
-            </tr>
-            <tr class="flow-actions">
-              <th class="flow-narrow">Actions</th>
-              <td class="flow-wide">
-                <button type="button" data-bind="click:viewJob" class="flow-button"><i class="fa fa-tasks"></i><span>View Job</span></button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </script>
     <script type="text/html" id="flow-import-files-output">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-cloud-upload"></i><span data-bind="text:title"></span></h3>
@@ -1537,7 +1518,7 @@
             <tr>
               <th>&nbsp;</th>
               <th>Type</th>
-              <th>Key</th>
+              <th>Destination</th>
               <th>Description</th>
               <th>Start Time</th>
               <th>End Time</th>
@@ -1551,7 +1532,7 @@
               <td><i class="fa fa-tasks"></i>
               </td>
               <td data-bind="text:type"></td>
-              <td><a href="#" data-bind="text:key, click:view"></a></td>
+              <td><a href="#" data-bind="text:destination, click:view"></a></td>
               <td data-bind="text:description"></td>
               <td data-bind="text:startTime"></td>
               <td data-bind="text:endTime"></td>
@@ -2008,6 +1989,12 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </script>
+    <script type="text/html" id="flow-network-test-output">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-tachometer"></i>Network Test</h3>
+        <div data-bind="raw:result" class="flow-plot"></div>
       </div>
     </script>
     <script type="text/html" id="flow-file-open-dialog">
