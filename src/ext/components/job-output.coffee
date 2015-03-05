@@ -53,7 +53,7 @@ H2O.JobOutput = (_, _go, _job) ->
     _progressMessage job.progress_msg
     _status job.status
     _statusColor getJobOutputStatusColor job.status
-    _exception if job.exception then Flow.Failure new Flow.Error 'Job failure.', new Error job.exception else null
+    _exception if job.exception then Flow.Failure _, new Flow.Error 'Job failure.', new Error job.exception else null
 
     _canView not isJobRunning job
     _canCancel isJobRunning job
@@ -63,7 +63,7 @@ H2O.JobOutput = (_, _go, _job) ->
     _.requestJob _key, (error, job) ->
       _isBusy no
       if error
-        _exception Flow.Failure new Flow.Error 'Error fetching jobs', error
+        _exception Flow.Failure _, new Flow.Error 'Error fetching jobs', error
         _isLive no
       else
         updateJob job

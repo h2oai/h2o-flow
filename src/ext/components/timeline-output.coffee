@@ -70,7 +70,7 @@ H2O.TimelineOutput = (_, _go, _timeline) ->
     _.requestTimeline (error, timeline) ->
       _isBusy no
       if error
-        _exception Flow.Failure new Flow.Error 'Error fetching timeline', error
+        _exception Flow.Failure _, new Flow.Error 'Error fetching timeline', error
         _isLive no
       else
         updateTimeline timeline

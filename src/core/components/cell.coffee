@@ -72,7 +72,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
         _hasError yes
         #XXX review
         if error.name is 'FlowError'
-          _outputs.push Flow.Failure error
+          _outputs.push Flow.Failure _, error
         else
           _outputs.push
             text: JSON.stringify error, null, 2

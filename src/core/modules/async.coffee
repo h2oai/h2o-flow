@@ -124,9 +124,9 @@ iterate = (tasks) ->
     if task
       task (error, result) ->
         if error
-          _results.push [ error ]
+          return go error
         else
-          _results.push [ null, result ]
+          _results.push result
         next go
     else
       #XXX should errors be included in arg #1?

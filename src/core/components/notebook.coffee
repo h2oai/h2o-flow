@@ -333,8 +333,8 @@ Flow.Notebook = (_, _renderers) ->
     $('#keyboardHelpDialog').modal()
 
   displayDocumentation = ->
-    hash = if Flow.Version
-      hashEntry = find Flow.Version, (entry) -> entry.caption is 'H2O Build git hash'
+    hash = if Flow.BuildProperties
+      hashEntry = find Flow.BuildProperties, (entry) -> entry.caption is 'H2O Build git hash'
       if hashEntry then hashEntry.value else 'master'
     else
       'master'
