@@ -5,7 +5,7 @@
   table.flow-form
     tbody
       tr
-        th.flow-narrow Keys
+        th.flow-narrow Files
         td.flow-wide
           div(data-bind="template: { name:templateOf, foreach:importViews }")
       // ko if:canParse
@@ -13,7 +13,6 @@
         th.flow-narrow Actions
         td.flow-wide
           +button('Parse these files&hellip;', 'cog', 'parse', 'canParse')
-          +button('Build a model&hellip;', 'cube', 'buildModel', 'canBuildModel')
       // /ko
 
 

@@ -61,7 +61,7 @@ dataTypes = [
   'Invalid'
 ]
 
-H2O.SetupParseOutput = (_, _go, _result) ->
+H2O.SetupParseOutput = (_, _go, _paths, _result) ->
   _sourceKeys = map _result.srcs, (src) -> src.name
   _parserType =  signal find parserTypes, (parserType) -> parserType.type is _result.pType
   _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
@@ -82,11 +82,11 @@ H2O.SetupParseOutput = (_, _go, _result) ->
     columnNames = if _hasColumnNames then (columnName() for columnName in _columnNames) else null
     columnTypes = (columnType() for columnType in _columnTypes)
 
-    _.insertAndExecuteCell 'cs', "parseRaw\n  srcs: #{stringify _sourceKeys}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  columnTypes: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}\n  chunkSize: #{_chunkSize}"
+    _.insertAndExecuteCell 'cs', "parseFiles\n  srcs: #{stringify _paths}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  columnTypes: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}\n  chunkSize: #{_chunkSize}"
 
   defer _go
 
-  sourceKeys: _sourceKeys
+  sourceKeys: _paths
   parserTypes: parserTypes
   dataTypes: dataTypes
   delimiters: parseDelimiters

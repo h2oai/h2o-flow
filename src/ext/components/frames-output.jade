@@ -37,7 +37,12 @@
           // /ko
         td
           p
+            // ko if:isText
+            span(data-bind='text:key')
+            // /ko
+            // ko ifnot:isText
             a(href='#' data-bind='text:key, click:view')
+            // /ko
           p.flow-small(data-bind='text:description')
           // ko ifnot:isText
           p

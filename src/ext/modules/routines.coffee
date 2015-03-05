@@ -1205,38 +1205,47 @@ H2O.Routines = (_) ->
       else
         assist importFiles
 
-  extendParseSetupResults = (parseSetupResults) ->
-    render_ parseSetupResults, H2O.SetupParseOutput, parseSetupResults
+  extendParseSetupResults = (paths, parseSetupResults) ->
+    render_ parseSetupResults, H2O.SetupParseOutput, paths, parseSetupResults
 
-  requestParseSetup = (sourceKeys, go) ->
-    _.requestParseSetup sourceKeys, (error, parseSetupResults) ->
+  requestParseSetup = (paths, go) ->
+    _.requestImportFiles paths, (error, importResults) ->
       if error
         go error
       else
-        go null, extendParseSetupResults parseSetupResults
+        sourceKeys = flatten compact map importResults, (result) -> result.keys
+        _.requestParseSetup sourceKeys, (error, parseSetupResults) ->
+          if error
+            go error
+          else
+            go null, extendParseSetupResults paths, parseSetupResults
 
-
-  setupParse = (sourceKeys) ->
-    switch typeOf sourceKeys
+  setupParse = (paths) ->
+    switch typeOf paths
       when 'Array'
-        _fork requestParseSetup, sourceKeys
+        _fork requestParseSetup, paths
       else
         assist setupParse
 
   extendParseResult = (parseResult) ->
     render_ parseResult, H2O.JobOutput, parseResult.job
 
-  requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
-    _.requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
+  requestParseFiles = (paths, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
+    _.requestImportFiles paths, (error, importResults) ->
       if error
         go error
       else
-        go null, extendParseResult parseResult
+        sourceKeys = flatten compact map importResults, (result) -> result.keys
+        _.requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
+          if error
+            go error
+          else
+            go null, extendParseResult parseResult
 
-  parseRaw = (opts) -> #XXX review args
+  parseFiles = (opts) -> #XXX review args
     #XXX validation
 
-    sourceKeys = opts.srcs
+    paths = opts.srcs
     destinationKey = opts.hex
     parserType = opts.pType
     separator = opts.sep
@@ -1248,7 +1257,7 @@ H2O.Routines = (_) ->
     checkHeader = opts.checkHeader
     chunkSize = opts.chunkSize
 
-    _fork requestParseFiles, sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
+    _fork requestParseFiles, paths, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
 
   requestModelBuild = (algo, opts, go) ->
     _.requestModelBuild algo, opts, (error, result) ->
@@ -1546,7 +1555,7 @@ H2O.Routines = (_) ->
   getJob: getJob
   importFiles: importFiles
   setupParse: setupParse
-  parseRaw: parseRaw
+  parseFiles: parseFiles
   createFrame: createFrame
   splitFrame: splitFrame
   getFrames: getFrames
