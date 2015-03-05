@@ -36,9 +36,9 @@ parseNumbers = (source) ->
   for value, i in source
     target[i] = if value is 'NaN'
       undefined
-    else if value is 'Inf'
+    else if value is 'Infinity'
       Number.POSITIVE_INFINITY #TODO handle formatting
-    else if value is '-Inf'
+    else if value is '-Infinity'
       Number.NEGATIVE_INFINITY #TODO handle formatting
     else
       value
