@@ -10,7 +10,7 @@
       tr
         th &nbsp;
         th Type
-        th Key
+        th Destination
         th Description
         th Start Time
         th End Time
@@ -23,7 +23,7 @@
           +fa('tasks')
         td(data-bind='text:type')
         td
-          a(href='#' data-bind='text:key, click:view')
+          a(href='#' data-bind='text:destination, click:view')
         td(data-bind='text:description')
         td(data-bind='text:startTime')
         td(data-bind='text:endTime')

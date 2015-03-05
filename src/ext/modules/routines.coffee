@@ -1150,7 +1150,7 @@ H2O.Routines = (_) ->
         _fork requestDeleteModels, modelKeys
 
   requestJob = (key, go) ->
-    _.requestJobByDestinationKey key, (error, job) ->
+    _.requestJob key, (error, job) ->
       if error
         go error
       else
@@ -1214,7 +1214,7 @@ H2O.Routines = (_) ->
         assist setupParse
 
   extendParseResult = (parseResult) ->
-    render_ parseResult, H2O.ParseOutput, parseResult
+    render_ parseResult, H2O.JobOutput, parseResult.job
 
   requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     _.requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->

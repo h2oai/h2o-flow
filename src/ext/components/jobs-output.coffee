@@ -7,7 +7,7 @@ H2O.JobsOutput = (_, _go, jobs) ->
 
   createJobView = (job) ->
     view = ->
-      _.insertAndExecuteCell 'cs', "getJob #{stringify job.dest.name}" 
+      _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
 
     type = switch job.dest.type
       when 'Key<Frame>'
@@ -17,7 +17,7 @@ H2O.JobsOutput = (_, _go, jobs) ->
       else
         'Unknown'
 
-    key: job.dest.name
+    destination: job.dest.name
     type: type
     description: job.description
     startTime: Flow.Format.Time new Date job.start_time

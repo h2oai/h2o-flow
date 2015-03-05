@@ -26,7 +26,6 @@ H2O.ApplicationContext = (_) ->
   _.requestDeleteModel = do slot
   _.requestJobs = do slot
   _.requestJob = do slot
-  _.requestJobByDestinationKey = do slot
   _.requestCancelJob = do slot
   _.requestObjects = do slot
   _.requestObject = do slot
