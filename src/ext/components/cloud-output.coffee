@@ -159,7 +159,7 @@ H2O.CloudOutput = (_, _go, _cloud) ->
     _.requestCloud (error, cloud) ->
       _isBusy no
       if error
-        _exception Flow.Failure new Flow.Error 'Error fetching cloud status', error
+        _exception Flow.Failure _, new Flow.Error 'Error fetching cloud status', error
         _isLive no
       else
         updateCloud (_cloud = cloud), _isExpanded()

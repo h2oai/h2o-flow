@@ -276,7 +276,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
     _.requestModelInputValidation _algorithm, parameters, (error, modelBuilder) ->
       if error
-        _exception Flow.Failure new Flow.Error 'Error fetching initial model builder state', error
+        _exception Flow.Failure _, new Flow.Error 'Error fetching initial model builder state', error
       else
         hasErrors = no
 
@@ -394,7 +394,7 @@ H2O.ModelInput = (_, _go, _algo, _opts) ->
         if algorithm
           _.requestModelBuilder algorithm, (error, result) ->
             if error
-              _exception Flow.Failure new Flow.Error 'Error fetching model builder', error
+              _exception Flow.Failure _, new Flow.Error 'Error fetching model builder', error
             else
               parameters = result.model_builders[algorithm].parameters
               populateFramesAndColumns frameKey, algorithm, parameters, ->

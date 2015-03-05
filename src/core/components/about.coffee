@@ -1,11 +1,11 @@
-FLOW_VERSION = '999.999.999'
+Flow.Version = '999.999.999'
 
 Flow.About = (_) ->
   _properties = signals []
 
   link _.ready, ->
-    if Flow.Version
-      _properties Flow.Version
+    if Flow.BuildProperties
+      _properties Flow.BuildProperties
     else
       _.requestAbout (error, response) ->
         properties = []
@@ -18,9 +18,9 @@ Flow.About = (_) ->
 
         properties.push
           caption: 'Flow version'
-          value: FLOW_VERSION
+          value: Flow.Version
 
-        _properties Flow.Version = properties
+        _properties Flow.BuildProperties = properties
 
   properties: _properties
 

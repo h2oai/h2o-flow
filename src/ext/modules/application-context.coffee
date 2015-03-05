@@ -1,6 +1,4 @@
 H2O.ApplicationContext = (_) ->
-  _.requestGet = do slot
-  _.requestPost = do slot
   _.requestFileGlob = do slot
   _.requestCreateFrame = do slot
   _.requestSplitFrame = do slot

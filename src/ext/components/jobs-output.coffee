@@ -34,7 +34,7 @@ H2O.JobsOutput = (_, _go, jobs) ->
     _.requestJobs (error, jobs) ->
       _isBusy no
       if error
-        _exception Flow.Failure new Flow.Error 'Error fetching jobs', error
+        _exception Flow.Failure _, new Flow.Error 'Error fetching jobs', error
         _isLive no
       else
         _jobViews map jobs, createJobView

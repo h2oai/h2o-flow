@@ -15,7 +15,7 @@ H2O.ImportFilesOutput = (_, _go, _importResults) ->
   _importViews = map _importResults, ( [error, result] ) ->
     if error
       #XXX untested
-      Flow.Failure new Flow.Error 'Error importing file', error
+      Flow.Failure _, new Flow.Error 'Error importing file', error
     else
       createImportView result
 

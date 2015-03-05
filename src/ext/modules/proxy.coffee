@@ -3,6 +3,8 @@ H2O.Proxy = (_) ->
   http = (method, path, opts, go) ->
     _.status 'server', 'request', path
 
+    trackPath path
+
     req = switch method
       when 'GET'
         $.getJSON path
@@ -52,6 +54,16 @@ H2O.Proxy = (_) ->
   doPut = (path, opts, go) -> http 'PUT', path, opts, go
   doUpload = (path, formData, go) -> http 'UPLOAD', path, formData, go
   doDelete = (path, go) -> http 'DELETE', path, null, go
+
+  trackPath = (path) ->
+    try
+      [ root, version, name ] = path.split '/'
+      [ base, other ] = name.split '?'
+      if base isnt 'Typeahead.json' and base isnt 'Jobs.json'
+        _.trackEvent 'api', base, version
+    catch e
+
+    return
 
   mapWithKey = (obj, f) ->
     result = []
@@ -239,6 +251,7 @@ H2O.Proxy = (_) ->
     doPost "/3/ModelBuilders.json/#{algo}/parameters", (encodeObjectForPost parameters), go
 
   requestModelBuild = (algo, parameters, go) ->
+    _.trackEvent 'model', algo
     doPost "/3/ModelBuilders.json/#{algo}", (encodeObjectForPost parameters), go
 
   requestPredict = (destinationKey, modelKey, frameKey, go) ->
@@ -358,8 +371,6 @@ H2O.Proxy = (_) ->
   requestSchema = (name, go) ->
     doGet "/1/Metadata/schemas.json/#{encodeURIComponent name}", go
 
-  link _.requestGet, doGet
-  link _.requestPost, doPost
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
   link _.requestSplitFrame, requestSplitFrame
