@@ -18,7 +18,7 @@ flow-color-orange = #F5A623
 flow-color-link = #428bca
 
 monospace()
-  font-family 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace
+  font-family 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important
 
 smallcaps()
   font-weight 300
@@ -513,9 +513,9 @@ table
 
 
   // Nasty hacks - FIXME
-  .lightning-tooltip
+  .lz-tooltip
     table
-      font-family monospace !important
+      monospace()
       margin 0 !important
       font-size 100% !important
       tr:nth-child(odd)

@@ -1,5 +1,8 @@
 lightning = window.plot
 
+lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace'
+lightning.settings.axisTitleFont = 'bold 11px "Source Code Pro", monospace'
+
 createVector = lightning.createVector
 createFactor = lightning.createFactor
 createList = lightning.createList
