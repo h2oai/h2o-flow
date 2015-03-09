@@ -565,8 +565,10 @@ H2O.Routines = (_) ->
     inspections = {}
     inspections.parameters = inspectModelParameters model
     inspections.output = inspectGLMModelOutput model
-    inspections[model.output.coefficients_magnitude.name] = inspectGLMCoefficientsMagnitude model 
-    inspections[model.output.coefficients_table.name] = inspectGLMCoefficientsTable model
+    if model.output.coefficients_magnitude
+      inspections[model.output.coefficients_magnitude.name] = inspectGLMCoefficientsMagnitude model 
+    if model.output.coefficients_table
+      inspections[model.output.coefficients_table.name] = inspectGLMCoefficientsTable model
     inspect_ model, inspections
 
   extendJob = (job) ->
