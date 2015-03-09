@@ -3,7 +3,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     label(data-bind='text:label')
     span(data-bind='visible:isRequired') *
   td
-    select(data-bind="options:values, value:value, optionsCaption: '(None)'")
+    select(data-bind="options:values, value:value, optionsCaption: '(Choose...)'")
   td
     span(data-bind='text:description')
 tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage")
