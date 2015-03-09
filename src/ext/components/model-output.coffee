@@ -37,7 +37,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       if table = _.inspect 'output', _model
         renderPlot 'Output', _.plot (g) ->
           g(
-            g.table()
+            g.select()
             g.from table
           )
 
@@ -55,35 +55,35 @@ H2O.ModelOutput = (_, _go, _model) ->
       if table = _.inspect 'Status of Neuron Layers', _model
         renderPlot 'Status of Neuron Layers', _.plot (g) ->
           g(
-            g.table()
+            g.select()
             g.from table
           )
 
       if table = _.inspect 'Training Metrics', _model
         renderPlot 'Training Metrics', _.plot (g) ->
           g(
-            g.table()
+            g.select()
             g.from table
           )
 
       if table = _.inspect 'Training Confusion Matrix', _model
         renderPlot 'Training Confusion Matrix', _.plot (g) ->
           g(
-            g.table()
+            g.select()
             g.from table
           )
 
       if table = _.inspect 'Validation Metrics', _model
         renderPlot 'Validation Metrics', _.plot (g) ->
           g(
-            g.table()
+            g.select()
             g.from table
           )
 
       if table = _.inspect 'Validation Confusion Matrix', _model
         renderPlot 'Validation Confusion Matrix', _.plot (g) ->
           g(
-            g.table()
+            g.select()
             g.from table
           )
 
@@ -100,7 +100,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       if table = _.inspect 'Scoring History', _model
         renderPlot 'Scoring History', _.plot (g) ->
           g(
-            g.table()
+            g.select()
             g.from table
           )
 

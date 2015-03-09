@@ -267,7 +267,7 @@ H2O.Routines = (_) ->
 
   grid = (f) ->
     plot (g) -> g(
-      g.table()
+      g.select()
       g.from f
     )
 
@@ -1497,12 +1497,12 @@ H2O.Routines = (_) ->
     link _.plot, (plot) -> plot lightning
     link _.grid, (frame) ->
       lightning(
-        lightning.table()
+        lightning.select()
         lightning.from frame
       )
     link _.enumerate, (frame) ->
       lightning(
-        lightning.record 0
+        lightning.select 0
         lightning.from frame
       )
 

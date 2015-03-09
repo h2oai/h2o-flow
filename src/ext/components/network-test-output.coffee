@@ -2,7 +2,7 @@ H2O.NetworkTestOutput = (_, _go, _testResult) ->
   _result = signal null
   render = _.plot (g) ->
     g(
-      g.table()
+      g.select()
       g.from _.inspect 'result', _testResult
     )
 
