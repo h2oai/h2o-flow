@@ -22,6 +22,10 @@ H2O.PredictOutput = (_, _go, prediction) ->
     renderPlot _rocCurve, _.plot (g) ->
       g(
         g.path g.position 'FPR', 'TPR'
+        g.line(
+          g.position (g.value 1), (g.value 0)
+          g.strokeColor g.value 'red'
+        )
         g.from _.inspect 'Confusion Matrices', prediction
       )
 
