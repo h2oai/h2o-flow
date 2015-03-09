@@ -12,7 +12,7 @@ code,
 kbd,
 pre,
 samp {
-  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
 }
 kbd {
   color: #333;
@@ -190,7 +190,7 @@ th {
   max-height: 500px;
   border: none;
   border-left: 2px solid #f5871f;
-  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
   background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAKElEQVQImWN89+4dAwODoKAgAwMDE5z1/v17xv///0NYUBkIS1BQEAB7Uw7Oc/qzUwAAAABJRU5ErkJggg==");
   padding: 5px 10px;
 }
@@ -293,7 +293,7 @@ th {
   margin-bottom: 10px;
 }
 .flow-monospace {
-  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
 }
 .flow-pointer {
   cursor: pointer;
@@ -465,16 +465,16 @@ table.flow-form-ruled tr:first-child {
 .flow-plot table th {
   padding: 2px 5px;
 }
-.flow-plot .lightning-tooltip table {
-  font-family: monospace !important;
+.flow-plot .lz-tooltip table {
+  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
   margin: 0 !important;
   font-size: 100% !important;
 }
-.flow-plot .lightning-tooltip table tr:nth-child(odd) {
+.flow-plot .lz-tooltip table tr:nth-child(odd) {
   background-color: inherit !important;
 }
-.flow-plot .lightning-tooltip table td,
-.flow-plot .lightning-tooltip table th {
+.flow-plot .lz-tooltip table td,
+.flow-plot .lz-tooltip table th {
   padding: 0px 4px !important;
 }
 .flow-plot table.flow-matrix {

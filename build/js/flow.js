@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.63';
+    Flow.Version = '0.2.64';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4080,7 +4080,7 @@
             opts = {
                 dataset: frameKey,
                 ratios: encodeArrayForPost(splitRatios),
-                destKeys: encodeArrayForPost(splitKeys)
+                dest_keys: encodeArrayForPost(splitKeys)
             };
             return doPost('/2/SplitFrame.json', opts, go);
         };
@@ -4175,23 +4175,23 @@
         };
         requestParseSetup = function (sources, go) {
             var opts;
-            opts = { srcs: encodeArrayForPost(sources) };
+            opts = { source_keys: encodeArrayForPost(sources) };
             return doPost('/2/ParseSetup.json', opts, go);
         };
-        requestParseFiles = function (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
+        requestParseFiles = function (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
             var opts;
             opts = {
-                hex: destinationKey,
-                srcs: encodeArrayForPost(sourceKeys),
-                pType: parserType,
-                sep: separator,
-                ncols: columnCount,
-                singleQuotes: useSingleQuotes,
-                columnNames: encodeArrayForPost(columnNames),
-                columnTypes: encodeArrayForPost(columnTypes),
-                checkHeader: checkHeader,
+                destination_key: destinationKey,
+                source_keys: encodeArrayForPost(sourceKeys),
+                parse_type: parseType,
+                separator: separator,
+                number_columns: columnCount,
+                single_quotes: useSingleQuotes,
+                column_names: encodeArrayForPost(columnNames),
+                column_types: encodeArrayForPost(columnTypes),
+                check_header: checkHeader,
                 delete_on_done: deleteOnDone,
-                chunkSize: chunkSize
+                chunk_size: chunkSize
             };
             return doPost('/2/Parse.json', opts, go);
         };
@@ -4439,6 +4439,8 @@
 (function () {
     var combineTables, computeFalsePositiveRate, computeTruePositiveRate, concatArrays, convertColumnToVector, convertTableToFrame, createArrays, createDataframe, createFactor, createList, createVector, formatConfusionMatrix, formulateGetPredictionsOrigin, lightning, parseNaNs, parseNulls, parseNumbers, repeatValues, _assistance, __slice = [].slice;
     lightning = window.plot;
+    lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace';
+    lightning.settings.axisTitleFont = 'bold 11px "Source Code Pro", monospace';
     createVector = lightning.createVector;
     createFactor = lightning.createFactor;
     createList = lightning.createList;
@@ -4814,7 +4816,7 @@
         };
         grid = function (f) {
             return plot(function (g) {
-                return g(g.table(), g.from(f));
+                return g(g.select(), g.from(f));
             });
         };
         extendCloud = function (cloud) {
@@ -5120,8 +5122,8 @@
             modelCategory = model.output.model_category;
             if (modelCategory === 'Binomial' || modelCategory === 'Multinomial' || modelCategory === 'Regression' || modelCategory === 'AutoEncoder') {
                 tables = [
-                    model.output.modelSummary,
-                    model.output.scoringHistory
+                    model.output.model_summary,
+                    model.output.scoring_history
                 ];
                 tables.forEach(function (table) {
                     return inspections[table.name] = function () {
@@ -5132,7 +5134,7 @@
                         });
                     };
                 });
-                if (variableImportances = model.output.variableImportances) {
+                if (variableImportances = model.output.variable_importances) {
                     inspections[variableImportances.name] = function () {
                         return convertTableToFrame(variableImportances, {
                             description: variableImportances.name,
@@ -5143,64 +5145,64 @@
                 }
             }
             if (modelCategory === 'Binomial') {
-                if (trainMetrics = model.output.trainMetrics) {
-                    trainMetrics.thresholdsAndMetricScores.name = 'Training ' + trainMetrics.thresholdsAndMetricScores.name;
-                    trainMetrics.maxCriteriaAndMetricScores.name = 'Training ' + trainMetrics.maxCriteriaAndMetricScores.name;
+                if (trainMetrics = model.output.train_metrics) {
+                    trainMetrics.thresholds_and_metric_scores.name = 'Training ' + trainMetrics.thresholds_and_metric_scores.name;
+                    trainMetrics.max_criteria_and_metric_scores.name = 'Training ' + trainMetrics.max_criteria_and_metric_scores.name;
                     inspections['Training Metrics'] = inspectBinomialPrediction2('Training Metrics', trainMetrics);
-                    inspections[trainMetrics.thresholdsAndMetricScores.name] = function () {
-                        return convertTableToFrame(trainMetrics.thresholdsAndMetricScores, {
-                            description: trainMetrics.thresholdsAndMetricScores.name,
+                    inspections[trainMetrics.thresholds_and_metric_scores.name] = function () {
+                        return convertTableToFrame(trainMetrics.thresholds_and_metric_scores, {
+                            description: trainMetrics.thresholds_and_metric_scores.name,
                             origin: origin,
-                            plot: 'plot inspect \'' + trainMetrics.thresholdsAndMetricScores.name + '\', ' + origin
+                            plot: 'plot inspect \'' + trainMetrics.thresholds_and_metric_scores.name + '\', ' + origin
                         });
                     };
-                    inspections[trainMetrics.maxCriteriaAndMetricScores.name] = function () {
-                        return convertTableToFrame(trainMetrics.maxCriteriaAndMetricScores, {
-                            description: trainMetrics.maxCriteriaAndMetricScores.name,
+                    inspections[trainMetrics.max_criteria_and_metric_scores.name] = function () {
+                        return convertTableToFrame(trainMetrics.max_criteria_and_metric_scores, {
+                            description: trainMetrics.max_criteria_and_metric_scores.name,
                             origin: origin,
-                            plot: 'plot inspect \'' + trainMetrics.maxCriteriaAndMetricScores.name + '\', ' + origin
+                            plot: 'plot inspect \'' + trainMetrics.max_criteria_and_metric_scores.name + '\', ' + origin
                         });
                     };
                     inspections['Training Confusion Matrices'] = inspectBinomialConfusionMatrices2('Training Confusion Matrices', trainMetrics);
                 }
-                if (validMetrics = model.output.validMetrics) {
-                    validMetrics.thresholdsAndMetricScores.name = 'Validation ' + validMetrics.thresholdsAndMetricScores.name;
-                    validMetrics.maxCriteriaAndMetricScores.name = 'Validation ' + validMetrics.maxCriteriaAndMetricScores.name;
+                if (validMetrics = model.output.valid_metrics) {
+                    validMetrics.thresholds_and_metric_scores.name = 'Validation ' + validMetrics.thresholds_and_metric_scores.name;
+                    validMetrics.max_criteria_and_metric_scores.name = 'Validation ' + validMetrics.max_criteria_and_metric_scores.name;
                     inspections['Validation Metrics'] = inspectBinomialPrediction2('Validation Metrics', validMetrics);
-                    inspections[validMetrics.thresholdsAndMetricScores.name] = function () {
-                        return convertTableToFrame(validMetrics.thresholdsAndMetricScores, {
-                            description: validMetrics.thresholdsAndMetricScores.name,
+                    inspections[validMetrics.thresholds_and_metric_scores.name] = function () {
+                        return convertTableToFrame(validMetrics.thresholds_and_metric_scores, {
+                            description: validMetrics.thresholds_and_metric_scores.name,
                             origin: origin,
-                            plot: 'plot inspect \'' + validMetrics.thresholdsAndMetricScores.name + '\', ' + origin
+                            plot: 'plot inspect \'' + validMetrics.thresholds_and_metric_scores.name + '\', ' + origin
                         });
                     };
-                    inspections[validMetrics.maxCriteriaAndMetricScores.name] = function () {
-                        return convertTableToFrame(validMetrics.maxCriteriaAndMetricScores, {
-                            description: validMetrics.maxCriteriaAndMetricScores.name,
+                    inspections[validMetrics.max_criteria_and_metric_scores.name] = function () {
+                        return convertTableToFrame(validMetrics.max_criteria_and_metric_scores, {
+                            description: validMetrics.max_criteria_and_metric_scores.name,
                             origin: origin,
-                            plot: 'plot inspect \'' + validMetrics.maxCriteriaAndMetricScores.name + '\', ' + origin
+                            plot: 'plot inspect \'' + validMetrics.max_criteria_and_metric_scores.name + '\', ' + origin
                         });
                     };
                     inspections['Validation Confusion Matrices'] = inspectBinomialConfusionMatrices2('Validation Confusion Matrices', validMetrics);
                 }
             } else if (modelCategory === 'Multinomial') {
-                if (trainMetrics = model.output.trainMetrics) {
+                if (trainMetrics = model.output.train_metrics) {
                     inspections['Training Metrics'] = inspectMultinomialPrediction2('Training Metrics', trainMetrics);
                     if (table = trainMetrics.cm.table) {
                         inspectMultinomialConfusionMatrix('Training Confusion Matrix', table, origin, inspections);
                     }
                 }
-                if (validMetrics = model.output.validMetrics) {
+                if (validMetrics = model.output.valid_metrics) {
                     inspections['Validation Metrics'] = inspectMultinomialPrediction2('Validation Metrics', validMetrics);
                     if (table = validMetrics.cm.table) {
                         inspectMultinomialConfusionMatrix('Validation Confusion Matrix', table, origin, inspections);
                     }
                 }
             } else if (modelCategory === 'Regression') {
-                if (trainMetrics = model.output.trainMetrics) {
+                if (trainMetrics = model.output.train_metrics) {
                     inspections['Training Metrics'] = inspectRegressionPrediction2('Training Metrics', trainMetrics);
                 }
-                if (validMetrics = model.output.validMetrics) {
+                if (validMetrics = model.output.valid_metrics) {
                     inspections['Validation Metrics'] = inspectRegressionPrediction2('Validation Metrics', validMetrics);
                 }
             }
@@ -5212,7 +5214,7 @@
             inspections = {};
             inspections.parameters = inspectModelParameters(model);
             inspections.output = inspectGBMModelOutput(model);
-            if (variableImportances = model.output.variableImportances) {
+            if (variableImportances = model.output.variable_importances) {
                 inspections[variableImportances.name] = function () {
                     return convertTableToFrame(variableImportances, {
                         description: variableImportances.name,
@@ -5474,7 +5476,7 @@
                     _results = [];
                     for (_i = 0, _len = predictions.length; _i < _len; _i++) {
                         prediction = predictions[_i];
-                        _results.push(prediction.maxCriteriaAndMetricScores);
+                        _results.push(prediction.max_criteria_and_metric_scores);
                     }
                     return _results;
                 }());
@@ -5578,8 +5580,8 @@
                     })) {
                     inspections = {};
                     inspections['Prediction'] = inspectBinomialPredictions(opts, predictions);
-                    inspections[lodash.head(predictions).thresholdsAndMetricScores.name] = inspectBinomialScores(opts, predictions);
-                    inspections[lodash.head(predictions).maxCriteriaAndMetricScores.name] = inspectBinomialMetrics(opts, predictions);
+                    inspections[lodash.head(predictions).thresholds_and_metric_scores.name] = inspectBinomialScores(opts, predictions);
+                    inspections[lodash.head(predictions).max_criteria_and_metric_scores.name] = inspectBinomialMetrics(opts, predictions);
                     inspections['Confusion Matrices'] = inspectBinomialConfusionMatrices(opts, predictions);
                     inspect_(predictions, inspections);
                 } else {
@@ -5596,7 +5598,7 @@
                     _results = [];
                     for (_i = 0, _len = predictions.length; _i < _len; _i++) {
                         prediction = predictions[_i];
-                        _results.push(prediction.thresholdsAndMetricScores);
+                        _results.push(prediction.thresholds_and_metric_scores);
                     }
                     return _results;
                 }());
@@ -5626,8 +5628,8 @@
                 break;
             default:
                 inspections['Prediction'] = inspectBinomialPrediction(prediction);
-                inspections[prediction.thresholdsAndMetricScores.name] = inspectBinomialScores(opts, [prediction]);
-                inspections[prediction.maxCriteriaAndMetricScores.name] = inspectBinomialMetrics(opts, [prediction]);
+                inspections[prediction.thresholds_and_metric_scores.name] = inspectBinomialScores(opts, [prediction]);
+                inspections[prediction.max_criteria_and_metric_scores.name] = inspectBinomialMetrics(opts, [prediction]);
                 inspections['Confusion Matrices'] = inspectBinomialConfusionMatrices(opts, [prediction]);
             }
             return inspect_(prediction, inspections);
@@ -5637,10 +5639,10 @@
                 var attrs, column, domain, vectors;
                 attrs = [
                     'label',
-                    'missing',
-                    'zeros',
-                    'pinfs',
-                    'ninfs',
+                    'missing_count',
+                    'zero_count',
+                    'positive_infinity_count',
+                    'negative_infinity_count',
                     'min',
                     'max',
                     'mean',
@@ -5751,7 +5753,7 @@
                             _results.push(createVector(column.label, Flow.TNumber, parseNaNs(column.data)));
                             break;
                         case 'string':
-                            _results.push(createList(column.label, parseNulls(column.str_data)));
+                            _results.push(createList(column.label, parseNulls(column.string_data)));
                             break;
                         default:
                             _results.push(createList(column.label, parseNulls(column.data)));
@@ -5762,12 +5764,12 @@
                 vectors.unshift(createVector('Row', Flow.TNumber, function () {
                     var _i, _ref1, _ref2, _results;
                     _results = [];
-                    for (rowIndex = _i = _ref1 = frame.off, _ref2 = frame.len; _ref1 <= _ref2 ? _i < _ref2 : _i > _ref2; rowIndex = _ref1 <= _ref2 ? ++_i : --_i) {
+                    for (rowIndex = _i = _ref1 = frame.row_offset, _ref2 = frame.row_count; _ref1 <= _ref2 ? _i < _ref2 : _i > _ref2; rowIndex = _ref1 <= _ref2 ? ++_i : --_i) {
                         _results.push(rowIndex + 1);
                     }
                     return _results;
                 }()));
-                return createDataframe('data', vectors, lodash.range(frame.len - frame.off), null, {
+                return createDataframe('data', vectors, lodash.range(frame.row_count - frame.row_offset), null, {
                     description: 'A partial list of rows in the H2O Frame.',
                     origin: 'getFrame ' + Flow.Prelude.stringify(frameKey)
                 });
@@ -5804,10 +5806,10 @@
             inspectPercentiles = function () {
                 var vectors;
                 vectors = [
-                    createVector('percentile', Flow.TNumber, frame.default_pctiles),
-                    createVector('value', Flow.TNumber, column.pctiles)
+                    createVector('percentile', Flow.TNumber, frame.default_percentiles),
+                    createVector('value', Flow.TNumber, column.percentiles)
                 ];
-                return createDataframe('percentiles', vectors, lodash.range(frame.default_pctiles.length), null, {
+                return createDataframe('percentiles', vectors, lodash.range(frame.default_percentiles.length), null, {
                     description: 'Percentiles for column \'' + column.label + '\' in frame \'' + frameKey + '\'.',
                     origin: 'getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName)
                 });
@@ -5815,7 +5817,7 @@
             inspectDistribution = function () {
                 var base, binCount, binIndex, bins, count, countData, i, interval, intervalData, m, minBinCount, n, rows, stride, vectors, width, widthData, _i, _j, _k, _len;
                 minBinCount = 32;
-                base = column.base, stride = column.stride, bins = column.bins;
+                base = column.histogram_base, stride = column.histogram_stride, bins = column.histogram_bins;
                 width = Math.floor(bins.length / minBinCount);
                 interval = stride * width;
                 rows = [];
@@ -5861,9 +5863,9 @@
                 });
             };
             inspectCharacteristics = function () {
-                var characteristicData, count, countData, missing, ninfs, other, percentData, pinfs, vectors, zeros;
-                missing = column.missing, zeros = column.zeros, pinfs = column.pinfs, ninfs = column.ninfs;
-                other = rowCount - missing - zeros - pinfs - ninfs;
+                var characteristicData, count, countData, missing_count, negative_infinity_count, other, percentData, positive_infinity_count, vectors, zero_count;
+                missing_count = column.missing_count, zero_count = column.zero_count, positive_infinity_count = column.positive_infinity_count, negative_infinity_count = column.negative_infinity_count;
+                other = rowCount - missing_count - zero_count - positive_infinity_count - negative_infinity_count;
                 characteristicData = [
                     'Missing',
                     '-Inf',
@@ -5872,10 +5874,10 @@
                     'Other'
                 ];
                 countData = [
-                    missing,
-                    ninfs,
-                    zeros,
-                    pinfs,
+                    missing_count,
+                    negative_infinity_count,
+                    zero_count,
+                    positive_infinity_count,
                     other
                 ];
                 percentData = function () {
@@ -5900,8 +5902,8 @@
             };
             inspectSummary = function () {
                 var defaultPercentiles, maximum, mean, minimum, outliers, percentiles, q1, q2, q3, vectors;
-                defaultPercentiles = frame.default_pctiles;
-                percentiles = column.pctiles;
+                defaultPercentiles = frame.default_percentiles;
+                percentiles = column.percentiles;
                 mean = column.mean;
                 q1 = percentiles[defaultPercentiles.indexOf(0.25)];
                 q2 = percentiles[defaultPercentiles.indexOf(0.5)];
@@ -5926,7 +5928,7 @@
             };
             inspectDomain = function () {
                 var counts, i, labels, level, levels, percents, sortedLevels, top15Levels, vectors, _i, _len, _ref1;
-                levels = lodash.map(column.bins, function (count, index) {
+                levels = lodash.map(column.histogram_bins, function (count, index) {
                     return {
                         count: count,
                         index: index
@@ -6261,7 +6263,7 @@
         extendParseResult = function (parseResult) {
             return render_(parseResult, H2O.JobOutput, parseResult.job);
         };
-        requestParseFiles = function (paths, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
+        requestParseFiles = function (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
             return _.requestImportFiles(paths, function (error, importResults) {
                 var sourceKeys;
                 if (error) {
@@ -6270,7 +6272,7 @@
                     sourceKeys = lodash.flatten(lodash.compact(lodash.map(importResults, function (result) {
                         return result.keys;
                     })));
-                    return _.requestParseFiles(sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, function (error, parseResult) {
+                    return _.requestParseFiles(sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, function (error, parseResult) {
                         if (error) {
                             return go(error);
                         } else {
@@ -6281,19 +6283,19 @@
             });
         };
         parseFiles = function (opts) {
-            var checkHeader, chunkSize, columnCount, columnNames, columnTypes, deleteOnDone, destinationKey, parserType, paths, separator, useSingleQuotes;
-            paths = opts.srcs;
-            destinationKey = opts.hex;
-            parserType = opts.pType;
-            separator = opts.sep;
-            columnCount = opts.ncols;
-            useSingleQuotes = opts.singleQuotes;
-            columnNames = opts.columnNames;
-            columnTypes = opts.columnTypes;
+            var checkHeader, chunkSize, columnCount, columnNames, columnTypes, deleteOnDone, destinationKey, parseType, paths, separator, useSingleQuotes;
+            paths = opts.source_keys;
+            destinationKey = opts.destination_key;
+            parseType = opts.parse_type;
+            separator = opts.separator;
+            columnCount = opts.number_columns;
+            useSingleQuotes = opts.single_quotes;
+            columnNames = opts.column_names;
+            columnTypes = opts.column_types;
             deleteOnDone = opts.delete_on_done;
-            checkHeader = opts.checkHeader;
-            chunkSize = opts.chunkSize;
-            return _fork(requestParseFiles, paths, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize);
+            checkHeader = opts.check_header;
+            chunkSize = opts.chunk_size;
+            return _fork(requestParseFiles, paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize);
         };
         requestModelBuild = function (algo, opts, go) {
             return _.requestModelBuild(algo, opts, function (error, result) {
@@ -6648,10 +6650,10 @@
                 return plot(lightning);
             });
             Flow.Dataflow.link(_.grid, function (frame) {
-                return lightning(lightning.table(), lightning.from(frame));
+                return lightning(lightning.select(), lightning.from(frame));
             });
             return Flow.Dataflow.link(_.enumerate, function (frame) {
-                return lightning(lightning.record(0), lightning.from(frame));
+                return lightning(lightning.select(0), lightning.from(frame));
             });
         });
         Flow.Dataflow.link(_.initialized, function () {
@@ -7369,7 +7371,7 @@
             key: _frame.key.name,
             rowCount: _frame.rows,
             columnCount: _frame.columns.length,
-            size: Flow.Util.formatBytes(_frame.byteSize),
+            size: Flow.Util.formatBytes(_frame.byte_size),
             grid: _grid,
             inspect: inspect,
             createModel: createModel,
@@ -7426,7 +7428,7 @@
             }), 15);
             description = 'Columns: ' + columnLabels.join(', ') + (frame.columns.length > columnLabels.length ? '... (' + (frame.columns.length - columnLabels.length) + ' more columns)' : '');
             view = function () {
-                if (frame.isText) {
+                if (frame.is_text) {
                     return _.insertAndExecuteCell('cs', 'setupParse [ ' + Flow.Prelude.stringify(frame.key.name) + ' ]');
                 } else {
                     return _.insertAndExecuteCell('cs', 'getFrame ' + Flow.Prelude.stringify(frame.key.name));
@@ -7445,10 +7447,10 @@
                 key: frame.key.name,
                 isChecked: _isChecked,
                 description: description,
-                size: Flow.Util.formatBytes(frame.byteSize),
+                size: Flow.Util.formatBytes(frame.byte_size),
                 rowCount: frame.rows,
                 columnCount: frame.columns.length,
-                isText: frame.isText,
+                isText: frame.is_text,
                 view: view,
                 predict: predict,
                 inspect: inspect,
@@ -8379,7 +8381,7 @@
                                     });
                                     columnLabels = lodash.map(frame.columns, function (column) {
                                         var missingPercent, na;
-                                        missingPercent = 100 * column.missing / frame.rows;
+                                        missingPercent = 100 * column.missing_count / frame.rows;
                                         na = missingPercent === 0 ? '' : ' (' + Math.round(missingPercent) + '% NA)';
                                         return {
                                             label: '' + column.label + na,
@@ -8699,7 +8701,7 @@
         case 'glm':
             if (table = _.inspect('output', _model)) {
                 renderPlot('Output', _.plot(function (g) {
-                    return g(g.table(), g.from(table));
+                    return g(g.select(), g.from(table));
                 }));
             }
             if (table = _.inspect('Normalized Coefficient Magnitudes', _model)) {
@@ -8711,27 +8713,27 @@
         case 'deeplearning':
             if (table = _.inspect('Status of Neuron Layers', _model)) {
                 renderPlot('Status of Neuron Layers', _.plot(function (g) {
-                    return g(g.table(), g.from(table));
+                    return g(g.select(), g.from(table));
                 }));
             }
             if (table = _.inspect('Training Metrics', _model)) {
                 renderPlot('Training Metrics', _.plot(function (g) {
-                    return g(g.table(), g.from(table));
+                    return g(g.select(), g.from(table));
                 }));
             }
             if (table = _.inspect('Training Confusion Matrix', _model)) {
                 renderPlot('Training Confusion Matrix', _.plot(function (g) {
-                    return g(g.table(), g.from(table));
+                    return g(g.select(), g.from(table));
                 }));
             }
             if (table = _.inspect('Validation Metrics', _model)) {
                 renderPlot('Validation Metrics', _.plot(function (g) {
-                    return g(g.table(), g.from(table));
+                    return g(g.select(), g.from(table));
                 }));
             }
             if (table = _.inspect('Validation Confusion Matrix', _model)) {
                 renderPlot('Validation Confusion Matrix', _.plot(function (g) {
-                    return g(g.table(), g.from(table));
+                    return g(g.select(), g.from(table));
                 }));
             }
             if (table = _.inspect('Variable Importances', _model)) {
@@ -8741,7 +8743,7 @@
             }
             if (table = _.inspect('Scoring History', _model)) {
                 renderPlot('Scoring History', _.plot(function (g) {
-                    return g(g.table(), g.from(table));
+                    return g(g.select(), g.from(table));
                 }));
             }
             break;
@@ -8935,7 +8937,7 @@
         var render, _result;
         _result = Flow.Dataflow.signal(null);
         render = _.plot(function (g) {
-            return g(g.table(), g.from(_.inspect('result', _testResult)));
+            return g(g.select(), g.from(_.inspect('result', _testResult)));
         });
         render(function (error, vis) {
             if (error) {
@@ -8963,8 +8965,8 @@
     };
 }.call(this));
 (function () {
-    var dataTypes, parseDelimiters, parserTypes;
-    parserTypes = lodash.map([
+    var dataTypes, parseDelimiters, parseTypes;
+    parseTypes = lodash.map([
         'AUTO',
         'XLS',
         'CSV',
@@ -9040,22 +9042,22 @@
         'Invalid'
     ];
     H2O.SetupParseOutput = function (_, _go, _paths, _result) {
-        var columnName, columnType, parseFiles, _chunkSize, _columnCount, _columnNames, _columnTypes, _deleteOnDone, _delimiter, _destinationKey, _hasColumnNames, _hasColumns, _headerOption, _headerOptions, _parserType, _rows, _sourceKeys, _useSingleQuotes;
-        _sourceKeys = lodash.map(_result.srcs, function (src) {
+        var columnName, columnType, parseFiles, _chunkSize, _columnCount, _columnNames, _columnTypes, _deleteOnDone, _delimiter, _destinationKey, _hasColumnNames, _hasColumns, _headerOption, _headerOptions, _parseType, _rows, _sourceKeys, _useSingleQuotes;
+        _sourceKeys = lodash.map(_result.source_keys, function (src) {
             return src.name;
         });
-        _parserType = Flow.Dataflow.signal(lodash.find(parserTypes, function (parserType) {
-            return parserType.type === _result.pType;
+        _parseType = Flow.Dataflow.signal(lodash.find(parseTypes, function (parseType) {
+            return parseType.type === _result.parse_type;
         }));
         _delimiter = Flow.Dataflow.signal(lodash.find(parseDelimiters, function (delimiter) {
-            return delimiter.charCode === _result.sep;
+            return delimiter.charCode === _result.separator;
         }));
-        _useSingleQuotes = Flow.Dataflow.signal(_result.singleQuotes);
-        _columnCount = _result.ncols;
-        _hasColumnNames = _result.columnNames ? true : false;
+        _useSingleQuotes = Flow.Dataflow.signal(_result.single_quotes);
+        _columnCount = _result.number_columns;
+        _hasColumnNames = _result.column_names ? true : false;
         _columnNames = _hasColumnNames ? function () {
             var _i, _len, _ref, _results;
-            _ref = _result.columnNames;
+            _ref = _result.column_names;
             _results = [];
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
                 columnName = _ref[_i];
@@ -9065,7 +9067,7 @@
         }() : null;
         _columnTypes = function () {
             var _i, _len, _ref, _results;
-            _ref = _result.columnTypes;
+            _ref = _result.column_types;
             _results = [];
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
                 columnType = _ref[_i];
@@ -9075,15 +9077,15 @@
         }();
         _rows = _result.data;
         _hasColumns = _columnCount > 0;
-        _destinationKey = Flow.Dataflow.signal(_result.hexName);
+        _destinationKey = Flow.Dataflow.signal(_result.destination_key);
         _headerOptions = {
             auto: 0,
             header: 1,
             data: -1
         };
-        _headerOption = Flow.Dataflow.signal(_result.checkHeader === 0 ? 'auto' : _result.checkHeader === -1 ? 'data' : 'header');
+        _headerOption = Flow.Dataflow.signal(_result.check_header === 0 ? 'auto' : _result.check_header === -1 ? 'data' : 'header');
         _deleteOnDone = Flow.Dataflow.signal(true);
-        _chunkSize = _result.chunkSize;
+        _chunkSize = _result.chunk_size;
         parseFiles = function () {
             var columnNames, columnTypes;
             columnNames = _hasColumnNames ? function () {
@@ -9104,15 +9106,15 @@
                 }
                 return _results;
             }();
-            return _.insertAndExecuteCell('cs', 'parseFiles\n  srcs: ' + Flow.Prelude.stringify(_paths) + '\n  hex: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  pType: ' + Flow.Prelude.stringify(_parserType().type) + '\n  sep: ' + _delimiter().charCode + '\n  ncols: ' + _columnCount + '\n  singleQuotes: ' + _useSingleQuotes() + '\n  columnNames: ' + Flow.Prelude.stringify(columnNames) + '\n  columnTypes: ' + Flow.Prelude.stringify(columnTypes) + '\n  delete_on_done: ' + _deleteOnDone() + '\n  checkHeader: ' + _headerOptions[_headerOption()] + '\n  chunkSize: ' + _chunkSize);
+            return _.insertAndExecuteCell('cs', 'parseFiles\n  source_keys: ' + Flow.Prelude.stringify(_paths) + '\n  destination_key: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount + '\n  single_quotes: ' + _useSingleQuotes() + '\n  column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + _headerOptions[_headerOption()] + '\n  chunk_size: ' + _chunkSize);
         };
         lodash.defer(_go);
         return {
             sourceKeys: _paths,
-            parserTypes: parserTypes,
+            parseTypes: parseTypes,
             dataTypes: dataTypes,
             delimiters: parseDelimiters,
-            parserType: _parserType,
+            parseType: _parseType,
             delimiter: _delimiter,
             useSingleQuotes: _useSingleQuotes,
             hasColumnNames: _hasColumnNames,
@@ -9297,7 +9299,7 @@
         if (_isBinomial()) {
             renderPlot(_predictionRecord, _.enumerate(_.inspect('Prediction', prediction)));
             renderPlot(_rocCurve, _.plot(function (g) {
-                return g(g.path(g.position('FPR', 'TPR')), g.from(_.inspect('Confusion Matrices', prediction)));
+                return g(g.path(g.position('FPR', 'TPR')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(_.inspect('Confusion Matrices', prediction)));
             }));
         }
         inspect = function () {
@@ -9691,7 +9693,7 @@
         _ratios = computeRatios(_splitFrameResult.ratios);
         _frames = function () {
             var _i, _len, _ref, _results;
-            _ref = _splitFrameResult.destKeys;
+            _ref = _splitFrameResult.dest_keys;
             _results = [];
             for (index = _i = 0, _len = _ref.length; _i < _len; index = ++_i) {
                 key = _ref[index];

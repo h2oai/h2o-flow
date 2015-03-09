@@ -978,7 +978,7 @@
             <tr>
               <th class="flow-narrow">Parser</th>
               <td class="flow-wide">
-                <select data-bind="options:parserTypes, optionsText:'caption', value:parserType"></select>
+                <select data-bind="options:parseTypes, optionsText:'caption', value:parseType"></select>
               </td>
             </tr>
             <tr>
@@ -1256,7 +1256,7 @@
           <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
         </th>
         <td>
-          <select data-bind="options:values, value:value, optionsCaption: '(None)'"></select>
+          <select data-bind="options:values, value:value, optionsCaption: '(Choose...)'"></select>
         </td>
         <td><span data-bind="text:description"></span></td>
       </tr>
