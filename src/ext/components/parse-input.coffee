@@ -1,4 +1,4 @@
-parserTypes = map [ 'AUTO', 'XLS', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
+parseTypes = map [ 'AUTO', 'XLS', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
 
 parseDelimiters = do ->
   whitespaceSeparators = [
@@ -62,35 +62,35 @@ dataTypes = [
 ]
 
 H2O.SetupParseOutput = (_, _go, _paths, _result) ->
-  _sourceKeys = map _result.srcs, (src) -> src.name
-  _parserType =  signal find parserTypes, (parserType) -> parserType.type is _result.pType
-  _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.sep 
-  _useSingleQuotes = signal _result.singleQuotes
-  _columnCount = _result.ncols
-  _hasColumnNames = if _result.columnNames then yes else no
-  _columnNames = if _hasColumnNames then (signal columnName for columnName in _result.columnNames)  else null
-  _columnTypes = (signal columnType for columnType in _result.columnTypes)
+  _sourceKeys = map _result.source_keys, (src) -> src.name
+  _parseType =  signal find parseTypes, (parseType) -> parseType.type is _result.parse_type
+  _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.separator 
+  _useSingleQuotes = signal _result.single_quotes
+  _columnCount = _result.number_columns
+  _hasColumnNames = if _result.column_names then yes else no
+  _columnNames = if _hasColumnNames then (signal columnName for columnName in _result.column_names)  else null
+  _columnTypes = (signal columnType for columnType in _result.column_types)
   _rows = _result.data
   _hasColumns = _columnCount > 0
-  _destinationKey = signal _result.hexName
+  _destinationKey = signal _result.destination_key
   _headerOptions = auto: 0, header: 1, data: -1
-  _headerOption = signal if _result.checkHeader is 0 then 'auto' else if _result.checkHeader is -1 then 'data' else 'header'
+  _headerOption = signal if _result.check_header is 0 then 'auto' else if _result.check_header is -1 then 'data' else 'header'
   _deleteOnDone = signal yes
-  _chunkSize = _result.chunkSize
+  _chunkSize = _result.chunk_size
 
   parseFiles = ->
     columnNames = if _hasColumnNames then (columnName() for columnName in _columnNames) else null
     columnTypes = (columnType() for columnType in _columnTypes)
 
-    _.insertAndExecuteCell 'cs', "parseFiles\n  srcs: #{stringify _paths}\n  hex: #{stringify _destinationKey()}\n  pType: #{stringify _parserType().type}\n  sep: #{_delimiter().charCode}\n  ncols: #{_columnCount}\n  singleQuotes: #{_useSingleQuotes()}\n  columnNames: #{stringify columnNames}\n  columnTypes: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  checkHeader: #{_headerOptions[_headerOption()]}\n  chunkSize: #{_chunkSize}"
+    _.insertAndExecuteCell 'cs', "parseFiles\n  source_keys: #{stringify _paths}\n  destination_key: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount}\n  single_quotes: #{_useSingleQuotes()}\n  column_names: #{stringify columnNames}\n  column_types: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  check_header: #{_headerOptions[_headerOption()]}\n  chunk_size: #{_chunkSize}"
 
   defer _go
 
   sourceKeys: _paths
-  parserTypes: parserTypes
+  parseTypes: parseTypes
   dataTypes: dataTypes
   delimiters: parseDelimiters
-  parserType: _parserType
+  parseType: _parseType
   delimiter: _delimiter
   useSingleQuotes: _useSingleQuotes
   hasColumnNames: _hasColumnNames

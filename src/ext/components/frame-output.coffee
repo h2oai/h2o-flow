@@ -72,7 +72,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
   key: _frame.key.name
   rowCount: _frame.rows
   columnCount: _frame.columns.length
-  size: Flow.Util.formatBytes _frame.byteSize
+  size: Flow.Util.formatBytes _frame.byte_size
   grid: _grid
   inspect: inspect
   createModel: createModel

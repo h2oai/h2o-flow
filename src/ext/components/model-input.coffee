@@ -232,7 +232,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
               unless error
                 columnValues = map frame.columns, (column) -> column.label
                 columnLabels = map frame.columns, (column) -> 
-                  missingPercent = 100 * column.missing / frame.rows
+                  missingPercent = 100 * column.missing_count / frame.rows
                   na = if missingPercent is 0 then '' else " (#{round missingPercent}% NA)"
                   label: "#{column.label}#{na}"
                   value: column.label

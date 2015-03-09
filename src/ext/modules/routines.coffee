@@ -469,7 +469,7 @@ H2O.Routines = (_) ->
     modelCategory = model.output.model_category
 
     if modelCategory is 'Binomial' or modelCategory is 'Multinomial' or modelCategory is 'Regression' or modelCategory is 'AutoEncoder'
-      tables = [ model.output.modelSummary, model.output.scoringHistory ]
+      tables = [ model.output.model_summary, model.output.scoring_history ]
       tables.forEach (table) ->
         inspections[ table.name ] = ->
           convertTableToFrame table,
@@ -477,7 +477,7 @@ H2O.Routines = (_) ->
             origin: origin
             plot: "plot inspect '#{table.name}', #{origin}"
 
-      if variableImportances = model.output.variableImportances
+      if variableImportances = model.output.variable_importances
         inspections[ variableImportances.name ] = ->
           convertTableToFrame variableImportances,
             description: variableImportances.name
@@ -485,62 +485,62 @@ H2O.Routines = (_) ->
             plot: "plot inspect '#{variableImportances.name}', #{origin}"
 
     if modelCategory is 'Binomial'
-      if trainMetrics = model.output.trainMetrics
-        trainMetrics.thresholdsAndMetricScores.name = 'Training ' + trainMetrics.thresholdsAndMetricScores.name
-        trainMetrics.maxCriteriaAndMetricScores.name = 'Training ' + trainMetrics.maxCriteriaAndMetricScores.name
+      if trainMetrics = model.output.train_metrics
+        trainMetrics.thresholds_and_metric_scores.name = 'Training ' + trainMetrics.thresholds_and_metric_scores.name
+        trainMetrics.max_criteria_and_metric_scores.name = 'Training ' + trainMetrics.max_criteria_and_metric_scores.name
 
         inspections[ 'Training Metrics' ] = inspectBinomialPrediction2 'Training Metrics', trainMetrics
 
-        inspections[ trainMetrics.thresholdsAndMetricScores.name ] = -> 
-          convertTableToFrame trainMetrics.thresholdsAndMetricScores,
-            description: trainMetrics.thresholdsAndMetricScores.name
+        inspections[ trainMetrics.thresholds_and_metric_scores.name ] = -> 
+          convertTableToFrame trainMetrics.thresholds_and_metric_scores,
+            description: trainMetrics.thresholds_and_metric_scores.name
             origin: origin
-            plot: "plot inspect '#{trainMetrics.thresholdsAndMetricScores.name}', #{origin}"
+            plot: "plot inspect '#{trainMetrics.thresholds_and_metric_scores.name}', #{origin}"
 
-        inspections[ trainMetrics.maxCriteriaAndMetricScores.name ] = -> 
-          convertTableToFrame trainMetrics.maxCriteriaAndMetricScores,
-            description: trainMetrics.maxCriteriaAndMetricScores.name
+        inspections[ trainMetrics.max_criteria_and_metric_scores.name ] = -> 
+          convertTableToFrame trainMetrics.max_criteria_and_metric_scores,
+            description: trainMetrics.max_criteria_and_metric_scores.name
             origin: origin
-            plot: "plot inspect '#{trainMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
+            plot: "plot inspect '#{trainMetrics.max_criteria_and_metric_scores.name}', #{origin}"
 
         inspections[ 'Training Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Training Confusion Matrices', trainMetrics
 
-      if validMetrics = model.output.validMetrics
-        validMetrics.thresholdsAndMetricScores.name = 'Validation ' + validMetrics.thresholdsAndMetricScores.name
-        validMetrics.maxCriteriaAndMetricScores.name = 'Validation ' + validMetrics.maxCriteriaAndMetricScores.name
+      if validMetrics = model.output.valid_metrics
+        validMetrics.thresholds_and_metric_scores.name = 'Validation ' + validMetrics.thresholds_and_metric_scores.name
+        validMetrics.max_criteria_and_metric_scores.name = 'Validation ' + validMetrics.max_criteria_and_metric_scores.name
 
         inspections[ 'Validation Metrics' ] = inspectBinomialPrediction2 'Validation Metrics', validMetrics
-        inspections[ validMetrics.thresholdsAndMetricScores.name ] = -> 
-          convertTableToFrame validMetrics.thresholdsAndMetricScores,
-            description: validMetrics.thresholdsAndMetricScores.name
+        inspections[ validMetrics.thresholds_and_metric_scores.name ] = -> 
+          convertTableToFrame validMetrics.thresholds_and_metric_scores,
+            description: validMetrics.thresholds_and_metric_scores.name
             origin: origin
-            plot: "plot inspect '#{validMetrics.thresholdsAndMetricScores.name}', #{origin}"
+            plot: "plot inspect '#{validMetrics.thresholds_and_metric_scores.name}', #{origin}"
 
-        inspections[ validMetrics.maxCriteriaAndMetricScores.name ] = -> 
-          convertTableToFrame validMetrics.maxCriteriaAndMetricScores,
-            description: validMetrics.maxCriteriaAndMetricScores.name
+        inspections[ validMetrics.max_criteria_and_metric_scores.name ] = -> 
+          convertTableToFrame validMetrics.max_criteria_and_metric_scores,
+            description: validMetrics.max_criteria_and_metric_scores.name
             origin: origin
-            plot: "plot inspect '#{validMetrics.maxCriteriaAndMetricScores.name}', #{origin}"
+            plot: "plot inspect '#{validMetrics.max_criteria_and_metric_scores.name}', #{origin}"
 
         inspections[ 'Validation Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Validation Confusion Matrices', validMetrics
 
     else if modelCategory is 'Multinomial'
 
-      if trainMetrics = model.output.trainMetrics
+      if trainMetrics = model.output.train_metrics
         inspections[ 'Training Metrics' ] = inspectMultinomialPrediction2 'Training Metrics', trainMetrics
         if table = trainMetrics.cm.table
           inspectMultinomialConfusionMatrix 'Training Confusion Matrix', table, origin, inspections
 
-      if validMetrics = model.output.validMetrics
+      if validMetrics = model.output.valid_metrics
         inspections[ 'Validation Metrics' ] = inspectMultinomialPrediction2 'Validation Metrics', validMetrics
         if table = validMetrics.cm.table
           inspectMultinomialConfusionMatrix 'Validation Confusion Matrix', table, origin, inspections
 
     else if modelCategory is 'Regression'
-      if trainMetrics = model.output.trainMetrics
+      if trainMetrics = model.output.train_metrics
         inspections[ 'Training Metrics' ] = inspectRegressionPrediction2 'Training Metrics', trainMetrics
 
-      if validMetrics = model.output.validMetrics
+      if validMetrics = model.output.valid_metrics
         inspections[ 'Validation Metrics' ] = inspectRegressionPrediction2 'Validation Metrics', validMetrics
 
     inspect_ model, inspections
@@ -552,7 +552,7 @@ H2O.Routines = (_) ->
     inspections.parameters = inspectModelParameters model
     inspections.output = inspectGBMModelOutput model
 
-    if variableImportances = model.output.variableImportances
+    if variableImportances = model.output.variable_importances
       inspections[variableImportances.name] = ->
         convertTableToFrame variableImportances,
           description: variableImportances.name
@@ -731,7 +731,7 @@ H2O.Routines = (_) ->
       plot: "plot inspect 'Confusion Matrices', #{formulateGetPredictionsOrigin opts}"
 
   inspectBinomialMetrics = (opts, predictions) -> ->
-    inspectionFrame = combineTables (prediction.maxCriteriaAndMetricScores for prediction in predictions)
+    inspectionFrame = combineTables (prediction.max_criteria_and_metric_scores for prediction in predictions)
     convertTableToFrame inspectionFrame,
       description: "Metrics for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
@@ -760,8 +760,8 @@ H2O.Routines = (_) ->
       if (every predictions, (prediction) -> prediction.model_category is 'Binomial')
         inspections = {}
         inspections['Prediction' ] = inspectBinomialPredictions opts, predictions
-        inspections[ (head predictions).thresholdsAndMetricScores.name ] = inspectBinomialScores opts, predictions
-        inspections[ (head predictions).maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, predictions
+        inspections[ (head predictions).thresholds_and_metric_scores.name ] = inspectBinomialScores opts, predictions
+        inspections[ (head predictions).max_criteria_and_metric_scores.name ] = inspectBinomialMetrics opts, predictions
         inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, predictions
         inspect_ predictions, inspections
       else
@@ -771,7 +771,7 @@ H2O.Routines = (_) ->
     predictions
 
   inspectBinomialScores = (opts, predictions) -> ->
-    inspectionFrame = combineTables (prediction.thresholdsAndMetricScores for prediction in predictions)
+    inspectionFrame = combineTables (prediction.thresholds_and_metric_scores for prediction in predictions)
     convertTableToFrame inspectionFrame,
       description: "Scores for the selected predictions"
       origin: formulateGetPredictionsOrigin opts
@@ -790,8 +790,8 @@ H2O.Routines = (_) ->
         inspectMultinomialConfusionMatrix 'Confusion Matrix', prediction.cm.table, "getPrediction #{stringify modelKey}, #{stringify frameKey}", inspections 
       else
         inspections[ 'Prediction' ] = inspectBinomialPrediction prediction
-        inspections[ prediction.thresholdsAndMetricScores.name ] = inspectBinomialScores opts, [ prediction ]
-        inspections[ prediction.maxCriteriaAndMetricScores.name ] = inspectBinomialMetrics opts, [ prediction ]
+        inspections[ prediction.thresholds_and_metric_scores.name ] = inspectBinomialScores opts, [ prediction ]
+        inspections[ prediction.max_criteria_and_metric_scores.name ] = inspectBinomialMetrics opts, [ prediction ]
         inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, [ prediction ]
 
     inspect_ prediction, inspections
@@ -799,10 +799,10 @@ H2O.Routines = (_) ->
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
       'label'
-      'missing'
-      'zeros'
-      'pinfs'
-      'ninfs'
+      'missing_count'
+      'zero_count'
+      'positive_infinity_count'
+      'negative_infinity_count'
       'min'
       'max'
       'mean'
@@ -844,13 +844,13 @@ H2O.Routines = (_) ->
         when 'time'
           createVector column.label, TNumber, parseNaNs column.data
         when 'string'
-          createList column.label, parseNulls column.str_data
+          createList column.label, parseNulls column.string_data
         else # uuid / etc.
           createList column.label, parseNulls column.data
 
-    vectors.unshift createVector 'Row', TNumber, (rowIndex + 1 for rowIndex in [frame.off ... frame.len])
+    vectors.unshift createVector 'Row', TNumber, (rowIndex + 1 for rowIndex in [frame.row_offset ... frame.row_count])
 
-    createDataframe 'data', vectors, (sequence frame.len - frame.off), null,
+    createDataframe 'data', vectors, (sequence frame.row_count - frame.row_offset), null,
       description: 'A partial list of rows in the H2O Frame.'
       origin: "getFrame #{stringify frameKey}"
 
@@ -870,17 +870,17 @@ H2O.Routines = (_) ->
 
     inspectPercentiles = ->
       vectors = [
-        createVector 'percentile', TNumber, frame.default_pctiles
-        createVector 'value', TNumber, column.pctiles
+        createVector 'percentile', TNumber, frame.default_percentiles
+        createVector 'value', TNumber, column.percentiles
       ]
 
-      createDataframe 'percentiles', vectors, (sequence frame.default_pctiles.length), null, 
+      createDataframe 'percentiles', vectors, (sequence frame.default_percentiles.length), null, 
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectDistribution = ->
       minBinCount = 32
-      { base, stride, bins } = column
+      { histogram_base:base, histogram_stride:stride, histogram_bins:bins } = column
       width = Math.floor bins.length / minBinCount
       interval = stride * width
       
@@ -922,11 +922,11 @@ H2O.Routines = (_) ->
         plot: "plot inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectCharacteristics = ->
-      { missing, zeros, pinfs, ninfs } = column
-      other = rowCount - missing - zeros - pinfs - ninfs
+      { missing_count, zero_count, positive_infinity_count, negative_infinity_count } = column
+      other = rowCount - missing_count - zero_count - positive_infinity_count - negative_infinity_count
 
       characteristicData = [ 'Missing', '-Inf', 'Zero', '+Inf', 'Other' ]
-      countData = [ missing, ninfs, zeros, pinfs, other ]
+      countData = [ missing_count, negative_infinity_count, zero_count, positive_infinity_count, other ]
       percentData = for count in countData
         100 * count / rowCount
 
@@ -942,8 +942,8 @@ H2O.Routines = (_) ->
         plot: "plot inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectSummary = ->
-      defaultPercentiles = frame.default_pctiles
-      percentiles = column.pctiles
+      defaultPercentiles = frame.default_percentiles
+      percentiles = column.percentiles
 
       mean = column.mean
       q1 = percentiles[defaultPercentiles.indexOf 0.25]
@@ -969,7 +969,7 @@ H2O.Routines = (_) ->
         plot: "plot inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
     inspectDomain = ->
-      levels = map column.bins, (count, index) -> count: count, index: index
+      levels = map column.histogram_bins, (count, index) -> count: count, index: index
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
@@ -1232,13 +1232,13 @@ H2O.Routines = (_) ->
   extendParseResult = (parseResult) ->
     render_ parseResult, H2O.JobOutput, parseResult.job
 
-  requestParseFiles = (paths, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
+  requestParseFiles = (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     _.requestImportFiles paths, (error, importResults) ->
       if error
         go error
       else
         sourceKeys = flatten compact map importResults, (result) -> result.keys
-        _.requestParseFiles sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
+        _.requestParseFiles sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
           if error
             go error
           else
@@ -1247,19 +1247,19 @@ H2O.Routines = (_) ->
   parseFiles = (opts) -> #XXX review args
     #XXX validation
 
-    paths = opts.srcs
-    destinationKey = opts.hex
-    parserType = opts.pType
-    separator = opts.sep
-    columnCount = opts.ncols
-    useSingleQuotes = opts.singleQuotes
-    columnNames = opts.columnNames
-    columnTypes = opts.columnTypes
+    paths = opts.source_keys
+    destinationKey = opts.destination_key
+    parseType = opts.parse_type
+    separator = opts.separator
+    columnCount = opts.number_columns
+    useSingleQuotes = opts.single_quotes
+    columnNames = opts.column_names
+    columnTypes = opts.column_types
     deleteOnDone = opts.delete_on_done
-    checkHeader = opts.checkHeader
-    chunkSize = opts.chunkSize
+    checkHeader = opts.check_header
+    chunkSize = opts.chunk_size
 
-    _fork requestParseFiles, paths, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
+    _fork requestParseFiles, paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
 
   requestModelBuild = (algo, opts, go) ->
     _.requestModelBuild algo, opts, (error, result) ->

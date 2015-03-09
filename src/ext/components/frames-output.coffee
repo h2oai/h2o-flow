@@ -24,7 +24,7 @@ H2O.FramesOutput = (_, _go, _frames) ->
     description = 'Columns: ' + (columnLabels.join ', ') + if frame.columns.length > columnLabels.length then "... (#{frame.columns.length - columnLabels.length} more columns)" else ''
 
     view = ->
-      if frame.isText
+      if frame.is_text
         #TODO handle this properly. frames-output.jade currently does not allow viewing
         _.insertAndExecuteCell 'cs', "setupParse [ #{stringify frame.key.name } ]"
       else
@@ -43,10 +43,10 @@ H2O.FramesOutput = (_, _go, _frames) ->
     key: frame.key.name
     isChecked: _isChecked
     description: description
-    size: Flow.Util.formatBytes frame.byteSize
+    size: Flow.Util.formatBytes frame.byte_size
     rowCount: frame.rows
     columnCount: frame.columns.length
-    isText: frame.isText
+    isText: frame.is_text
     view: view
     predict: predict
     inspect: inspect

@@ -121,7 +121,7 @@ H2O.Proxy = (_) ->
     opts =
       dataset: frameKey
       ratios: encodeArrayForPost splitRatios
-      destKeys: encodeArrayForPost splitKeys
+      dest_keys: encodeArrayForPost splitKeys
     doPost '/2/SplitFrame.json', opts, go
 
   requestFrames = (go) ->
@@ -195,22 +195,22 @@ H2O.Proxy = (_) ->
 
   requestParseSetup = (sources, go) ->
     opts =
-      srcs: encodeArrayForPost sources
+      source_keys: encodeArrayForPost sources
     doPost '/2/ParseSetup.json', opts, go
 
-  requestParseFiles = (sourceKeys, destinationKey, parserType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
+  requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     opts =
-      hex: destinationKey
-      srcs: encodeArrayForPost sourceKeys
-      pType: parserType
-      sep: separator
-      ncols: columnCount
-      singleQuotes: useSingleQuotes
-      columnNames: encodeArrayForPost columnNames
-      columnTypes: encodeArrayForPost columnTypes
-      checkHeader: checkHeader
+      destination_key: destinationKey
+      source_keys: encodeArrayForPost sourceKeys
+      parse_type: parseType
+      separator: separator
+      number_columns: columnCount
+      single_quotes: useSingleQuotes
+      column_names: encodeArrayForPost columnNames
+      column_types: encodeArrayForPost columnTypes
+      check_header: checkHeader
       delete_on_done: deleteOnDone
-      chunkSize: chunkSize
+      chunk_size: chunkSize
     doPost '/2/Parse.json', opts, go
 
   patchUpModels = (models) ->
