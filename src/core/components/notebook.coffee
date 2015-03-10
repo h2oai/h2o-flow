@@ -287,7 +287,7 @@ Flow.Notebook = (_, _renderers) ->
     wereHidden = _areInputsHidden()
     _areInputsHidden not wereHidden
     #
-    # If cells are generate while inputs are hidden, the input boxes
+    # If cells are generated while inputs are hidden, the input boxes
     #   do not resize to fit contents. So explicitly ask all cells 
     #   to resize themselves.
     #
@@ -403,13 +403,21 @@ Flow.Notebook = (_, _renderers) ->
   runAllCells = ->
     executeAllCells -> #TODO Progress completion
 
+  clearCell = ->
+    _selectedCell.clear()
+    _selectedCell.autoResize()
+
+  clearAllCells = ->
+    for cell in _cells()
+      cell.clear()
+      cell.autoResize()
+    return
+
   notImplemented = -> # noop
   printPreview = notImplemented
   pasteCellandReplace = notImplemented
   mergeCellAbove = notImplemented
   switchToPresentationMode = notImplemented 
-  clearCell = notImplemented
-  clearAllCells = notImplemented
   startTour = notImplemented
 
   #
@@ -498,9 +506,9 @@ Flow.Notebook = (_, _renderers) ->
       menuDivider
       createMenuItem 'Run All', runAllCells
       menuDivider
-      createMenuItem 'Clear Cell', clearCell, yes
+      createMenuItem 'Clear Cell', clearCell
       menuDivider
-      createMenuItem 'Clear All', clearAllCells, yes
+      createMenuItem 'Clear All', clearAllCells
     ]
   ,
     createMenu 'Admin', [

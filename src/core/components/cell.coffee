@@ -51,6 +51,18 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   clip = ->
     _.saveClip 'user', _type(), _input()
 
+  toggleInput = ->
+    _isInputVisible not _isInputVisible()
+
+  toggleOutput = ->
+    _isOutputHidden not _isOutputHidden()
+
+  clear = ->
+    _result null
+    _outputs []
+    _hasError no
+    _hasInput yes unless _isCode()
+
   execute = (go) ->
     input = _input().trim()
     unless input
@@ -58,10 +70,9 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
 
     render = _render()
     _isBusy yes
-    # Clear any existing outputs
-    _result null
-    _outputs []
-    _hasError no
+
+    clear()
+
     render input,
       data: (result) ->
         _outputs.push result
@@ -78,7 +89,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
             text: JSON.stringify error, null, 2
             template: 'flow-raw'
       end: ->
-        _hasInput render.isCode
+        _hasInput _isCode()
         _isBusy no
         go() if go
 
@@ -99,13 +110,14 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     result: _result
     hasOutput: _hasOutput
     isInputVisible: _isInputVisible
-    toggleInput: -> _isInputVisible not _isInputVisible()
+    toggleInput: toggleInput
     isOutputHidden: _isOutputHidden
-    toggleOutput: -> _isOutputHidden not _isOutputHidden()
+    toggleOutput: toggleOutput
     select: select
     navigate: navigate
     activate: activate
     execute: execute
+    clear: clear
     clip: clip
     _actions: _actions
     getCursorPosition: -> _actions.getCursorPosition()
