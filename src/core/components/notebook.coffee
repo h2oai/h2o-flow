@@ -566,7 +566,7 @@ Flow.Notebook = (_, _renderers) ->
     ]
   ,
     [
-      createTool 'play', 'Run', runCell
+      createTool 'play', 'Run', runCellAndSelectBelow
       createTool 'forward', 'Run All', runAllCells
     ]
   ]
