@@ -506,9 +506,9 @@ Flow.Notebook = (_, _renderers) ->
       menuDivider
       createMenuItem 'Run All', runAllCells
       menuDivider
-      createMenuItem 'Clear Cell', clearCell
+      createMenuItem 'Clear Output', clearCell
       menuDivider
-      createMenuItem 'Clear All', clearAllCells
+      createMenuItem 'Clear All Outputs', clearAllCells
     ]
   ,
     createMenu 'Admin', [
@@ -562,10 +562,12 @@ Flow.Notebook = (_, _renderers) ->
       createTool 'cut', 'Cut Cell', cutCell
       createTool 'copy', 'Copy Cell', copyCell
       createTool 'paste', 'Paste Cell Below', pasteCellBelow
+      createTool 'eraser', 'Clear Cell', clearCell
     ]
   ,
     [
       createTool 'play', 'Run', runCell
+      createTool 'forward', 'Run All', runAllCells
     ]
   ]
 
