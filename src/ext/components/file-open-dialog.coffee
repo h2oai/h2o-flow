@@ -1,18 +1,11 @@
-Flow.FileOpenDialog = (_, sanitizeName, _go) ->
-  extension = '.flow'
+Flow.FileOpenDialog = (_, _go) ->
   _overwrite = signal no
   _form = signal null
   _file = signal null
 
-  validateFileExtension = (filename) ->
-    -1 isnt filename.indexOf extension, filename.length - extension.length
-
-  getFileBaseName = (filename) ->
-    sanitizeName filename.substr 0, filename.length - extension.length
-
   _canAccept = lift _file, (file) ->
     if file?.name
-      validateFileExtension file.name  
+      H2O.Util.validateFileExtension file.name  
     else
       no
 
@@ -26,7 +19,7 @@ Flow.FileOpenDialog = (_, sanitizeName, _go) ->
 
   accept = ->
     if file = _file()
-      basename = getFileBaseName file.name
+      basename = H2O.Util.getFileBaseName file.name
       if _overwrite()
         uploadFile basename
       else

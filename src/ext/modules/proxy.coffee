@@ -1,4 +1,11 @@
 H2O.Proxy = (_) ->
+
+  download = (type, url, go) ->
+    $.ajax
+      dataType: type
+      url: url
+      success: (data, status, xhr) -> go null, data
+      error: (xhr, status, error) -> go new Flow.Error error
   
   http = (method, path, opts, go) ->
     _.status 'server', 'request', path
@@ -44,6 +51,8 @@ H2O.Proxy = (_) ->
         new Flow.Error error.message
       else if status is 0
         new Flow.Error 'Could not connect to H2O'
+      else if isString error
+        new Flow.Error error
       else
         new Flow.Error 'Unknown error'
 
@@ -371,6 +380,30 @@ H2O.Proxy = (_) ->
   requestSchema = (name, go) ->
     doGet "/1/Metadata/schemas.json/#{encodeURIComponent name}", go
 
+  getLines = (data) ->
+    filter (split data, '\n'), (line) -> if line.trim() then yes else no
+
+  requestPacks = (go) ->
+    download 'text', '/flow/packs/index.list', (error, data) ->
+      if error
+        go error
+      else
+        go null, getLines data
+
+  requestPack = (packName, go) ->
+    download 'text', "/flow/packs/#{encodeURIComponent packName}/index.list", (error, data) ->
+      if error
+        go error
+      else
+        go null, getLines data
+
+  requestFlow = (packName, flowName, go) ->
+    download 'json', "/flow/packs/#{encodeURIComponent packName}/#{encodeURIComponent flowName}", (error, data) ->
+      if error
+        go error
+      else
+        go null, data
+
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
   link _.requestSplitFrame, requestSplitFrame
@@ -415,5 +448,8 @@ H2O.Proxy = (_) ->
   link _.requestEndpoint, requestEndpoint
   link _.requestSchemas, requestSchemas
   link _.requestSchema, requestSchema
+  link _.requestPacks, requestPacks
+  link _.requestPack, requestPack
+  link _.requestFlow, requestFlow
 
 

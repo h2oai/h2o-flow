@@ -8,12 +8,16 @@ Using Flow for the first time?
 </div>
 </blockquote> 
 
-##### Topics
+##### Help Topics
 
 ###### General
 
 - <a href='#' data-action='about'>About Flow</a>
 - <a href='#' data-action='getting-started'>Getting Started</a>
+
+###### Packs
+
+Flow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Flows and run them in your browser.<br/><a href='#' data-action='get-packs'>Browse installed packs...</a>
 
 ###### H<sub>2</sub>O REST API
 
@@ -90,6 +94,27 @@ Flow.Help = (_) ->
       when 'getting-started'
         displayMarkdown _gettingStartedMarkdown
 
+      when 'get-packs'
+        _.requestPacks (error, packNames) ->
+          unless error
+            displayPacks packNames
+
+      when 'get-pack'
+        packName = $el.attr 'data-pack-name'
+        _.requestPack packName, (error, flowNames) ->
+          unless error
+            displayFlows packName, flowNames
+
+      when 'get-flow'
+        _.confirm 'This action will replace your active notebook.\nAre you sure you want to continue?', { acceptCaption: 'Load Notebook', declineCaption: 'Cancel' }, (accept) ->
+          if accept
+            packName = $el.attr 'data-pack-name'
+            flowName = $el.attr 'data-flow-name'
+            if H2O.Util.validateFileExtension flowName
+              _.requestFlow packName, flowName, (error, flow) ->
+                unless error
+                  _.open (H2O.Util.getFileBaseName flowName), flow
+
       when 'endpoints'
         _.requestEndpoints (error, response) ->
           unless error
@@ -113,6 +138,27 @@ Flow.Help = (_) ->
             displaySchema head response.schemas
 
     return
+
+  displayPacks = (packNames) ->
+    [ div, mark, h5, p, i, a ] = Flow.HTML.template 'div', 'mark', 'h5', 'p', 'i.fa.fa-folder-o', "a href='#' data-action='get-pack' data-pack-name='$1'"
+
+    displayHtml Flow.HTML.render 'div', div [
+      mark 'Packs'
+      h5 'Installed Packs'
+      div map packNames, (packName) -> p [ i(), a packName, packName ]
+    ]
+    return
+
+  displayFlows = (packName, flowNames) ->
+    [ div, mark, h5, p, i, a ] = Flow.HTML.template 'div', 'mark', 'h5', 'p', 'i.fa.fa-file-text-o', "a href='#' data-action='get-flow' data-pack-name='#{packName}' data-flow-name='$1'"
+
+    displayHtml Flow.HTML.render 'div', div [
+      mark 'Pack'
+      h5 packName 
+      div map flowNames, (flowName) -> p [ i(), a flowName, flowName ]
+    ]
+    return
+
   
   displayEndpoints = (routes) ->
     [ div, mark, h5, p, action, code ] = Flow.HTML.template 'div', 'mark', 'h5', 'p', "a href='#' data-action='endpoint' data-index='$1'", 'code'

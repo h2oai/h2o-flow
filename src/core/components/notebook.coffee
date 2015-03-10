@@ -231,9 +231,6 @@ Flow.Notebook = (_, _renderers) ->
     _selectedCell.execute -> selectNextCell()
     no
 
-  sanitizeName = (name) ->
-    name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim()
-
   checkIfNameIsInUse = (name, go) ->
     _.requestObject 'notebook', name, (error) ->
       go if error then no else yes
@@ -254,7 +251,7 @@ Flow.Notebook = (_, _renderers) ->
           _.saved()
 
   saveNotebook = ->
-    localName = sanitizeName _localName()
+    localName = Flow.Util.sanitizeName _localName()
     return _.alert 'Invalid notebook name.' if localName is ''
 
     remoteName = _remoteName()
@@ -270,8 +267,8 @@ Flow.Notebook = (_, _renderers) ->
           storeNotebook localName, remoteName
     return
 
-  openNotebook = ->
-    _.dialog Flow.FileOpenDialog, sanitizeName, (result) ->
+  promptForNotebook = ->
+    _.dialog Flow.FileOpenDialog, (result) ->
       if result
         { error, filename } = result
         if error
@@ -370,6 +367,9 @@ Flow.Notebook = (_, _renderers) ->
   duplicateNotebook = ->
     deserialize "Copy of #{_localName()}", null, serialize()
 
+  openNotebook = (name, doc) ->
+    deserialize name, null, doc
+
   loadNotebook = (name) ->
     _.requestObject 'notebook', name, (error, doc) ->
       if error
@@ -434,7 +434,7 @@ Flow.Notebook = (_, _renderers) ->
   _menus = [
     createMenu 'Flow', [
       createMenuItem 'New', createNotebook
-      createMenuItem 'Open...', openNotebook
+      createMenuItem 'Open...', promptForNotebook
       createMenuItem 'Save', saveNotebook
       menuDivider
       createMenuItem 'Duplicate', duplicateNotebook
@@ -657,6 +657,7 @@ Flow.Notebook = (_, _renderers) ->
     insertNewCellBelow()
 
     link _.load, loadNotebook
+    link _.open, openNotebook
 
     link _.selectCell, selectCell
 

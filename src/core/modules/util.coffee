@@ -30,6 +30,9 @@ EOL = "\n"
 multilineTextToHTML = (text) ->
   join (map (split text, EOL), (str) -> escape str), '<br/>'
 
+sanitizeName = (name) ->
+  name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim()
+
 Flow.Util =
   describeCount: describeCount
   fromNow: fromNow
@@ -37,5 +40,5 @@ Flow.Util =
   formatMilliseconds: formatMilliseconds
   multilineTextToHTML: multilineTextToHTML
   uuid: uuid
-
+  sanitizeName: sanitizeName
 
