@@ -5,47 +5,61 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased][unreleased]
 
 ## [0.2.66] - 2015-03-10
+
 ### Added
 - Add 'Clear cell' and 'Run all cells' toolbar buttons
 - Add 'Clear cell' and 'Clear all cells' commands
+
 ### Changed
 - 'Run' button selects next cell after running
+
 ### Fixed
 - Implement 'Clear cell' and 'Clear all cells'
 
 ## [0.2.65] - 2015-03-09
+
 ### Added
 - Scan and load Flow packs (HEXDEV-190)
+
 ### Fixed
 - Display GLM coefficients only if available (PUBDEV-466)
 
 ## [0.2.64] - 2015-03-09
+
 ### Added
 - Add random chance line to RoC chart HEXDEV-168
+
 ### Changed
 - Upgrade to Lightning 0.1.11
 
 ## [0.2.63] - 2015-03-05
+
 ### Changed
 - parseRaw() is now parseFiles() - it now accepts filenames instead of keys.
+
 ### Removed
 - Remove notion of "imported keys" from importFiles(), setupParse() and parseRaw()
 
 ## [0.2.62] - 2015-03-04
+
 ### Added
 - Add network test PUBDEV-462
+
 ### Removed
 - Remove notion of job tracking when called via parse() or buildModel() (PUBDEV-449)
 
 ## [0.2.61] - 2015-03-04
+
 ### Changed
 - Prefill model and prediction destination keys.
 
 ## [0.2.60] - 2015-03-02
+
 ### Added
 - Enable model summary and scoring history for DL AutoEncoder models
 
 ## [0.2.59] - 2015-03-02
+
 ### Added
 - Add deleteAll() api
 - Add deleteModels()
@@ -59,10 +73,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Add output view for deleteFrame()/deleteFrames()
 - Add start / end / run time to jobs-output
 - Add ability to name predictions PUBDEV-233
+
 ### Changed
 - Upgrade to Lightning 0.1.10
 
 ## [0.2.58] - 2015-02-25
+
 ### Added
 - Reload notebook list when a notebook is uploaded
 - Reload notebook list when current notebook is saved.
@@ -72,6 +88,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Confirm before overwriting notebooks with same names
 - Hook up clips to node persistent storage
 - Implement save/restore using node persistent storage api
+
 ### Changed
 - Confirm before deleting notebooks
 - Support multiline text on alert and confirm dialogs.
@@ -79,9 +96,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Always add generated cells to the bottom of the flow
 
 ## [0.2.57] - 2015-02-18
+
 ### Added
 - Add confirm/alert dialogs
+
 ### Changed
 - Warn before loading notebooks
+
 ### Fixed
 - Fix ip/port in cloud-status HEXDEV-159
