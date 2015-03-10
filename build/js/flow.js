@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.65';
+    Flow.Version = '0.2.66';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -148,7 +148,7 @@
 }.call(this));
 (function () {
     Flow.Cell = function (_, _renderers, type, input) {
-        var activate, clip, execute, navigate, select, self, _actions, _guid, _hasError, _hasInput, _hasOutput, _input, _isActive, _isBusy, _isCode, _isInputVisible, _isOutputHidden, _isReady, _isSelected, _outputs, _render, _result, _type;
+        var activate, clear, clip, execute, navigate, select, self, toggleInput, toggleOutput, _actions, _guid, _hasError, _hasInput, _hasOutput, _input, _isActive, _isBusy, _isCode, _isInputVisible, _isOutputHidden, _isReady, _isSelected, _outputs, _render, _result, _type;
         if (type == null) {
             type = 'cs';
         }
@@ -208,6 +208,20 @@
         clip = function () {
             return _.saveClip('user', _type(), _input());
         };
+        toggleInput = function () {
+            return _isInputVisible(!_isInputVisible());
+        };
+        toggleOutput = function () {
+            return _isOutputHidden(!_isOutputHidden());
+        };
+        clear = function () {
+            _result(null);
+            _outputs([]);
+            _hasError(false);
+            if (!_isCode()) {
+                return _hasInput(true);
+            }
+        };
         execute = function (go) {
             var render;
             input = _input().trim();
@@ -220,9 +234,7 @@
             }
             render = _render();
             _isBusy(true);
-            _result(null);
-            _outputs([]);
-            _hasError(false);
+            clear();
             render(input, {
                 data: function (result) {
                     return _outputs.push(result);
@@ -242,7 +254,7 @@
                     }
                 },
                 end: function () {
-                    _hasInput(render.isCode);
+                    _hasInput(_isCode());
                     _isBusy(false);
                     if (go) {
                         return go();
@@ -266,17 +278,14 @@
             result: _result,
             hasOutput: _hasOutput,
             isInputVisible: _isInputVisible,
-            toggleInput: function () {
-                return _isInputVisible(!_isInputVisible());
-            },
+            toggleInput: toggleInput,
             isOutputHidden: _isOutputHidden,
-            toggleOutput: function () {
-                return _isOutputHidden(!_isOutputHidden());
-            },
+            toggleOutput: toggleOutput,
             select: select,
             navigate: navigate,
             activate: activate,
             execute: execute,
+            clear: clear,
             clip: clip,
             _actions: _actions,
             getCursorPosition: function () {
@@ -1385,14 +1394,25 @@
             return executeAllCells(function () {
             });
         };
+        clearCell = function () {
+            _selectedCell.clear();
+            return _selectedCell.autoResize();
+        };
+        clearAllCells = function () {
+            var cell, _i, _len, _ref;
+            _ref = _cells();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                cell = _ref[_i];
+                cell.clear();
+                cell.autoResize();
+            }
+        };
         notImplemented = function () {
         };
         printPreview = notImplemented;
         pasteCellandReplace = notImplemented;
         mergeCellAbove = notImplemented;
         switchToPresentationMode = notImplemented;
-        clearCell = notImplemented;
-        clearAllCells = notImplemented;
         startTour = notImplemented;
         createMenu = function (label, items) {
             return {
@@ -1483,9 +1503,9 @@
                 menuDivider,
                 createMenuItem('Run All', runAllCells),
                 menuDivider,
-                createMenuItem('Clear Cell', clearCell, true),
+                createMenuItem('Clear Output', clearCell),
                 menuDivider,
-                createMenuItem('Clear All', clearAllCells, true)
+                createMenuItem('Clear All Outputs', clearAllCells)
             ]),
             createMenu('Admin', [
                 createMenuItem('Cluster Status', executeCommand('getCloud')),
@@ -1536,9 +1556,13 @@
             [
                 createTool('cut', 'Cut Cell', cutCell),
                 createTool('copy', 'Copy Cell', copyCell),
-                createTool('paste', 'Paste Cell Below', pasteCellBelow)
+                createTool('paste', 'Paste Cell Below', pasteCellBelow),
+                createTool('eraser', 'Clear Cell', clearCell)
             ],
-            [createTool('play', 'Run', runCell)]
+            [
+                createTool('play', 'Run', runCellAndSelectBelow),
+                createTool('forward', 'Run All', runAllCells)
+            ]
         ];
         normalModeKeyboardShortcuts = [
             [
