@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.64';
+    Flow.Version = '0.2.65';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -601,11 +601,11 @@
 }.call(this));
 (function () {
     var _aboutMarkdown, _gettingStartedMarkdown, _homeMarkdown;
-    _homeMarkdown = '<blockquote> \nUsing Flow for the first time?\n<br/>\n<div style=\'margin-top:10px\'>\n  <button type=\'button\' data-action=\'assist\' class=\'flow-button\'><i class=\'fa fa-support\'></i><span>Assist Me!</span>\n  </button>\n</div>\n</blockquote> \n\n##### Topics\n\n###### General\n\n- <a href=\'#\' data-action=\'about\'>About Flow</a>\n- <a href=\'#\' data-action=\'getting-started\'>Getting Started</a>\n\n###### H<sub>2</sub>O REST API\n\n- <a href=\'#\' data-action=\'endpoints\'>Routes</a>\n- <a href=\'#\' data-action=\'schemas\'>Schemas</a>\n';
+    _homeMarkdown = '<blockquote> \nUsing Flow for the first time?\n<br/>\n<div style=\'margin-top:10px\'>\n  <button type=\'button\' data-action=\'assist\' class=\'flow-button\'><i class=\'fa fa-support\'></i><span>Assist Me!</span>\n  </button>\n</div>\n</blockquote> \n\n##### Help Topics\n\n###### General\n\n- <a href=\'#\' data-action=\'about\'>About Flow</a>\n- <a href=\'#\' data-action=\'getting-started\'>Getting Started</a>\n\n###### Packs\n\nFlow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Flows and run them in your browser.<br/><a href=\'#\' data-action=\'get-packs\'>Browse installed packs...</a>\n\n###### H<sub>2</sub>O REST API\n\n- <a href=\'#\' data-action=\'endpoints\'>Routes</a>\n- <a href=\'#\' data-action=\'schemas\'>Schemas</a>\n';
     _aboutMarkdown = '*H<sub>2</sub>O Flow* is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like <a href="http://ipython.org/notebook.html" target="_blank">IPython Notebooks</a>.\n\nFlow is a *modal* editor, which means that you are either in *edit mode* or *command mode*.  A *Flow* is composed of a series of executable *cells*. Each *cell* has an input and one or more outputs.';
     _gettingStartedMarkdown = 'To get started, just memorize these six simple keyboard shortcuts: <kbd>enter</kbd>, <kbd>esc</kbd>, <kbd>ctrl</kbd><kbd>enter</kbd>, <kbd>a</kbd>, <kbd>b</kbd> and <kbd>d</kbd><kbd>d</kbd>\n\n- To edit a cell, press <kbd>enter</kbd> to get into *edit mode*.\n- When you\'re done editing, press <kbd>esc</kbd> to get back into *command mode*. \n- To execute a cell, press <kbd>ctrl</kbd> <kbd>enter</kbd>\n- <kbd>a</kbd> adds a new cell <u>a</u>bove the current cell.\n- <kbd>b</kbd> adds a new cell <u>b</u>elow the current cell.\n- <kbd>d</kbd><kbd>d</kbd> <u>d</u>eletes the current cell. Yes, you need to press <kbd>d</kbd> twice.\n\nFinally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code><a href=\'#\' data-action=\'assist\'>assist</a></code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!';
     Flow.Help = function (_) {
-        var displayEndpoint, displayEndpoints, displayHtml, displayMarkdown, displaySchema, displaySchemas, goBack, goForward, goHome, goTo, performAction, _canGoBack, _canGoForward, _content, _history, _historyIndex;
+        var displayEndpoint, displayEndpoints, displayFlows, displayHtml, displayMarkdown, displayPacks, displaySchema, displaySchemas, goBack, goForward, goHome, goTo, performAction, _canGoBack, _canGoForward, _content, _history, _historyIndex;
         _content = Flow.Dataflow.signal(null);
         _history = [];
         _historyIndex = -1;
@@ -649,7 +649,7 @@
             return displayHtml(Flow.HTML.render('div', '' + marked(md)));
         };
         performAction = function (action, $el) {
-            var routeIndex, schemaName;
+            var packName, routeIndex, schemaName;
             switch (action) {
             case 'assist':
                 _.insertAndExecuteCell('cs', 'assist');
@@ -659,6 +659,40 @@
                 break;
             case 'getting-started':
                 displayMarkdown(_gettingStartedMarkdown);
+                break;
+            case 'get-packs':
+                _.requestPacks(function (error, packNames) {
+                    if (!error) {
+                        return displayPacks(packNames);
+                    }
+                });
+                break;
+            case 'get-pack':
+                packName = $el.attr('data-pack-name');
+                _.requestPack(packName, function (error, flowNames) {
+                    if (!error) {
+                        return displayFlows(packName, flowNames);
+                    }
+                });
+                break;
+            case 'get-flow':
+                _.confirm('This action will replace your active notebook.\nAre you sure you want to continue?', {
+                    acceptCaption: 'Load Notebook',
+                    declineCaption: 'Cancel'
+                }, function (accept) {
+                    var flowName;
+                    if (accept) {
+                        packName = $el.attr('data-pack-name');
+                        flowName = $el.attr('data-flow-name');
+                        if (H2O.Util.validateFileExtension(flowName)) {
+                            return _.requestFlow(packName, flowName, function (error, flow) {
+                                if (!error) {
+                                    return _.open(H2O.Util.getFileBaseName(flowName), flow);
+                                }
+                            });
+                        }
+                    }
+                });
                 break;
             case 'endpoints':
                 _.requestEndpoints(function (error, response) {
@@ -692,6 +726,34 @@
                     }
                 });
             }
+        };
+        displayPacks = function (packNames) {
+            var a, div, h5, i, mark, p, _ref;
+            _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'i.fa.fa-folder-o', 'a href=\'#\' data-action=\'get-pack\' data-pack-name=\'$1\''), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], i = _ref[4], a = _ref[5];
+            displayHtml(Flow.HTML.render('div', div([
+                mark('Packs'),
+                h5('Installed Packs'),
+                div(lodash.map(packNames, function (packName) {
+                    return p([
+                        i(),
+                        a(packName, packName)
+                    ]);
+                }))
+            ])));
+        };
+        displayFlows = function (packName, flowNames) {
+            var a, div, h5, i, mark, p, _ref;
+            _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'i.fa.fa-file-text-o', 'a href=\'#\' data-action=\'get-flow\' data-pack-name=\'' + packName + '\' data-flow-name=\'$1\''), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], i = _ref[4], a = _ref[5];
+            displayHtml(Flow.HTML.render('div', div([
+                mark('Pack'),
+                h5(packName),
+                div(lodash.map(flowNames, function (flowName) {
+                    return p([
+                        i(),
+                        a(flowName, flowName)
+                    ]);
+                }))
+            ])));
         };
         displayEndpoints = function (routes) {
             var action, code, div, els, h5, mark, p, route, routeIndex, _i, _len, _ref;
@@ -829,7 +891,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, sanitizeName, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, storeNotebook, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, storeNotebook, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
         _localName = Flow.Dataflow.signal('Untitled Flow');
         _remoteName = Flow.Dataflow.signal(null);
         _isEditingName = Flow.Dataflow.signal(false);
@@ -1116,9 +1178,6 @@
             });
             return false;
         };
-        sanitizeName = function (name) {
-            return name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim();
-        };
         checkIfNameIsInUse = function (name, go) {
             return _.requestObject('notebook', name, function (error) {
                 return go(error ? false : true);
@@ -1146,7 +1205,7 @@
         };
         saveNotebook = function () {
             var localName, remoteName;
-            localName = sanitizeName(_localName());
+            localName = Flow.Util.sanitizeName(_localName());
             if (localName === '') {
                 return _.alert('Invalid notebook name.');
             }
@@ -1170,8 +1229,8 @@
                 });
             }
         };
-        openNotebook = function () {
-            return _.dialog(Flow.FileOpenDialog, sanitizeName, function (result) {
+        promptForNotebook = function () {
+            return _.dialog(Flow.FileOpenDialog, function (result) {
                 var error, filename, _ref;
                 if (result) {
                     error = result.error, filename = result.filename;
@@ -1280,6 +1339,9 @@
         duplicateNotebook = function () {
             return deserialize('Copy of ' + _localName(), null, serialize());
         };
+        openNotebook = function (name, doc) {
+            return deserialize(name, null, doc);
+        };
         loadNotebook = function (name) {
             return _.requestObject('notebook', name, function (error, doc) {
                 var _ref;
@@ -1361,7 +1423,7 @@
         _menus = [
             createMenu('Flow', [
                 createMenuItem('New', createNotebook),
-                createMenuItem('Open...', openNotebook),
+                createMenuItem('Open...', promptForNotebook),
                 createMenuItem('Save', saveNotebook),
                 menuDivider,
                 createMenuItem('Duplicate', duplicateNotebook),
@@ -1685,6 +1747,7 @@
             setupKeyboardHandling('normal');
             insertNewCellBelow();
             Flow.Dataflow.link(_.load, loadNotebook);
+            Flow.Dataflow.link(_.open, openNotebook);
             Flow.Dataflow.link(_.selectCell, selectCell);
             Flow.Dataflow.link(_.insertAndExecuteCell, function (type, input) {
                 return lodash.defer(appendCellAndRun, type, input);
@@ -1993,6 +2056,7 @@
     Flow.ApplicationContext = function (_) {
         _.ready = Flow.Dataflow.slots();
         _.initialized = Flow.Dataflow.slots();
+        _.open = Flow.Dataflow.slot();
         _.load = Flow.Dataflow.slot();
         _.saved = Flow.Dataflow.slots();
         _.loaded = Flow.Dataflow.slots();
@@ -3802,7 +3866,7 @@
     Flow.TFactor = 'Factor';
 }.call(this));
 (function () {
-    var EOL, describeCount, formatBytes, formatMilliseconds, fromNow, multilineTextToHTML, padTime;
+    var EOL, describeCount, formatBytes, formatMilliseconds, fromNow, multilineTextToHTML, padTime, sanitizeName;
     describeCount = function (count, singular, plural) {
         if (!plural) {
             plural = singular + 's';
@@ -3853,13 +3917,17 @@
             return lodash.escape(str);
         }).join('<br/>');
     };
+    sanitizeName = function (name) {
+        return name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim();
+    };
     Flow.Util = {
         describeCount: describeCount,
         fromNow: fromNow,
         formatBytes: formatBytes,
         formatMilliseconds: formatMilliseconds,
         multilineTextToHTML: multilineTextToHTML,
-        uuid: uuid
+        uuid: uuid,
+        sanitizeName: sanitizeName
     };
 }.call(this));
 (function () {
@@ -3908,6 +3976,9 @@
         _.requestEndpoint = Flow.Dataflow.slot();
         _.requestSchemas = Flow.Dataflow.slot();
         _.requestSchema = Flow.Dataflow.slot();
+        _.requestPacks = Flow.Dataflow.slot();
+        _.requestPack = Flow.Dataflow.slot();
+        _.requestFlow = Flow.Dataflow.slot();
         _.inspect = Flow.Dataflow.slot();
         _.plot = Flow.Dataflow.slot();
         _.grid = Flow.Dataflow.slot();
@@ -3922,7 +3993,19 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doDelete, doGet, doPost, doPut, doUpload, encodeArrayForPost, encodeObject, encodeObjectForPost, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadObject, requestWithOpts, trackPath, unwrap;
+        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFlow, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadObject, requestWithOpts, trackPath, unwrap;
+        download = function (type, url, go) {
+            return $.ajax({
+                dataType: type,
+                url: url,
+                success: function (data, status, xhr) {
+                    return go(null, data);
+                },
+                error: function (xhr, status, error) {
+                    return go(new Flow.Error(error));
+                }
+            });
+        };
         http = function (method, path, opts, go) {
             var req;
             _.status('server', 'request', path);
@@ -3969,7 +4052,7 @@
                 var cause, response, serverError;
                 _.status('server', 'error', path);
                 response = xhr.responseJSON;
-                cause = (response != null ? response.exception_msg : void 0) ? (serverError = new Flow.Error(response.exception_msg), serverError.stack = '' + response.dev_msg + ' (' + response.exception_type + ')' + '\n  ' + response.stacktrace.join('\n  '), serverError) : (error != null ? error.message : void 0) ? new Flow.Error(error.message) : status === 0 ? new Flow.Error('Could not connect to H2O') : new Flow.Error('Unknown error');
+                cause = (response != null ? response.exception_msg : void 0) ? (serverError = new Flow.Error(response.exception_msg), serverError.stack = '' + response.dev_msg + ' (' + response.exception_type + ')' + '\n  ' + response.stacktrace.join('\n  '), serverError) : (error != null ? error.message : void 0) ? new Flow.Error(error.message) : status === 0 ? new Flow.Error('Could not connect to H2O') : lodash.isString(error) ? new Flow.Error(error) : new Flow.Error('Unknown error');
                 return go(new Flow.Error('Error calling ' + method + ' ' + path + ' with opts ' + JSON.stringify(opts), cause));
             });
         };
@@ -4390,6 +4473,42 @@
         requestSchema = function (name, go) {
             return doGet('/1/Metadata/schemas.json/' + encodeURIComponent(name), go);
         };
+        getLines = function (data) {
+            return lodash.filter(data.split('\n'), function (line) {
+                if (line.trim()) {
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+        };
+        requestPacks = function (go) {
+            return download('text', '/flow/packs/index.list', function (error, data) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, getLines(data));
+                }
+            });
+        };
+        requestPack = function (packName, go) {
+            return download('text', '/flow/packs/' + encodeURIComponent(packName) + '/index.list', function (error, data) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, getLines(data));
+                }
+            });
+        };
+        requestFlow = function (packName, flowName, go) {
+            return download('json', '/flow/packs/' + encodeURIComponent(packName) + '/' + encodeURIComponent(flowName), function (error, data) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, data);
+                }
+            });
+        };
         Flow.Dataflow.link(_.requestInspect, requestInspect);
         Flow.Dataflow.link(_.requestCreateFrame, requestCreateFrame);
         Flow.Dataflow.link(_.requestSplitFrame, requestSplitFrame);
@@ -4433,7 +4552,10 @@
         Flow.Dataflow.link(_.requestEndpoints, requestEndpoints);
         Flow.Dataflow.link(_.requestEndpoint, requestEndpoint);
         Flow.Dataflow.link(_.requestSchemas, requestSchemas);
-        return Flow.Dataflow.link(_.requestSchema, requestSchema);
+        Flow.Dataflow.link(_.requestSchema, requestSchema);
+        Flow.Dataflow.link(_.requestPacks, requestPacks);
+        Flow.Dataflow.link(_.requestPack, requestPack);
+        return Flow.Dataflow.link(_.requestFlow, requestFlow);
     };
 }.call(this));
 (function () {
@@ -5230,8 +5352,12 @@
             inspections = {};
             inspections.parameters = inspectModelParameters(model);
             inspections.output = inspectGLMModelOutput(model);
-            inspections[model.output.coefficients_magnitude.name] = inspectGLMCoefficientsMagnitude(model);
-            inspections[model.output.coefficients_table.name] = inspectGLMCoefficientsTable(model);
+            if (model.output.coefficients_magnitude) {
+                inspections[model.output.coefficients_magnitude.name] = inspectGLMCoefficientsMagnitude(model);
+            }
+            if (model.output.coefficients_table) {
+                inspections[model.output.coefficients_table.name] = inspectGLMCoefficientsTable(model);
+            }
             return inspect_(model, inspections);
         };
         extendJob = function (job) {
@@ -6730,6 +6856,20 @@
     };
 }.call(this));
 (function () {
+    var extension, getFileBaseName, validateFileExtension;
+    extension = '.flow';
+    validateFileExtension = function (filename) {
+        return -1 !== filename.indexOf(extension, filename.length - extension.length);
+    };
+    getFileBaseName = function (filename) {
+        return Flow.Util.sanitizeName(filename.substr(0, filename.length - extension.length));
+    };
+    H2O.Util = {
+        validateFileExtension: validateFileExtension,
+        getFileBaseName: getFileBaseName
+    };
+}.call(this));
+(function () {
     H2O.Assist = function (_, _go, _items) {
         var createAssistItem, item, name;
         createAssistItem = function (name, item) {
@@ -7204,21 +7344,14 @@
     };
 }.call(this));
 (function () {
-    Flow.FileOpenDialog = function (_, sanitizeName, _go) {
-        var accept, checkIfNameIsInUse, decline, extension, getFileBaseName, uploadFile, validateFileExtension, _canAccept, _file, _form, _overwrite;
-        extension = '.flow';
+    Flow.FileOpenDialog = function (_, _go) {
+        var accept, checkIfNameIsInUse, decline, uploadFile, _canAccept, _file, _form, _overwrite;
         _overwrite = Flow.Dataflow.signal(false);
         _form = Flow.Dataflow.signal(null);
         _file = Flow.Dataflow.signal(null);
-        validateFileExtension = function (filename) {
-            return -1 !== filename.indexOf(extension, filename.length - extension.length);
-        };
-        getFileBaseName = function (filename) {
-            return sanitizeName(filename.substr(0, filename.length - extension.length));
-        };
         _canAccept = Flow.Dataflow.lift(_file, function (file) {
             if (file != null ? file.name : void 0) {
-                return validateFileExtension(file.name);
+                return H2O.Util.validateFileExtension(file.name);
             } else {
                 return false;
             }
@@ -7239,7 +7372,7 @@
         accept = function () {
             var basename, file;
             if (file = _file()) {
-                basename = getFileBaseName(file.name);
+                basename = H2O.Util.getFileBaseName(file.name);
                 if (_overwrite()) {
                     return uploadFile(basename);
                 } else {

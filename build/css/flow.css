@@ -673,6 +673,9 @@ table.flow-form-ruled tr:first-child {
   border-bottom: 1px dotted #aaa;
   margin-top: 25px;
 }
+.flow-help .fa {
+  margin-right: 5px;
+}
 .flow-help small {
   color: #999;
 }
