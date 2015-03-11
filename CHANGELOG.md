@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [0.2.67] - 2015-03-10
+- Fix categorical axis label rendering when adequate space is available
+- Display point layer for tree vs mse plots in GBM output (PUBDEV-504)
+
 ## [0.2.66] - 2015-03-10
 
 ### Added
