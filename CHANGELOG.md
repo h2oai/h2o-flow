@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Add New, Open toolbar buttons.
 
+### Changed
+- setupParse() and parseFiles() now expect an argument that explicitly indicates what needs to be parsed: either a { path: [] } or a { source_keys: [] }
+
 ### Fixed
 - Fix autosizing of non-code cell inputs when opening saved flows.
 - Fix display of object-valued model parameters (PUBDEV-505)

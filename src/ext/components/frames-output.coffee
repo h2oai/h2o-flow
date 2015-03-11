@@ -26,7 +26,7 @@ H2O.FramesOutput = (_, _go, _frames) ->
     view = ->
       if frame.is_text
         #TODO handle this properly. frames-output.jade currently does not allow viewing
-        _.insertAndExecuteCell 'cs', "setupParse [ #{stringify frame.key.name } ]"
+        _.insertAndExecuteCell 'cs', "setupParse source_keys: [ #{stringify frame.key.name } ]"
       else
         _.insertAndExecuteCell 'cs', "getFrame #{stringify frame.key.name}"
 

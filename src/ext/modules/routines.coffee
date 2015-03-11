@@ -1207,10 +1207,10 @@ H2O.Routines = (_) ->
       else
         assist importFiles
 
-  extendParseSetupResults = (paths, parseSetupResults) ->
-    render_ parseSetupResults, H2O.SetupParseOutput, paths, parseSetupResults
+  extendParseSetupResults = (args, parseSetupResults) ->
+    render_ parseSetupResults, H2O.SetupParseOutput, args, parseSetupResults
 
-  requestParseSetup = (paths, go) ->
+  requestImportAndParseSetup = (paths, go) ->
     _.requestImportFiles paths, (error, importResults) ->
       if error
         go error
@@ -1220,19 +1220,27 @@ H2O.Routines = (_) ->
           if error
             go error
           else
-            go null, extendParseSetupResults paths, parseSetupResults
+            go null, extendParseSetupResults { paths: paths }, parseSetupResults
 
-  setupParse = (paths) ->
-    switch typeOf paths
-      when 'Array'
-        _fork requestParseSetup, paths
+  requestParseSetup = (sourceKeys, go) ->
+    _.requestParseSetup sourceKeys, (error, parseSetupResults) ->
+      if error
+        go error
       else
-        assist setupParse
+        go null, extendParseSetupResults { source_keys: sourceKeys }, parseSetupResults
+
+  setupParse = (args) ->
+    if args.paths and isArray args.paths
+      _fork requestImportAndParseSetup, args.paths
+    else if args.source_keys and isArray args.source_keys
+      _fork requestParseSetup, args.source_keys
+    else
+      assist setupParse
 
   extendParseResult = (parseResult) ->
     render_ parseResult, H2O.JobOutput, parseResult.job
 
-  requestParseFiles = (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
+  requestImportAndParseFiles = (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     _.requestImportFiles paths, (error, importResults) ->
       if error
         go error
@@ -1244,10 +1252,15 @@ H2O.Routines = (_) ->
           else
             go null, extendParseResult parseResult
 
+  requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
+    _.requestParseFiles sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
+      if error
+        go error
+      else
+        go null, extendParseResult parseResult
+
   parseFiles = (opts) -> #XXX review args
     #XXX validation
-
-    paths = opts.source_keys
     destinationKey = opts.destination_key
     parseType = opts.parse_type
     separator = opts.separator
@@ -1259,7 +1272,10 @@ H2O.Routines = (_) ->
     checkHeader = opts.check_header
     chunkSize = opts.chunk_size
 
-    _fork requestParseFiles, paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
+    if opts.paths
+      _fork requestImportAndParseFiles, opts.paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
+    else
+      _fork requestParseFiles, opts.source_keys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
 
   requestModelBuild = (algo, opts, go) ->
     _.requestModelBuild algo, opts, (error, result) ->

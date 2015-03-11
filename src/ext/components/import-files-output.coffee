@@ -14,7 +14,7 @@ H2O.ImportFilesOutput = (_, _go, _importResults) ->
 
   parse = ->
     paths = map _allPaths, stringify
-    _.insertAndExecuteCell 'cs', "setupParse [ #{paths.join ','} ]"
+    _.insertAndExecuteCell 'cs', "setupParse paths: [ #{paths.join ','} ]"
 
   defer _go
 
