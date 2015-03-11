@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
+### Added
+- Add New, Open toolbar buttons.
 
 ### Fixed
 - Fix autosizing of non-code cell inputs when opening saved flows.

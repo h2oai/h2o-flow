@@ -551,6 +551,8 @@ Flow.Notebook = (_, _renderers) ->
 
   _toolbar = [
     [
+      createTool 'file-o', 'New', createNotebook
+      createTool 'folder-open-o', 'Open', promptForNotebook
       createTool 'save', 'Save', saveNotebook
     ]
   ,
