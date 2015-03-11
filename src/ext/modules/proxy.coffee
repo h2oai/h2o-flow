@@ -404,6 +404,20 @@ H2O.Proxy = (_) ->
       else
         go null, data
 
+  requestHelpIndex = (go) ->
+    download 'json', '/flow/help/catalog.json', (error, catalog) ->
+      if error
+        go error
+      else
+        go null, catalog
+
+  requestHelpContent = (name, go) ->
+    download 'text', "/flow/help/#{name}.html", (error, html) ->
+      if error
+        go error
+      else
+        go null, html
+
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
   link _.requestSplitFrame, requestSplitFrame
@@ -451,5 +465,7 @@ H2O.Proxy = (_) ->
   link _.requestPacks, requestPacks
   link _.requestPack, requestPack
   link _.requestFlow, requestFlow
+  link _.requestHelpIndex, requestHelpIndex
+  link _.requestHelpContent, requestHelpContent
 
 
