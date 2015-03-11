@@ -679,6 +679,11 @@ table.flow-form-ruled tr:first-child {
 .flow-help small {
   color: #999;
 }
+.flow-help img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+}
 .flow-help-toolbar {
   position: absolute;
   top: 17px;

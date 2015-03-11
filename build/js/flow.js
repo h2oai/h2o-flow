@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.67';
+    Flow.Version = '0.2.68';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -609,12 +609,13 @@
     };
 }.call(this));
 (function () {
-    var _aboutMarkdown, _gettingStartedMarkdown, _homeMarkdown;
-    _homeMarkdown = '<blockquote> \nUsing Flow for the first time?\n<br/>\n<div style=\'margin-top:10px\'>\n  <button type=\'button\' data-action=\'assist\' class=\'flow-button\'><i class=\'fa fa-support\'></i><span>Assist Me!</span>\n  </button>\n</div>\n</blockquote> \n\n##### Help Topics\n\n###### General\n\n- <a href=\'#\' data-action=\'about\'>About Flow</a>\n- <a href=\'#\' data-action=\'getting-started\'>Getting Started</a>\n\n###### Packs\n\nFlow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Flows and run them in your browser.<br/><a href=\'#\' data-action=\'get-packs\'>Browse installed packs...</a>\n\n###### H<sub>2</sub>O REST API\n\n- <a href=\'#\' data-action=\'endpoints\'>Routes</a>\n- <a href=\'#\' data-action=\'schemas\'>Schemas</a>\n';
-    _aboutMarkdown = '*H<sub>2</sub>O Flow* is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like <a href="http://ipython.org/notebook.html" target="_blank">IPython Notebooks</a>.\n\nFlow is a *modal* editor, which means that you are either in *edit mode* or *command mode*.  A *Flow* is composed of a series of executable *cells*. Each *cell* has an input and one or more outputs.';
-    _gettingStartedMarkdown = 'To get started, just memorize these six simple keyboard shortcuts: <kbd>enter</kbd>, <kbd>esc</kbd>, <kbd>ctrl</kbd><kbd>enter</kbd>, <kbd>a</kbd>, <kbd>b</kbd> and <kbd>d</kbd><kbd>d</kbd>\n\n- To edit a cell, press <kbd>enter</kbd> to get into *edit mode*.\n- When you\'re done editing, press <kbd>esc</kbd> to get back into *command mode*. \n- To execute a cell, press <kbd>ctrl</kbd> <kbd>enter</kbd>\n- <kbd>a</kbd> adds a new cell <u>a</u>bove the current cell.\n- <kbd>b</kbd> adds a new cell <u>b</u>elow the current cell.\n- <kbd>d</kbd><kbd>d</kbd> <u>d</u>eletes the current cell. Yes, you need to press <kbd>d</kbd> twice.\n\nFinally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code><a href=\'#\' data-action=\'assist\'>assist</a></code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!';
+    var _catalog, _homeContent, _homeMarkdown, _index;
+    _catalog = null;
+    _index = {};
+    _homeContent = null;
+    _homeMarkdown = '<blockquote> \nUsing Flow for the first time?\n<br/>\n<div style=\'margin-top:10px\'>\n  <button type=\'button\' data-action=\'assist\' class=\'flow-button\'><i class=\'fa fa-support\'></i><span>Assist Me!</span>\n  </button>\n</div>\n</blockquote> \n\n##### Help Topics\n\n###### General\n\n%HELP_TOPICS%\n\n###### Packs\n\nFlow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Flows and run them in your browser.<br/><a href=\'#\' data-action=\'get-packs\'>Browse installed packs...</a>\n\n###### H<sub>2</sub>O REST API\n\n- <a href=\'#\' data-action=\'endpoints\'>Routes</a>\n- <a href=\'#\' data-action=\'schemas\'>Schemas</a>\n';
     Flow.Help = function (_) {
-        var displayEndpoint, displayEndpoints, displayFlows, displayHtml, displayMarkdown, displayPacks, displaySchema, displaySchemas, goBack, goForward, goHome, goTo, performAction, _canGoBack, _canGoForward, _content, _history, _historyIndex;
+        var buildToc, buildTopics, displayEndpoint, displayEndpoints, displayFlows, displayHtml, displayPacks, displaySchema, displaySchemas, fixImageSources, goBack, goForward, goHome, goTo, initialize, performAction, _canGoBack, _canGoForward, _content, _history, _historyIndex;
         _content = Flow.Dataflow.signal(null);
         _history = [];
         _historyIndex = -1;
@@ -654,20 +655,41 @@
             }
             return goTo(_history.length - 1);
         };
-        displayMarkdown = function (md) {
-            return displayHtml(Flow.HTML.render('div', '' + marked(md)));
+        fixImageSources = function (html) {
+            var $html;
+            $html = $(html);
+            $('img', $html).each(function () {
+                var $self, src;
+                $self = $(this);
+                src = $self.attr('src');
+                if (0 === src.indexOf('images/')) {
+                    $self.attr('src', 'help/' + src);
+                }
+            });
+            return $html.html();
         };
         performAction = function (action, $el) {
-            var packName, routeIndex, schemaName;
+            var packName, routeIndex, schemaName, topic;
             switch (action) {
+            case 'help':
+                topic = _index[$el.attr('data-topic')];
+                _.requestHelpContent(topic.name, function (error, html) {
+                    var contents, div, h5, h6, mark, _ref;
+                    _ref = Flow.HTML.template('div', 'mark', 'h5', 'h6'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3];
+                    contents = [
+                        mark('Help'),
+                        h5(topic.title)
+                    ];
+                    if (topic.children.length) {
+                        contents.push(h6('Contents'));
+                        contents.push(buildToc(topic.children));
+                    }
+                    contents.push(fixImageSources(div(html)));
+                    return displayHtml(Flow.HTML.render('div', div(contents)));
+                });
+                break;
             case 'assist':
                 _.insertAndExecuteCell('cs', 'assist');
-                break;
-            case 'about':
-                displayMarkdown(_aboutMarkdown);
-                break;
-            case 'getting-started':
-                displayMarkdown(_gettingStartedMarkdown);
                 break;
             case 'get-packs':
                 _.requestPacks(function (error, packNames) {
@@ -736,6 +758,23 @@
                 });
             }
         };
+        buildToc = function (nodes) {
+            var a, li, ul, _ref;
+            _ref = Flow.HTML.template('ul', 'li', 'a href=\'#\' data-action=\'help\' data-topic=\'$1\''), ul = _ref[0], li = _ref[1], a = _ref[2];
+            return ul(lodash.map(nodes, function (node) {
+                return li(a(node.title, node.name));
+            }));
+        };
+        buildTopics = function (index, topics) {
+            var topic, _i, _len;
+            for (_i = 0, _len = topics.length; _i < _len; _i++) {
+                topic = topics[_i];
+                index[topic.name] = topic;
+                if (topic.children.length) {
+                    buildTopics(index, topic.children);
+                }
+            }
+        };
         displayPacks = function (packNames) {
             var a, div, h5, i, mark, p, _ref;
             _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'i.fa.fa-folder-o', 'a href=\'#\' data-action=\'get-pack\' data-pack-name=\'$1\''), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], i = _ref[4], a = _ref[5];
@@ -778,7 +817,7 @@
             displayHtml(Flow.HTML.render('div', div(els)));
         };
         goHome = function () {
-            return displayMarkdown(_homeMarkdown);
+            return displayHtml(Flow.HTML.render('div', _homeContent));
         };
         displayEndpoint = function (route) {
             var action, code, div, h5, h6, mark, p, _ref, _ref1;
@@ -833,8 +872,18 @@
             }
             return displayHtml(Flow.HTML.render('div', div(content)));
         };
-        Flow.Dataflow.link(_.ready, function () {
+        initialize = function (catalog) {
+            _catalog = catalog;
+            buildTopics(_index, _catalog);
+            _homeContent = marked(_homeMarkdown).replace('%HELP_TOPICS%', buildToc(_catalog));
             return goHome();
+        };
+        Flow.Dataflow.link(_.ready, function () {
+            return _.requestHelpIndex(function (error, catalog) {
+                if (!error) {
+                    return initialize(catalog);
+                }
+            });
         });
         return {
             content: _content,
@@ -4003,6 +4052,8 @@
         _.requestPacks = Flow.Dataflow.slot();
         _.requestPack = Flow.Dataflow.slot();
         _.requestFlow = Flow.Dataflow.slot();
+        _.requestHelpIndex = Flow.Dataflow.slot();
+        _.requestHelpContent = Flow.Dataflow.slot();
         _.inspect = Flow.Dataflow.slot();
         _.plot = Flow.Dataflow.slot();
         _.grid = Flow.Dataflow.slot();
@@ -4017,7 +4068,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFlow, requestFrame, requestFrames, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadObject, requestWithOpts, trackPath, unwrap;
+        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFlow, requestFrame, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadObject, requestWithOpts, trackPath, unwrap;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4525,13 +4576,13 @@
             });
         };
         requestFlow = function (packName, flowName, go) {
-            return download('json', '/flow/packs/' + encodeURIComponent(packName) + '/' + encodeURIComponent(flowName), function (error, data) {
-                if (error) {
-                    return go(error);
-                } else {
-                    return go(null, data);
-                }
-            });
+            return download('json', '/flow/packs/' + encodeURIComponent(packName) + '/' + encodeURIComponent(flowName), go);
+        };
+        requestHelpIndex = function (go) {
+            return download('json', '/flow/help/catalog.json', go);
+        };
+        requestHelpContent = function (name, go) {
+            return download('text', '/flow/help/' + name + '.html', go);
         };
         Flow.Dataflow.link(_.requestInspect, requestInspect);
         Flow.Dataflow.link(_.requestCreateFrame, requestCreateFrame);
@@ -4579,7 +4630,9 @@
         Flow.Dataflow.link(_.requestSchema, requestSchema);
         Flow.Dataflow.link(_.requestPacks, requestPacks);
         Flow.Dataflow.link(_.requestPack, requestPack);
-        return Flow.Dataflow.link(_.requestFlow, requestFlow);
+        Flow.Dataflow.link(_.requestFlow, requestFlow);
+        Flow.Dataflow.link(_.requestHelpIndex, requestHelpIndex);
+        return Flow.Dataflow.link(_.requestHelpContent, requestHelpContent);
     };
 }.call(this));
 (function () {
