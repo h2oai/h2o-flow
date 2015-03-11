@@ -82,12 +82,14 @@ Flow.Help = (_) ->
           contents = [
             mark 'Help'
             h5 topic.title
+            fixImageSources div html
           ]
+
           # render a TOC if this topic has children
           if topic.children.length
-            contents.push h6 'Contents'
+            contents.push h6 'Topics'
             contents.push buildToc topic.children 
-          contents.push fixImageSources div html
+
           displayHtml Flow.HTML.render 'div', div contents
 
       when 'assist'
