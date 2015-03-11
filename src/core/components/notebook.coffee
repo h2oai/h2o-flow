@@ -46,11 +46,13 @@ Flow.Notebook = (_, _renderers) ->
       createCell cell.type, cell.input
     _cells cells
 
-    # Execute all non-code cells (headings, markdown, etc.)
-    for cell in _cells()
-      cell.execute() unless cell.isCode() 
-
     selectCell head cells
+
+    defer ->
+      # Execute all non-code cells (headings, markdown, etc.)
+      for cell in _cells()
+        cell.execute() unless cell.isCode() 
+
     return
 
   createCell = (type='cs', input='') ->

@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+### Fixed
+- Fix autosizing of non-code cell inputs when opening saved flows.
+
 ## [0.2.68] - 2015-03-11
 
 ### Added
