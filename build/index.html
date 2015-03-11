@@ -1424,12 +1424,7 @@
                 <!-- /ko-->
               </td>
               <td>
-                <p>
-                  <!-- ko if:isText--><span data-bind="text:key"></span>
-                  <!-- /ko-->
-                  <!-- ko ifnot:isText--><a href="#" data-bind="text:key, click:view"></a>
-                  <!-- /ko-->
-                </p>
+                <p><a href="#" data-bind="text:key, click:view"></a></p>
                 <p data-bind="text:description" class="flow-small"></p>
                 <!-- ko ifnot:isText-->
                 <p>
@@ -2024,6 +2019,27 @@
               <!-- ko if:overwrite-->
               <button type="button" data-bind="click:accept, enable:canAccept" class="btn btn-danger">Replace</button>
               <!-- /ko-->
+            </div>
+          </div>
+        </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-file-upload-dialog">
+      <div id="file-upload-dialog" tabindex="-1" role="dialog" class="modal fade">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" data-dismiss="modal" class="close"><span>×</span><span class="sr-only">Close</span></button>
+              <h4 class="modal-title">Upload Dataset...</h4>
+            </div>
+            <div class="modal-body">
+              <form enctype="multipart/form-data" data-bind="element:form">
+                <input name="file" type="file" data-bind="file:file">
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" data-bind="click:decline" class="btn btn-default">Cancel</button>
+              <button type="button" data-bind="click:accept" class="btn btn-primary">Upload</button>
             </div>
           </div>
         </div>

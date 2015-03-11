@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.68';
+    Flow.Version = '0.2.69';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -678,13 +678,13 @@
                     _ref = Flow.HTML.template('div', 'mark', 'h5', 'h6'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3];
                     contents = [
                         mark('Help'),
-                        h5(topic.title)
+                        h5(topic.title),
+                        fixImageSources(div(html))
                     ];
                     if (topic.children.length) {
-                        contents.push(h6('Contents'));
+                        contents.push(h6('Topics'));
                         contents.push(buildToc(topic.children));
                     }
-                    contents.push(fixImageSources(div(html)));
                     return displayHtml(Flow.HTML.render('div', div(contents)));
                 });
                 break;
@@ -715,10 +715,10 @@
                     if (accept) {
                         packName = $el.attr('data-pack-name');
                         flowName = $el.attr('data-flow-name');
-                        if (H2O.Util.validateFileExtension(flowName)) {
+                        if (H2O.Util.validateFileExtension(flowName, '.flow')) {
                             return _.requestFlow(packName, flowName, function (error, flow) {
                                 if (!error) {
-                                    return _.open(H2O.Util.getFileBaseName(flowName), flow);
+                                    return _.open(H2O.Util.getFileBaseName(flowName, '.flow'), flow);
                                 }
                             });
                         }
@@ -949,7 +949,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, storeNotebook, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, storeNotebook, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
         _localName = Flow.Dataflow.signal('Untitled Flow');
         _remoteName = Flow.Dataflow.signal(null);
         _isEditingName = Flow.Dataflow.signal(false);
@@ -992,7 +992,7 @@
             };
         };
         deserialize = function (localName, remoteName, doc) {
-            var cell, cells, _i, _len, _ref;
+            var cell, cells;
             _localName(localName);
             _remoteName(remoteName);
             cells = function () {
@@ -1006,14 +1006,21 @@
                 return _results;
             }();
             _cells(cells);
-            _ref = _cells();
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                cell = _ref[_i];
-                if (!cell.isCode()) {
-                    cell.execute();
-                }
-            }
             selectCell(lodash.head(cells));
+            lodash.defer(function () {
+                var _i, _len, _ref, _results;
+                _ref = _cells();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    cell = _ref[_i];
+                    if (!cell.isCode()) {
+                        _results.push(cell.execute());
+                    } else {
+                        _results.push(void 0);
+                    }
+                }
+                return _results;
+            });
         };
         createCell = function (type, input) {
             if (type == null) {
@@ -1301,6 +1308,20 @@
                 }
             });
         };
+        uploadFile = function () {
+            return _.dialog(Flow.FileUploadDialog, function (result) {
+                var error, _ref;
+                if (result) {
+                    error = result.error;
+                    if (error) {
+                        return _.alert((_ref = error.message) != null ? _ref : error);
+                    } else {
+                        _.growl('File uploaded successfully!');
+                        return _.insertAndExecuteCell('cs', 'setupParse source_keys: [ ' + Flow.Prelude.stringify(result.result.destination_key) + ']');
+                    }
+                }
+            });
+        };
         toggleInput = function () {
             return _selectedCell.toggleInput();
         };
@@ -1494,8 +1515,9 @@
                 createMenuItem('New', createNotebook),
                 createMenuItem('Open...', promptForNotebook),
                 createMenuItem('Save', saveNotebook),
-                menuDivider,
                 createMenuItem('Duplicate', duplicateNotebook),
+                menuDivider,
+                createMenuItem('Upload File...', uploadFile),
                 menuDivider,
                 createMenuItem('Print Preview', printPreview, true),
                 createMenuItem('Export...', exportNotebook)
@@ -1596,7 +1618,11 @@
             };
         };
         _toolbar = [
-            [createTool('save', 'Save', saveNotebook)],
+            [
+                createTool('file-o', 'New', createNotebook),
+                createTool('folder-open-o', 'Open', promptForNotebook),
+                createTool('save', 'Save', saveNotebook)
+            ],
             [
                 createTool('plus', 'Insert Cell Below', insertNewCellBelow),
                 createTool('arrow-up', 'Move Cell Up', moveCellUp),
@@ -4036,6 +4062,7 @@
         _.requestDeleteObject = Flow.Dataflow.slot();
         _.requestPutObject = Flow.Dataflow.slot();
         _.requestUploadObject = Flow.Dataflow.slot();
+        _.requestUploadFile = Flow.Dataflow.slot();
         _.requestCloud = Flow.Dataflow.slot();
         _.requestTimeline = Flow.Dataflow.slot();
         _.requestProfile = Flow.Dataflow.slot();
@@ -4068,7 +4095,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFlow, requestFrame, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadObject, requestWithOpts, trackPath, unwrap;
+        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFlow, requestFrame, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4509,6 +4536,9 @@
                 return result.name;
             }));
         };
+        requestUploadFile = function (key, formData, go) {
+            return doUpload('/3/PostFile.json?destination_key=' + encodeURIComponent(key), formData, go);
+        };
         requestCloud = function (go) {
             return doGet('/1/Cloud.json', go);
         };
@@ -4615,6 +4645,7 @@
         Flow.Dataflow.link(_.requestDeleteObject, requestDeleteObject);
         Flow.Dataflow.link(_.requestPutObject, requestPutObject);
         Flow.Dataflow.link(_.requestUploadObject, requestUploadObject);
+        Flow.Dataflow.link(_.requestUploadFile, requestUploadFile);
         Flow.Dataflow.link(_.requestCloud, requestCloud);
         Flow.Dataflow.link(_.requestTimeline, requestTimeline);
         Flow.Dataflow.link(_.requestProfile, requestProfile);
@@ -4851,7 +4882,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, buildModel, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendDeletedKeys, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendGuiForm, extendImportResults, extendJob, extendJobs, extendKMeansModel, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectBinomialConfusionMatrices2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPrediction2, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectGLMCoefficientsMagnitude, inspectGLMCoefficientsTable, inspectGLMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultinomialConfusionMatrix, inspectMultinomialPrediction2, inspectNetworkTestResult, inspectParametersAcrossModels, inspectRegressionPrediction, inspectRegressionPrediction2, inspect_, loadScript, name, parseFiles, plot, predict, proceed, read, render_, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrames, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, testNetwork, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
+        var assist, buildModel, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeepLearningModel, extendDeletedKeys, extendFrame, extendFrames, extendGBMModel, extendGLMModel, extendGuiForm, extendImportResults, extendJob, extendJobs, extendKMeansModel, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectBinomialConfusionMatrices2, inspectBinomialMetrics, inspectBinomialPrediction, inspectBinomialPrediction2, inspectBinomialPredictions, inspectBinomialScores, inspectFrameColumns, inspectFrameData, inspectGBMModelOutput, inspectGLMCoefficientsMagnitude, inspectGLMCoefficientsTable, inspectGLMModelOutput, inspectKMeansModelOutput, inspectKmeansModelClusterMeans, inspectKmeansModelClusters, inspectModelParameters, inspectMultinomialConfusionMatrix, inspectMultinomialPrediction2, inspectNetworkTestResult, inspectParametersAcrossModels, inspectRegressionPrediction, inspectRegressionPrediction2, inspect_, loadScript, name, parseFiles, plot, predict, proceed, read, render_, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, testNetwork, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5053,9 +5084,34 @@
             render_(result, H2O.SplitFrameOutput, result);
             return result;
         };
+        getModelParameterValue = function (type, value) {
+            switch (type) {
+            case 'Key<Frame>':
+            case 'Key<Model>':
+                if (value != null) {
+                    return value.name;
+                } else {
+                    return void 0;
+                }
+                break;
+            case 'VecSpecifier':
+                if (value != null) {
+                    return value.column_name;
+                } else {
+                    return void 0;
+                }
+                break;
+            default:
+                if (value != null) {
+                    return value;
+                } else {
+                    return void 0;
+                }
+            }
+        };
         inspectParametersAcrossModels = function (models) {
             return function () {
-                var data, i, leader, model, modelKeys, parameter, value, vectors;
+                var data, i, leader, model, modelKeys, parameter, vectors;
                 leader = lodash.head(models);
                 vectors = function () {
                     var _i, _len, _ref1, _results;
@@ -5068,30 +5124,7 @@
                             _results1 = [];
                             for (_j = 0, _len1 = models.length; _j < _len1; _j++) {
                                 model = models[_j];
-                                value = model.parameters[i].actual_value;
-                                switch (parameter.type) {
-                                case 'Key<Frame>':
-                                case 'Key<Model>':
-                                    if (value != null) {
-                                        _results1.push(value.name);
-                                    } else {
-                                        _results1.push(void 0);
-                                    }
-                                    break;
-                                case 'VecSpecifier':
-                                    if (value != null) {
-                                        _results1.push(value.column_name);
-                                    } else {
-                                        _results1.push(void 0);
-                                    }
-                                    break;
-                                default:
-                                    if (value != null) {
-                                        _results1.push(value);
-                                    } else {
-                                        _results1.push(void 0);
-                                    }
-                                }
+                                _results1.push(getModelParameterValue(parameter.type, model.parameters[i].actual_value));
                             }
                             return _results1;
                         }();
@@ -5156,50 +5189,26 @@
         };
         inspectModelParameters = function (model) {
             return function () {
-                var attrs, data, i, parameter, parameters, type, vectors;
+                var attr, attrs, data, i, parameter, parameters, vectors;
                 parameters = model.parameters;
                 attrs = [
-                    [
-                        'label',
-                        Flow.TString
-                    ],
-                    [
-                        'type',
-                        Flow.TString
-                    ],
-                    [
-                        'level',
-                        Flow.TString
-                    ],
-                    [
-                        'actual_value',
-                        Flow.TObject
-                    ],
-                    [
-                        'default_value',
-                        Flow.TObject
-                    ]
+                    'label',
+                    'type',
+                    'level',
+                    'actual_value',
+                    'default_value'
                 ];
                 vectors = function () {
-                    var _i, _j, _len, _len1, _ref1, _results;
+                    var _i, _j, _len, _len1, _results;
                     _results = [];
                     for (_i = 0, _len = attrs.length; _i < _len; _i++) {
-                        _ref1 = attrs[_i], name = _ref1[0], type = _ref1[1];
+                        attr = attrs[_i];
                         data = new Array(parameters.length);
                         for (i = _j = 0, _len1 = parameters.length; _j < _len1; i = ++_j) {
                             parameter = parameters[i];
-                            data[i] = parameter[name];
+                            data[i] = attr === 'actual_value' ? getModelParameterValue(parameter.type, parameter[attr]) : parameter[attr];
                         }
-                        switch (type) {
-                        case Flow.TString:
-                            _results.push(createFactor(name, type, data));
-                            break;
-                        case Flow.TObject:
-                            _results.push(createList(name, data, Flow.Prelude.stringify));
-                            break;
-                        default:
-                            _results.push(void 0);
-                        }
+                        _results.push(createList(attr, data));
                     }
                     return _results;
                 }();
@@ -6433,10 +6442,10 @@
                 return assist(importFiles);
             }
         };
-        extendParseSetupResults = function (paths, parseSetupResults) {
-            return render_(parseSetupResults, H2O.SetupParseOutput, paths, parseSetupResults);
+        extendParseSetupResults = function (args, parseSetupResults) {
+            return render_(parseSetupResults, H2O.SetupParseOutput, args, parseSetupResults);
         };
-        requestParseSetup = function (paths, go) {
+        requestImportAndParseSetup = function (paths, go) {
             return _.requestImportFiles(paths, function (error, importResults) {
                 var sourceKeys;
                 if (error) {
@@ -6449,24 +6458,34 @@
                         if (error) {
                             return go(error);
                         } else {
-                            return go(null, extendParseSetupResults(paths, parseSetupResults));
+                            return go(null, extendParseSetupResults({ paths: paths }, parseSetupResults));
                         }
                     });
                 }
             });
         };
-        setupParse = function (paths) {
-            switch (Flow.Prelude.typeOf(paths)) {
-            case 'Array':
-                return _fork(requestParseSetup, paths);
-            default:
+        requestParseSetup = function (sourceKeys, go) {
+            return _.requestParseSetup(sourceKeys, function (error, parseSetupResults) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendParseSetupResults({ source_keys: sourceKeys }, parseSetupResults));
+                }
+            });
+        };
+        setupParse = function (args) {
+            if (args.paths && lodash.isArray(args.paths)) {
+                return _fork(requestImportAndParseSetup, args.paths);
+            } else if (args.source_keys && lodash.isArray(args.source_keys)) {
+                return _fork(requestParseSetup, args.source_keys);
+            } else {
                 return assist(setupParse);
             }
         };
         extendParseResult = function (parseResult) {
             return render_(parseResult, H2O.JobOutput, parseResult.job);
         };
-        requestParseFiles = function (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
+        requestImportAndParseFiles = function (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
             return _.requestImportFiles(paths, function (error, importResults) {
                 var sourceKeys;
                 if (error) {
@@ -6485,9 +6504,17 @@
                 }
             });
         };
+        requestParseFiles = function (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
+            return _.requestParseFiles(sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, function (error, parseResult) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendParseResult(parseResult));
+                }
+            });
+        };
         parseFiles = function (opts) {
-            var checkHeader, chunkSize, columnCount, columnNames, columnTypes, deleteOnDone, destinationKey, parseType, paths, separator, useSingleQuotes;
-            paths = opts.source_keys;
+            var checkHeader, chunkSize, columnCount, columnNames, columnTypes, deleteOnDone, destinationKey, parseType, separator, useSingleQuotes;
             destinationKey = opts.destination_key;
             parseType = opts.parse_type;
             separator = opts.separator;
@@ -6498,7 +6525,11 @@
             deleteOnDone = opts.delete_on_done;
             checkHeader = opts.check_header;
             chunkSize = opts.chunk_size;
-            return _fork(requestParseFiles, paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize);
+            if (opts.paths) {
+                return _fork(requestImportAndParseFiles, opts.paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize);
+            } else {
+                return _fork(requestParseFiles, opts.source_keys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize);
+            }
         };
         requestModelBuild = function (algo, opts, go) {
             return _.requestModelBuild(algo, opts, function (error, result) {
@@ -6933,12 +6964,11 @@
     };
 }.call(this));
 (function () {
-    var extension, getFileBaseName, validateFileExtension;
-    extension = '.flow';
-    validateFileExtension = function (filename) {
+    var getFileBaseName, validateFileExtension;
+    validateFileExtension = function (filename, extension) {
         return -1 !== filename.indexOf(extension, filename.length - extension.length);
     };
-    getFileBaseName = function (filename) {
+    getFileBaseName = function (filename, extension) {
         return Flow.Util.sanitizeName(filename.substr(0, filename.length - extension.length));
     };
     H2O.Util = {
@@ -7428,7 +7458,7 @@
         _file = Flow.Dataflow.signal(null);
         _canAccept = Flow.Dataflow.lift(_file, function (file) {
             if (file != null ? file.name : void 0) {
-                return H2O.Util.validateFileExtension(file.name);
+                return H2O.Util.validateFileExtension(file.name, '.flow');
             } else {
                 return false;
             }
@@ -7449,7 +7479,7 @@
         accept = function () {
             var basename, file;
             if (file = _file()) {
-                basename = H2O.Util.getFileBaseName(file.name);
+                basename = H2O.Util.getFileBaseName(file.name, '.flow');
                 if (_overwrite()) {
                     return uploadFile(basename);
                 } else {
@@ -7474,6 +7504,37 @@
             accept: accept,
             decline: decline,
             template: 'file-open-dialog'
+        };
+    };
+}.call(this));
+(function () {
+    Flow.FileUploadDialog = function (_, _go) {
+        var accept, decline, uploadFile, _file, _form;
+        _form = Flow.Dataflow.signal(null);
+        _file = Flow.Dataflow.signal(null);
+        uploadFile = function (key) {
+            return _.requestUploadFile(key, new FormData(_form()), function (error, result) {
+                return _go({
+                    error: error,
+                    result: result
+                });
+            });
+        };
+        accept = function () {
+            var file;
+            if (file = _file()) {
+                return uploadFile(file.name);
+            }
+        };
+        decline = function () {
+            return _go(null);
+        };
+        return {
+            form: _form,
+            file: _file,
+            accept: accept,
+            decline: decline,
+            template: 'file-upload-dialog'
         };
     };
 }.call(this));
@@ -7639,7 +7700,7 @@
             description = 'Columns: ' + columnLabels.join(', ') + (frame.columns.length > columnLabels.length ? '... (' + (frame.columns.length - columnLabels.length) + ' more columns)' : '');
             view = function () {
                 if (frame.is_text) {
-                    return _.insertAndExecuteCell('cs', 'setupParse [ ' + Flow.Prelude.stringify(frame.key.name) + ' ]');
+                    return _.insertAndExecuteCell('cs', 'setupParse source_keys: [ ' + Flow.Prelude.stringify(frame.key.name) + ' ]');
                 } else {
                     return _.insertAndExecuteCell('cs', 'getFrame ' + Flow.Prelude.stringify(frame.key.name));
                 }
@@ -7887,7 +7948,7 @@
         parse = function () {
             var paths;
             paths = lodash.map(_allPaths, Flow.Prelude.stringify);
-            return _.insertAndExecuteCell('cs', 'setupParse [ ' + paths.join(',') + ' ]');
+            return _.insertAndExecuteCell('cs', 'setupParse paths: [ ' + paths.join(',') + ' ]');
         };
         lodash.defer(_go);
         return {
@@ -9251,8 +9312,9 @@
         'String',
         'Invalid'
     ];
-    H2O.SetupParseOutput = function (_, _go, _paths, _result) {
-        var columnName, columnType, parseFiles, _chunkSize, _columnCount, _columnNames, _columnTypes, _deleteOnDone, _delimiter, _destinationKey, _hasColumnNames, _hasColumns, _headerOption, _headerOptions, _parseType, _rows, _sourceKeys, _useSingleQuotes;
+    H2O.SetupParseOutput = function (_, _go, _inputs, _result) {
+        var columnName, columnType, parseFiles, _chunkSize, _columnCount, _columnNames, _columnTypes, _deleteOnDone, _delimiter, _destinationKey, _hasColumnNames, _hasColumns, _headerOption, _headerOptions, _inputKey, _parseType, _rows, _sourceKeys, _useSingleQuotes;
+        _inputKey = _inputs.paths ? 'paths' : 'source_keys';
         _sourceKeys = lodash.map(_result.source_keys, function (src) {
             return src.name;
         });
@@ -9316,11 +9378,11 @@
                 }
                 return _results;
             }();
-            return _.insertAndExecuteCell('cs', 'parseFiles\n  source_keys: ' + Flow.Prelude.stringify(_paths) + '\n  destination_key: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount + '\n  single_quotes: ' + _useSingleQuotes() + '\n  column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + _headerOptions[_headerOption()] + '\n  chunk_size: ' + _chunkSize);
+            return _.insertAndExecuteCell('cs', 'parseFiles\n  ' + _inputKey + ': ' + Flow.Prelude.stringify(_inputs[_inputKey]) + '\n  destination_key: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount + '\n  single_quotes: ' + _useSingleQuotes() + '\n  column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + _headerOptions[_headerOption()] + '\n  chunk_size: ' + _chunkSize);
         };
         lodash.defer(_go);
         return {
-            sourceKeys: _paths,
+            sourceKeys: _inputs[_inputKey],
             parseTypes: parseTypes,
             dataTypes: dataTypes,
             delimiters: parseDelimiters,
