@@ -313,19 +313,20 @@ H2O.Routines = (_) ->
 #       when 'Multinomial'
 #       when 'Regression'
 
+  getModelParameterValue = (type, value) ->
+    switch type
+      when 'Key<Frame>', 'Key<Model>'
+        if value? then value.name else undefined
+      when 'VecSpecifier'
+        if value? then value.column_name else undefined
+      else
+        if value? then value else undefined
+
   inspectParametersAcrossModels = (models) -> ->
     leader = head models
     vectors = for parameter, i in leader.parameters
       data = for model in models
-        value = model.parameters[i].actual_value
-        switch parameter.type
-          when 'Key<Frame>', 'Key<Model>'
-            if value? then value.name else undefined
-          when 'VecSpecifier'
-            if value? then value.column_name else undefined
-          else
-            if value? then value else undefined
-
+        getModelParameterValue parameter.type, model.parameters[i].actual_value
       switch parameter.type
         when 'enum', 'Frame', 'string'
           createFactor parameter.label, TString, data
@@ -349,24 +350,21 @@ H2O.Routines = (_) ->
     parameters = model.parameters
 
     attrs = [
-      [ 'label', TString ]
-      [ 'type', TString ]
-      [ 'level', TString ]
-      [ 'actual_value', TObject ]
-      [ 'default_value', TObject ]
+      'label'
+      'type'
+      'level'
+      'actual_value'
+      'default_value'
     ]
 
-    vectors = for [ name, type ] in attrs
+    vectors = for attr in attrs
       data = new Array parameters.length
-
       for parameter, i in parameters
-        data[i] = parameter[name]
-
-      switch type
-        when TString
-          createFactor name, type, data
-        when TObject
-          createList name, data, stringify
+        data[i] = if attr is 'actual_value'
+          getModelParameterValue parameter.type, parameter[attr]
+        else
+          parameter[attr]
+      createList attr, data
 
     createDataframe 'parameters', vectors, (sequence parameters.length), null,
       description: "Parameters for model '#{model.key.name}'" #TODO frame key

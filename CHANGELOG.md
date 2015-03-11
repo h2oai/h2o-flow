@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Fix autosizing of non-code cell inputs when opening saved flows.
+- Fix display of object-valued model parameters (PUBDEV-505)
 
 ## [0.2.68] - 2015-03-11
 
