@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased][unreleased]
 ### Added
 - Add New, Open toolbar buttons.
+- Add ability to upload and parse datasets via browser (PUBDEV-299)
 
 ### Changed
 - setupParse() and parseFiles() now expect an argument that explicitly indicates what needs to be parsed: either a { path: [] } or a { source_keys: [] }
