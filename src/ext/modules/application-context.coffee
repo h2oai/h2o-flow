@@ -30,6 +30,7 @@ H2O.ApplicationContext = (_) ->
   _.requestDeleteObject = do slot
   _.requestPutObject = do slot
   _.requestUploadObject = do slot
+  _.requestUploadFile = do slot
   _.requestCloud = do slot
   _.requestTimeline = do slot
   _.requestProfile = do slot

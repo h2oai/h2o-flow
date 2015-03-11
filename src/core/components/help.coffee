@@ -111,10 +111,10 @@ Flow.Help = (_) ->
           if accept
             packName = $el.attr 'data-pack-name'
             flowName = $el.attr 'data-flow-name'
-            if H2O.Util.validateFileExtension flowName
+            if H2O.Util.validateFileExtension flowName, '.flow'
               _.requestFlow packName, flowName, (error, flow) ->
                 unless error
-                  _.open (H2O.Util.getFileBaseName flowName), flow
+                  _.open (H2O.Util.getFileBaseName flowName, '.flow'), flow
 
       when 'endpoints'
         _.requestEndpoints (error, response) ->

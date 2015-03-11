@@ -5,7 +5,7 @@ Flow.FileOpenDialog = (_, _go) ->
 
   _canAccept = lift _file, (file) ->
     if file?.name
-      H2O.Util.validateFileExtension file.name  
+      H2O.Util.validateFileExtension file.name, '.flow'
     else
       no
 
@@ -19,7 +19,7 @@ Flow.FileOpenDialog = (_, _go) ->
 
   accept = ->
     if file = _file()
-      basename = H2O.Util.getFileBaseName file.name
+      basename = H2O.Util.getFileBaseName file.name, '.flow'
       if _overwrite()
         uploadFile basename
       else

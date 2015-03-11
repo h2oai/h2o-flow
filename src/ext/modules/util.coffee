@@ -1,9 +1,7 @@
-extension = '.flow'
-
-validateFileExtension = (filename) ->
+validateFileExtension = (filename, extension) ->
   -1 isnt filename.indexOf extension, filename.length - extension.length
 
-getFileBaseName = (filename) ->
+getFileBaseName = (filename, extension) ->
   Flow.Util.sanitizeName filename.substr 0, filename.length - extension.length
 
 H2O.Util =

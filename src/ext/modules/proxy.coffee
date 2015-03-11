@@ -341,6 +341,9 @@ H2O.Proxy = (_) ->
     uri += "/#{encodeURIComponent name}" if name
     doUpload uri, formData, unwrap go, (result) -> result.name
 
+  requestUploadFile = (key, formData, go) ->
+    doUpload "/3/PostFile.json?destination_key=#{encodeURIComponent key}", formData, go
+
   requestCloud = (go) ->
     doGet '/1/Cloud.json', go
 
@@ -437,6 +440,7 @@ H2O.Proxy = (_) ->
   link _.requestDeleteObject, requestDeleteObject
   link _.requestPutObject, requestPutObject
   link _.requestUploadObject, requestUploadObject
+  link _.requestUploadFile, requestUploadFile
   link _.requestCloud, requestCloud
   link _.requestTimeline, requestTimeline
   link _.requestProfile, requestProfile

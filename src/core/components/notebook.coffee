@@ -279,6 +279,15 @@ Flow.Notebook = (_, _renderers) ->
           loadNotebook filename
           _.loaded()
 
+  uploadFile = ->
+    _.dialog Flow.FileUploadDialog, (result) ->
+      if result
+        { error } = result
+        if error
+          _.alert error.message ? error
+        else
+          _.growl 'File uploaded successfully!'
+
   toggleInput = ->
     _selectedCell.toggleInput()
 
@@ -446,8 +455,9 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'New', createNotebook
       createMenuItem 'Open...', promptForNotebook
       createMenuItem 'Save', saveNotebook
-      menuDivider
       createMenuItem 'Duplicate', duplicateNotebook
+      menuDivider
+      createMenuItem 'Upload File...', uploadFile
       menuDivider
       createMenuItem 'Print Preview', printPreview, yes
       createMenuItem 'Export...', exportNotebook 

@@ -1,0 +1,16 @@
+#file-upload-dialog.modal.fade(tabindex='-1', role='dialog')
+  .modal-dialog
+    .modal-content
+      .modal-header
+        button.close(type='button', data-dismiss='modal')
+          span ×
+          span.sr-only Close
+        h4.modal-title Upload Dataset...
+      .modal-body
+        form(enctype='multipart/form-data' data-bind='element:form')
+          input(name='file' type='file' data-bind='file:file')
+
+      .modal-footer
+        button.btn.btn-default(type='button' data-bind='click:decline') Cancel
+        button.btn.btn-primary(type='button' data-bind='click:accept') Upload
+
