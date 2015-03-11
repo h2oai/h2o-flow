@@ -4,9 +4,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [0.2.68] - 2015-03-11
+
+### Added
+- Integrate and display help content inside the help sidebar (PUBDEV-108)
+
 ## [0.2.67] - 2015-03-10
-- Fix categorical axis label rendering when adequate space is available
+
+### Changed
 - Display point layer for tree vs mse plots in GBM output (PUBDEV-504)
+
+### Fixed
+- Fix categorical axis label rendering when adequate space is available
 
 ## [0.2.66] - 2015-03-10
 

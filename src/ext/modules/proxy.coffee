@@ -398,25 +398,13 @@ H2O.Proxy = (_) ->
         go null, getLines data
 
   requestFlow = (packName, flowName, go) ->
-    download 'json', "/flow/packs/#{encodeURIComponent packName}/#{encodeURIComponent flowName}", (error, data) ->
-      if error
-        go error
-      else
-        go null, data
+    download 'json', "/flow/packs/#{encodeURIComponent packName}/#{encodeURIComponent flowName}", go
 
   requestHelpIndex = (go) ->
-    download 'json', '/flow/help/catalog.json', (error, catalog) ->
-      if error
-        go error
-      else
-        go null, catalog
+    download 'json', '/flow/help/catalog.json', go
 
   requestHelpContent = (name, go) ->
-    download 'text', "/flow/help/#{name}.html", (error, html) ->
-      if error
-        go error
-      else
-        go null, html
+    download 'text', "/flow/help/#{name}.html", go
 
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame

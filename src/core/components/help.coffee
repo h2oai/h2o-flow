@@ -1,3 +1,7 @@
+_catalog = null
+_index = {}
+_homeContent = null
+
 _homeMarkdown = """
 <blockquote> 
 Using Flow for the first time?
@@ -12,8 +16,7 @@ Using Flow for the first time?
 
 ###### General
 
-- <a href='#' data-action='about'>About Flow</a>
-- <a href='#' data-action='getting-started'>Getting Started</a>
+%HELP_TOPICS%
 
 ###### Packs
 
@@ -25,26 +28,6 @@ Flow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Fl
 - <a href='#' data-action='schemas'>Schemas</a>
 
 """
-
-_aboutMarkdown = """
-*H<sub>2</sub>O Flow* is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document, much like <a href="http://ipython.org/notebook.html" target="_blank">IPython Notebooks</a>.
-
-Flow is a *modal* editor, which means that you are either in *edit mode* or *command mode*.  A *Flow* is composed of a series of executable *cells*. Each *cell* has an input and one or more outputs.
-"""
-
-_gettingStartedMarkdown = """
-To get started, just memorize these six simple keyboard shortcuts: <kbd>enter</kbd>, <kbd>esc</kbd>, <kbd>ctrl</kbd><kbd>enter</kbd>, <kbd>a</kbd>, <kbd>b</kbd> and <kbd>d</kbd><kbd>d</kbd>
-
-- To edit a cell, press <kbd>enter</kbd> to get into *edit mode*.
-- When you're done editing, press <kbd>esc</kbd> to get back into *command mode*. 
-- To execute a cell, press <kbd>ctrl</kbd> <kbd>enter</kbd>
-- <kbd>a</kbd> adds a new cell <u>a</u>bove the current cell.
-- <kbd>b</kbd> adds a new cell <u>b</u>elow the current cell.
-- <kbd>d</kbd><kbd>d</kbd> <u>d</u>eletes the current cell. Yes, you need to press <kbd>d</kbd> twice.
-
-Finally, to view a full list of keyboard shortcuts, press <kbd>h</kbd>, or type <code><a href='#' data-action='assist'>assist</a></code> <kbd>ctrl</kbd><kbd>enter</kbd> to dive into H<sub>2</sub>O!
-"""
-
 
 Flow.Help = (_) ->
   _content = signal null
@@ -80,19 +63,35 @@ Flow.Help = (_) ->
       _history.push content
     goTo _history.length - 1
 
-  displayMarkdown = (md) ->
-    displayHtml Flow.HTML.render 'div', "#{marked md}"
+  fixImageSources = (html) ->
+    $html = $ html
+    ($ 'img', $html).each ->
+      $self = $ @
+      src = $self.attr 'src'
+      if 0 is src.indexOf 'images/'
+        $self.attr 'src', "help/#{src}"
+      return
+    $html.html()
 
   performAction = (action, $el) ->
     switch action
+      when 'help'
+        topic = _index[$el.attr 'data-topic']
+        _.requestHelpContent topic.name, (error, html) ->
+          [ div, mark, h5, h6 ] = Flow.HTML.template 'div', 'mark', 'h5', 'h6'
+          contents = [
+            mark 'Help'
+            h5 topic.title
+          ]
+          # render a TOC if this topic has children
+          if topic.children.length
+            contents.push h6 'Contents'
+            contents.push buildToc topic.children 
+          contents.push fixImageSources div html
+          displayHtml Flow.HTML.render 'div', div contents
+
       when 'assist'
         _.insertAndExecuteCell 'cs', 'assist'
-
-      when 'about'
-        displayMarkdown _aboutMarkdown
-
-      when 'getting-started'
-        displayMarkdown _gettingStartedMarkdown
 
       when 'get-packs'
         _.requestPacks (error, packNames) ->
@@ -139,6 +138,17 @@ Flow.Help = (_) ->
 
     return
 
+  buildToc = (nodes) ->
+    [ ul, li, a ] = Flow.HTML.template 'ul', 'li', "a href='#' data-action='help' data-topic='$1'"
+    ul map nodes, (node) -> li a node.title, node.name
+
+  buildTopics = (index, topics) ->
+    for topic in topics
+      index[topic.name] = topic
+      if topic.children.length
+        buildTopics index, topic.children
+    return
+
   displayPacks = (packNames) ->
     [ div, mark, h5, p, i, a ] = Flow.HTML.template 'div', 'mark', 'h5', 'p', 'i.fa.fa-folder-o', "a href='#' data-action='get-pack' data-pack-name='$1'"
 
@@ -173,7 +183,7 @@ Flow.Help = (_) ->
     return
 
   goHome = ->
-    displayMarkdown _homeMarkdown
+    displayHtml Flow.HTML.render 'div', _homeContent
 
   displayEndpoint = (route) ->
     [ div, mark, h5, h6, p, action, code ] = Flow.HTML.template 'div', 'mark', 'h5', 'h6', 'p', "a href='#' data-action='schema' data-schema='$1'", 'code'
@@ -225,9 +235,15 @@ Flow.Help = (_) ->
 
     displayHtml Flow.HTML.render 'div', div content
 
+  initialize = (catalog) ->
+    _catalog = catalog
+    buildTopics _index, _catalog
+    _homeContent = (marked _homeMarkdown).replace '%HELP_TOPICS%', buildToc _catalog 
+    goHome()
 
   link _.ready, ->
-    goHome()
+    _.requestHelpIndex (error, catalog) ->
+      initialize catalog unless error
 
   content: _content
   goHome: goHome
