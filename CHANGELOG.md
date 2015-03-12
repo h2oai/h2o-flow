@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.73] - 2015-03-12
+### Fixed
+- Fix failures while running parseFiles()
 
 ## [0.2.72] - 2015-03-12
 - Auto-refresh data preview when parse setup input parameters are changed (PUBDEV-532)
