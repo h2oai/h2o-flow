@@ -403,23 +403,36 @@ Flow.Notebook = (_, _renderers) ->
     window.open url, '_blank'
 
   executeAllCells = (go) ->
+    _isRunningAll yes
+
     cells = slice _cells(), 0
+    cellCount = cells.length
+    cellIndex = 0
 
     executeNextCell = ->
-      cell = shift cells
-      if cell
-        #TODO Progress tracking
-        #TODO Continuation should be EFC, and passing an error should abort 'run all'
-        cell.execute -> executeNextCell()
-      else
-        go()
+      if _isRunningAll()
+        cell = shift cells
+        if cell
+          cellIndex++
+          _runningCaption "Running cell #{cellIndex} of #{cellCount}"
+          _runningPercent "#{floor 100 * cellIndex/cellCount}%"
+          debug _runningPercent()
+          _runningCellInput cell.input()
+          #TODO Continuation should be EFC, and passing an error should abort 'run all'
+          cell.execute -> executeNextCell()
+        else
+          go()
+      else 
+        go() # Aborted
 
     executeNextCell()
 
   runAllCells = ->
-    executeAllCells -> #TODO Progress completion
+    executeAllCells ->
+      _isRunningAll no
 
   stopRunningAll = ->
+    _isRunningAll no
 
   clearCell = ->
     _selectedCell.clear()
