@@ -57,7 +57,6 @@ config =
       'lib/bootstrap/dist/js/bootstrap.js'
       'vendor/bootstrap-growl/jquery.bootstrap-growl.js'
       'lib/d3/d3.js'
-      'lib/vega/vega.js'
       'lib/chroma-js/chroma.js'
       'lib/marked/lib/marked.js'
       'lib/knockoutjs/dist/knockout.debug.js'
