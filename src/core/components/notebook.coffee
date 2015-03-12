@@ -73,7 +73,7 @@ Flow.Notebook = (_, _renderers) ->
     error "selected cell count = #{selectionCount}" if selectionCount isnt 1
     return
 
-  selectCell = (target, scrollIntoView=yes) ->
+  selectCell = (target, scrollIntoView=yes, scrollImmediately=no) ->
     return if _selectedCell is target
     _selectedCell.isSelected no if _selectedCell
     _selectedCell = target
@@ -81,7 +81,9 @@ Flow.Notebook = (_, _renderers) ->
     _selectedCell.isSelected yes
     _selectedCellIndex = _cells.indexOf _selectedCell
     checkConsistency()
-    defer _selectedCell.scrollIntoView if scrollIntoView
+    if scrollIntoView
+      defer ->
+        _selectedCell.scrollIntoView scrollImmediately
     _selectedCell
 
   cloneCell = (cell) ->
@@ -413,10 +415,10 @@ Flow.Notebook = (_, _renderers) ->
       if _isRunningAll()
         cell = shift cells
         if cell
+          cell.scrollIntoView yes
           cellIndex++
           _runningCaption "Running cell #{cellIndex} of #{cellCount}"
           _runningPercent "#{floor 100 * cellIndex/cellCount}%"
-          debug _runningPercent()
           _runningCellInput cell.input()
           #TODO Continuation should be EFC, and passing an error should abort 'run all'
           cell.execute -> executeNextCell()
@@ -430,6 +432,7 @@ Flow.Notebook = (_, _renderers) ->
   runAllCells = ->
     executeAllCells ->
       _isRunningAll no
+      _.growl 'Finished running all cells!'
 
   stopRunningAll = ->
     _isRunningAll no

@@ -109,7 +109,7 @@ ko.bindingHandlers.scrollIntoView =
       # Bit of a hack. Attaches a method to the bound object that scrolls the cell into view
       $el = $ element
       $viewport = $el.closest '.flow-box-notebook'
-      arg.scrollIntoView = ->
+      arg.scrollIntoView = (immediate=no) ->
         # height hidden by the top of the viewport
         position = $viewport.scrollTop()
         # position().top is the distance between the top of the element
@@ -118,7 +118,10 @@ ko.bindingHandlers.scrollIntoView =
         height = $viewport.height()
         # scroll if element is outside the viewport
         if top - 20 < position or top + 20 > position + height 
-          $viewport.animate { scrollTop: top }, 'fast'
+          if immediate
+            $viewport.scrollTop top
+          else
+            $viewport.animate { scrollTop: top }, 'fast'
 
     return
 
