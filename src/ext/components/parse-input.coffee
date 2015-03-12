@@ -67,17 +67,19 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   _parseType =  signal find parseTypes, (parseType) -> parseType.type is _result.parse_type
   _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.separator 
   _useSingleQuotes = signal _result.single_quotes
-  _columnCount = _result.number_columns
-  _hasColumnNames = if _result.column_names then yes else no
-  _columnNames = if _hasColumnNames then (signal columnName for columnName in _result.column_names)  else null
-  _columnTypes = (signal columnType for columnType in _result.column_types)
-  _rows = _result.data
-  _hasColumns = _columnCount > 0
   _destinationKey = signal _result.destination_key
   _headerOptions = auto: 0, header: 1, data: -1
   _headerOption = signal if _result.check_header is 0 then 'auto' else if _result.check_header is -1 then 'data' else 'header'
   _deleteOnDone = signal yes
-  _chunkSize = _result.chunk_size
+
+  _preview = signal _result
+  _columnCount = lift _preview, (preview) -> preview.number_columns
+  _hasColumns = lift _columnCount, (count) -> count > 0
+  _hasColumnNames = lift _preview, (preview) -> if preview.column_names then yes else no
+  _columnNames = lift _preview, (preview) -> if preview.column_names then (signal columnName for columnName in preview.column_names) else null
+  _columnTypes = lift _preview, (preview) -> (signal columnType for columnType in preview.column_types)
+  _rows = lift _preview, (preview) -> preview.data
+  _chunkSize = lift _preview, (preview) -> preview.chunk_size
 
   parseFiles = ->
     columnNames = if _hasColumnNames then (columnName() for columnName in _columnNames) else null
