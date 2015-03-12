@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.71';
+    Flow.Version = '0.2.72';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4101,6 +4101,7 @@
         _.requestParseFiles = Flow.Dataflow.slot();
         _.requestInspect = Flow.Dataflow.slot();
         _.requestParseSetup = Flow.Dataflow.slot();
+        _.requestParseSetupPreview = Flow.Dataflow.slot();
         _.requestFrames = Flow.Dataflow.slot();
         _.requestFrame = Flow.Dataflow.slot();
         _.requestDeleteFrame = Flow.Dataflow.slot();
@@ -4157,7 +4158,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFlow, requestFrame, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap;
+        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestFileGlob, requestFlow, requestFrame, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4420,9 +4421,20 @@
             opts = { path: encodeURIComponent(path) };
             return requestWithOpts('/2/ImportFiles.json', opts, go);
         };
-        requestParseSetup = function (sources, go) {
+        requestParseSetup = function (sourceKeys, go) {
             var opts;
-            opts = { source_keys: encodeArrayForPost(sources) };
+            opts = { source_keys: encodeArrayForPost(sourceKeys) };
+            return doPost('/2/ParseSetup.json', opts, go);
+        };
+        requestParseSetupPreview = function (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, go) {
+            var opts;
+            opts = {
+                source_keys: encodeArrayForPost(sourceKeys),
+                parse_type: parseType,
+                separator: separator,
+                single_quotes: useSingleQuotes,
+                check_header: checkHeader
+            };
             return doPost('/2/ParseSetup.json', opts, go);
         };
         requestParseFiles = function (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
@@ -4691,6 +4703,7 @@
         Flow.Dataflow.link(_.requestImportFiles, requestImportFiles);
         Flow.Dataflow.link(_.requestImportFile, requestImportFile);
         Flow.Dataflow.link(_.requestParseSetup, requestParseSetup);
+        Flow.Dataflow.link(_.requestParseSetupPreview, requestParseSetupPreview);
         Flow.Dataflow.link(_.requestParseFiles, requestParseFiles);
         Flow.Dataflow.link(_.requestModels, requestModels);
         Flow.Dataflow.link(_.requestModel, requestModel);
@@ -9303,7 +9316,9 @@
     var dataTypes, parseDelimiters, parseTypes;
     parseTypes = lodash.map([
         'AUTO',
+        'ARFF',
         'XLS',
+        'XLSX',
         'CSV',
         'SVMLight'
     ], function (type) {
@@ -9377,7 +9392,7 @@
         'Invalid'
     ];
     H2O.SetupParseOutput = function (_, _go, _inputs, _result) {
-        var columnName, columnType, parseFiles, _chunkSize, _columnCount, _columnNames, _columnTypes, _deleteOnDone, _delimiter, _destinationKey, _hasColumnNames, _hasColumns, _headerOption, _headerOptions, _inputKey, _parseType, _rows, _sourceKeys, _useSingleQuotes;
+        var parseFiles, _chunkSize, _columnCount, _columnNames, _columnTypes, _deleteOnDone, _delimiter, _destinationKey, _hasColumnNames, _hasColumns, _headerOption, _headerOptions, _inputKey, _parseType, _preview, _rows, _sourceKeys, _useSingleQuotes;
         _inputKey = _inputs.paths ? 'paths' : 'source_keys';
         _sourceKeys = lodash.map(_result.source_keys, function (src) {
             return src.name;
@@ -9389,30 +9404,6 @@
             return delimiter.charCode === _result.separator;
         }));
         _useSingleQuotes = Flow.Dataflow.signal(_result.single_quotes);
-        _columnCount = _result.number_columns;
-        _hasColumnNames = _result.column_names ? true : false;
-        _columnNames = _hasColumnNames ? function () {
-            var _i, _len, _ref, _results;
-            _ref = _result.column_names;
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                columnName = _ref[_i];
-                _results.push(Flow.Dataflow.signal(columnName));
-            }
-            return _results;
-        }() : null;
-        _columnTypes = function () {
-            var _i, _len, _ref, _results;
-            _ref = _result.column_types;
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                columnType = _ref[_i];
-                _results.push(Flow.Dataflow.signal(columnType));
-            }
-            return _results;
-        }();
-        _rows = _result.data;
-        _hasColumns = _columnCount > 0;
         _destinationKey = Flow.Dataflow.signal(_result.destination_key);
         _headerOptions = {
             auto: 0,
@@ -9421,9 +9412,59 @@
         };
         _headerOption = Flow.Dataflow.signal(_result.check_header === 0 ? 'auto' : _result.check_header === -1 ? 'data' : 'header');
         _deleteOnDone = Flow.Dataflow.signal(true);
-        _chunkSize = _result.chunk_size;
+        _preview = Flow.Dataflow.signal(_result);
+        _columnCount = Flow.Dataflow.lift(_preview, function (preview) {
+            return preview.number_columns;
+        });
+        _hasColumns = Flow.Dataflow.lift(_columnCount, function (count) {
+            return count > 0;
+        });
+        _hasColumnNames = Flow.Dataflow.lift(_preview, function (preview) {
+            if (preview.column_names) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        _columnNames = Flow.Dataflow.lift(_preview, function (preview) {
+            var columnName, _i, _len, _ref, _results;
+            if (preview.column_names) {
+                _ref = preview.column_names;
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    columnName = _ref[_i];
+                    _results.push(Flow.Dataflow.signal(columnName));
+                }
+                return _results;
+            } else {
+                return null;
+            }
+        });
+        _columnTypes = Flow.Dataflow.lift(_preview, function (preview) {
+            var columnType, _i, _len, _ref, _results;
+            _ref = preview.column_types;
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                columnType = _ref[_i];
+                _results.push(Flow.Dataflow.signal(columnType));
+            }
+            return _results;
+        });
+        _rows = Flow.Dataflow.lift(_preview, function (preview) {
+            return preview.data;
+        });
+        _chunkSize = Flow.Dataflow.lift(_preview, function (preview) {
+            return preview.chunk_size;
+        });
+        Flow.Dataflow.react(_parseType, _delimiter, _useSingleQuotes, _headerOption, function (parseType, delimiter, useSingleQuotes, headerOption) {
+            return _.requestParseSetupPreview(_sourceKeys, parseType.type, delimiter.charCode, useSingleQuotes, _headerOptions[headerOption], function (error, result) {
+                if (!error) {
+                    return _preview(result);
+                }
+            });
+        });
         parseFiles = function () {
-            var columnNames, columnTypes;
+            var columnName, columnNames, columnType, columnTypes;
             columnNames = _hasColumnNames ? function () {
                 var _i, _len, _results;
                 _results = [];

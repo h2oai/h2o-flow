@@ -153,7 +153,7 @@ label input[type="checkbox"] {
   position: absolute;
   display: block;
   right: 0;
-  bottom: 0;
+  bottom: 30px;
   left: 0;
   height: 100px;
   color: #fff;
