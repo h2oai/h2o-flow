@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.69';
+    Flow.Version = '0.2.70';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5469,6 +5469,7 @@
                 extendDeepLearningModel(model);
                 break;
             case 'gbm':
+            case 'drf':
                 extendGBMModel(model);
                 break;
             case 'glm':
@@ -9019,6 +9020,7 @@
             }
             break;
         case 'gbm':
+        case 'drf':
             if (table = _.inspect('output', _model)) {
                 renderPlot('Output', _.plot(function (g) {
                     return g(g.path(g.position('tree', 'mse_train'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('tree', 'mse_valid'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('tree', 'mse_train'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('tree', 'mse_valid'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
