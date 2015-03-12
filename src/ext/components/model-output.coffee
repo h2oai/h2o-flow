@@ -104,7 +104,7 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.from table
           )
 
-    when 'gbm'
+    when 'gbm', 'drf'
       if table = _.inspect 'output', _model
         renderPlot 'Output', _.plot (g) ->
           g(

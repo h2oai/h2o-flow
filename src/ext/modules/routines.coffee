@@ -586,7 +586,7 @@ H2O.Routines = (_) ->
         extendKMeansModel model
       when 'deeplearning'
         extendDeepLearningModel model
-      when 'gbm'
+      when 'gbm', 'drf'
         extendGBMModel model
       when 'glm'
         extendGLMModel model

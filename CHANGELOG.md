@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
+
+## [0.2.70] - 2015-03-11
+### Added
+- Enable DRF model outputs
+
+## [0.2.69] - 2015-03-11
 ### Added
 - Add New, Open toolbar buttons.
 - Add ability to upload and parse datasets via browser (PUBDEV-299)
