@@ -714,6 +714,7 @@ Flow.Notebook = (_, _renderers) ->
   areInputsHidden: _areInputsHidden
   areOutputsHidden: _areOutputsHidden
   isSidebarHidden: _isSidebarHidden
+  toggleSidebar: toggleSidebar
   shortcutsHelp:
     normalMode: normalModeKeyboardShortcutsHelp
     editMode: editModeKeyboardShortcutsHelp

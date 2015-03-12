@@ -7,3 +7,14 @@
     // /ko
   // /ko
 
+  .btn-group(style='float:right')
+    // ko with:$parent
+    // ko if:isSidebarHidden
+    button.btn.btn-default.flow-toolbar-button(type='button' title='Show Sidebar' data-bind='click:toggleSidebar')
+      i.fa.fa-angle-double-left
+    // /ko
+    // ko ifnot:isSidebarHidden
+    button.btn.btn-default.flow-toolbar-button(type='button' title='Hide Sidebar' data-bind='click:toggleSidebar')
+      i.fa.fa-angle-double-right
+    // /ko
+    // /ko

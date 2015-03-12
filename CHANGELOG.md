@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
+### Added
+- Quick toggle button to show/hide the sidebar.
 
 ## [0.2.70] - 2015-03-11
 ### Added
