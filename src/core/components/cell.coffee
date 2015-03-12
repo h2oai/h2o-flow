@@ -66,7 +66,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   execute = (go) ->
     input = _input().trim()
     unless input
-      return if go then go() else undefined 
+      return if go then go no else undefined 
 
     render = _render()
     _isBusy yes
@@ -91,7 +91,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
       end: ->
         _hasInput _isCode()
         _isBusy no
-        go() if go
+        go _hasError() if go
 
     _isActive no
 

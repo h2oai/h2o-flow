@@ -424,7 +424,11 @@ Flow.Notebook = (_, _renderers) ->
           _runningCellInput cell.input()
 
           #TODO Continuation should be EFC, and passing an error should abort 'run all'
-          cell.execute -> executeNextCell()
+          cell.execute (error) ->
+            if error
+              go 'failed'
+            else
+              executeNextCell()
         else
           go 'done'
       else 
@@ -436,10 +440,12 @@ Flow.Notebook = (_, _renderers) ->
     executeAllCells (status) ->
       _isRunningAll no
       switch status
-        when 'done'
-          _.growl 'Finished running all cells!', 'success'
         when 'aborted'
           _.growl 'Stopped running all cells.', 'warning'
+        when 'failed'
+          _.growl 'Failed running all cells.', 'danger'
+        else # 'done'
+          _.growl 'Finished running all cells!', 'success'
 
   stopRunningAll = ->
     _isRunningAll no
