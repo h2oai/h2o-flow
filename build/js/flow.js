@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.72';
+    Flow.Version = '0.2.73';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -9465,25 +9465,27 @@
         });
         parseFiles = function () {
             var columnName, columnNames, columnType, columnTypes;
-            columnNames = _hasColumnNames ? function () {
-                var _i, _len, _results;
+            columnNames = _hasColumnNames() ? function () {
+                var _i, _len, _ref, _results;
+                _ref = _columnNames();
                 _results = [];
-                for (_i = 0, _len = _columnNames.length; _i < _len; _i++) {
-                    columnName = _columnNames[_i];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    columnName = _ref[_i];
                     _results.push(columnName());
                 }
                 return _results;
             }() : null;
             columnTypes = function () {
-                var _i, _len, _results;
+                var _i, _len, _ref, _results;
+                _ref = _columnTypes();
                 _results = [];
-                for (_i = 0, _len = _columnTypes.length; _i < _len; _i++) {
-                    columnType = _columnTypes[_i];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    columnType = _ref[_i];
                     _results.push(columnType());
                 }
                 return _results;
             }();
-            return _.insertAndExecuteCell('cs', 'parseFiles\n  ' + _inputKey + ': ' + Flow.Prelude.stringify(_inputs[_inputKey]) + '\n  destination_key: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount + '\n  single_quotes: ' + _useSingleQuotes() + '\n  column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + _headerOptions[_headerOption()] + '\n  chunk_size: ' + _chunkSize);
+            return _.insertAndExecuteCell('cs', 'parseFiles\n  ' + _inputKey + ': ' + Flow.Prelude.stringify(_inputs[_inputKey]) + '\n  destination_key: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount() + '\n  single_quotes: ' + _useSingleQuotes() + '\n  column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + _headerOptions[_headerOption()] + '\n  chunk_size: ' + _chunkSize());
         };
         lodash.defer(_go);
         return {
