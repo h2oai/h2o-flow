@@ -412,27 +412,34 @@ Flow.Notebook = (_, _renderers) ->
     cellIndex = 0
 
     executeNextCell = ->
-      if _isRunningAll()
+      if _isRunningAll() # will be false if user-aborted
         cell = shift cells
         if cell
+          # Scroll immediately without affecting selection state.
           cell.scrollIntoView yes
+
           cellIndex++
           _runningCaption "Running cell #{cellIndex} of #{cellCount}"
           _runningPercent "#{floor 100 * cellIndex/cellCount}%"
           _runningCellInput cell.input()
+
           #TODO Continuation should be EFC, and passing an error should abort 'run all'
           cell.execute -> executeNextCell()
         else
-          go()
+          go 'done'
       else 
-        go() # Aborted
+        go 'aborted'
 
     executeNextCell()
 
   runAllCells = ->
-    executeAllCells ->
+    executeAllCells (status) ->
       _isRunningAll no
-      _.growl 'Finished running all cells!'
+      switch status
+        when 'done'
+          _.growl 'Finished running all cells!', 'success'
+        when 'aborted'
+          _.growl 'Stopped running all cells.', 'warning'
 
   stopRunningAll = ->
     _isRunningAll no
