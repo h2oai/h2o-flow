@@ -25,6 +25,10 @@ Flow.Notebook = (_, _renderers) ->
   _areInputsHidden = signal no
   _areOutputsHidden = signal no
   _isSidebarHidden = signal no
+  _isRunningAll = signal no
+  _runningCaption = signal 'Running'
+  _runningPercent = signal '0%'
+  _runningCellInput = signal ''
   _status = Flow.Status _
   _sidebar = Flow.Sidebar _, _cells
   _about = Flow.About _
@@ -415,6 +419,8 @@ Flow.Notebook = (_, _renderers) ->
   runAllCells = ->
     executeAllCells -> #TODO Progress completion
 
+  stopRunningAll = ->
+
   clearCell = ->
     _selectedCell.clear()
     _selectedCell.autoResize()
@@ -714,6 +720,11 @@ Flow.Notebook = (_, _renderers) ->
   areInputsHidden: _areInputsHidden
   areOutputsHidden: _areOutputsHidden
   isSidebarHidden: _isSidebarHidden
+  isRunningAll: _isRunningAll
+  runningCaption: _runningCaption
+  runningPercent: _runningPercent
+  runningCellInput: _runningCellInput
+  stopRunningAll: stopRunningAll
   toggleSidebar: toggleSidebar
   shortcutsHelp:
     normalMode: normalModeKeyboardShortcutsHelp

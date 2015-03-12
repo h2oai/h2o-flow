@@ -15,6 +15,16 @@
   //- Could have been done using CSS z-index, but those can get hairy.
   .flow-box-header
     include navigation.jade
+  .flow-box-blocker(data-bind="visible:isRunningAll")
+    .flow-playbar
+      div
+        span(data-bind='text:runningCaption')
+        span.flow-playbar-stop(data-bind='click:stopRunningAll')
+          i.fa.fa-stop
+          span STOP
+      .flow-playbar-progress
+        .flow-playbar-progress-bar(data-bind="style:{width:runningPercent}")
+      div(style='font-size:80%' data-bind="text:runningCellInput")
 
 //- 
 //- Dialogs
