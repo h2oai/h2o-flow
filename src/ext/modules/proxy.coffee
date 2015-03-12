@@ -202,9 +202,18 @@ H2O.Proxy = (_) ->
     opts = path: encodeURIComponent path
     requestWithOpts '/2/ImportFiles.json', opts, go
 
-  requestParseSetup = (sources, go) ->
+  requestParseSetup = (sourceKeys, go) ->
     opts =
-      source_keys: encodeArrayForPost sources
+      source_keys: encodeArrayForPost sourceKeys
+    doPost '/2/ParseSetup.json', opts, go
+
+  requestParseSetupPreview = (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, go) ->
+    opts = 
+      source_keys: encodeArrayForPost sourceKeys
+      parse_type: parseType
+      separator: separator
+      single_quotes: useSingleQuotes
+      check_header: checkHeader
     doPost '/2/ParseSetup.json', opts, go
 
   requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
@@ -424,6 +433,7 @@ H2O.Proxy = (_) ->
   link _.requestImportFiles, requestImportFiles
   link _.requestImportFile, requestImportFile
   link _.requestParseSetup, requestParseSetup
+  link _.requestParseSetupPreview, requestParseSetupPreview
   link _.requestParseFiles, requestParseFiles
   link _.requestModels, requestModels
   link _.requestModel, requestModel

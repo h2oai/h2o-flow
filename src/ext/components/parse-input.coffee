@@ -1,4 +1,4 @@
-parseTypes = map [ 'AUTO', 'XLS', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
+parseTypes = map [ 'AUTO', 'ARFF', 'XLS', 'XLSX', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
 
 parseDelimiters = do ->
   whitespaceSeparators = [
@@ -80,6 +80,11 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   _columnTypes = lift _preview, (preview) -> (signal columnType for columnType in preview.column_types)
   _rows = lift _preview, (preview) -> preview.data
   _chunkSize = lift _preview, (preview) -> preview.chunk_size
+
+  react _parseType, _delimiter, _useSingleQuotes, _headerOption, (parseType, delimiter, useSingleQuotes, headerOption) ->
+    _.requestParseSetupPreview _sourceKeys, parseType.type, delimiter.charCode, useSingleQuotes, _headerOptions[headerOption], (error, result) ->
+      unless error
+        _preview result
 
   parseFiles = ->
     columnNames = if _hasColumnNames then (columnName() for columnName in _columnNames) else null
