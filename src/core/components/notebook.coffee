@@ -404,12 +404,16 @@ Flow.Notebook = (_, _renderers) ->
   goToUrl = (url) -> ->
     window.open url, '_blank'
 
-  executeAllCells = (go) ->
+  executeAllCells = (fromBeginning, go) ->
     _isRunningAll yes
 
     cells = slice _cells(), 0
     cellCount = cells.length
     cellIndex = 0
+
+    unless fromBeginning
+      cells = slice cells, _selectedCellIndex
+      cellIndex = _selectedCellIndex
 
     executeNextCell = ->
       if _isRunningAll() # will be false if user-aborted
@@ -436,16 +440,18 @@ Flow.Notebook = (_, _renderers) ->
 
     executeNextCell()
 
-  runAllCells = ->
-    executeAllCells (status) ->
+  runAllCells = (fromBeginning=yes) ->
+    executeAllCells fromBeginning, (status) ->
       _isRunningAll no
       switch status
         when 'aborted'
-          _.growl 'Stopped running all cells.', 'warning'
+          _.growl 'Stopped running your flow.', 'warning'
         when 'failed'
-          _.growl 'Failed running all cells.', 'danger'
+          _.growl 'Failed running your flow.', 'danger'
         else # 'done'
-          _.growl 'Finished running all cells!', 'success'
+          _.growl 'Finished running your flow!', 'success'
+
+  continueRunningAllCells = -> runAllCells no
 
   stopRunningAll = ->
     _isRunningAll no
@@ -553,6 +559,7 @@ Flow.Notebook = (_, _renderers) ->
       createMenuItem 'Run and Insert Below', runCellAndInsertBelow
       menuDivider
       createMenuItem 'Run All', runAllCells
+      createMenuItem 'Continue', continueRunningAllCells
       menuDivider
       createMenuItem 'Clear Output', clearCell
       menuDivider
@@ -616,7 +623,8 @@ Flow.Notebook = (_, _renderers) ->
     ]
   ,
     [
-      createTool 'play', 'Run', runCellAndSelectBelow
+      createTool 'step-forward', 'Run and Select Below', runCellAndSelectBelow
+      createTool 'play', 'Run', runCell
       createTool 'forward', 'Run All', runAllCells
     ]
   ]

@@ -2,9 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased][unreleased]
+## [Unreleased]
+- (None)
+
+## [0.2.71] - 2015-03-12
 ### Added
+- Flow now displays a playbar at the bottom of the screen while running a flow.
+- You can now stop/cancel a running flow.
 - Quick toggle button to show/hide the sidebar.
+
+### Changed
+- Flows now stop running when an error occurs.
 
 ## [0.2.70] - 2015-03-11
 ### Added
