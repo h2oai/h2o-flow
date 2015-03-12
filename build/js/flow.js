@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.70';
+    Flow.Version = '0.2.71';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -227,7 +227,7 @@
             input = _input().trim();
             if (!input) {
                 if (go) {
-                    return go();
+                    return go(false);
                 } else {
                     return void 0;
                 }
@@ -257,7 +257,7 @@
                     _hasInput(_isCode());
                     _isBusy(false);
                     if (go) {
-                        return go();
+                        return go(_hasError());
                     }
                 }
             });
@@ -294,8 +294,8 @@
             autoResize: function () {
                 return _actions.autoResize();
             },
-            scrollIntoView: function () {
-                return _actions.scrollIntoView();
+            scrollIntoView: function (immediate) {
+                return _actions.scrollIntoView(immediate);
             },
             templateOf: function (view) {
                 return view.template;
@@ -949,7 +949,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, storeNotebook, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
         _localName = Flow.Dataflow.signal('Untitled Flow');
         _remoteName = Flow.Dataflow.signal(null);
         _isEditingName = Flow.Dataflow.signal(false);
@@ -967,6 +967,10 @@
         _areInputsHidden = Flow.Dataflow.signal(false);
         _areOutputsHidden = Flow.Dataflow.signal(false);
         _isSidebarHidden = Flow.Dataflow.signal(false);
+        _isRunningAll = Flow.Dataflow.signal(false);
+        _runningCaption = Flow.Dataflow.signal('Running');
+        _runningPercent = Flow.Dataflow.signal('0%');
+        _runningCellInput = Flow.Dataflow.signal('');
         _status = Flow.Status(_);
         _sidebar = Flow.Sidebar(_, _cells);
         _about = Flow.About(_);
@@ -1049,9 +1053,12 @@
                 error('selected cell count = ' + selectionCount);
             }
         };
-        selectCell = function (target, scrollIntoView) {
+        selectCell = function (target, scrollIntoView, scrollImmediately) {
             if (scrollIntoView == null) {
                 scrollIntoView = true;
+            }
+            if (scrollImmediately == null) {
+                scrollImmediately = false;
             }
             if (_selectedCell === target) {
                 return;
@@ -1064,7 +1071,9 @@
             _selectedCellIndex = _cells.indexOf(_selectedCell);
             checkConsistency();
             if (scrollIntoView) {
-                lodash.defer(_selectedCell.scrollIntoView);
+                lodash.defer(function () {
+                    return _selectedCell.scrollIntoView(scrollImmediately);
+                });
             }
             return _selectedCell;
         };
@@ -1444,25 +1453,63 @@
                 return window.open(url, '_blank');
             };
         };
-        executeAllCells = function (go) {
-            var cells, executeNextCell;
+        executeAllCells = function (fromBeginning, go) {
+            var cellCount, cellIndex, cells, executeNextCell;
+            _isRunningAll(true);
             cells = _cells().slice(0);
+            cellCount = cells.length;
+            cellIndex = 0;
+            if (!fromBeginning) {
+                cells = cells.slice(_selectedCellIndex);
+                cellIndex = _selectedCellIndex;
+            }
             executeNextCell = function () {
                 var cell;
-                cell = cells.shift();
-                if (cell) {
-                    return cell.execute(function () {
-                        return executeNextCell();
-                    });
+                if (_isRunningAll()) {
+                    cell = cells.shift();
+                    if (cell) {
+                        cell.scrollIntoView(true);
+                        cellIndex++;
+                        _runningCaption('Running cell ' + cellIndex + ' of ' + cellCount);
+                        _runningPercent('' + Math.floor(100 * cellIndex / cellCount) + '%');
+                        _runningCellInput(cell.input());
+                        return cell.execute(function (error) {
+                            if (error) {
+                                return go('failed');
+                            } else {
+                                return executeNextCell();
+                            }
+                        });
+                    } else {
+                        return go('done');
+                    }
                 } else {
-                    return go();
+                    return go('aborted');
                 }
             };
             return executeNextCell();
         };
-        runAllCells = function () {
-            return executeAllCells(function () {
+        runAllCells = function (fromBeginning) {
+            if (fromBeginning == null) {
+                fromBeginning = true;
+            }
+            return executeAllCells(fromBeginning, function (status) {
+                _isRunningAll(false);
+                switch (status) {
+                case 'aborted':
+                    return _.growl('Stopped running your flow.', 'warning');
+                case 'failed':
+                    return _.growl('Failed running your flow.', 'danger');
+                default:
+                    return _.growl('Finished running your flow!', 'success');
+                }
             });
+        };
+        continueRunningAllCells = function () {
+            return runAllCells(false);
+        };
+        stopRunningAll = function () {
+            return _isRunningAll(false);
         };
         clearCell = function () {
             _selectedCell.clear();
@@ -1573,6 +1620,7 @@
                 createMenuItem('Run and Insert Below', runCellAndInsertBelow),
                 menuDivider,
                 createMenuItem('Run All', runAllCells),
+                createMenuItem('Continue', continueRunningAllCells),
                 menuDivider,
                 createMenuItem('Clear Output', clearCell),
                 menuDivider,
@@ -1635,7 +1683,8 @@
                 createTool('eraser', 'Clear Cell', clearCell)
             ],
             [
-                createTool('play', 'Run', runCellAndSelectBelow),
+                createTool('step-forward', 'Run and Select Below', runCellAndSelectBelow),
+                createTool('play', 'Run', runCell),
                 createTool('forward', 'Run All', runAllCells)
             ]
         ];
@@ -1876,6 +1925,12 @@
             areInputsHidden: _areInputsHidden,
             areOutputsHidden: _areOutputsHidden,
             isSidebarHidden: _isSidebarHidden,
+            isRunningAll: _isRunningAll,
+            runningCaption: _runningCaption,
+            runningPercent: _runningPercent,
+            runningCellInput: _runningCellInput,
+            stopRunningAll: stopRunningAll,
+            toggleSidebar: toggleSidebar,
             shortcutsHelp: {
                 normalMode: normalModeKeyboardShortcutsHelp,
                 editMode: editModeKeyboardShortcutsHelp
@@ -3674,13 +3729,20 @@
             if (arg = ko.unwrap(valueAccessor())) {
                 $el = $(element);
                 $viewport = $el.closest('.flow-box-notebook');
-                arg.scrollIntoView = function () {
+                arg.scrollIntoView = function (immediate) {
                     var height, position, top;
+                    if (immediate == null) {
+                        immediate = false;
+                    }
                     position = $viewport.scrollTop();
                     top = $el.position().top + position;
                     height = $viewport.height();
                     if (top - 20 < position || top + 20 > position + height) {
-                        return $viewport.animate({ scrollTop: top }, 'fast');
+                        if (immediate) {
+                            return $viewport.scrollTop(top);
+                        } else {
+                            return $viewport.animate({ scrollTop: top }, 'fast');
+                        }
                     }
                 };
             }

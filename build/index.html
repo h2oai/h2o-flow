@@ -76,6 +76,15 @@
           <div data-bind="template: { name:'flow-toolbar', data:toolbar }" style="margin-bottom:10px" class="flow-toolbar"></div>
         </div>
       </div>
+      <div data-bind="visible:isRunningAll" class="flow-box-blocker">
+        <div class="flow-playbar">
+          <div><span data-bind="text:runningCaption"></span><span data-bind="click:stopRunningAll" class="flow-playbar-stop"><i class="fa fa-stop"></i><span>STOP</span></span></div>
+          <div class="flow-playbar-progress">
+            <div data-bind="style:{width:runningPercent}" class="flow-playbar-progress-bar"></div>
+          </div>
+          <div style="font-size:80%" data-bind="text:runningCellInput"></div>
+        </div>
+      </div>
     </div>
     <!-- ko with:dialogs-->
     <!-- ko if:dialog-->
@@ -162,6 +171,16 @@
           <!-- /ko-->
         </div>
         <!-- /ko-->
+        <div style="float:right" class="btn-group">
+          <!-- ko with:$parent-->
+          <!-- ko if:isSidebarHidden-->
+          <button type="button" title="Show Sidebar" data-bind="click:toggleSidebar" class="btn btn-default flow-toolbar-button"><i class="fa fa-angle-double-left"></i></button>
+          <!-- /ko-->
+          <!-- ko ifnot:isSidebarHidden-->
+          <button type="button" title="Hide Sidebar" data-bind="click:toggleSidebar" class="btn btn-default flow-toolbar-button"><i class="fa fa-angle-double-right"></i></button>
+          <!-- /ko-->
+          <!-- /ko-->
+        </div>
       </div>
     </script>
     <script type="text/html" id="flow-navbar">
