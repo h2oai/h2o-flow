@@ -1049,18 +1049,16 @@
           <table class="flow-form flow-monospace">
             <thead>
               <tr>
-                <!-- ko if:hasColumnNames-->
-                <!-- ko foreach:columnNames-->
+                <!-- ko foreach:columns-->
                 <td style="min-width:100px">
-                  <input type="textbox" data-bind="value:$data, attr:{'title':$data}" class="flow-textbox">
+                  <input type="textbox" data-bind="value:name, attr:{'title':name}" class="flow-textbox">
                 </td>
-                <!-- /ko-->
                 <!-- /ko-->
               </tr>
               <tr>
-                <!-- ko foreach:columnTypes-->
+                <!-- ko foreach:columns-->
                 <td>
-                  <select data-bind="options:$parent.dataTypes, value:$data"></select>
+                  <select data-bind="options:$parent.dataTypes, value:type"></select>
                 </td>
                 <!-- /ko-->
               </tr>
