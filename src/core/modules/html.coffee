@@ -1,3 +1,5 @@
+return unless window?.diecut?
+
 Flow.HTML =
   template: diecut
   render: (name, html) ->

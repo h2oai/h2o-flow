@@ -1,3 +1,5 @@
+return unless window?.localStorage
+
 _ls = window.localStorage
 
 keyOf = (type, id) -> "#{type}:#{id}"

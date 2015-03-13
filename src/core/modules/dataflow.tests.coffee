@@ -206,41 +206,6 @@ test 'dataflow empty signals should always propagate', (t) ->
   t.equal propagated, yes
   t.end()
 
-test 'dataflow context should enclose deeply nested subgraphs correctly', (t) ->
-  foo1 = ->
-  bar1 = ->
-  baz1 = ->
-  foo2 = ->
-  bar2 = ->
-  baz2 = ->
-  foo3 = ->
-  bar3 = ->
-  baz3 = ->
-
-  grandparent = board foo1: foo1, bar1: bar1, baz1: baz1
-  parent = board { foo2: foo2, bar2: bar2, baz2: baz2 }, grandparent
-  child = board { foo3: foo3, bar3: bar3, baz3: baz3 }, parent
-
-  t.equal grandparent.root, grandparent
-  t.equal grandparent.parent, grandparent
-  t.equal grandparent.foo1, foo1
-  t.equal grandparent.bar1, bar1
-  t.equal grandparent.baz1, baz1
-
-  t.equal parent.root, grandparent
-  t.equal parent.parent, grandparent
-  t.equal parent.foo2, foo2
-  t.equal parent.bar2, bar2
-  t.equal parent.baz2, baz2
-
-  t.equal child.root, grandparent
-  t.equal child.parent, parent
-  t.equal child.foo3, foo3
-  t.equal child.bar3, bar3
-  t.equal child.baz3, baz3
-  t.end()
-
-
 test 'dataflow context should unlink multiple arrows at once', (t) ->
   sig = signal 42
   propagated1 = no

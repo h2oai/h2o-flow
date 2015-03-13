@@ -8,7 +8,7 @@ Flow.Prelude = do ->
   _copy = (array) -> array.slice 0
   _remove = (array, element) ->
     if -1 < index = indexOf array, element
-      head splice arra, index, 1
+      head splice array, index, 1
     else
       undefined
   _words = (text) -> split text, /\s+/

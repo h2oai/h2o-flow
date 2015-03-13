@@ -39,6 +39,6 @@ Flow.Util =
   formatBytes: formatBytes
   formatMilliseconds: formatMilliseconds
   multilineTextToHTML: multilineTextToHTML
-  uuid: uuid
+  uuid: if window?.uuid then window.uuid else null
   sanitizeName: sanitizeName
 

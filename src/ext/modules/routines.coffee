@@ -1,7 +1,8 @@
-lightning = window.plot
+lightning = if window?.plot? then window.plot else {}
 
-lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace'
-lightning.settings.axisTitleFont = 'bold 11px "Source Code Pro", monospace'
+if lightning.settings
+  lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace'
+  lightning.settings.axisTitleFont = 'bold 11px "Source Code Pro", monospace'
 
 createVector = lightning.createVector
 createFactor = lightning.createFactor
