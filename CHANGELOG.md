@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [0.2.74] - 2015-03-13
 ### Fixed
 - Send user-specified column types correctly through to /Parse
+- Refresh parse preview when column types are changed
 
 ## [0.2.73] - 2015-03-12
 ### Fixed

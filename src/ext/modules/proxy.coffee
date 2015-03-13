@@ -207,13 +207,14 @@ H2O.Proxy = (_) ->
       source_keys: encodeArrayForPost sourceKeys
     doPost '/2/ParseSetup.json', opts, go
 
-  requestParseSetupPreview = (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, go) ->
+  requestParseSetupPreview = (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, columnTypes, go) ->
     opts = 
       source_keys: encodeArrayForPost sourceKeys
       parse_type: parseType
       separator: separator
       single_quotes: useSingleQuotes
       check_header: checkHeader
+      column_types: encodeArrayForPost columnTypes
     doPost '/2/ParseSetup.json', opts, go
 
   requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->

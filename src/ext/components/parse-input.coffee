@@ -73,6 +73,12 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   _deleteOnDone = signal yes
 
   _preview = signal _result
+  refreshPreview = ->
+    columnTypes = (column.type() for column in _columns())
+    _.requestParseSetupPreview _sourceKeys, _parseType().type, _delimiter().charCode, _useSingleQuotes(), _headerOptions[_headerOption()], columnTypes, (error, result) ->
+      unless error
+        _preview result
+
   _columnCount = lift _preview, (preview) -> preview.number_columns
   _hasColumns = lift _columnCount, (count) -> count > 0
   _hasColumnNames = lift _preview, (preview) -> if preview.column_names then yes else no
@@ -84,13 +90,14 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
       name: signal if columnNames then columnNames[i] else ''
       type: signal columnTypes[i]
 
+  act _columns, (columns) ->
+    forEach columns, (column) ->
+      react column.type, refreshPreview
+
   _rows = lift _preview, (preview) -> preview.data
   _chunkSize = lift _preview, (preview) -> preview.chunk_size
 
-  react _parseType, _delimiter, _useSingleQuotes, _headerOption, (parseType, delimiter, useSingleQuotes, headerOption) ->
-    _.requestParseSetupPreview _sourceKeys, parseType.type, delimiter.charCode, useSingleQuotes, _headerOptions[headerOption], (error, result) ->
-      unless error
-        _preview result
+  react _parseType, _delimiter, _useSingleQuotes, _headerOption, refreshPreview
 
   parseFiles = ->
     columnNames = (column.name() for column in _columns())
