@@ -76,8 +76,14 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   _columnCount = lift _preview, (preview) -> preview.number_columns
   _hasColumns = lift _columnCount, (count) -> count > 0
   _hasColumnNames = lift _preview, (preview) -> if preview.column_names then yes else no
-  _columnNames = lift _preview, (preview) -> if preview.column_names then (signal columnName for columnName in preview.column_names) else null
-  _columnTypes = lift _preview, (preview) -> (signal columnType for columnType in preview.column_types)
+
+  _columns = lift _preview, (preview) ->
+    columnNames = preview.column_names
+    columnTypes = preview.column_types
+    for i in [0 ... preview.number_columns]
+      name: signal if columnNames then columnNames[i] else ''
+      type: signal columnTypes[i]
+
   _rows = lift _preview, (preview) -> preview.data
   _chunkSize = lift _preview, (preview) -> preview.chunk_size
 
@@ -87,8 +93,8 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
         _preview result
 
   parseFiles = ->
-    columnNames = if _hasColumnNames() then (columnName() for columnName in _columnNames()) else null
-    columnTypes = (columnType() for columnType in _columnTypes())
+    columnNames = (column.name() for column in _columns())
+    columnTypes = (column.type() for column in _columns())
 
     _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_key: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  column_names: #{stringify columnNames}\n  column_types: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  check_header: #{_headerOptions[_headerOption()]}\n  chunk_size: #{_chunkSize()}"
 
@@ -101,9 +107,7 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   parseType: _parseType
   delimiter: _delimiter
   useSingleQuotes: _useSingleQuotes
-  hasColumnNames: _hasColumnNames
-  columnNames: _columnNames
-  columnTypes: _columnTypes
+  columns: _columns
   rows: _rows
   columnCount: _columnCount
   hasColumns: _hasColumns
