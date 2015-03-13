@@ -788,7 +788,7 @@ H2O.Routines = (_) ->
 
       when 'Multinomial'
         inspections.prediction = inspectRegressionPrediction prediction
-        inspectMultinomialConfusionMatrix 'Confusion Matrix', prediction.cm.table, "getPrediction #{stringify modelKey}, #{stringify frameKey}", inspections 
+        inspectMultinomialConfusionMatrix 'Confusion Matrix', prediction.cm.table, "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", inspections 
       else
         inspections[ 'Prediction' ] = inspectBinomialPrediction prediction
         inspections[ prediction.thresholds_and_metric_scores.name ] = inspectBinomialScores opts, [ prediction ]
