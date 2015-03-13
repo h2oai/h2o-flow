@@ -11,10 +11,8 @@
     "build": "gulp",
     "clean": "gulp clean",
     "watch": "gulp && gulp watch",
-    "unit-test": "gulp build-tests && node build/js/flow-tests.js -u | faucet",
     "test-raw": "gulp build-tests && node build/js/flow-tests.js -s",
     "test": "gulp build-tests && node build/js/flow-tests.js -s | faucet",
-    "test-shorthand": "coffee tools/shorthand/test.coffee | faucet",
     "coverage": "mkdir -p build/js/coverage && gulp build-tests && istanbul cover --dir build/js/coverage -x \"**/lib/**\" build/js/flow-tests.js && istanbul report --dir build/js/coverage cobertura"
   },
   "repository": {
