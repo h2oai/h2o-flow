@@ -11,6 +11,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   _hasInput = signal yes
   _input = signal input
   _outputs = signals []
+  _errors = [] # Only for headless use.
   _result = signal null
   _hasOutput = lift _outputs, (outputs) -> outputs.length > 0
   _isInputVisible = signal yes
@@ -60,13 +61,14 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   clear = ->
     _result null
     _outputs []
+    _errors.length = 0 # Only for headless use
     _hasError no
     _hasInput yes unless _isCode()
 
   execute = (go) ->
     input = _input().trim()
     unless input
-      return if go then go no else undefined 
+      return if go then go null else undefined 
 
     render = _render()
     _isBusy yes
@@ -88,10 +90,13 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
           _outputs.push
             text: JSON.stringify error, null, 2
             template: 'flow-raw'
+        _errors.push error # Only for headless use
       end: ->
         _hasInput _isCode()
         _isBusy no
-        go _hasError() if go
+        if go
+          go if _hasError() then _errors.slice 0 else null
+        return
 
     _isActive no
 

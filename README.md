@@ -13,3 +13,12 @@ It is recommended that you clone h2o-dev and h2o-flow under the same parent dire
 3. Run `cd h2o-flow && make`. You can now access and debug Flow at http://localhost:54321/.
 4. After each change to h2o-flow sources, run the same command `cd h2o-flow && make` to push your changes to the running instance of h2o-dev.
 
+### Phantom JS installation notes
+
+The task `npm run headless` requires installing [Phantom JS](http://phantomjs.org).
+
+Note:
+Phantom JS refuses to run on OSX Yosemite, and requires [this fix](https://github.com/ariya/phantomjs/issues/12900):
+
+    brew install upx
+    upx -d bin/phantomjs

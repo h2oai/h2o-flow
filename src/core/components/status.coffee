@@ -5,7 +5,7 @@ Flow.Status = (_) ->
   _isBusy = lift _connections, (connections) -> connections > 0
   
   onStatus = (category, type, data) ->
-    debug category, type, data
+    debug 'Status:', category, type, data
     switch category
       when 'server'
         switch type

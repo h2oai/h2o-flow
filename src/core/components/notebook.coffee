@@ -52,10 +52,9 @@ Flow.Notebook = (_, _renderers) ->
 
     selectCell head cells
 
-    defer ->
-      # Execute all non-code cells (headings, markdown, etc.)
-      for cell in _cells()
-        cell.execute() unless cell.isCode() 
+    # Execute all non-code cells (headings, markdown, etc.)
+    for cell in _cells()
+      cell.execute() unless cell.isCode() 
 
     return
 
@@ -428,9 +427,9 @@ Flow.Notebook = (_, _renderers) ->
           _runningCellInput cell.input()
 
           #TODO Continuation should be EFC, and passing an error should abort 'run all'
-          cell.execute (error) ->
-            if error
-              go 'failed'
+          cell.execute (errors) ->
+            if errors
+              go 'failed', errors
             else
               executeNextCell()
         else
@@ -728,6 +727,8 @@ Flow.Notebook = (_, _renderers) ->
     link _.open, openNotebook
 
     link _.selectCell, selectCell
+
+    link _.executeAllCells, executeAllCells
 
     link _.insertAndExecuteCell, (type, input) ->
       defer appendCellAndRun, type, input

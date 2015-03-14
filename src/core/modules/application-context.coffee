@@ -13,6 +13,7 @@ Flow.ApplicationContext = (_) ->
   _.selectCell = do slot
   _.insertCell = do slot
   _.insertAndExecuteCell = do slot
+  _.executeAllCells = do slot
   _.showHelp = do slot
   _.showOutline = do slot
   _.showBrowser = do slot
