@@ -81,7 +81,6 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
 
   _columnCount = lift _preview, (preview) -> preview.number_columns
   _hasColumns = lift _columnCount, (count) -> count > 0
-  _hasColumnNames = lift _preview, (preview) -> if preview.column_names then yes else no
 
   _columns = lift _preview, (preview) ->
     columnNames = preview.column_names
@@ -101,9 +100,13 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
 
   parseFiles = ->
     columnNames = (column.name() for column in _columns())
+    headerOption = _headerOptions[_headerOption()]
+    if (every columnNames, (columnName) -> columnName.trim() is '')
+      columnNames = null 
+      headerOption = -1
     columnTypes = (column.type() for column in _columns())
 
-    _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_key: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  column_names: #{stringify columnNames}\n  column_types: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  check_header: #{_headerOptions[_headerOption()]}\n  chunk_size: #{_chunkSize()}"
+    _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_key: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  #{if columnNames then 'column_names: ' + (stringify columnNames) + '\n  ' else ''}column_types: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  check_header: #{headerOption}\n  chunk_size: #{_chunkSize()}"
 
   defer _go
 
