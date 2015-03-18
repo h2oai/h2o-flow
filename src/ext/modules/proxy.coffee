@@ -43,7 +43,7 @@ H2O.Proxy = (_) ->
 
       response = xhr.responseJSON
       
-      cause = if response?.exception_msg
+      cause = if response?.__meta?.schema_type is 'H2OError'
         serverError = new Flow.Error response.exception_msg
         serverError.stack = "#{response.dev_msg} (#{response.exception_type})" + "\n  " + response.stacktrace.join "\n  "
         serverError
