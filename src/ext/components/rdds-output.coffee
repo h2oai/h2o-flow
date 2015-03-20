@@ -1,4 +1,4 @@
-H2O.RDDsOutput = (_, _rDDs) ->
+H2O.RDDsOutput = (_, _go, _rDDs) ->
   _rDDViews = signal []
 
   createRDDView = (rDD) ->
@@ -7,6 +7,8 @@ H2O.RDDsOutput = (_, _rDDs) ->
     partitions: rDD.partitions
 
   _rDDViews map _rDDs, createRDDView
+
+  defer _go
 
   rDDViews: _rDDViews
   hasRDDs: _rDDs.length > 0
