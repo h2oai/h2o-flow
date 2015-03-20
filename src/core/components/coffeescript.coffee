@@ -27,9 +27,9 @@ Flow.Coffeescript = (_, guid, sandbox) ->
             if result?._flow_?.render
               output.data result._flow_.render -> output.end()
             else
-              output.data Flow.ObjectBrowser 'output', result, -> output.end()
+              output.data Flow.ObjectBrowser _, (-> output.end()) 'output', result
       else
-        output.data Flow.ObjectBrowser 'output', ft, -> output.end()
+        output.data Flow.ObjectBrowser _, (-> output.end()), 'output', ft
 
     outputBuffer.subscribe evaluate
 
@@ -54,7 +54,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         else
           evaluate result
       else
-        output.close Flow.ObjectBrowser 'result', result, -> output.end()
+        output.close Flow.ObjectBrowser _, (-> output.end()), 'result', result
 
   render.isCode = yes
   render

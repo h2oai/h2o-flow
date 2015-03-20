@@ -1453,7 +1453,7 @@ H2O.Routines = (_) ->
     _fork requestRemoveAll
 
   extendRDDs = (rdds) ->
-    render_ rdds, -> H2O.RDDsOutput _, rdds
+    render_ rdds, H2O.RDDsOutput, rdds
     rdds
 
   requestRDDs = (go) ->
@@ -1485,8 +1485,9 @@ H2O.Routines = (_) ->
       .fail onFail
 
   dumpFuture = (result, go) ->
+    result ?= {}
     debug result
-    go null, render_ (result or {}), Flow.ObjectBrowser, 'dump', result
+    go null, render_ result, Flow.ObjectBrowser, 'dump', result
 
   dump = (f) ->
     if f?.isFuture
