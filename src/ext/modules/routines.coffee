@@ -22,7 +22,7 @@ _assistance =
   getModels:
     description: 'Get a list of models in H<sub>2</sub>O'
     icon: 'cubes'
-  getPredictions: 
+  getPredictions:
     description: 'Get a list of predictions in H<sub>2</sub>O'
     icon: 'bolt'
   getJobs:
@@ -1287,7 +1287,7 @@ H2O.Routines = (_) ->
           messages = (validation.message for validation in result.validation_messages)
           go new Flow.Error "Model build failure: #{messages.join '; '}"
         else
-          go null, extendJob head result.jobs
+          go null, extendJob result.job
 
 
   buildModel = (algo, opts) ->
