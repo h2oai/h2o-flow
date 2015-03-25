@@ -16,6 +16,9 @@
 
   h4 ROC Curve
   .flow-plot(data-bind='raw:rocCurve')  
-
   // /ko
 
+  // ko if:isMultinomial
+  h4 Output
+  .flow-plot(data-bind='raw:predictionRecord')
+  // /ko

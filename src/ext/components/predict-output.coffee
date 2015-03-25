@@ -29,6 +29,9 @@ H2O.PredictOutput = (_, _go, prediction) ->
         g.from _.inspect 'Confusion Matrices', prediction
       )
 
+  if _isMultinomial()
+    renderPlot _predictionRecord, _.enumerate _.inspect 'prediction', prediction
+
   inspect = ->
     #XXX get this from prediction table
     _.insertAndExecuteCell 'cs', "inspect getPrediction model: #{stringify model.name}, frame: #{stringify frame.name}"
