@@ -622,6 +622,7 @@ H2O.Routines = (_) ->
     vectors = [
       createFactor 'model_category', TString, [ prediction.model_category ]
       createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'logloss', TNumber, [ prediction.logloss ]
       createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
       createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
     ]
@@ -672,6 +673,7 @@ H2O.Routines = (_) ->
       createVector 'AUC', TNumber, [ prediction.AUC ]
       createVector 'Gini', TNumber, [ prediction.Gini ]
       createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'logloss', TNumber, [ prediction.logloss ]
       createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
       createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
     ]
@@ -690,6 +692,7 @@ H2O.Routines = (_) ->
       createVector 'AUC', TNumber, [ prediction.AUC ]
       createVector 'Gini', TNumber, [ prediction.Gini ]
       createVector 'mse', TNumber, [ prediction.mse ]
+      createVector 'logloss', TNumber, [ prediction.logloss ]
       createVector 'duration_in_ms', TNumber, [ prediction.duration_in_ms ]
       createVector 'scoring_time', TNumber, [ prediction.scoring_time ]
     ]
@@ -746,6 +749,7 @@ H2O.Routines = (_) ->
       createVector 'AUC', TNumber, (prediction.AUC for prediction in predictions)
       createVector 'Gini', TNumber, (prediction.Gini for prediction in predictions)
       createVector 'mse', TNumber, (prediction.mse for prediction in predictions)
+      createVector 'logloss', TNumber, (prediction.logloss for prediction in predictions)
       createVector 'duration_in_ms', TNumber, (prediction.duration_in_ms for prediction in predictions)
       createVector 'scoring_time', TNumber, (prediction.scoring_time for prediction in predictions)
     ]
