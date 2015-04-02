@@ -769,7 +769,7 @@ H2O.Routines = (_) ->
         inspections['Prediction' ] = inspectBinomialPredictions opts, predictions
         inspections[ (head predictions).thresholds_and_metric_scores.name ] = inspectBinomialScores opts, predictions
         inspections[ (head predictions).max_criteria_and_metric_scores.name ] = inspectBinomialMetrics opts, predictions
-        inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, predictions
+        # inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, predictions
         inspect_ predictions, inspections
       else
         inspect_ predictions, 
@@ -799,7 +799,7 @@ H2O.Routines = (_) ->
         inspections[ 'Prediction' ] = inspectBinomialPrediction prediction
         inspections[ prediction.thresholds_and_metric_scores.name ] = inspectBinomialScores opts, [ prediction ]
         inspections[ prediction.max_criteria_and_metric_scores.name ] = inspectBinomialMetrics opts, [ prediction ]
-        inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, [ prediction ]
+        # inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, [ prediction ]
 
     inspect_ prediction, inspections
 

@@ -19,15 +19,15 @@ H2O.PredictOutput = (_, _go, prediction) ->
 
   if _isBinomial()
     renderPlot _predictionRecord, _.enumerate _.inspect 'Prediction', prediction
-    renderPlot _rocCurve, _.plot (g) ->
-      g(
-        g.path g.position 'FPR', 'TPR'
-        g.line(
-          g.position (g.value 1), (g.value 0)
-          g.strokeColor g.value 'red'
-        )
-        g.from _.inspect 'Confusion Matrices', prediction
-      )
+#    renderPlot _rocCurve, _.plot (g) ->
+#      g(
+#        g.path g.position 'FPR', 'TPR'
+#        g.line(
+#          g.position (g.value 1), (g.value 0)
+#          g.strokeColor g.value 'red'
+#        )
+#        g.from _.inspect 'Confusion Matrices', prediction
+#      )
 
   if _isMultinomial()
     renderPlot _predictionRecord, _.enumerate _.inspect 'prediction', prediction
