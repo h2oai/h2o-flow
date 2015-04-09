@@ -1049,13 +1049,13 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        #TODO Use job result when API starts supporting jobs.
-        #_.requestJob result.key.name, (error, job) ->
-        #  if error
-        #    go error
-        #  else
-        #    go null, extendJob job
-        go null, extendSplitFrameResult result
+        _.requestJob result.key.name, (error, job) ->
+          if error
+            go error
+          else
+            go null, extendJob job
+            #go null, extendSplitFrameResult result
+            # FIXME: we need to show a specific job results here
 
   createFrame = (opts) ->
     if opts
