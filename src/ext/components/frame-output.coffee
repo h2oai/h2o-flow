@@ -49,7 +49,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
     _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify _frame.key.name}"
 
   inspect = ->
-    _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify _frame.key.name}"
+    _.insertAndExecuteCell 'cs', "inspect getFrameSummary #{stringify _frame.key.name}"
 
   inspectData = ->
     _.insertAndExecuteCell 'cs', "grid inspect 'data', getFrame #{stringify _frame.key.name}"

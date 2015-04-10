@@ -80,7 +80,7 @@ H2O.JobOutput = (_, _go, _job) ->
     return unless _canView()
     switch _destinationType
       when 'Frame'
-        _.insertAndExecuteCell 'cs', "getFrame #{stringify _destinationKey}" 
+        _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify _destinationKey}" 
       when 'Model'
         _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
 

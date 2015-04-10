@@ -147,6 +147,13 @@ H2O.Proxy = (_) ->
       else
         go null, head result.frames
 
+  requestFrameSummary = (key, go) ->
+    doGet "/3/Frames.json/#{encodeURIComponent key}/summary", (error, result) ->
+      if error
+        go error
+      else
+        go null, head result.frames
+
   requestDeleteFrame = (key, go) ->
     doDelete "/3/Frames.json/#{encodeURIComponent key}", go
 
@@ -424,6 +431,7 @@ H2O.Proxy = (_) ->
   link _.requestSplitFrame, requestSplitFrame
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
+  link _.requestFrameSummary, requestFrameSummary
   link _.requestDeleteFrame, requestDeleteFrame
   link _.requestRDDs, requestRDDs
   link _.requestColumnSummary, requestColumnSummary

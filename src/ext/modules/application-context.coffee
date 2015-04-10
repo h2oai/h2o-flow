@@ -10,6 +10,7 @@ H2O.ApplicationContext = (_) ->
   _.requestParseSetupPreview = do slot
   _.requestFrames = do slot
   _.requestFrame = do slot
+  _.requestFrameSummary = do slot
   _.requestDeleteFrame = do slot
   _.requestRDDs = do slot
   _.requestColumnSummary = do slot

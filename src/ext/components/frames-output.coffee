@@ -27,13 +27,13 @@ H2O.FramesOutput = (_, _go, _frames) ->
       if frame.is_text
         _.insertAndExecuteCell 'cs', "setupParse source_keys: [ #{stringify frame.key.name } ]"
       else
-        _.insertAndExecuteCell 'cs', "getFrame #{stringify frame.key.name}"
+        _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify frame.key.name}"
 
     predict = ->
       _.insertAndExecuteCell 'cs', "predict frame: #{stringify frame.key.name}"
 
     inspect = ->
-      _.insertAndExecuteCell 'cs', "inspect getFrame #{stringify frame.key.name}"
+      _.insertAndExecuteCell 'cs', "inspect getFrameSummary #{stringify frame.key.name}"
 
     createModel = ->
       _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify frame.key.name}"

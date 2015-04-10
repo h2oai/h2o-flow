@@ -10,7 +10,7 @@ H2O.SplitFrameOutput = (_, _go, _splitFrameResult) ->
 
   createFrameView = (key, ratio) ->
     view = ->
-      _.insertAndExecuteCell 'cs', "getFrame #{stringify key}"
+      _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify key}"
 
     self =
       key: key

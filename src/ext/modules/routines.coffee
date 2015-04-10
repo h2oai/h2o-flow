@@ -833,8 +833,8 @@ H2O.Routines = (_) ->
          
     createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
-      origin: "getFrame #{stringify frameKey}"
-      plot: "plot inspect '#{tableLabel}', getFrame #{stringify frameKey}"
+      origin: "getFrameSummary #{stringify frameKey}"
+      plot: "plot inspect '#{tableLabel}', getFrameSummary #{stringify frameKey}"
 
 
   inspectFrameData = (frameKey, frame) -> ->
@@ -1019,6 +1019,13 @@ H2O.Routines = (_) ->
       else
         go null, extendFrame frameKey, frame
 
+  requestFrameSummary = (frameKey, go) ->
+    _.requestFrameSummary frameKey, (error, frame) ->
+      if error
+        go error
+      else
+        go null, extendFrame frameKey, frame
+
   requestColumnSummary = (frameKey, columnName, go) ->
     _.requestColumnSummary frameKey, columnName, (error, frame) ->
       if error
@@ -1078,6 +1085,13 @@ H2O.Routines = (_) ->
         _fork requestFrame, frameKey
       else
         assist getFrame
+
+  getFrameSummary = (frameKey) ->
+    switch typeOf frameKey
+      when 'String'
+        _fork requestFrameSummary, frameKey
+      else
+        assist getFrameSummary
 
   requestDeleteFrame = (frameKey, go) ->
     _.requestDeleteFrame frameKey, (error, result) ->
@@ -1586,6 +1600,7 @@ H2O.Routines = (_) ->
   splitFrame: splitFrame
   getFrames: getFrames
   getFrame: getFrame
+  getFrameSummary: getFrameSummary
   deleteFrames: deleteFrames
   deleteFrame: deleteFrame
   getRDDs: getRDDs
