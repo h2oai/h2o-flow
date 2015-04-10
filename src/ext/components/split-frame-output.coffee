@@ -18,8 +18,8 @@ H2O.SplitFrameOutput = (_, _go, _splitFrameResult) ->
       view: view
 
   _ratios = computeRatios _splitFrameResult.ratios
-  _frames = for key, index in _splitFrameResult.dest_keys
-    createFrameView key.name, _ratios[index]
+  _frames = for key, index in _splitFrameResult.keys
+    createFrameView key, _ratios[index]
 
   defer _go
 

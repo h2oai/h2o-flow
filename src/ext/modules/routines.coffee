@@ -1,9 +1,9 @@
 lightning = if window?.plot? then window.plot else {}
-
 if lightning.settings
   lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace'
   lightning.settings.axisTitleFont = 'bold 11px "Source Code Pro", monospace'
 
+createTempKey = -> Flow.Util.uuid().replace /\-/g, ''
 createVector = lightning.createVector
 createFactor = lightning.createFactor
 createList = lightning.createList
@@ -1051,18 +1051,75 @@ H2O.Routines = (_) ->
           else
             go null, extendJob job
 
+  computeSplits = (ratios, keys) ->
+    parts = []
+    sum = 0
+
+    for key, i in keys.slice(0, ratios.length)
+      sum += ratio = ratios[i]
+      parts.push
+        key: key
+        ratio: ratio
+
+    parts.push
+      key: keys[keys.length - 1]
+      ratio: 1 - sum
+
+    splits = []
+    sum = 0
+    for part in (sortBy parts, (part) -> part.ratio)
+      splits.push
+        min: sum
+        max: sum + part.ratio
+        key: part.key
+
+      sum += part.ratio
+
+    console.log splits
+    splits
+
   requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
-    _.requestSplitFrame frameKey, splitRatios, splitKeys, (error, result) ->
-      if error
-        go error
-      else
-        #TODO Use job result when API starts supporting jobs.
-        #_.requestJob result.key.name, (error, job) ->
-        #  if error
-        #    go error
-        #  else
-        #    go null, extendJob job
-        go null, extendSplitFrameResult result
+    if splitRatios.length is splitKeys.length - 1
+      splits = computeSplits splitRatios, splitKeys
+
+      frameExpr = JSON.stringify frameKey
+      randomVecKey = createTempKey()
+
+      _.requestExec "(= !#{randomVecKey} (h2o.runif #{frameExpr} #-1))", (error, result) ->
+        if error
+          go error
+        else
+          exprs = for part, i in splits
+            g = if i isnt 0 then "(G %#{randomVecKey} ##{part.min})" else null
+
+            l = if i isnt splits.length - 1 then "(l %#{randomVecKey} ##{part.max})" else null
+
+            sliceExpr = if g and l
+              "(& #{g} #{l})"
+            else if l
+              l
+            else
+              g
+
+            "(= !#{JSON.stringify part.key} ([ %#{frameExpr} #{sliceExpr} \"null\"))"
+
+          futures = map exprs, (expr) ->
+            _fork _.requestExec, expr
+
+          Flow.Async.join futures, (error, results) ->
+            if error
+              go error
+            else
+              _.requestDeleteFrame randomVecKey, (error, result) ->
+                if error
+                  go error
+                else
+                  go null, extendSplitFrameResult
+                    keys: splitKeys
+                    ratios: splitRatios
+
+    else
+      go new Flow.Error 'The number of split ratios should be one less than the number of split keys'
 
   createFrame = (opts) ->
     if opts
