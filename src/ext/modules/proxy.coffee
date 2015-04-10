@@ -118,6 +118,16 @@ H2O.Proxy = (_) ->
       else
         go null, transform result
 
+  requestExec = (ast, go) ->
+    doPost '/1/Rapids.json', { ast: ast }, (error, result) ->
+      if error
+        go error
+      else
+        #TODO HACK - this api returns a 200 OK on failures
+        if result.error
+          go new Flow.Error result.error
+        else
+          go null, result
 
   requestInspect = (key, go) ->
     opts = key: encodeURIComponent key
@@ -478,5 +488,6 @@ H2O.Proxy = (_) ->
   link _.requestFlow, requestFlow
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
+  link _.requestExec, requestExec
 
 

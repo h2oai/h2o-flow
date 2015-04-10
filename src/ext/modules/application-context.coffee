@@ -51,6 +51,7 @@ H2O.ApplicationContext = (_) ->
   _.requestFlow = do slot
   _.requestHelpIndex = do slot
   _.requestHelpContent = do slot
+  _.requestExec = do slot
   _.inspect = do slot
   _.plot = do slot
   _.grid = do slot
