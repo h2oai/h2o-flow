@@ -410,8 +410,10 @@ H2O.Routines = (_) ->
     vectors = [
       createVector 'tree', TNumber, (sequence size)
       createVector 'mse_train', TNumber, parseNaNs output.mse_train
-      createVector 'mse_valid', TNumber, parseNaNs output.mse_valid
     ]
+
+    if output.mse_valid
+      vectors.push createVector 'mse_valid', TNumber, parseNaNs output.mse_valid
 
     createDataframe 'output', vectors, (sequence size), null,
       description: "Output for GBM model '#{model.key.name}'"

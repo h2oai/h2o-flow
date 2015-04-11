@@ -106,26 +106,41 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'gbm', 'drf'
       if table = _.inspect 'output', _model
-        renderPlot 'Output', _.plot (g) ->
-          g(
-            g.path(
-              g.position 'tree', 'mse_train'
-              g.strokeColor g.value '#1f77b4'
+        if table.schema.mse_valid
+          renderPlot 'Output', _.plot (g) ->
+            g(
+              g.path(
+                g.position 'tree', 'mse_train'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.path(
+                g.position 'tree', 'mse_valid'
+                g.strokeColor g.value '#ff7f0e'
+              )
+              g.point(
+                g.position 'tree', 'mse_train'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.point(
+                g.position 'tree', 'mse_valid'
+                g.strokeColor g.value '#ff7f0e'
+              )
+              g.from table
             )
-            g.path(
-              g.position 'tree', 'mse_valid'
-              g.strokeColor g.value '#ff7f0e'
+        else
+          renderPlot 'Output', _.plot (g) ->
+            g(
+              g.path(
+                g.position 'tree', 'mse_train'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.point(
+                g.position 'tree', 'mse_train'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.from table
             )
-            g.point(
-              g.position 'tree', 'mse_train'
-              g.strokeColor g.value '#1f77b4'
-            )
-            g.point(
-              g.position 'tree', 'mse_valid'
-              g.strokeColor g.value '#ff7f0e'
-            )
-            g.from table
-          )
+          
 
       if table = _.inspect 'Variable Importances', _model
         renderPlot 'Variable Importances', _.plot (g) ->
