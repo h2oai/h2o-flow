@@ -2,6 +2,31 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.80] - 2015-03-13
+### Added
+- Split frames using rapids.
+
+### Fixed
+- PUBDEV-785 Add getFrameSummary() The default frame display now uses /frame/id/summary to fetch summary information.
+
+## [0.2.79] - 2015-04-02
+### Fixed
+- Remove CM inspection from binomial prediction output.
+
+## [0.2.78] - 2015-03-25
+### Added
+- Display basic prediction outputs in predict-output
+
+## [0.2.77] - 2015-03-25
+### Added
+- Add logloss to predictions outputs
+
+## [0.2.76] - 2015-03-24
+### Fixed
+- Adapt model builder response handling to changes in the API (HEXDEV-121)
+- Fix rendering failure in RDDs-output
+- Remove horizontal scrollbars from parse input data preview
+
 ## [0.2.75] - 2015-03-13
 ### Fixed
 - Fix failure while viewing CM for multinomial predictions (HEXDEV-204)
