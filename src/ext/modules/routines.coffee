@@ -486,7 +486,7 @@ H2O.Routines = (_) ->
             plot: "plot inspect '#{variableImportances.name}', #{origin}"
 
     if modelCategory is 'Binomial'
-      if trainMetrics = model.output.train_metrics
+      if trainMetrics = model.output.training_metrics
         trainMetrics.thresholds_and_metric_scores.name = 'Training ' + trainMetrics.thresholds_and_metric_scores.name
         trainMetrics.max_criteria_and_metric_scores.name = 'Training ' + trainMetrics.max_criteria_and_metric_scores.name
 
@@ -506,7 +506,7 @@ H2O.Routines = (_) ->
 
         inspections[ 'Training Confusion Matrices' ] = inspectBinomialConfusionMatrices2 'Training Confusion Matrices', trainMetrics
 
-      if validMetrics = model.output.valid_metrics
+      if validMetrics = model.output.validation_metrics
         validMetrics.thresholds_and_metric_scores.name = 'Validation ' + validMetrics.thresholds_and_metric_scores.name
         validMetrics.max_criteria_and_metric_scores.name = 'Validation ' + validMetrics.max_criteria_and_metric_scores.name
 
@@ -527,21 +527,21 @@ H2O.Routines = (_) ->
 
     else if modelCategory is 'Multinomial'
 
-      if trainMetrics = model.output.train_metrics
+      if trainMetrics = model.output.training_metrics
         inspections[ 'Training Metrics' ] = inspectMultinomialPrediction2 'Training Metrics', trainMetrics
         if table = trainMetrics.cm.table
           inspectMultinomialConfusionMatrix 'Training Confusion Matrix', table, origin, inspections
 
-      if validMetrics = model.output.valid_metrics
+      if validMetrics = model.output.validation_metrics
         inspections[ 'Validation Metrics' ] = inspectMultinomialPrediction2 'Validation Metrics', validMetrics
         if table = validMetrics.cm.table
           inspectMultinomialConfusionMatrix 'Validation Confusion Matrix', table, origin, inspections
 
     else if modelCategory is 'Regression'
-      if trainMetrics = model.output.train_metrics
+      if trainMetrics = model.output.training_metrics
         inspections[ 'Training Metrics' ] = inspectRegressionPrediction2 'Training Metrics', trainMetrics
 
-      if validMetrics = model.output.valid_metrics
+      if validMetrics = model.output.validation_metrics
         inspections[ 'Validation Metrics' ] = inspectRegressionPrediction2 'Validation Metrics', validMetrics
 
     inspect_ model, inspections
