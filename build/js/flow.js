@@ -1923,7 +1923,7 @@
     };
 }.call(this));
 (function () {
-    Flow.Version = '0.2.82';
+    Flow.Version = '0.2.83';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4247,7 +4247,7 @@
             try {
                 _ref = path.split('/'), root = _ref[0], version = _ref[1], name = _ref[2];
                 _ref1 = name.split('?'), base = _ref1[0], other = _ref1[1];
-                if (base !== 'Typeahead.json' && base !== 'Jobs.json') {
+                if (base !== 'Typeahead' && base !== 'Jobs') {
                     _.trackEvent('api', base, version);
                 }
             } catch (_error) {
@@ -4322,7 +4322,7 @@
             };
         };
         requestExec = function (ast, go) {
-            return doPost('/1/Rapids.json', { ast: ast }, function (error, result) {
+            return doPost('/3/Rapids', { ast: ast }, function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4337,10 +4337,10 @@
         requestInspect = function (key, go) {
             var opts;
             opts = { key: encodeURIComponent(key) };
-            return requestWithOpts('/1/Inspect.json', opts, go);
+            return requestWithOpts('/3/Inspect', opts, go);
         };
         requestCreateFrame = function (opts, go) {
-            return doPost('/2/CreateFrame.json', opts, go);
+            return doPost('/3/CreateFrame', opts, go);
         };
         requestSplitFrame = function (frameKey, splitRatios, splitKeys, go) {
             var opts;
@@ -4349,10 +4349,10 @@
                 ratios: encodeArrayForPost(splitRatios),
                 dest_keys: encodeArrayForPost(splitKeys)
             };
-            return doPost('/2/SplitFrame.json', opts, go);
+            return doPost('/3/SplitFrame', opts, go);
         };
         requestFrames = function (go) {
-            return doGet('/3/Frames.json', function (error, result) {
+            return doGet('/3/Frames', function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4361,7 +4361,7 @@
             });
         };
         requestFrame = function (key, go) {
-            return doGet('/3/Frames.json/' + encodeURIComponent(key), function (error, result) {
+            return doGet('/3/Frames/' + encodeURIComponent(key), function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4370,7 +4370,7 @@
             });
         };
         requestFrameSummary = function (key, go) {
-            return doGet('/3/Frames.json/' + encodeURIComponent(key) + '/summary', function (error, result) {
+            return doGet('/3/Frames/' + encodeURIComponent(key) + '/summary', function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4379,10 +4379,10 @@
             });
         };
         requestDeleteFrame = function (key, go) {
-            return doDelete('/3/Frames.json/' + encodeURIComponent(key), go);
+            return doDelete('/3/Frames/' + encodeURIComponent(key), go);
         };
         requestRDDs = function (go) {
-            return doGet('/3/RDDs.json', function (error, result) {
+            return doGet('/3/RDDs', function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4391,7 +4391,7 @@
             });
         };
         requestColumnSummary = function (key, column, go) {
-            return doGet('/3/Frames.json/' + encodeURIComponent(key) + '/columns/' + encodeURIComponent(column) + '/summary', function (error, result) {
+            return doGet('/3/Frames/' + encodeURIComponent(key) + '/columns/' + encodeURIComponent(column) + '/summary', function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4400,7 +4400,7 @@
             });
         };
         requestJobs = function (go) {
-            return doGet('/2/Jobs.json', function (error, result) {
+            return doGet('/3/Jobs', function (error, result) {
                 if (error) {
                     return go(new Flow.Error('Error fetching jobs', error));
                 } else {
@@ -4409,7 +4409,7 @@
             });
         };
         requestJob = function (key, go) {
-            return doGet('/2/Jobs.json/' + encodeURIComponent(key), function (error, result) {
+            return doGet('/3/Jobs/' + encodeURIComponent(key), function (error, result) {
                 if (error) {
                     return go(new Flow.Error('Error fetching job \'' + key + '\'', error));
                 } else {
@@ -4418,7 +4418,7 @@
             });
         };
         requestCancelJob = function (key, go) {
-            return doPost('/2/Jobs.json/' + encodeURIComponent(key) + '/cancel', {}, function (error, result) {
+            return doPost('/3/Jobs/' + encodeURIComponent(key) + '/cancel', {}, function (error, result) {
                 if (error) {
                     return go(new Flow.Error('Error canceling job \'' + key + '\'', error));
                 } else {
@@ -4433,7 +4433,7 @@
                 src: encodeURIComponent(path),
                 limit: limit
             };
-            return requestWithOpts('/2/Typeahead.json/files', opts, go);
+            return requestWithOpts('/3/Typeahead/files', opts, go);
         };
         requestImportFiles = function (paths, go) {
             var tasks;
@@ -4447,12 +4447,12 @@
         requestImportFile = function (path, go) {
             var opts;
             opts = { path: encodeURIComponent(path) };
-            return requestWithOpts('/2/ImportFiles.json', opts, go);
+            return requestWithOpts('/3/ImportFiles', opts, go);
         };
         requestParseSetup = function (sourceKeys, go) {
             var opts;
             opts = { source_keys: encodeArrayForPost(sourceKeys) };
-            return doPost('/2/ParseSetup.json', opts, go);
+            return doPost('/3/ParseSetup', opts, go);
         };
         requestParseSetupPreview = function (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, columnTypes, go) {
             var opts;
@@ -4464,7 +4464,7 @@
                 check_header: checkHeader,
                 column_types: encodeArrayForPost(columnTypes)
             };
-            return doPost('/2/ParseSetup.json', opts, go);
+            return doPost('/3/ParseSetup', opts, go);
         };
         requestParseFiles = function (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) {
             var opts;
@@ -4481,7 +4481,7 @@
                 delete_on_done: deleteOnDone,
                 chunk_size: chunkSize
             };
-            return doPost('/2/Parse.json', opts, go);
+            return doPost('/3/Parse', opts, go);
         };
         patchUpModels = function (models) {
             var model, parameter, parseError, _i, _j, _len, _len1, _ref;
@@ -4507,7 +4507,7 @@
             return models;
         };
         requestModels = function (go, opts) {
-            return requestWithOpts('/3/Models.json', opts, function (error, result) {
+            return requestWithOpts('/3/Models', opts, function (error, result) {
                 if (error) {
                     return go(error, result);
                 } else {
@@ -4516,7 +4516,7 @@
             });
         };
         requestModel = function (key, go) {
-            return doGet('/3/Models.json/' + encodeURIComponent(key), function (error, result) {
+            return doGet('/3/Models/' + encodeURIComponent(key), function (error, result) {
                 if (error) {
                     return go(error, result);
                 } else {
@@ -4525,25 +4525,25 @@
             });
         };
         requestDeleteModel = function (key, go) {
-            return doDelete('/3/Models.json/' + encodeURIComponent(key), go);
+            return doDelete('/3/Models/' + encodeURIComponent(key), go);
         };
         requestModelBuilders = function (go) {
-            return doGet('/3/ModelBuilders.json', go);
+            return doGet('/3/ModelBuilders', go);
         };
         requestModelBuilder = function (algo, go) {
-            return doGet('/3/ModelBuilders.json/' + algo, go);
+            return doGet('/3/ModelBuilders/' + algo, go);
         };
         requestModelInputValidation = function (algo, parameters, go) {
-            return doPost('/3/ModelBuilders.json/' + algo + '/parameters', encodeObjectForPost(parameters), go);
+            return doPost('/3/ModelBuilders/' + algo + '/parameters', encodeObjectForPost(parameters), go);
         };
         requestModelBuild = function (algo, parameters, go) {
             _.trackEvent('model', algo);
-            return doPost('/3/ModelBuilders.json/' + algo, encodeObjectForPost(parameters), go);
+            return doPost('/3/ModelBuilders/' + algo, encodeObjectForPost(parameters), go);
         };
         requestPredict = function (destinationKey, modelKey, frameKey, go) {
             var opts;
             opts = destinationKey ? { destination_key: destinationKey } : {};
-            return doPost('/3/Predictions.json/models/' + encodeURIComponent(modelKey) + '/frames/' + encodeURIComponent(frameKey), opts, function (error, result) {
+            return doPost('/3/Predictions/models/' + encodeURIComponent(modelKey) + '/frames/' + encodeURIComponent(frameKey), opts, function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4552,7 +4552,7 @@
             });
         };
         requestPrediction = function (modelKey, frameKey, go) {
-            return doGet('/3/ModelMetrics.json/models/' + encodeURIComponent(modelKey) + '/frames/' + encodeURIComponent(frameKey), function (error, result) {
+            return doGet('/3/ModelMetrics/models/' + encodeURIComponent(modelKey) + '/frames/' + encodeURIComponent(frameKey), function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -4597,31 +4597,31 @@
                 }
             };
             if (modelKey && frameKey) {
-                return doGet('/3/ModelMetrics.json/models/' + encodeURIComponent(modelKey) + '/frames/' + encodeURIComponent(frameKey), go);
+                return doGet('/3/ModelMetrics/models/' + encodeURIComponent(modelKey) + '/frames/' + encodeURIComponent(frameKey), go);
             } else if (modelKey) {
-                return doGet('/3/ModelMetrics.json/models/' + encodeURIComponent(modelKey), go);
+                return doGet('/3/ModelMetrics/models/' + encodeURIComponent(modelKey), go);
             } else if (frameKey) {
-                return doGet('/3/ModelMetrics.json/frames/' + encodeURIComponent(frameKey), go);
+                return doGet('/3/ModelMetrics/frames/' + encodeURIComponent(frameKey), go);
             } else {
-                return doGet('/3/ModelMetrics.json', go);
+                return doGet('/3/ModelMetrics', go);
             }
         };
         requestObjects = function (type, go) {
-            return doGet('/3/NodePersistentStorage.json/' + encodeURIComponent(type), unwrap(go, function (result) {
+            return doGet('/3/NodePersistentStorage/' + encodeURIComponent(type), unwrap(go, function (result) {
                 return result.entries;
             }));
         };
         requestObject = function (type, name, go) {
-            return doGet('/3/NodePersistentStorage.json/' + encodeURIComponent(type) + '/' + encodeURIComponent(name), unwrap(go, function (result) {
+            return doGet('/3/NodePersistentStorage/' + encodeURIComponent(type) + '/' + encodeURIComponent(name), unwrap(go, function (result) {
                 return JSON.parse(result.value);
             }));
         };
         requestDeleteObject = function (type, name, go) {
-            return doDelete('/3/NodePersistentStorage.json/' + encodeURIComponent(type) + '/' + encodeURIComponent(name), go);
+            return doDelete('/3/NodePersistentStorage/' + encodeURIComponent(type) + '/' + encodeURIComponent(name), go);
         };
         requestPutObject = function (type, name, value, go) {
             var uri;
-            uri = '/3/NodePersistentStorage.json/' + encodeURIComponent(type);
+            uri = '/3/NodePersistentStorage/' + encodeURIComponent(type);
             if (name) {
                 uri += '/' + encodeURIComponent(name);
             }
@@ -4631,7 +4631,7 @@
         };
         requestUploadObject = function (type, name, formData, go) {
             var uri;
-            uri = '/3/NodePersistentStorage.json/' + encodeURIComponent(type);
+            uri = '/3/NodePersistentStorage/' + encodeURIComponent(type);
             if (name) {
                 uri += '/' + encodeURIComponent(name);
             }
@@ -4640,46 +4640,46 @@
             }));
         };
         requestUploadFile = function (key, formData, go) {
-            return doUpload('/3/PostFile.json?destination_key=' + encodeURIComponent(key), formData, go);
+            return doUpload('/3/PostFile?destination_key=' + encodeURIComponent(key), formData, go);
         };
         requestCloud = function (go) {
-            return doGet('/1/Cloud.json', go);
+            return doGet('/3/Cloud', go);
         };
         requestTimeline = function (go) {
-            return doGet('/2/Timeline.json', go);
+            return doGet('/3/Timeline', go);
         };
         requestProfile = function (depth, go) {
-            return doGet('/2/Profiler.json?depth=' + depth, go);
+            return doGet('/3/Profiler?depth=' + depth, go);
         };
         requestStackTrace = function (go) {
-            return doGet('/2/JStack.json', go);
+            return doGet('/3/JStack', go);
         };
         requestRemoveAll = function (go) {
             return doDelete('/3/DKV', go);
         };
         requestLogFile = function (nodeIndex, fileType, go) {
-            return doGet('/3/Logs.json/nodes/' + nodeIndex + '/files/' + fileType, go);
+            return doGet('/3/Logs/nodes/' + nodeIndex + '/files/' + fileType, go);
         };
         requestNetworkTest = function (go) {
-            return doGet('/2/NetworkTest.json', go);
+            return doGet('/3/NetworkTest', go);
         };
         requestAbout = function (go) {
-            return doGet('/3/About.json', go);
+            return doGet('/3/About', go);
         };
         requestShutdown = function (go) {
-            return doPost('/2/Shutdown', {}, go);
+            return doPost('/3/Shutdown', {}, go);
         };
         requestEndpoints = function (go) {
-            return doGet('/1/Metadata/endpoints.json', go);
+            return doGet('/3/Metadata/endpoints', go);
         };
         requestEndpoint = function (index, go) {
-            return doGet('/1/Metadata/endpoints.json/' + index, go);
+            return doGet('/3/Metadata/endpoints/' + index, go);
         };
         requestSchemas = function (go) {
-            return doGet('/1/Metadata/schemas.json', go);
+            return doGet('/3/Metadata/schemas', go);
         };
         requestSchema = function (name, go) {
-            return doGet('/1/Metadata/schemas.json/' + encodeURIComponent(name), go);
+            return doGet('/3/Metadata/schemas/' + encodeURIComponent(name), go);
         };
         getLines = function (data) {
             return lodash.filter(data.split('\n'), function (line) {
@@ -5466,7 +5466,7 @@
                 }
             }
             if (modelCategory === 'Binomial') {
-                if (trainMetrics = model.output.train_metrics) {
+                if (trainMetrics = model.output.training_metrics) {
                     trainMetrics.thresholds_and_metric_scores.name = 'Training ' + trainMetrics.thresholds_and_metric_scores.name;
                     trainMetrics.max_criteria_and_metric_scores.name = 'Training ' + trainMetrics.max_criteria_and_metric_scores.name;
                     inspections['Training Metrics'] = inspectBinomialPrediction2('Training Metrics', trainMetrics);
@@ -5486,7 +5486,7 @@
                     };
                     inspections['Training Confusion Matrices'] = inspectBinomialConfusionMatrices2('Training Confusion Matrices', trainMetrics);
                 }
-                if (validMetrics = model.output.valid_metrics) {
+                if (validMetrics = model.output.validation_metrics) {
                     validMetrics.thresholds_and_metric_scores.name = 'Validation ' + validMetrics.thresholds_and_metric_scores.name;
                     validMetrics.max_criteria_and_metric_scores.name = 'Validation ' + validMetrics.max_criteria_and_metric_scores.name;
                     inspections['Validation Metrics'] = inspectBinomialPrediction2('Validation Metrics', validMetrics);
@@ -5507,23 +5507,23 @@
                     inspections['Validation Confusion Matrices'] = inspectBinomialConfusionMatrices2('Validation Confusion Matrices', validMetrics);
                 }
             } else if (modelCategory === 'Multinomial') {
-                if (trainMetrics = model.output.train_metrics) {
+                if (trainMetrics = model.output.training_metrics) {
                     inspections['Training Metrics'] = inspectMultinomialPrediction2('Training Metrics', trainMetrics);
                     if (table = trainMetrics.cm.table) {
                         inspectMultinomialConfusionMatrix('Training Confusion Matrix', table, origin, inspections);
                     }
                 }
-                if (validMetrics = model.output.valid_metrics) {
+                if (validMetrics = model.output.validation_metrics) {
                     inspections['Validation Metrics'] = inspectMultinomialPrediction2('Validation Metrics', validMetrics);
                     if (table = validMetrics.cm.table) {
                         inspectMultinomialConfusionMatrix('Validation Confusion Matrix', table, origin, inspections);
                     }
                 }
             } else if (modelCategory === 'Regression') {
-                if (trainMetrics = model.output.train_metrics) {
+                if (trainMetrics = model.output.training_metrics) {
                     inspections['Training Metrics'] = inspectRegressionPrediction2('Training Metrics', trainMetrics);
                 }
-                if (validMetrics = model.output.valid_metrics) {
+                if (validMetrics = model.output.validation_metrics) {
                     inspections['Validation Metrics'] = inspectRegressionPrediction2('Validation Metrics', validMetrics);
                 }
             }
