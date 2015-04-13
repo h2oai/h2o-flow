@@ -68,7 +68,7 @@ H2O.Proxy = (_) ->
     try
       [ root, version, name ] = path.split '/'
       [ base, other ] = name.split '?'
-      if base isnt 'Typeahead.json' and base isnt 'Jobs.json'
+      if base isnt 'Typeahead' and base isnt 'Jobs'
         _.trackEvent 'api', base, version
     catch e
 
@@ -119,7 +119,7 @@ H2O.Proxy = (_) ->
         go null, transform result
 
   requestExec = (ast, go) ->
-    doPost '/1/Rapids.json', { ast: ast }, (error, result) ->
+    doPost '/3/Rapids', { ast: ast }, (error, result) ->
       if error
         go error
       else
@@ -131,72 +131,72 @@ H2O.Proxy = (_) ->
 
   requestInspect = (key, go) ->
     opts = key: encodeURIComponent key
-    requestWithOpts '/1/Inspect.json', opts, go
+    requestWithOpts '/3/Inspect', opts, go
 
   requestCreateFrame = (opts, go) ->
-    doPost '/2/CreateFrame.json', opts, go
+    doPost '/3/CreateFrame', opts, go
 
   requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
     opts =
       dataset: frameKey
       ratios: encodeArrayForPost splitRatios
       dest_keys: encodeArrayForPost splitKeys
-    doPost '/2/SplitFrame.json', opts, go
+    doPost '/3/SplitFrame', opts, go
 
   requestFrames = (go) ->
-    doGet '/3/Frames.json', (error, result) ->
+    doGet '/3/Frames', (error, result) ->
       if error
         go error
       else
         go null, result.frames
 
   requestFrame = (key, go) ->
-    doGet "/3/Frames.json/#{encodeURIComponent key}", (error, result) ->
+    doGet "/3/Frames/#{encodeURIComponent key}", (error, result) ->
       if error
         go error
       else
         go null, head result.frames
 
   requestFrameSummary = (key, go) ->
-    doGet "/3/Frames.json/#{encodeURIComponent key}/summary", (error, result) ->
+    doGet "/3/Frames/#{encodeURIComponent key}/summary", (error, result) ->
       if error
         go error
       else
         go null, head result.frames
 
   requestDeleteFrame = (key, go) ->
-    doDelete "/3/Frames.json/#{encodeURIComponent key}", go
+    doDelete "/3/Frames/#{encodeURIComponent key}", go
 
   requestRDDs = (go) ->
-    doGet '/3/RDDs.json', (error, result) ->
+    doGet '/3/RDDs', (error, result) ->
       if error
         go error
       else
         go null, result.rdds
 
   requestColumnSummary = (key, column, go) ->
-    doGet "/3/Frames.json/#{encodeURIComponent key}/columns/#{encodeURIComponent column}/summary", (error, result) ->
+    doGet "/3/Frames/#{encodeURIComponent key}/columns/#{encodeURIComponent column}/summary", (error, result) ->
       if error
         go error
       else
         go null, head result.frames
 
   requestJobs = (go) ->
-    doGet '/2/Jobs.json', (error, result) ->
+    doGet '/3/Jobs', (error, result) ->
       if error
         go new Flow.Error 'Error fetching jobs', error
       else
         go null, result.jobs 
 
   requestJob = (key, go) ->
-    doGet "/2/Jobs.json/#{encodeURIComponent key}", (error, result) ->
+    doGet "/3/Jobs/#{encodeURIComponent key}", (error, result) ->
       if error
         go new Flow.Error "Error fetching job '#{key}'", error
       else
         go null, head result.jobs
 
   requestCancelJob = (key, go) ->
-    doPost "/2/Jobs.json/#{encodeURIComponent key}/cancel", {}, (error, result) ->
+    doPost "/3/Jobs/#{encodeURIComponent key}/cancel", {}, (error, result) ->
       if error
         go new Flow.Error "Error canceling job '#{key}'", error
       else
@@ -207,7 +207,7 @@ H2O.Proxy = (_) ->
     opts =
       src: encodeURIComponent path
       limit: limit
-    requestWithOpts '/2/Typeahead.json/files', opts, go
+    requestWithOpts '/3/Typeahead/files', opts, go
 
   requestImportFiles = (paths, go) ->
     tasks = map paths, (path) ->
@@ -217,12 +217,12 @@ H2O.Proxy = (_) ->
 
   requestImportFile = (path, go) ->
     opts = path: encodeURIComponent path
-    requestWithOpts '/2/ImportFiles.json', opts, go
+    requestWithOpts '/3/ImportFiles', opts, go
 
   requestParseSetup = (sourceKeys, go) ->
     opts =
       source_keys: encodeArrayForPost sourceKeys
-    doPost '/2/ParseSetup.json', opts, go
+    doPost '/3/ParseSetup', opts, go
 
   requestParseSetupPreview = (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, columnTypes, go) ->
     opts = 
@@ -232,7 +232,7 @@ H2O.Proxy = (_) ->
       single_quotes: useSingleQuotes
       check_header: checkHeader
       column_types: encodeArrayForPost columnTypes
-    doPost '/2/ParseSetup.json', opts, go
+    doPost '/3/ParseSetup', opts, go
 
   requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     opts =
@@ -247,7 +247,7 @@ H2O.Proxy = (_) ->
       check_header: checkHeader
       delete_on_done: deleteOnDone
       chunk_size: chunkSize
-    doPost '/2/Parse.json', opts, go
+    doPost '/3/Parse', opts, go
 
   patchUpModels = (models) ->
     for model in models
@@ -261,34 +261,34 @@ H2O.Proxy = (_) ->
     models
 
   requestModels = (go, opts) ->
-    requestWithOpts '/3/Models.json', opts, (error, result) ->
+    requestWithOpts '/3/Models', opts, (error, result) ->
       if error
         go error, result
       else
         go error, patchUpModels result.models
 
   requestModel = (key, go) ->
-    doGet "/3/Models.json/#{encodeURIComponent key}", (error, result) ->
+    doGet "/3/Models/#{encodeURIComponent key}", (error, result) ->
       if error
         go error, result
       else
         go error, head patchUpModels result.models
 
   requestDeleteModel = (key, go) ->
-    doDelete "/3/Models.json/#{encodeURIComponent key}", go
+    doDelete "/3/Models/#{encodeURIComponent key}", go
 
   requestModelBuilders = (go) ->
-    doGet "/3/ModelBuilders.json", go
+    doGet "/3/ModelBuilders", go
 
   requestModelBuilder = (algo, go) ->
-    doGet "/3/ModelBuilders.json/#{algo}", go
+    doGet "/3/ModelBuilders/#{algo}", go
 
   requestModelInputValidation = (algo, parameters, go) ->
-    doPost "/3/ModelBuilders.json/#{algo}/parameters", (encodeObjectForPost parameters), go
+    doPost "/3/ModelBuilders/#{algo}/parameters", (encodeObjectForPost parameters), go
 
   requestModelBuild = (algo, parameters, go) ->
     _.trackEvent 'model', algo
-    doPost "/3/ModelBuilders.json/#{algo}", (encodeObjectForPost parameters), go
+    doPost "/3/ModelBuilders/#{algo}", (encodeObjectForPost parameters), go
 
   requestPredict = (destinationKey, modelKey, frameKey, go) ->
     opts = if destinationKey
@@ -296,14 +296,14 @@ H2O.Proxy = (_) ->
     else
       {}
 
-    doPost "/3/Predictions.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", opts, (error, result) ->
+    doPost "/3/Predictions/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", opts, (error, result) ->
       if error
         go error
       else
         go null, head result.model_metrics
 
   requestPrediction = (modelKey, frameKey, go) ->
-    doGet "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", (error, result) ->
+    doGet "/3/ModelMetrics/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", (error, result) ->
       if error
         go error
       else
@@ -327,13 +327,13 @@ H2O.Proxy = (_) ->
         _go null, (prediction for prediction in predictions when prediction)
 
     if modelKey and frameKey
-      doGet "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", go
+      doGet "/3/ModelMetrics/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", go
     else if modelKey
-      doGet "/3/ModelMetrics.json/models/#{encodeURIComponent modelKey}", go
+      doGet "/3/ModelMetrics/models/#{encodeURIComponent modelKey}", go
     else if frameKey
-      doGet "/3/ModelMetrics.json/frames/#{encodeURIComponent frameKey}", go
+      doGet "/3/ModelMetrics/frames/#{encodeURIComponent frameKey}", go
     else
-      doGet "/3/ModelMetrics.json", go
+      doGet "/3/ModelMetrics", go
 
 #
 #  requestObjects = (type, go) ->
@@ -350,65 +350,65 @@ H2O.Proxy = (_) ->
 #
 
   requestObjects = (type, go) ->
-    doGet "/3/NodePersistentStorage.json/#{encodeURIComponent type}", unwrap go, (result) -> result.entries
+    doGet "/3/NodePersistentStorage/#{encodeURIComponent type}", unwrap go, (result) -> result.entries
 
   requestObject = (type, name, go) ->
-    doGet "/3/NodePersistentStorage.json/#{encodeURIComponent type}/#{encodeURIComponent name}", unwrap go, (result) -> JSON.parse result.value
+    doGet "/3/NodePersistentStorage/#{encodeURIComponent type}/#{encodeURIComponent name}", unwrap go, (result) -> JSON.parse result.value
 
   requestDeleteObject = (type, name, go) ->
-    doDelete "/3/NodePersistentStorage.json/#{encodeURIComponent type}/#{encodeURIComponent name}", go
+    doDelete "/3/NodePersistentStorage/#{encodeURIComponent type}/#{encodeURIComponent name}", go
 
   requestPutObject = (type, name, value, go) ->
-    uri = "/3/NodePersistentStorage.json/#{encodeURIComponent type}"
+    uri = "/3/NodePersistentStorage/#{encodeURIComponent type}"
     uri += "/#{encodeURIComponent name}" if name
     doPost uri, { value: JSON.stringify value, null, 2 }, unwrap go, (result) -> result.name
 
   requestUploadObject = (type, name, formData, go) ->
-    uri = "/3/NodePersistentStorage.json/#{encodeURIComponent type}"
+    uri = "/3/NodePersistentStorage/#{encodeURIComponent type}"
     uri += "/#{encodeURIComponent name}" if name
     doUpload uri, formData, unwrap go, (result) -> result.name
 
   requestUploadFile = (key, formData, go) ->
-    doUpload "/3/PostFile.json?destination_key=#{encodeURIComponent key}", formData, go
+    doUpload "/3/PostFile?destination_key=#{encodeURIComponent key}", formData, go
 
   requestCloud = (go) ->
-    doGet '/1/Cloud.json', go
+    doGet '/3/Cloud', go
 
   requestTimeline = (go) ->
-    doGet '/2/Timeline.json', go
+    doGet '/3/Timeline', go
 
   requestProfile = (depth, go) ->
-    doGet "/2/Profiler.json?depth=#{depth}", go
+    doGet "/3/Profiler?depth=#{depth}", go
 
   requestStackTrace = (go) ->
-    doGet '/2/JStack.json', go
+    doGet '/3/JStack', go
 
   requestRemoveAll = (go) ->
     doDelete '/3/DKV', go
 
   requestLogFile = (nodeIndex, fileType, go) ->
-    doGet "/3/Logs.json/nodes/#{nodeIndex}/files/#{fileType}", go
+    doGet "/3/Logs/nodes/#{nodeIndex}/files/#{fileType}", go
 
   requestNetworkTest = (go) ->
-    doGet '/2/NetworkTest.json', go
+    doGet '/3/NetworkTest', go
 
   requestAbout = (go) ->
-    doGet '/3/About.json', go
+    doGet '/3/About', go
 
   requestShutdown = (go) ->
-    doPost "/2/Shutdown", {}, go
+    doPost "/3/Shutdown", {}, go
 
   requestEndpoints = (go) ->
-    doGet '/1/Metadata/endpoints.json', go
+    doGet '/3/Metadata/endpoints', go
 
   requestEndpoint = (index, go) ->
-    doGet "/1/Metadata/endpoints.json/#{index}", go
+    doGet "/3/Metadata/endpoints/#{index}", go
 
   requestSchemas = (go) ->
-    doGet '/1/Metadata/schemas.json', go
+    doGet '/3/Metadata/schemas', go
 
   requestSchema = (name, go) ->
-    doGet "/1/Metadata/schemas.json/#{encodeURIComponent name}", go
+    doGet "/3/Metadata/schemas/#{encodeURIComponent name}", go
 
   getLines = (data) ->
     filter (split data, '\n'), (line) -> if line.trim() then yes else no
