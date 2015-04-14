@@ -59,11 +59,11 @@ convertColumnToVector = (column, data) ->
     else
       createList column.name, data
 
-convertTableToFrame = (table, metadata) ->
+convertTableToFrame = (table, tableName, metadata) ->
   #TODO handle format strings and description
   vectors = for column, i in table.columns
     convertColumnToVector column, table.data[i]
-  createDataframe table.name, vectors, (sequence table.rowcount), null, metadata
+  createDataframe tableName, vectors, (sequence table.rowcount), null, metadata
 
 combineTables = (tables) ->
   leader = head tables
@@ -297,7 +297,7 @@ H2O.Routines = (_) ->
     render_ logFile, H2O.LogFileOutput, cloud, nodeIndex, fileType, logFile
 
   inspectNetworkTestResult = (testResult) -> ->
-    convertTableToFrame testResult.table,
+    convertTableToFrame testResult.table, testResult.table.name,
       description: testResult.table.name
       origin: "testNetwork"
 
@@ -390,8 +390,8 @@ H2O.Routines = (_) ->
   extendDeletedKeys = (keys) ->
     render_ keys, H2O.DeleteObjectsOutput, keys
 
-  inspectTwoDimTable_ = (origin, table) -> ->
-    convertTableToFrame table,
+  inspectTwoDimTable_ = (origin, tableName, table) -> ->
+    convertTableToFrame table, tableName,
       description: table.name
       origin: origin
 
@@ -436,12 +436,14 @@ H2O.Routines = (_) ->
 
     record = {}
 
+    inspections[name] = inspectRawObject_ name, origin, name, record
+
     for k, v of obj when not blacklist[k]
       if v is null
         record[k] = null
       else
         if v.__meta?.schema_type is 'TwoDimTable'
-          inspections[v.name] = inspectTwoDimTable_ origin, v
+          inspections["#{name} - #{v.name}"] = inspectTwoDimTable_ origin, "#{name} - #{v.name}", v
         else
           if isArray v
             inspections[k] = inspectRawArray_ k, origin, k, v
@@ -454,13 +456,13 @@ H2O.Routines = (_) ->
               else if meta.schema_type is 'Frame'
                 record[k] = v.key.name
               else
-                inspectObject inspections, k, origin, v
+                inspectObject inspections, "#{name} - #{k}", origin, v
             else
               console.log "WARNING: dropping [#{k}] from inspection:", v
           else
             record[k] = v
 
-    inspections[name] = inspectRawObject_ name, origin, name, record
+    return
 
   extendModel = (model) ->
     inspections = {}
