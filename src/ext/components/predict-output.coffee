@@ -1,52 +1,56 @@
 H2O.PredictOutput = (_, _go, prediction) ->
   { frame, model } = prediction
-  _isBinomial = signal prediction.model_category is 'Binomial'
-  _isMultinomial = signal prediction.model_category is 'Multinomial'
-  _isRegression = signal prediction.model_category is 'Regression'
-  _isClustering = signal prediction.model_category is 'Clustering'
 
-  _predictionRecord = signal null
-  _rocCurve = signal null
+  _plots = signals []
 
-  #_predictionTable = _.inspect 'prediction', prediction
+  renderPlot = (title, render) ->
+    container = signal null
 
-  renderPlot = (target, render) ->
     render (error, vis) ->
       if error
         debug error
       else
-        target vis.element
+        container vis.element
 
-  if _isBinomial()
-    renderPlot _predictionRecord, _.enumerate _.inspect 'Prediction', prediction
-#    renderPlot _rocCurve, _.plot (g) ->
-#      g(
-#        g.path g.position 'FPR', 'TPR'
-#        g.line(
-#          g.position (g.value 1), (g.value 0)
-#          g.strokeColor g.value 'red'
-#        )
-#        g.from _.inspect 'Confusion Matrices', prediction
-#      )
+    _plots.push title: title, plot: container
 
-  if _isMultinomial()
-    renderPlot _predictionRecord, _.enumerate _.inspect 'prediction', prediction
+  for tableName in _.ls prediction
+    if table = _.inspect tableName, prediction
+      if table.indices.length > 1
+        renderPlot tableName, _.plot (g) ->
+          g(
+            g.select()
+            g.from table
+          )
+      else
+        renderPlot tableName, _.plot (g) ->
+          g(
+            g.select 0
+            g.from table
+          )
+
+  if no
+    if _isBinomial()
+      renderPlot _predictionRecord, _.enumerate _.inspect 'Prediction', prediction
+  #    renderPlot _rocCurve, _.plot (g) ->
+  #      g(
+  #        g.path g.position 'FPR', 'TPR'
+  #        g.line(
+  #          g.position (g.value 1), (g.value 0)
+  #          g.strokeColor g.value 'red'
+  #        )
+  #        g.from _.inspect 'Confusion Matrices', prediction
+  #      )
+
+    if _isMultinomial()
+      renderPlot _predictionRecord, _.enumerate _.inspect 'prediction', prediction
 
   inspect = ->
     #XXX get this from prediction table
     _.insertAndExecuteCell 'cs', "inspect getPrediction model: #{stringify model.name}, frame: #{stringify frame.name}"
 
-  viewPredictionFrame = ->
-    _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify prediction.predictions.key.name}"
-
   defer _go
 
-  isBinomial: _isBinomial
-  isMultinomial: _isMultinomial
-  isRegression: _isRegression
-  isClustering: _isClustering
-  predictionRecord: _predictionRecord
-  rocCurve: _rocCurve
+  plots: _plots
   inspect: inspect
-  viewPredictionFrame: viewPredictionFrame
   template: 'flow-predict-output'

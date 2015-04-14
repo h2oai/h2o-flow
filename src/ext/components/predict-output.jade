@@ -8,17 +8,8 @@
           label Actions:
         td
           +button('Inspect', 'list', 'inspect')
-          +button('View Prediction Frame', 'database', 'viewPredictionFrame')
 
-  // ko if:isBinomial
-  h4 Output
-  .flow-plot(data-bind='raw:predictionRecord')
-
-  h4 ROC Curve
-  .flow-plot(data-bind='raw:rocCurve')  
-  // /ko
-
-  // ko if:isMultinomial
-  h4 Output
-  .flow-plot(data-bind='raw:predictionRecord')
+  // ko foreach:plots
+  h4(data-bind='text:title, collapse:false')
+  .flow-plot(data-bind='raw:plot')
   // /ko
