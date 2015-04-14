@@ -34,46 +34,46 @@ H2O.ModelOutput = (_, _go, _model) ->
 
   switch _model.algo
     when 'glm'
-      if table = _.inspect 'Normalized Coefficient Magnitudes', _model
+      if table = _.inspect 'normalized_coefficient_magnitudes', _model
         renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
           g(
             g.rect(
-              g.position 'Scaled', 'Variable'
+              g.position 'scaled', 'variable'
             )
             g.from table
             g.limit 25
           )
 
     when 'deeplearning'
-      if table = _.inspect 'Variable Importances', _model
+      if table = _.inspect 'variable_importances', _model
         renderPlot 'Variable Importances', _.plot (g) ->
           g(
             g.rect(
-              g.position 'Scaled Importance', 'Variable'
+              g.position 'scaled_importance', 'variable'
             )
             g.from table
             g.limit 25
           )
 
     when 'gbm', 'drf'
-      if table = _.inspect 'Scoring History', _model
-        if table.schema['Validation MSE']
+      if table = _.inspect 'scoring_history', _model
+        if table.schema['validation_mse']
           renderPlot 'Scoring History', _.plot (g) ->
             g(
               g.path(
-                g.position 'Number of Trees', 'Training MSE'
+                g.position 'number_of_trees', 'training_mse'
                 g.strokeColor g.value '#1f77b4'
               )
               g.path(
-                g.position 'Number of Trees', 'Validation MSE'
+                g.position 'number_of_trees', 'validation_mse'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.point(
-                g.position 'Number of Trees', 'Training MSE'
+                g.position 'number_of_trees', 'training_mse'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'Number of Trees', 'Validation MSE'
+                g.position 'number_of_trees', 'validation_mse'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.from table
@@ -82,22 +82,22 @@ H2O.ModelOutput = (_, _go, _model) ->
           renderPlot 'Scoring History', _.plot (g) ->
             g(
               g.path(
-                g.position 'Number of Trees', 'Training MSE'
+                g.position 'number_of_trees', 'training_mse'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'Number of Trees', 'Training MSE'
+                g.position 'number_of_trees', 'training_mse'
                 g.strokeColor g.value '#1f77b4'
               )
               g.from table
             )
           
 
-      if table = _.inspect 'Variable Importances', _model
+      if table = _.inspect 'variable_importances', _model
         renderPlot 'Variable Importances', _.plot (g) ->
           g(
             g.rect(
-              g.position 'Scaled Importance', 'Variable'
+              g.position 'scaled_importance', 'variable'
             )
             g.from table
             g.limit 25

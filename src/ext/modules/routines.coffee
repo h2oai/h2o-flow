@@ -419,6 +419,8 @@ H2O.Routines = (_) ->
     ModelMetricsBinomial: null
     ModelMetricsMultinomial: null
     ModelMetricsRegression: null
+    ModelMetricsClustering: null
+    ModelMetricsAutoEncoder: null
 
   blacklistBySchema = do ->
     dicts = {}
