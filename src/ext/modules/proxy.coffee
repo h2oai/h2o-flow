@@ -350,6 +350,14 @@ H2O.Proxy = (_) ->
 #  requestPutObject = (type, name, obj, go) ->
 #    go null, Flow.LocalStorage.write type, name, obj
 #
+  _storageConfiguration = null
+  requestIsStorageConfigured = (go) ->
+    if _storageConfiguration
+      go null, _storageConfiguration.isConfigured
+    else
+      doGet "/3/NodePersistentStorage/configured", (error, result) ->
+        _storageConfiguration = isConfigured: if error then no else result.configured
+        go null, _storageConfiguration.isConfigured
 
   requestObjects = (type, go) ->
     doGet "/3/NodePersistentStorage/#{encodeURIComponent type}", unwrap go, (result) -> result.entries
