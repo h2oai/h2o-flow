@@ -278,7 +278,9 @@ H2O.Proxy = (_) ->
     doDelete "/3/Models/#{encodeURIComponent key}", go
 
   requestModelBuilders = (go) ->
-    doGet "/3/ModelBuilders", go
+    doGet "/3/ModelBuilders", unwrap go, (result) ->
+      for algo, builder of result.model_builders
+        builder
 
   requestModelBuilder = (algo, go) ->
     doGet "/3/ModelBuilders/#{algo}", go

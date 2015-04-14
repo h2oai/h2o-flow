@@ -385,18 +385,18 @@ H2O.ModelInput = (_, _go, _algo, _opts) ->
         return go()
 
   do ->
-    _.requestModelBuilders (error, result) ->
-      modelBuilders = if error then [] else result.model_builders
-      _algorithms (key for key in keys modelBuilders when key isnt 'example')
-      _algorithm _algo
+    _.requestModelBuilders (error, modelBuilders) ->
+      _algorithms modelBuilders
+      _algorithm if _algo then (find modelBuilders, (builder) -> builder.algo is _algo) else undefined
       frameKey = _opts?.training_frame
-      act _algorithm, (algorithm) ->
-        if algorithm
+      act _algorithm, (builder) ->
+        if builder
+          algorithm = builder.algo
           _.requestModelBuilder algorithm, (error, result) ->
             if error
               _exception Flow.Failure _, new Flow.Error 'Error fetching model builder', error
             else
-              parameters = result.model_builders[algorithm].parameters
+              parameters = builder.parameters
               populateFramesAndColumns frameKey, algorithm, parameters, ->
                 _modelForm H2O.ModelBuilderForm _, algorithm, parameters
         else
