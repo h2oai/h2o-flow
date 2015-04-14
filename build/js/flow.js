@@ -1923,7 +1923,7 @@
     };
 }.call(this));
 (function () {
-    Flow.Version = '0.2.85';
+    Flow.Version = '0.2.86';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -2292,11 +2292,15 @@
             return _trashClips.removeAll();
         };
         loadUserClips = function () {
-            return _.requestObject('environment', 'clips', function (error, doc) {
-                if (!error) {
-                    return _userClips(lodash.map(doc.clips, function (clip) {
-                        return createClip(_userClips, clip.type, clip.input);
-                    }));
+            return _.requestObjectExists('environment', 'clips', function (error, exists) {
+                if (exists) {
+                    return _.requestObject('environment', 'clips', function (error, doc) {
+                        if (!error) {
+                            return _userClips(lodash.map(doc.clips, function (clip) {
+                                return createClip(_userClips, clip.type, clip.input);
+                            }));
+                        }
+                    });
                 }
             });
         };
@@ -3160,8 +3164,8 @@
             return false;
         };
         checkIfNameIsInUse = function (name, go) {
-            return _.requestObject('notebook', name, function (error) {
-                return go(error ? false : true);
+            return _.requestObjectExists('notebook', name, function (error, exists) {
+                return go(exists);
             });
         };
         storeNotebook = function (localName, remoteName) {
@@ -4127,6 +4131,7 @@
         _.requestCancelJob = Flow.Dataflow.slot();
         _.requestObjects = Flow.Dataflow.slot();
         _.requestObject = Flow.Dataflow.slot();
+        _.requestObjectExists = Flow.Dataflow.slot();
         _.requestDeleteObject = Flow.Dataflow.slot();
         _.requestPutObject = Flow.Dataflow.slot();
         _.requestUploadObject = Flow.Dataflow.slot();
@@ -4165,7 +4170,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestExec, requestFileGlob, requestFlow, requestFrame, requestFrameSummary, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap;
+        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEndpoint, requestEndpoints, requestExec, requestFileGlob, requestFlow, requestFrame, requestFrameSummary, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, _storageConfiguration;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4529,7 +4534,16 @@
             return doDelete('/3/Models/' + encodeURIComponent(key), go);
         };
         requestModelBuilders = function (go) {
-            return doGet('/3/ModelBuilders', go);
+            return doGet('/3/ModelBuilders', unwrap(go, function (result) {
+                var algo, builder, _ref, _results;
+                _ref = result.model_builders;
+                _results = [];
+                for (algo in _ref) {
+                    builder = _ref[algo];
+                    _results.push(builder);
+                }
+                return _results;
+            }));
         };
         requestModelBuilder = function (algo, go) {
             return doGet('/3/ModelBuilders/' + algo, go);
@@ -4607,10 +4621,26 @@
                 return doGet('/3/ModelMetrics', go);
             }
         };
+        _storageConfiguration = null;
+        requestIsStorageConfigured = function (go) {
+            if (_storageConfiguration) {
+                return go(null, _storageConfiguration.isConfigured);
+            } else {
+                return doGet('/3/NodePersistentStorage/configured', function (error, result) {
+                    _storageConfiguration = { isConfigured: error ? false : result.configured };
+                    return go(null, _storageConfiguration.isConfigured);
+                });
+            }
+        };
         requestObjects = function (type, go) {
             return doGet('/3/NodePersistentStorage/' + encodeURIComponent(type), unwrap(go, function (result) {
                 return result.entries;
             }));
+        };
+        requestObjectExists = function (type, name, go) {
+            return doGet('/3/NodePersistentStorage/categories/' + encodeURIComponent(type) + '/names/' + encodeURIComponent(name) + '/exists', function (error, result) {
+                return go(null, error ? false : result.exists);
+            });
         };
         requestObject = function (type, name, go) {
             return doGet('/3/NodePersistentStorage/' + encodeURIComponent(type) + '/' + encodeURIComponent(name), unwrap(go, function (result) {
@@ -4748,6 +4778,7 @@
         Flow.Dataflow.link(_.requestPredictions, requestPredictions);
         Flow.Dataflow.link(_.requestObjects, requestObjects);
         Flow.Dataflow.link(_.requestObject, requestObject);
+        Flow.Dataflow.link(_.requestObjectExists, requestObjectExists);
         Flow.Dataflow.link(_.requestDeleteObject, requestDeleteObject);
         Flow.Dataflow.link(_.requestPutObject, requestPutObject);
         Flow.Dataflow.link(_.requestUploadObject, requestUploadObject);
@@ -4774,7 +4805,7 @@
     };
 }.call(this));
 (function () {
-    var combineTables, computeFalsePositiveRate, computeTruePositiveRate, concatArrays, convertColumnToVector, convertTableToFrame, createArrays, createDataframe, createFactor, createList, createTempKey, createVector, formatConfusionMatrix, formulateGetPredictionsOrigin, lightning, parseNaNs, parseNulls, parseNumbers, repeatValues, _assistance, __slice = [].slice;
+    var augmentConfusionMatrices, combineTables, computeFalsePositiveRate, computeTruePositiveRate, concatArrays, convertColumnToVector, convertTableToFrame, createArrays, createDataframe, createFactor, createList, createTempKey, createVector, formatConfusionMatrix, formulateGetPredictionsOrigin, lightning, parseNaNs, parseNulls, parseNumbers, repeatValues, _assistance, __slice = [].slice;
     lightning = (typeof window !== 'undefined' && window !== null ? window.plot : void 0) != null ? window.plot : {};
     if (lightning.settings) {
         lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace';
@@ -4842,11 +4873,13 @@
             return createVector(column.name, Flow.TNumber, parseNumbers(data));
         case 'string':
             return createFactor(column.name, Flow.TString, data);
+        case 'matrix':
+            return createList(column.name, data, formatConfusionMatrix);
         default:
             return createList(column.name, data);
         }
     };
-    convertTableToFrame = function (table, metadata) {
+    convertTableToFrame = function (table, tableName, metadata) {
         var column, i, vectors;
         vectors = function () {
             var _i, _len, _ref, _results;
@@ -4858,7 +4891,7 @@
             }
             return _results;
         }();
-        return createDataframe(table.name, vectors, lodash.range(table.rowcount), null, metadata);
+        return createDataframe(tableName, vectors, lodash.range(table.rowcount), null, metadata);
     };
     combineTables = function (tables) {
         var columnCount, columnData, data, element, i, index, leader, rowCount, table, _i, _j, _k, _l, _len, _len1, _len2, _ref;
@@ -4959,6 +4992,43 @@
                     td(tp)
                 ])
             ])]);
+    };
+    augmentConfusionMatrices = function (maxs, scores) {
+        var cms, fp, fps, i, n, p, tp, tps;
+        p = maxs.data[2][maxs.data[0].indexOf('tps')];
+        n = maxs.data[2][maxs.data[0].indexOf('fps')];
+        tps = scores.data[lodash.findIndex(scores.columns, function (column) {
+            return column.name === 'tps';
+        })];
+        fps = scores.data[lodash.findIndex(scores.columns, function (column) {
+            return column.name === 'fps';
+        })];
+        cms = function () {
+            var _i, _len, _results;
+            _results = [];
+            for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
+                tp = tps[i];
+                fp = fps[i];
+                _results.push([
+                    [
+                        n - fp,
+                        fp
+                    ],
+                    [
+                        p - tp,
+                        tp
+                    ]
+                ]);
+            }
+            return _results;
+        }();
+        scores.columns.push({
+            name: 'CM',
+            description: 'CM',
+            format: 'matrix',
+            type: 'matrix'
+        });
+        return scores.data.push(cms);
     };
     formulateGetPredictionsOrigin = function (opts) {
         var frameKey, modelKey, opt, sanitizedOpt, sanitizedOpts;
@@ -5187,7 +5257,7 @@
         };
         inspectNetworkTestResult = function (testResult) {
             return function () {
-                return convertTableToFrame(testResult.table, {
+                return convertTableToFrame(testResult.table, testResult.table.name, {
                     description: testResult.table.name,
                     origin: 'testNetwork'
                 });
@@ -5356,9 +5426,9 @@
         extendDeletedKeys = function (keys) {
             return render_(keys, H2O.DeleteObjectsOutput, keys);
         };
-        inspectTwoDimTable_ = function (origin, table) {
+        inspectTwoDimTable_ = function (origin, tableName, table) {
             return function () {
-                return convertTableToFrame(table, {
+                return convertTableToFrame(table, tableName, {
                     description: table.name,
                     origin: origin
                 });
@@ -5424,6 +5494,7 @@
             var blacklist, k, meta, record, v, _ref1, _ref2;
             blacklist = blacklistBySchema[(_ref1 = obj.__meta) != null ? _ref1.schema_type : void 0] || {};
             record = {};
+            inspections[name] = inspectRawObject_(name, origin, name, record);
             for (k in obj) {
                 v = obj[k];
                 if (!blacklist[k]) {
@@ -5431,7 +5502,7 @@
                         record[k] = null;
                     } else {
                         if (((_ref2 = v.__meta) != null ? _ref2.schema_type : void 0) === 'TwoDimTable') {
-                            inspections[v.name] = inspectTwoDimTable_(origin, v);
+                            inspections['' + name + ' - ' + v.name] = inspectTwoDimTable_(origin, '' + name + ' - ' + v.name, v);
                         } else {
                             if (lodash.isArray(v)) {
                                 inspections[k] = inspectRawArray_(k, origin, k, v);
@@ -5444,7 +5515,7 @@
                                     } else if (meta.schema_type === 'Frame') {
                                         record[k] = v.key.name;
                                     } else {
-                                        inspectObject(inspections, k, origin, v);
+                                        inspectObject(inspections, '' + name + ' - ' + k, origin, v);
                                     }
                                 } else {
                                     console.log('WARNING: dropping [' + k + '] from inspection:', v);
@@ -5456,7 +5527,6 @@
                     }
                 }
             }
-            return inspections[name] = inspectRawObject_(name, origin, name, record);
         };
         extendModel = function (model) {
             var inspections;
@@ -5558,6 +5628,9 @@
         };
         extendPrediction = function (modelKey, frameKey, prediction) {
             var inspections;
+            if (prediction.__meta.schema_type === 'ModelMetricsBinomial') {
+                augmentConfusionMatrices(prediction.max_criteria_and_metric_scores, prediction.thresholds_and_metric_scores);
+            }
             inspections = {};
             inspectObject(inspections, 'Prediction', 'getPrediction model: ' + Flow.Prelude.stringify(prediction.model.name) + ', frame: ' + Flow.Prelude.stringify(prediction.frame.name), prediction);
             inspect_(prediction, inspections);
@@ -7274,8 +7347,8 @@
             }
         });
         checkIfNameIsInUse = function (name, go) {
-            return _.requestObject('notebook', name, function (error) {
-                return go(error ? false : true);
+            return _.requestObjectExists('notebook', name, function (error, exists) {
+                return go(exists);
             });
         };
         uploadFile = function (basename) {
@@ -8669,31 +8742,23 @@
             });
         };
         (function () {
-            return _.requestModelBuilders(function (error, result) {
-                var frameKey, key, modelBuilders;
-                modelBuilders = error ? [] : result.model_builders;
-                _algorithms(function () {
-                    var _i, _len, _ref, _results;
-                    _ref = lodash.keys(modelBuilders);
-                    _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        key = _ref[_i];
-                        if (key !== 'example') {
-                            _results.push(key);
-                        }
-                    }
-                    return _results;
-                }());
-                _algorithm(_algo);
+            return _.requestModelBuilders(function (error, modelBuilders) {
+                var frameKey;
+                _algorithms(modelBuilders);
+                _algorithm(_algo ? lodash.find(modelBuilders, function (builder) {
+                    return builder.algo === _algo;
+                }) : void 0);
                 frameKey = _opts != null ? _opts.training_frame : void 0;
-                return Flow.Dataflow.act(_algorithm, function (algorithm) {
-                    if (algorithm) {
+                return Flow.Dataflow.act(_algorithm, function (builder) {
+                    var algorithm;
+                    if (builder) {
+                        algorithm = builder.algo;
                         return _.requestModelBuilder(algorithm, function (error, result) {
                             var parameters;
                             if (error) {
                                 return _exception(Flow.Failure(_, new Flow.Error('Error fetching model builder', error)));
                             } else {
-                                parameters = result.model_builders[algorithm].parameters;
+                                parameters = builder.parameters;
                                 return populateFramesAndColumns(frameKey, algorithm, parameters, function () {
                                     return _modelForm(H2O.ModelBuilderForm(_, algorithm, parameters));
                                 });

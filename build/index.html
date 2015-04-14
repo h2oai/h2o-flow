@@ -1505,7 +1505,7 @@
         <div data-bind="template: { name:'flow-failure', data:parentException }"></div>
         <!-- /ko-->
         <div>Select an algorithm:
-          <select data-bind="options:algorithms, value:algorithm, optionsCaption: '(Algorithm)'"></select>
+          <select data-bind="options:algorithms, optionsText:'algo_full_name', value:algorithm, optionsCaption: '(Algorithm)'"></select>
         </div>
         <!-- ko with:modelForm-->
         <!-- ko if:exception-->
