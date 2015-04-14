@@ -10,8 +10,7 @@ Flow.FileOpenDialog = (_, _go) ->
       no
 
   checkIfNameIsInUse = (name, go) ->
-    _.requestObject 'notebook', name, (error) ->
-      go if error then no else yes
+    _.requestObjectExists 'notebook', name, (error, exists) -> go exists
 
   uploadFile = (basename) ->
     _.requestUploadObject 'notebook', basename, (new FormData _form()), (error, filename) ->

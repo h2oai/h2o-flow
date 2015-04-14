@@ -52,10 +52,12 @@ Flow.Clipboard = (_) ->
     _trashClips.removeAll()
 
   loadUserClips = ->
-    _.requestObject 'environment', 'clips', (error, doc) ->
-      unless error
-        _userClips map doc.clips, (clip) ->
-          createClip _userClips, clip.type, clip.input
+    _.requestObjectExists 'environment', 'clips', (error, exists) ->
+      if exists
+        _.requestObject 'environment', 'clips', (error, doc) ->
+          unless error
+            _userClips map doc.clips, (clip) ->
+              createClip _userClips, clip.type, clip.input
 
   serializeUserClips = ->
     version: '1.0.0'

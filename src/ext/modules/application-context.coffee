@@ -29,6 +29,7 @@ H2O.ApplicationContext = (_) ->
   _.requestCancelJob = do slot
   _.requestObjects = do slot
   _.requestObject = do slot
+  _.requestObjectExists = do slot
   _.requestDeleteObject = do slot
   _.requestPutObject = do slot
   _.requestUploadObject = do slot

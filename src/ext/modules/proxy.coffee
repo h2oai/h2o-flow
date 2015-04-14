@@ -362,6 +362,10 @@ H2O.Proxy = (_) ->
   requestObjects = (type, go) ->
     doGet "/3/NodePersistentStorage/#{encodeURIComponent type}", unwrap go, (result) -> result.entries
 
+  requestObjectExists = (type, name, go) ->
+    doGet "/3/NodePersistentStorage/categories/#{encodeURIComponent type}/names/#{encodeURIComponent name}/exists", (error, result) ->
+      go null, if error then no else result.exists
+
   requestObject = (type, name, go) ->
     doGet "/3/NodePersistentStorage/#{encodeURIComponent type}/#{encodeURIComponent name}", unwrap go, (result) -> JSON.parse result.value
 
@@ -476,6 +480,7 @@ H2O.Proxy = (_) ->
   link _.requestPredictions, requestPredictions
   link _.requestObjects, requestObjects
   link _.requestObject, requestObject
+  link _.requestObjectExists, requestObjectExists
   link _.requestDeleteObject, requestDeleteObject
   link _.requestPutObject, requestPutObject
   link _.requestUploadObject, requestUploadObject

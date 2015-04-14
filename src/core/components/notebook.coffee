@@ -239,8 +239,7 @@ Flow.Notebook = (_, _renderers) ->
     no
 
   checkIfNameIsInUse = (name, go) ->
-    _.requestObject 'notebook', name, (error) ->
-      go if error then no else yes
+    _.requestObjectExists 'notebook', name, (error, exists) -> go exists
 
   storeNotebook = (localName, remoteName) ->
     _.requestPutObject 'notebook', localName, serialize(), (error) ->
