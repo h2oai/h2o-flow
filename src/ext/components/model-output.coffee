@@ -34,13 +34,6 @@ H2O.ModelOutput = (_, _go, _model) ->
 
   switch _model.algo
     when 'glm'
-      if table = _.inspect 'output', _model
-        renderPlot 'Output', _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-
       if table = _.inspect 'Normalized Coefficient Magnitudes', _model
         renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
           g(
@@ -52,41 +45,6 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
     when 'deeplearning'
-      if table = _.inspect 'Status of Neuron Layers', _model
-        renderPlot 'Status of Neuron Layers', _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-
-      if table = _.inspect 'Training Metrics', _model
-        renderPlot 'Training Metrics', _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-
-      if table = _.inspect 'Training Confusion Matrix', _model
-        renderPlot 'Training Confusion Matrix', _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-
-      if table = _.inspect 'Validation Metrics', _model
-        renderPlot 'Validation Metrics', _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-
-      if table = _.inspect 'Validation Confusion Matrix', _model
-        renderPlot 'Validation Confusion Matrix', _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-
       if table = _.inspect 'Variable Importances', _model
         renderPlot 'Variable Importances', _.plot (g) ->
           g(
@@ -97,45 +55,38 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.limit 25
           )
 
-      if table = _.inspect 'Scoring History', _model
-        renderPlot 'Scoring History', _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-
     when 'gbm', 'drf'
-      if table = _.inspect 'output', _model
-        if table.schema.mse_valid
-          renderPlot 'Output', _.plot (g) ->
+      if table = _.inspect 'Scoring History', _model
+        if table.schema['Validation MSE']
+          renderPlot 'Scoring History', _.plot (g) ->
             g(
               g.path(
-                g.position 'tree', 'mse_train'
+                g.position 'Number of Trees', 'Training MSE'
                 g.strokeColor g.value '#1f77b4'
               )
               g.path(
-                g.position 'tree', 'mse_valid'
+                g.position 'Number of Trees', 'Validation MSE'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.point(
-                g.position 'tree', 'mse_train'
+                g.position 'Number of Trees', 'Training MSE'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'tree', 'mse_valid'
+                g.position 'Number of Trees', 'Validation MSE'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.from table
             )
         else
-          renderPlot 'Output', _.plot (g) ->
+          renderPlot 'Scoring History', _.plot (g) ->
             g(
               g.path(
-                g.position 'tree', 'mse_train'
+                g.position 'Number of Trees', 'Training MSE'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'tree', 'mse_train'
+                g.position 'Number of Trees', 'Training MSE'
                 g.strokeColor g.value '#1f77b4'
               )
               g.from table
@@ -150,6 +101,21 @@ H2O.ModelOutput = (_, _go, _model) ->
             )
             g.from table
             g.limit 25
+          )
+
+  for tableName in _.ls _model when tableName isnt 'parameters'
+    if table = _.inspect tableName, _model
+      if table.indices.length > 1
+        renderPlot tableName, _.plot (g) ->
+          g(
+            g.select()
+            g.from table
+          )
+      else
+        renderPlot tableName, _.plot (g) ->
+          g(
+            g.select 0
+            g.from table
           )
 
   toggle = ->
@@ -173,7 +139,7 @@ H2O.ModelOutput = (_, _go, _model) ->
   defer _go
 
   key: _model.key
-  algo: _model.algo
+  algo: _model.algo_full_name
   plots: _plots
   inputParameters: _inputParameters
   isExpanded: _isExpanded
