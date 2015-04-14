@@ -355,7 +355,6 @@ H2O.Routines = (_) ->
       description: "Parameters for models #{modelKeys.join ', '}"
       origin: "getModels #{stringify modelKeys}"
 
-
   inspectModelParameters = (model) -> ->
     parameters = model.parameters
 
@@ -592,7 +591,7 @@ H2O.Routines = (_) ->
   extendDeletedKeys = (keys) ->
     render_ keys, H2O.DeleteObjectsOutput, keys
 
-  extendModel = (model) ->
+  extendModel__obsolete = (model) ->
     switch model.algo
       when 'kmeans'
         extendKMeansModel model
@@ -603,6 +602,85 @@ H2O.Routines = (_) ->
       when 'glm'
         extendGLMModel model
 
+    render_ model, H2O.ModelOutput, model
+
+  inspectTwoDimTable_ = (origin, table) -> ->
+    convertTableToFrame table,
+      description: table.name
+      origin: origin
+
+  inspectRawArray_ = (name, origin, description, array) -> ->
+    createDataframe name, [createList name, parseNulls array], (sequence array.length), null,
+      description: description
+      origin: origin
+
+  inspectRawObject_ = (name, origin, description, obj) -> ->
+    vectors = for k, v of obj
+      createList k, [ if v is null then undefined else v ]
+
+    createDataframe name, vectors, (sequence 1), null,
+      description: description
+      origin: origin
+
+  blacklistedAttributesBySchema =
+    KMeansOutput: 'names domains help'
+    GBMOutput: 'names domains help'
+    GLMOutput: 'names domains help'
+    DRFOutput: 'names domains help'
+    DeepLearningModelOutput: 'names domains help'
+    NaiveBayesOutput: 'names domains help'
+    PCAOutput: 'names domains help'
+    ModelMetricsBinomial: null
+    ModelMetricsMultinomial: null
+    ModelMetricsRegression: null
+
+  blacklistBySchema = do ->
+    dicts = {}
+    for schema, attrs of blacklistedAttributesBySchema
+      dicts[schema] = dict = __meta: yes
+      if attrs
+        for attr in words attrs
+          dict[attr] = yes
+    dicts
+
+  inspectObject = (inspections, name, origin, obj) ->
+    blacklist = blacklistBySchema[obj.__meta?.schema_type] or {}
+
+    record = {}
+
+    for k, v of obj when not blacklist[k]
+      if v is null
+        record[k] = null
+      else
+        if v.__meta?.schema_type is 'TwoDimTable'
+          inspections[v.name] = inspectTwoDimTable_ origin, v
+        else
+          if isArray v
+            inspections[k] = inspectRawArray_ k, origin, k, v
+          else if isObject v
+            if meta = v.__meta
+              if meta.schema_type is 'Key<Frame>'
+                record[k] = v.name
+              else if meta.schema_type is 'Key<Model>'
+                record[k] = v.name
+              else if meta.schema_type is 'Frame'
+                record[k] = v.key.name
+              else
+                inspectObject inspections, k, origin, v
+            else
+              console.log "WARNING: dropping [#{k}] from inspection:", v
+          else
+            record[k] = v
+
+    inspections[name] = inspectRawObject_ name, origin, name, record
+
+  extendModel = (model) ->
+    inspections = {}
+    inspections.parameters = inspectModelParameters model
+
+    inspectObject inspections, 'output', "getModel #{stringify model.key.name}", model.output
+
+    inspect_ model, inspections
     render_ model, H2O.ModelOutput, model
 
   extendModels = (models) ->
@@ -795,7 +873,7 @@ H2O.Routines = (_) ->
       origin: formulateGetPredictionsOrigin opts
       plot: "plot inspect '#{inspectionFrame.label}', #{formulateGetPredictionsOrigin opts}"
     
-  extendPrediction = (modelKey, frameKey, prediction) ->
+  extendPrediction__obsolete = (modelKey, frameKey, prediction) ->
     opts = { model: modelKey, frame: frameKey }
     render_ prediction, H2O.PredictOutput, prediction
     inspections = {}
@@ -813,6 +891,12 @@ H2O.Routines = (_) ->
         # inspections[ 'Confusion Matrices' ] = inspectBinomialConfusionMatrices opts, [ prediction ]
 
     inspect_ prediction, inspections
+
+  extendPrediction = (modelKey, frameKey, prediction) ->
+    inspections = {}
+    inspectObject inspections, 'Prediction', "getPrediction model: #{stringify prediction.model.name}, frame: #{stringify prediction.frame.name}", prediction
+    inspect_ prediction, inspections
+    render_ prediction, H2O.PredictOutput, prediction
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
