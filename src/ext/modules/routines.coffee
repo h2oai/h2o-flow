@@ -231,6 +231,15 @@ H2O.Routines = (_) ->
       else
         {}
 
+  ls = (obj) ->
+    if _isFuture obj
+      _async ls, obj
+    else
+      if inspectors = obj?._flow_?.inspect
+        keys inspectors
+      else
+        []
+
   inspect$2 = (attr, obj) ->
     return unless attr
     return _async inspect, attr, obj if _isFuture obj
@@ -1593,6 +1602,7 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.NoAssist, []
 
   link _.ready, ->
+    link _.ls, ls
     link _.inspect, inspect
     link _.plot, (plot) -> plot lightning
     link _.grid, (frame) ->
