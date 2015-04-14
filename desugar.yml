@@ -232,6 +232,12 @@ sizeOf:
 partition:
   type: qualify
   object: lodash
+findIndex:
+  type: qualify
+  object: lodash
+findLastindex:
+  type: qualify
+  object: lodash
 head:
   type: qualify
   object: lodash

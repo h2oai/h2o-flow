@@ -56,6 +56,8 @@ convertColumnToVector = (column, data) ->
       createVector column.name, TNumber, parseNumbers data
     when 'string'
       createFactor column.name, TString, data
+    when 'matrix'
+      createList column.name, data, formatConfusionMatrix
     else
       createList column.name, data
 
@@ -143,6 +145,25 @@ formatConfusionMatrix = (cm) ->
       ]
     ]
   ]
+
+augmentConfusionMatrices = (maxs, scores) ->
+  p = maxs.data[2][maxs.data[0].indexOf 'tps']
+  n = maxs.data[2][maxs.data[0].indexOf 'fps']
+
+  tps = scores.data[findIndex scores.columns, (column) -> column.name is 'tps']
+  fps = scores.data[findIndex scores.columns, (column) -> column.name is 'fps']
+
+  cms = for tp, i in tps
+    fp = fps[i]
+    [[n - fp, fp], [p - tp, tp]]
+
+  scores.columns.push
+    name: 'CM'
+    description: 'CM'
+    format: 'matrix' #TODO HACK
+    type: 'matrix'
+
+  scores.data.push cms
 
 formulateGetPredictionsOrigin = (opts) ->
   if isArray opts
@@ -513,6 +534,8 @@ H2O.Routines = (_) ->
     predictions
 
   extendPrediction = (modelKey, frameKey, prediction) ->
+    if prediction.__meta.schema_type is 'ModelMetricsBinomial'
+      augmentConfusionMatrices prediction.max_criteria_and_metric_scores, prediction.thresholds_and_metric_scores
     inspections = {}
     inspectObject inspections, 'Prediction', "getPrediction model: #{stringify prediction.model.name}, frame: #{stringify prediction.frame.name}", prediction
     inspect_ prediction, inspections
