@@ -1834,21 +1834,13 @@
               <td>
                     <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
                     </button>
-                    <button type="button" data-bind="click:viewPredictionFrame" class="flow-button"><i class="fa fa-database"></i><span>View Prediction Frame</span>
-                    </button>
               </td>
             </tr>
           </tbody>
         </table>
-        <!-- ko if:isBinomial-->
-        <h4>Output</h4>
-        <div data-bind="raw:predictionRecord" class="flow-plot"></div>
-        <h4>ROC Curve</h4>
-        <div data-bind="raw:rocCurve" class="flow-plot"> </div>
-        <!-- /ko-->
-        <!-- ko if:isMultinomial-->
-        <h4>Output</h4>
-        <div data-bind="raw:predictionRecord" class="flow-plot"></div>
+        <!-- ko foreach:plots-->
+        <h4 data-bind="text:title, collapse:false"></h4>
+        <div data-bind="raw:plot" class="flow-plot"></div>
         <!-- /ko-->
       </div>
     </script>
