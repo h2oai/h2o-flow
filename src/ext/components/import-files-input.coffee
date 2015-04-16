@@ -10,7 +10,7 @@ H2O.ImportFilesInput = (_, _go) ->
     specifiedPath = _specifiedPath()
     _.requestFileGlob specifiedPath, -1, (error, result) ->
       if error
-        _exception error.data.errmsg
+        _exception error.stack
       else
         _exception ''
         #_go 'confirm', result
