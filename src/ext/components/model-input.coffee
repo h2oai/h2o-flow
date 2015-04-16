@@ -228,7 +228,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
       if responseColumnParameter or ignoredColumnsParameter
         act trainingFrameParameter.value, (frameKey) ->
           if frameKey
-            _.requestFrame frameKey, (error, frame) ->
+            _.requestFrameSummary frameKey, (error, frame) ->
               unless error
                 columnValues = map frame.columns, (column) -> column.label
                 columnLabels = map frame.columns, (column) -> 
