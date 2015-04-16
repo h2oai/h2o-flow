@@ -3,7 +3,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     label(data-bind='text:label')
     span(data-bind='visible:isRequired') *
   td
-    div Available:
+    div In the model:
     div(style='height:25px')
       input.flow-textbox(type='text' placeholder='Search...' data-bind="value:availableSearchTerm, valueUpdate:'afterkeydown'")
     div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
@@ -19,7 +19,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     div
       +button('Add all', 'plus', 'includeAll')
   td
-    div Selected:
+    div Not in the model:
     div(style='height:25px')
       input.flow-textbox(type='text' placeholder='Search...' data-bind="value:selectedSearchTerm, valueUpdate:'afterkeydown'")
     div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
