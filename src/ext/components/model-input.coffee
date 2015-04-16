@@ -96,6 +96,7 @@ createListControl = (parameter) ->
     label: value
     value: value
 
+
   _availableValues = lift _values, (vals) -> map vals, createValueView
   _views = {}
   for view in _availableValues()
@@ -105,6 +106,9 @@ createListControl = (parameter) ->
     view = _views[selectedValue]
     view.isAvailable no
     view
+
+  # Clear selected values whenever raw values change
+  react _values, -> _selectedValues []
 
   _value = lift _selectedValues, (views) ->
     for view in views
