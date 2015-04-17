@@ -74,6 +74,7 @@ createListControl = (parameter) ->
     _isAvailable = signal yes
     _canInclude = signal yes
     _canExclude = signal yes
+    _isUnavailable = signal no
 
     include = ->
       self.isAvailable no
@@ -91,11 +92,13 @@ createListControl = (parameter) ->
       canInclude: _canInclude
       canExclude: _canExclude
       isAvailable: _isAvailable
+      isUnavailable: _isUnavailable
 
   _values = signals map parameter.values, (value) ->
     label: value
     value: value
 
+  _unavailableValues = signal []
 
   _availableValues = lift _values, (vals) -> map vals, createValueView
   _views = {}
@@ -107,12 +110,26 @@ createListControl = (parameter) ->
     view.isAvailable no
     view
 
+  act _unavailableValues, (unavailableValues) ->
+    # Build lookup dict
+    isUnavailable = {}
+    for value in unavailableValues
+      isUnavailable[value] = yes
+
+    for view in _availableValues() 
+      hidden = isUnavailable[view.value]
+      # Deselect if in exclusion list
+      view.exclude() if hidden and not view.isAvailable()
+      # Mark as unavailable to hide it from both lists.
+      view.isUnavailable hidden
+    return
+
   # Clear selected values whenever raw values change
   react _values, -> _selectedValues []
 
   _value = lift _selectedValues, (views) ->
     for view in views
-      view.value
+      view.value 
 
   _availableValuesCaption = signal "0 items hidden"
   _selectedValuesCaption = signal "0 items hidden"
@@ -159,6 +176,7 @@ createListControl = (parameter) ->
   control = createControl 'list', parameter
   control.values = _values
   control.availableValues = _availableValues
+  control.unavailableValues = _unavailableValues
   control.selectedValues = _selectedValues
   control.value = _value
   control.availableSearchTerm = _availableSearchTerm
@@ -240,10 +258,18 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                   na = if missingPercent is 0 then '' else " (#{round missingPercent}% NA)"
                   label: "#{column.label}#{na}"
                   value: column.label
+
                 if responseColumnParameter
                   responseColumnParameter.values columnValues
+
                 if ignoredColumnsParameter
                   ignoredColumnsParameter.values columnLabels
+
+                if responseColumnParameter and ignoredColumnsParameter
+                  # Mark response column as 'unavailable' in ignored column list.
+                  lift responseColumnParameter.value, (responseVariableName) ->
+                    ignoredColumnsParameter.unavailableValues [ responseVariableName ]
+
           return
 
   collectParameters = (includeUnchangedParameters=no) ->

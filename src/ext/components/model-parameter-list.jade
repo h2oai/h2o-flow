@@ -10,7 +10,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
       table
         tbody
           // ko foreach:availableValues
-          tr.flow-pointer(data-bind='visible:isAvailable() && canInclude(), click:include')
+          tr.flow-pointer(data-bind='visible:isAvailable() && canInclude() && !isUnavailable(), click:include')
             td
               i.fa.fa-plus(title='Add')
             td(data-bind='text:label')
@@ -26,7 +26,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
       table
         tbody
           // ko foreach:selectedValues
-          tr.flow-pointer(data-bind='visible:canExclude, click:exclude')
+          tr.flow-pointer(data-bind='visible:canExclude() && !isUnavailable(), click:exclude')
             td
               i.fa.fa-remove.flow-pointer(title='Remove')
             td(data-bind='text:label')
