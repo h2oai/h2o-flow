@@ -428,18 +428,10 @@ H2O.Proxy = (_) ->
     filter (split data, '\n'), (line) -> if line.trim() then yes else no
 
   requestPacks = (go) ->
-    download 'text', '/flow/packs/index.list', (error, data) ->
-      if error
-        go error
-      else
-        go null, getLines data
+    download 'text', '/flow/packs/index.list', unwrap go, getLines
 
   requestPack = (packName, go) ->
-    download 'text', "/flow/packs/#{encodeURIComponent packName}/index.list", (error, data) ->
-      if error
-        go error
-      else
-        go null, getLines data
+    download 'text', "/flow/packs/#{encodeURIComponent packName}/index.list", unwrap go, getLines
 
   requestFlow = (packName, flowName, go) ->
     download 'json', "/flow/packs/#{encodeURIComponent packName}/#{encodeURIComponent flowName}", go

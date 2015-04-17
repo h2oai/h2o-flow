@@ -98,7 +98,7 @@ Flow.Help = (_) ->
       when 'get-packs'
         _.requestPacks (error, packNames) ->
           unless error
-            displayPacks packNames
+            displayPacks filter packNames, (packName) -> packName isnt 'test'
 
       when 'get-pack'
         packName = $el.attr 'data-pack-name'
