@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.87';
+    Flow.Version = '0.2.88';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -701,7 +701,9 @@
             case 'get-packs':
                 _.requestPacks(function (error, packNames) {
                     if (!error) {
-                        return displayPacks(packNames);
+                        return displayPacks(lodash.filter(packNames, function (packName) {
+                            return packName !== 'test';
+                        }));
                     }
                 });
                 break;
@@ -4722,22 +4724,10 @@
             });
         };
         requestPacks = function (go) {
-            return download('text', '/flow/packs/index.list', function (error, data) {
-                if (error) {
-                    return go(error);
-                } else {
-                    return go(null, getLines(data));
-                }
-            });
+            return download('text', '/flow/packs/index.list', unwrap(go, getLines));
         };
         requestPack = function (packName, go) {
-            return download('text', '/flow/packs/' + encodeURIComponent(packName) + '/index.list', function (error, data) {
-                if (error) {
-                    return go(error);
-                } else {
-                    return go(null, getLines(data));
-                }
-            });
+            return download('text', '/flow/packs/' + encodeURIComponent(packName) + '/index.list', unwrap(go, getLines));
         };
         requestFlow = function (packName, flowName, go) {
             return download('json', '/flow/packs/' + encodeURIComponent(packName) + '/' + encodeURIComponent(flowName), go);
