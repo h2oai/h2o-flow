@@ -1187,6 +1187,12 @@
                 <input type="text" style="width:100%" data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder="File or directory path" class="flow-textbox">
               </td>
             </tr>
+            <!-- ko if:hasErrorMessage-->
+            <tr>
+              <th>&nbsp;</th>
+              <td data-bind="text:exception"></td>
+            </tr>
+            <!-- /ko-->
             <!-- ko if:hasImportedFiles-->
             <tr>
               <th>Search Results:</th>
@@ -1288,7 +1294,7 @@
           <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
         </th>
         <td>
-          <div>Available:</div>
+          <div>In the model:</div>
           <div style="height:25px">
             <input type="text" placeholder="Search..." data-bind="value:availableSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
           </div>
@@ -1296,7 +1302,7 @@
             <table>
               <tbody>
                 <!-- ko foreach:availableValues-->
-                <tr data-bind="visible:isAvailable() &amp;&amp; canInclude(), click:include" class="flow-pointer">
+                <tr data-bind="visible:isAvailable() &amp;&amp; canInclude() &amp;&amp; !isUnavailable(), click:include" class="flow-pointer">
                   <td><i title="Add" class="fa fa-plus"></i></td>
                   <td data-bind="text:label"></td>
                 </tr>
@@ -1311,7 +1317,7 @@
           </div>
         </td>
         <td>
-          <div>Selected:</div>
+          <div>Not in the model:</div>
           <div style="height:25px">
             <input type="text" placeholder="Search..." data-bind="value:selectedSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
           </div>
@@ -1319,7 +1325,7 @@
             <table>
               <tbody>
                 <!-- ko foreach:selectedValues-->
-                <tr data-bind="visible:canExclude, click:exclude" class="flow-pointer">
+                <tr data-bind="visible:canExclude() &amp;&amp; !isUnavailable(), click:exclude" class="flow-pointer">
                   <td><i title="Remove" class="fa fa-remove flow-pointer"></i></td>
                   <td data-bind="text:label"></td>
                 </tr>
