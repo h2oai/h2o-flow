@@ -504,19 +504,19 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'New', createNotebook
         createMenuItem 'Open...', promptForNotebook
         createMenuItem 'Save', saveNotebook
-        createMenuItem 'Duplicate', duplicateNotebook
+        createMenuItem 'Make a Copy...', duplicateNotebook
         menuDivider
-        createMenuItem 'Run', runAllCells
-        createMenuItem 'Continue', continueRunningAllCells
+        createMenuItem 'Run All', runAllCells
+        createMenuItem 'Run All Below', continueRunningAllCells
         menuDivider
-        createMenuItem 'Toggle Inputs', toggleAllInputs
-        createMenuItem 'Toggle Outputs', toggleAllOutputs
-        createMenuItem 'Clear Outputs', clearAllCells
+        createMenuItem 'Toggle All Inputs', toggleAllInputs
+        createMenuItem 'Toggle All Outputs', toggleAllOutputs
+        createMenuItem 'Clear All Outputs', clearAllCells
         menuDivider
         createMenuItem 'Download...', exportNotebook 
       ]
     ,
-      createMenu 'Edit', [
+      createMenu 'Cell', [
         createMenuItem 'Cut Cell', cutCell
         createMenuItem 'Copy Cell', copyCell
         createMenuItem 'Paste Cell Above', pasteCellAbove
@@ -530,13 +530,13 @@ Flow.Notebook = (_, _renderers) ->
         menuDivider
         createMenuItem 'Insert Cell Above', insertNewCellAbove
         createMenuItem 'Insert Cell Below', insertNewCellBelow
-        createMenuItem 'Split Cell', splitCell
+        #TODO createMenuItem 'Split Cell', splitCell
         #TODO createMenuItem 'Merge Cell Above', mergeCellAbove, yes
-        createMenuItem 'Merge Cell Below', mergeCellBelow
+        #TODO createMenuItem 'Merge Cell Below', mergeCellBelow
         menuDivider
-        createMenuItem 'Toggle Input', toggleInput
-        createMenuItem 'Toggle Output', toggleOutput
-        createMenuItem 'Clear Output', clearCell
+        createMenuItem 'Toggle Cell Input', toggleInput
+        createMenuItem 'Toggle Cell Output', toggleOutput
+        createMenuItem 'Clear Cell Output', clearCell
       ]
     ,
       createMenu 'Data', [
@@ -717,15 +717,14 @@ Flow.Notebook = (_, _renderers) ->
   normalModeKeyboardShortcutsHelp = map normalModeKeyboardShortcuts, toKeyboardHelp
   editModeKeyboardShortcutsHelp = map editModeKeyboardShortcuts, toKeyboardHelp
 
-
   setupKeyboardHandling = (mode) ->
     for [ shortcut, caption, f ] in normalModeKeyboardShortcuts
       Mousetrap.bind shortcut, f
 
     for [ shortcut, caption, f ] in editModeKeyboardShortcuts
       Mousetrap.bindGlobal shortcut, f
-    return
 
+    return
 
   initialize = ->
     setupKeyboardHandling 'normal'
