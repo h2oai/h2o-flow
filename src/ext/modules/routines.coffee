@@ -67,6 +67,13 @@ convertTableToFrame = (table, tableName, metadata) ->
     convertColumnToVector column, table.data[i]
   createDataframe tableName, vectors, (sequence table.rowcount), null, metadata
 
+getTwoDimData = (table, columnName) ->
+  columnIndex = findIndex table.columns, (column) -> column.name is columnName
+  if columnIndex >= 0
+    table.data[columnIndex]
+  else
+    undefined
+
 combineTables = (tables) ->
   leader = head tables
 
@@ -145,25 +152,6 @@ formatConfusionMatrix = (cm) ->
       ]
     ]
   ]
-
-augmentConfusionMatrices = (maxs, scores) ->
-  p = maxs.data[2][maxs.data[0].indexOf 'tps']
-  n = maxs.data[2][maxs.data[0].indexOf 'fps']
-
-  tps = scores.data[findIndex scores.columns, (column) -> column.name is 'tps']
-  fps = scores.data[findIndex scores.columns, (column) -> column.name is 'fps']
-
-  cms = for tp, i in tps
-    fp = fps[i]
-    [[n - fp, fp], [p - tp, tp]]
-
-  scores.columns.push
-    name: 'CM'
-    description: 'CM'
-    format: 'matrix' #TODO HACK
-    type: 'matrix'
-
-  scores.data.push cms
 
 formulateGetPredictionsOrigin = (opts) ->
   if isArray opts
@@ -429,37 +417,105 @@ H2O.Routines = (_) ->
       description: description
       origin: origin
 
-  blacklistedAttributesBySchema =
-    KMeansOutput: 'names domains help'
-    GBMOutput: 'names domains help'
-    GLMOutput: 'names domains help'
-    DRFOutput: 'names domains help'
-    DeepLearningModelOutput: 'names domains help'
-    NaiveBayesOutput: 'names domains help'
-    PCAOutput: 'names domains help'
-    ModelMetricsBinomial: null
-    ModelMetricsMultinomial: null
-    ModelMetricsRegression: null
-    ModelMetricsClustering: null
-    ModelMetricsAutoEncoder: null
+  _schemaHacks =
+    KMeansOutput:
+      fields: 'names domains help'
+    GBMOutput:
+      fields: 'names domains help'
+    GLMOutput:
+      fields: 'names domains help'
+    DRFOutput:
+      fields: 'names domains help'
+    DeepLearningModelOutput:
+      fields: 'names domains help'
+    NaiveBayesOutput:
+      fields: 'names domains help'
+    PCAOutput:
+      fields: 'names domains help'
+    ModelMetricsBinomial: 
+      fields: null
+      transform: (metrics) ->
+        scores = metrics.thresholds_and_metric_scores
+        tps = getTwoDimData scores, 'tps'
+        tns = getTwoDimData scores, 'tns'
+        fps = getTwoDimData scores, 'fps'
+        fns = getTwoDimData scores, 'fns'
 
-  blacklistBySchema = do ->
+        cms = for tp, i in tps
+          [[tns[i], fps[i]], [fns[i], tp]]
+
+        tprs = for tp, i in tps
+          tp / (tp + fns[i])
+
+        fprs = for fp, i in fps
+          fp / (fp + tns[i])
+
+        scores.columns.push
+          name: 'tpr'
+          description: 'True Positive Rate'
+          format: '%f'
+          type: 'double'
+        scores.data.push tprs
+
+        scores.columns.push
+          name: 'fpr'
+          description: 'False Positive Rate'
+          format: '%f'
+          type: 'double'
+        scores.data.push fprs
+
+        scores.columns.push
+          name: 'CM'
+          description: 'CM'
+          format: 'matrix' #TODO HACK
+          type: 'matrix'
+        scores.data.push cms
+
+        metrics
+
+
+    ModelMetricsMultinomial:
+      fields: null
+    ModelMetricsRegression:
+      fields: null
+    ModelMetricsClustering:
+      fields: null
+    ModelMetricsAutoEncoder:
+      fields: null
+
+  blacklistedAttributesBySchema = do ->
     dicts = {}
-    for schema, attrs of blacklistedAttributesBySchema
+    for schema, attrs of _schemaHacks
       dicts[schema] = dict = __meta: yes
-      if attrs
-        for attr in words attrs
-          dict[attr] = yes
+      if attrs.fields
+        for field in words attrs.fields
+          dict[field] = yes
     dicts
 
+  schemaTransforms = do ->
+    transforms = {}
+    for schema, attrs of _schemaHacks
+      if transform = attrs.transform
+        transforms[schema] = transform
+    transforms
+
   inspectObject = (inspections, name, origin, obj) ->
-    blacklist = blacklistBySchema[obj.__meta?.schema_type] or {}
+    schemaType = obj.__meta?.schema_type
+    blacklistedAttributes = if schemaType
+      if attrs = blacklistedAttributesBySchema[schemaType]
+        attrs
+      else
+        {}
+    else
+      {}
+
+    obj = transform obj if transform = schemaTransforms[schemaType]
 
     record = {}
 
     inspections[name] = inspectRawObject_ name, origin, name, record
 
-    for k, v of obj when not blacklist[k]
+    for k, v of obj when not blacklistedAttributes[k]
       if v is null
         record[k] = null
       else
@@ -534,8 +590,6 @@ H2O.Routines = (_) ->
     predictions
 
   extendPrediction = (modelKey, frameKey, prediction) ->
-    if prediction.__meta.schema_type is 'ModelMetricsBinomial'
-      augmentConfusionMatrices prediction.max_criteria_and_metric_scores, prediction.thresholds_and_metric_scores
     inspections = {}
     inspectObject inspections, 'Prediction', "getPrediction model: #{stringify prediction.model.name}, frame: #{stringify prediction.frame.name}", prediction
     inspect_ prediction, inspections
