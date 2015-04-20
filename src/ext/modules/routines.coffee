@@ -451,14 +451,14 @@ H2O.Routines = (_) ->
           fp / (fp + tns[i])
 
         scores.columns.push
-          name: 'tpr'
+          name: 'TPR'
           description: 'True Positive Rate'
           format: '%f'
           type: 'double'
         scores.data.push tprs
 
         scores.columns.push
-          name: 'fpr'
+          name: 'FPR'
           description: 'False Positive Rate'
           format: '%f'
           type: 'double'
