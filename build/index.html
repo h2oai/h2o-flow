@@ -187,6 +187,7 @@
       <div class="navbar-header">
         <button type="button" data-toggle="collapse" data-target="#flow-compass" class="navbar-toggle collapsed"><span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span></button><span class="navbar-brand"></span>
       </div>
+      <!-- ko if:menus-->
       <div id="flow-compass" class="collapse navbar-collapse">
         <ul class="nav navbar-nav">
           <!-- ko foreach:menus-->
@@ -210,6 +211,7 @@
           <!-- /ko-->
         </ul>
       </div>
+      <!-- /ko-->
     </script>
     <script type="text/html" id="flow-status">
       <div data-bind="css:{ 'busy':isBusy }" class="flow-status-bar">

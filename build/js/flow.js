@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.88';
+    Flow.Version = '0.2.89';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -958,7 +958,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, goToUrl, initialize, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, printPreview, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, switchToPresentationMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
         _localName = Flow.Dataflow.signal('Untitled Flow');
         _remoteName = Flow.Dataflow.signal(null);
         _isEditingName = Flow.Dataflow.signal(false);
@@ -1417,13 +1417,18 @@
             return _.showHelp();
         };
         createNotebook = function () {
-            var currentTime;
-            currentTime = new Date().getTime();
-            return deserialize('Untitled Flow', null, {
-                cells: [{
-                        type: 'cs',
-                        input: ''
-                    }]
+            return _.confirm('This action will replace your active notebook.\nAre you sure you want to continue?', {
+                acceptCaption: 'Create New Notebook',
+                declineCaption: 'Cancel'
+            }, function (accept) {
+                var currentTime;
+                currentTime = new Date().getTime();
+                return deserialize('Untitled Flow', null, {
+                    cells: [{
+                            type: 'cs',
+                            input: ''
+                        }]
+                });
             });
         };
         duplicateNotebook = function () {
@@ -1528,10 +1533,8 @@
         };
         notImplemented = function () {
         };
-        printPreview = notImplemented;
         pasteCellandReplace = notImplemented;
         mergeCellAbove = notImplemented;
-        switchToPresentationMode = notImplemented;
         startTour = notImplemented;
         createMenu = function (label, items) {
             return {
@@ -1559,103 +1562,96 @@
             label: null,
             action: null
         };
-        _menus = [
-            createMenu('Flow', [
-                createMenuItem('New', createNotebook),
-                createMenuItem('Open...', promptForNotebook),
-                createMenuItem('Save', saveNotebook),
-                createMenuItem('Duplicate', duplicateNotebook),
+        _menus = Flow.Dataflow.signal(null);
+        initializeMenus = function (builder) {
+            var modelMenuItems;
+            modelMenuItems = lodash.map(builder, function (builder) {
+                return createMenuItem(builder.algo_full_name, executeCommand('buildModel ' + Flow.Prelude.stringify(builder.algo)));
+            }).concat([
                 menuDivider,
-                createMenuItem('Upload File...', uploadFile),
-                menuDivider,
-                createMenuItem('Print Preview', printPreview, true),
-                createMenuItem('Export...', exportNotebook)
-            ]),
-            createMenu('Edit', [
-                createMenuItem('Cut Cell', cutCell),
-                createMenuItem('Copy Cell', copyCell),
-                createMenuItem('Paste Cell Above', pasteCellAbove),
-                createMenuItem('Paste Cell Below', pasteCellBelow),
-                createMenuItem('Paste Cell and Replace', pasteCellandReplace, true),
-                createMenuItem('Delete Cell', deleteCell),
-                createMenuItem('Undo Delete Cell', undoLastDelete),
-                menuDivider,
-                createMenuItem('Insert Cell Above', insertNewCellAbove),
-                createMenuItem('Insert Cell Below', insertNewCellBelow),
-                menuDivider,
-                createMenuItem('Split Cell', splitCell),
-                createMenuItem('Merge Cell Above', mergeCellAbove, true),
-                createMenuItem('Merge Cell Below', mergeCellBelow),
-                menuDivider,
-                createMenuItem('Move Cell Up', moveCellUp),
-                createMenuItem('Move Cell Down', moveCellDown)
-            ]),
-            createMenu('View', [
-                createMenuItem('Toggle Input', toggleInput),
-                createMenuItem('Toggle Output', toggleOutput),
-                menuDivider,
-                createMenuItem('Toggle All Inputs', toggleAllInputs),
-                createMenuItem('Toggle All Outputs', toggleAllOutputs),
-                menuDivider,
-                createMenuItem('Toggle Sidebar', toggleSidebar),
-                createMenuItem('Outline', showOutline),
-                createMenuItem('Flows', showBrowser),
-                createMenuItem('Clips', showClipboard),
-                menuDivider,
-                createMenuItem('Presentation Mode', switchToPresentationMode, true)
-            ]),
-            createMenu('Format', [
-                createMenuItem('Code', convertCellToCode),
-                menuDivider,
-                createMenuItem('Heading 1', convertCellToHeading(1)),
-                createMenuItem('Heading 2', convertCellToHeading(2)),
-                createMenuItem('Heading 3', convertCellToHeading(3)),
-                createMenuItem('Heading 4', convertCellToHeading(4)),
-                createMenuItem('Heading 5', convertCellToHeading(5)),
-                createMenuItem('Heading 6', convertCellToHeading(6)),
-                createMenuItem('Markdown', convertCellToMarkdown),
-                createMenuItem('Raw', convertCellToRaw)
-            ]),
-            createMenu('Run', [
-                createMenuItem('Run', runCell),
-                createMenuItem('Run and Select Below', runCellAndSelectBelow),
-                createMenuItem('Run and Insert Below', runCellAndInsertBelow),
-                menuDivider,
-                createMenuItem('Run All', runAllCells),
-                createMenuItem('Continue', continueRunningAllCells),
-                menuDivider,
-                createMenuItem('Clear Output', clearCell),
-                menuDivider,
-                createMenuItem('Clear All Outputs', clearAllCells)
-            ]),
-            createMenu('Admin', [
-                createMenuItem('Cluster Status', executeCommand('getCloud')),
-                createMenuItem('Jobs', executeCommand('getJobs')),
-                createMenuItem('Water Meter (CPU meter)', goToUrl('/perfbar.html')),
-                menuDivider,
-                createMenuHeader('Logs'),
-                createMenuItem('View Log', executeCommand('getLogFile')),
-                createMenuItem('Download Logs', goToUrl('/Logs/download')),
-                menuDivider,
-                createMenuHeader('Advanced'),
-                createMenuItem('Stack Trace', executeCommand('getStackTrace')),
-                createMenuItem('Network Test', executeCommand('testNetwork')),
-                createMenuItem('Profiler', executeCommand('getProfile depth: 10')),
-                createMenuItem('Timeline', executeCommand('getTimeline')),
-                createMenuItem('Shut Down', shutdown)
-            ]),
-            createMenu('Help', [
-                createMenuItem('Tour', startTour, true),
-                createMenuItem('Contents', showHelp),
-                createMenuItem('Keyboard Shortcuts', displayKeyboardShortcuts),
-                menuDivider,
-                createMenuItem('What is H2O?', goToUrl('/starwars.html')),
-                createMenuItem('H2O Documentation', displayDocumentation),
-                createMenuItem('h2o.ai', goToUrl('http://h2o.ai/')),
-                menuDivider,
-                createMenuItem('About', displayAbout)
-            ])
-        ];
+                createMenuItem('List All Models', executeCommand('getModels'))
+            ]);
+            return [
+                createMenu('Flow', [
+                    createMenuItem('New', createNotebook),
+                    createMenuItem('Open...', promptForNotebook),
+                    createMenuItem('Save', saveNotebook),
+                    createMenuItem('Make a Copy...', duplicateNotebook),
+                    menuDivider,
+                    createMenuItem('Run All', runAllCells),
+                    createMenuItem('Run All Below', continueRunningAllCells),
+                    menuDivider,
+                    createMenuItem('Toggle All Inputs', toggleAllInputs),
+                    createMenuItem('Toggle All Outputs', toggleAllOutputs),
+                    createMenuItem('Clear All Outputs', clearAllCells),
+                    menuDivider,
+                    createMenuItem('Download...', exportNotebook)
+                ]),
+                createMenu('Cell', [
+                    createMenuItem('Cut Cell', cutCell),
+                    createMenuItem('Copy Cell', copyCell),
+                    createMenuItem('Paste Cell Above', pasteCellAbove),
+                    createMenuItem('Paste Cell Below', pasteCellBelow),
+                    createMenuItem('Delete Cell', deleteCell),
+                    createMenuItem('Undo Delete Cell', undoLastDelete),
+                    menuDivider,
+                    createMenuItem('Move Cell Up', moveCellUp),
+                    createMenuItem('Move Cell Down', moveCellDown),
+                    menuDivider,
+                    createMenuItem('Insert Cell Above', insertNewCellAbove),
+                    createMenuItem('Insert Cell Below', insertNewCellBelow),
+                    menuDivider,
+                    createMenuItem('Toggle Cell Input', toggleInput),
+                    createMenuItem('Toggle Cell Output', toggleOutput),
+                    createMenuItem('Clear Cell Output', clearCell)
+                ]),
+                createMenu('Data', [
+                    createMenuItem('Import Files...', executeCommand('importFiles')),
+                    createMenuItem('Upload File...', uploadFile),
+                    createMenuItem('Split Frame...', executeCommand('splitFrame')),
+                    menuDivider,
+                    createMenuItem('List All Frames', executeCommand('getFrames'))
+                ]),
+                createMenu('Model', modelMenuItems),
+                createMenu('Score', [
+                    createMenuItem('Predict...', executeCommand('predict')),
+                    menuDivider,
+                    createMenuItem('List All Predictions', executeCommand('getPredictions'))
+                ]),
+                createMenu('Admin', [
+                    createMenuItem('Jobs', executeCommand('getJobs')),
+                    createMenuItem('Cluster Status', executeCommand('getCloud')),
+                    createMenuItem('Water Meter (CPU meter)', goToUrl('/perfbar.html')),
+                    menuDivider,
+                    createMenuHeader('Inspect Log'),
+                    createMenuItem('View Log', executeCommand('getLogFile')),
+                    createMenuItem('Download Logs', goToUrl('/Logs/download')),
+                    menuDivider,
+                    createMenuHeader('Advanced'),
+                    createMenuItem('Create Synthetic Frame', executeCommand('createFrame')),
+                    createMenuItem('Stack Trace', executeCommand('getStackTrace')),
+                    createMenuItem('Network Test', executeCommand('testNetwork')),
+                    createMenuItem('Profiler', executeCommand('getProfile depth: 10')),
+                    createMenuItem('Timeline', executeCommand('getTimeline')),
+                    createMenuItem('Shut Down', shutdown)
+                ]),
+                createMenu('Help', [
+                    createMenuItem('Contents', showHelp),
+                    createMenuItem('Keyboard Shortcuts', displayKeyboardShortcuts),
+                    menuDivider,
+                    createMenuItem('What is H2O?', goToUrl('/starwars.html')),
+                    createMenuItem('H2O Documentation', displayDocumentation),
+                    createMenuItem('h2o.ai', goToUrl('http://h2o.ai/')),
+                    menuDivider,
+                    createMenuItem('About', displayAbout)
+                ])
+            ];
+        };
+        setupMenus = function () {
+            return _.requestModelBuilders(function (error, builders) {
+                return _menus(initializeMenus(error ? [] : builders));
+            });
+        };
         createTool = function (icon, label, action, isDisabled) {
             if (isDisabled == null) {
                 isDisabled = false;
@@ -1895,6 +1891,7 @@
         };
         initialize = function () {
             setupKeyboardHandling('normal');
+            setupMenus();
             insertNewCellBelow();
             Flow.Dataflow.link(_.load, loadNotebook);
             Flow.Dataflow.link(_.open, openNotebook);
@@ -4795,7 +4792,7 @@
     };
 }.call(this));
 (function () {
-    var augmentConfusionMatrices, combineTables, computeFalsePositiveRate, computeTruePositiveRate, concatArrays, convertColumnToVector, convertTableToFrame, createArrays, createDataframe, createFactor, createList, createTempKey, createVector, formatConfusionMatrix, formulateGetPredictionsOrigin, lightning, parseNaNs, parseNulls, parseNumbers, repeatValues, _assistance, __slice = [].slice;
+    var combineTables, computeFalsePositiveRate, computeTruePositiveRate, concatArrays, convertColumnToVector, convertTableToFrame, createArrays, createDataframe, createFactor, createList, createTempKey, createVector, formatConfusionMatrix, formulateGetPredictionsOrigin, getTwoDimData, lightning, parseNaNs, parseNulls, parseNumbers, repeatValues, _assistance, __slice = [].slice;
     lightning = (typeof window !== 'undefined' && window !== null ? window.plot : void 0) != null ? window.plot : {};
     if (lightning.settings) {
         lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace';
@@ -4882,6 +4879,17 @@
             return _results;
         }();
         return createDataframe(tableName, vectors, lodash.range(table.rowcount), null, metadata);
+    };
+    getTwoDimData = function (table, columnName) {
+        var columnIndex;
+        columnIndex = lodash.findIndex(table.columns, function (column) {
+            return column.name === columnName;
+        });
+        if (columnIndex >= 0) {
+            return table.data[columnIndex];
+        } else {
+            return void 0;
+        }
     };
     combineTables = function (tables) {
         var columnCount, columnData, data, element, i, index, leader, rowCount, table, _i, _j, _k, _l, _len, _len1, _len2, _ref;
@@ -4983,43 +4991,6 @@
                 ])
             ])]);
     };
-    augmentConfusionMatrices = function (maxs, scores) {
-        var cms, fp, fps, i, n, p, tp, tps;
-        p = maxs.data[2][maxs.data[0].indexOf('tps')];
-        n = maxs.data[2][maxs.data[0].indexOf('fps')];
-        tps = scores.data[lodash.findIndex(scores.columns, function (column) {
-            return column.name === 'tps';
-        })];
-        fps = scores.data[lodash.findIndex(scores.columns, function (column) {
-            return column.name === 'fps';
-        })];
-        cms = function () {
-            var _i, _len, _results;
-            _results = [];
-            for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
-                tp = tps[i];
-                fp = fps[i];
-                _results.push([
-                    [
-                        n - fp,
-                        fp
-                    ],
-                    [
-                        p - tp,
-                        tp
-                    ]
-                ]);
-            }
-            return _results;
-        }();
-        scores.columns.push({
-            name: 'CM',
-            description: 'CM',
-            format: 'matrix',
-            type: 'matrix'
-        });
-        return scores.data.push(cms);
-    };
     formulateGetPredictionsOrigin = function (opts) {
         var frameKey, modelKey, opt, sanitizedOpt, sanitizedOpts;
         if (lodash.isArray(opts)) {
@@ -5054,7 +5025,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, blacklistBySchema, blacklistedAttributesBySchema, buildModel, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameSummary, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, setupParse, splitFrame, testNetwork, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref;
+        var assist, blacklistedAttributesBySchema, buildModel, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameSummary, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5450,44 +5421,127 @@
                 });
             };
         };
-        blacklistedAttributesBySchema = {
-            KMeansOutput: 'names domains help',
-            GBMOutput: 'names domains help',
-            GLMOutput: 'names domains help',
-            DRFOutput: 'names domains help',
-            DeepLearningModelOutput: 'names domains help',
-            NaiveBayesOutput: 'names domains help',
-            PCAOutput: 'names domains help',
-            ModelMetricsBinomial: null,
-            ModelMetricsMultinomial: null,
-            ModelMetricsRegression: null,
-            ModelMetricsClustering: null,
-            ModelMetricsAutoEncoder: null
+        _schemaHacks = {
+            KMeansOutput: { fields: 'names domains help' },
+            GBMOutput: { fields: 'names domains help' },
+            GLMOutput: { fields: 'names domains help' },
+            DRFOutput: { fields: 'names domains help' },
+            DeepLearningModelOutput: { fields: 'names domains help' },
+            NaiveBayesOutput: { fields: 'names domains help' },
+            PCAOutput: { fields: 'names domains help' },
+            ModelMetricsBinomial: {
+                fields: null,
+                transform: function (metrics) {
+                    var cms, fns, fp, fprs, fps, i, scores, tns, tp, tprs, tps;
+                    scores = metrics.thresholds_and_metric_scores;
+                    tps = getTwoDimData(scores, 'tps');
+                    tns = getTwoDimData(scores, 'tns');
+                    fps = getTwoDimData(scores, 'fps');
+                    fns = getTwoDimData(scores, 'fns');
+                    cms = function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
+                            tp = tps[i];
+                            _results.push([
+                                [
+                                    tns[i],
+                                    fps[i]
+                                ],
+                                [
+                                    fns[i],
+                                    tp
+                                ]
+                            ]);
+                        }
+                        return _results;
+                    }();
+                    tprs = function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
+                            tp = tps[i];
+                            _results.push(tp / (tp + fns[i]));
+                        }
+                        return _results;
+                    }();
+                    fprs = function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (i = _i = 0, _len = fps.length; _i < _len; i = ++_i) {
+                            fp = fps[i];
+                            _results.push(fp / (fp + tns[i]));
+                        }
+                        return _results;
+                    }();
+                    scores.columns.push({
+                        name: 'TPR',
+                        description: 'True Positive Rate',
+                        format: '%f',
+                        type: 'double'
+                    });
+                    scores.data.push(tprs);
+                    scores.columns.push({
+                        name: 'FPR',
+                        description: 'False Positive Rate',
+                        format: '%f',
+                        type: 'double'
+                    });
+                    scores.data.push(fprs);
+                    scores.columns.push({
+                        name: 'CM',
+                        description: 'CM',
+                        format: 'matrix',
+                        type: 'matrix'
+                    });
+                    scores.data.push(cms);
+                    return metrics;
+                }
+            },
+            ModelMetricsMultinomial: { fields: null },
+            ModelMetricsRegression: { fields: null },
+            ModelMetricsClustering: { fields: null },
+            ModelMetricsAutoEncoder: { fields: null }
         };
-        blacklistBySchema = function () {
-            var attr, attrs, dict, dicts, schema, _i, _len, _ref1;
+        blacklistedAttributesBySchema = function () {
+            var attrs, dict, dicts, field, schema, _i, _len, _ref1;
             dicts = {};
-            for (schema in blacklistedAttributesBySchema) {
-                attrs = blacklistedAttributesBySchema[schema];
+            for (schema in _schemaHacks) {
+                attrs = _schemaHacks[schema];
                 dicts[schema] = dict = { __meta: true };
-                if (attrs) {
-                    _ref1 = Flow.Prelude.words(attrs);
+                if (attrs.fields) {
+                    _ref1 = Flow.Prelude.words(attrs.fields);
                     for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                        attr = _ref1[_i];
-                        dict[attr] = true;
+                        field = _ref1[_i];
+                        dict[field] = true;
                     }
                 }
             }
             return dicts;
         }();
+        schemaTransforms = function () {
+            var attrs, schema, transform, transforms;
+            transforms = {};
+            for (schema in _schemaHacks) {
+                attrs = _schemaHacks[schema];
+                if (transform = attrs.transform) {
+                    transforms[schema] = transform;
+                }
+            }
+            return transforms;
+        }();
         inspectObject = function (inspections, name, origin, obj) {
-            var blacklist, k, meta, record, v, _ref1, _ref2;
-            blacklist = blacklistBySchema[(_ref1 = obj.__meta) != null ? _ref1.schema_type : void 0] || {};
+            var attrs, blacklistedAttributes, k, meta, record, schemaType, transform, v, _ref1, _ref2;
+            schemaType = (_ref1 = obj.__meta) != null ? _ref1.schema_type : void 0;
+            blacklistedAttributes = schemaType ? (attrs = blacklistedAttributesBySchema[schemaType]) ? attrs : {} : {};
+            if (transform = schemaTransforms[schemaType]) {
+                obj = transform(obj);
+            }
             record = {};
             inspections[name] = inspectRawObject_(name, origin, name, record);
             for (k in obj) {
                 v = obj[k];
-                if (!blacklist[k]) {
+                if (!blacklistedAttributes[k]) {
                     if (v === null) {
                         record[k] = null;
                     } else {
@@ -5618,9 +5672,6 @@
         };
         extendPrediction = function (modelKey, frameKey, prediction) {
             var inspections;
-            if (prediction.__meta.schema_type === 'ModelMetricsBinomial') {
-                augmentConfusionMatrices(prediction.max_criteria_and_metric_scores, prediction.thresholds_and_metric_scores);
-            }
             inspections = {};
             inspectObject(inspections, 'Prediction', 'getPrediction model: ' + Flow.Prelude.stringify(prediction.model.name) + ', frame: ' + Flow.Prelude.stringify(prediction.frame.name), prediction);
             inspect_(prediction, inspections);
@@ -9486,6 +9537,12 @@
                 plot: container
             });
         };
+        switch (prediction.__meta.schema_type) {
+        case 'ModelMetricsBinomial':
+            renderPlot('ROC Curve', _.plot(function (g) {
+                return g(g.path(g.position('FPR', 'TPR')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(_.inspect('Prediction - Thresholds x Metric Scores', prediction)));
+            }));
+        }
         _ref = _.ls(prediction);
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             tableName = _ref[_i];
@@ -9499,14 +9556,6 @@
                         return g(g.select(0), g.from(table));
                     }));
                 }
-            }
-        }
-        if (false) {
-            if (_isBinomial()) {
-                renderPlot(_predictionRecord, _.enumerate(_.inspect('Prediction', prediction)));
-            }
-            if (_isMultinomial()) {
-                renderPlot(_predictionRecord, _.enumerate(_.inspect('prediction', prediction)));
             }
         }
         inspect = function () {
