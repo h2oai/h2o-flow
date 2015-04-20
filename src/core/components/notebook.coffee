@@ -373,12 +373,13 @@ Flow.Notebook = (_, _renderers) ->
     _.showHelp()
 
   createNotebook = ->
-    currentTime = (new Date()).getTime()
-    deserialize 'Untitled Flow', null,
-      cells: [
-        type: 'cs'
-        input: ''
-      ]
+    _.confirm 'This action will replace your active notebook.\nAre you sure you want to continue?', { acceptCaption: 'Create New Notebook', declineCaption: 'Cancel' }, (accept) ->
+      currentTime = (new Date()).getTime()
+      deserialize 'Untitled Flow', null,
+        cells: [
+          type: 'cs'
+          input: ''
+        ]
 
   duplicateNotebook = ->
     deserialize "Copy of #{_localName()}", null, serialize()
