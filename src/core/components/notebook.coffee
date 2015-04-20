@@ -465,10 +465,8 @@ Flow.Notebook = (_, _renderers) ->
     return
 
   notImplemented = -> # noop
-  printPreview = notImplemented
   pasteCellandReplace = notImplemented
   mergeCellAbove = notImplemented
-  switchToPresentationMode = notImplemented 
   startTour = notImplemented
 
   #
@@ -490,109 +488,119 @@ Flow.Notebook = (_, _renderers) ->
 
   menuDivider = label: null, action: null
 
-  _menus = [
-    createMenu 'Flow', [
-      createMenuItem 'New', createNotebook
-      createMenuItem 'Open...', promptForNotebook
-      createMenuItem 'Save', saveNotebook
-      createMenuItem 'Duplicate', duplicateNotebook
+  _menus = signal null
+
+  initializeMenus = (builder) ->
+    modelMenuItems = map(builder, (builder) ->
+      createMenuItem builder.algo_full_name, executeCommand "buildModel #{stringify builder.algo}"
+    ).concat [
       menuDivider
-      createMenuItem 'Upload File...', uploadFile
-      menuDivider
-      createMenuItem 'Print Preview', printPreview, yes
-      createMenuItem 'Export...', exportNotebook 
+      createMenuItem 'List All Models', executeCommand 'getModels'
     ]
-  ,
-    createMenu 'Edit', [
-      createMenuItem 'Cut Cell', cutCell
-      createMenuItem 'Copy Cell', copyCell
-      createMenuItem 'Paste Cell Above', pasteCellAbove
-      createMenuItem 'Paste Cell Below', pasteCellBelow
-      createMenuItem 'Paste Cell and Replace', pasteCellandReplace, yes
-      createMenuItem 'Delete Cell', deleteCell
-      createMenuItem 'Undo Delete Cell', undoLastDelete
-      menuDivider
-      createMenuItem 'Insert Cell Above', insertNewCellAbove
-      createMenuItem 'Insert Cell Below', insertNewCellBelow
-      menuDivider
-      createMenuItem 'Split Cell', splitCell
-      createMenuItem 'Merge Cell Above', mergeCellAbove, yes
-      createMenuItem 'Merge Cell Below', mergeCellBelow
-      menuDivider
-      createMenuItem 'Move Cell Up', moveCellUp
-      createMenuItem 'Move Cell Down', moveCellDown
+
+    [
+      createMenu 'Flow', [
+        createMenuItem 'New', createNotebook
+        createMenuItem 'Open...', promptForNotebook
+        createMenuItem 'Save', saveNotebook
+        createMenuItem 'Duplicate', duplicateNotebook
+        menuDivider
+        createMenuItem 'Run', runAllCells
+        createMenuItem 'Continue', continueRunningAllCells
+        menuDivider
+        createMenuItem 'Toggle Inputs', toggleAllInputs
+        createMenuItem 'Toggle Outputs', toggleAllOutputs
+        createMenuItem 'Clear Outputs', clearAllCells
+        menuDivider
+        createMenuItem 'Download...', exportNotebook 
+      ]
+    ,
+      createMenu 'Edit', [
+        createMenuItem 'Cut Cell', cutCell
+        createMenuItem 'Copy Cell', copyCell
+        createMenuItem 'Paste Cell Above', pasteCellAbove
+        createMenuItem 'Paste Cell Below', pasteCellBelow
+        #TODO createMenuItem 'Paste Cell and Replace', pasteCellandReplace, yes
+        createMenuItem 'Delete Cell', deleteCell
+        createMenuItem 'Undo Delete Cell', undoLastDelete
+        menuDivider
+        createMenuItem 'Move Cell Up', moveCellUp
+        createMenuItem 'Move Cell Down', moveCellDown
+        menuDivider
+        createMenuItem 'Insert Cell Above', insertNewCellAbove
+        createMenuItem 'Insert Cell Below', insertNewCellBelow
+        createMenuItem 'Split Cell', splitCell
+        #TODO createMenuItem 'Merge Cell Above', mergeCellAbove, yes
+        createMenuItem 'Merge Cell Below', mergeCellBelow
+        menuDivider
+        createMenuItem 'Toggle Input', toggleInput
+        createMenuItem 'Toggle Output', toggleOutput
+        createMenuItem 'Clear Output', clearCell
+      ]
+    ,
+      createMenu 'Data', [
+        createMenuItem 'Import Files...', executeCommand 'importFiles'
+        createMenuItem 'Upload File...', uploadFile
+        createMenuItem 'Split Frame...', executeCommand 'splitFrame'
+        menuDivider
+        createMenuItem 'List All Frames', executeCommand 'getFrames'
+        #TODO Quantiles
+        #TODO Impute
+        #TODO Interaction
+      ]
+    ,
+      createMenu 'Model', modelMenuItems
+    ,
+      createMenu 'Score', [
+        createMenuItem 'Predict...', executeCommand 'predict'
+        menuDivider
+        createMenuItem 'List All Predictions', executeCommand 'getPredictions'
+        #TODO Confusion Matrix
+        #TODO AUC
+        #TODO Hit Ratio
+        #TODO PCA Score
+        #TODO Gains/Lift Table
+        #TODO Multi-model Scoring
+      ]
+    ,
+      createMenu 'Admin', [
+        createMenuItem 'Jobs', executeCommand 'getJobs'
+        createMenuItem 'Cluster Status', executeCommand 'getCloud'
+        createMenuItem 'Water Meter (CPU meter)', goToUrl '/perfbar.html'
+        menuDivider
+        createMenuHeader 'Inspect Log'
+        createMenuItem 'View Log', executeCommand 'getLogFile'
+        createMenuItem 'Download Logs', goToUrl '/Logs/download'
+        menuDivider
+        createMenuHeader 'Advanced'
+        createMenuItem 'Create Synthetic Frame', executeCommand 'createFrame'
+        createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
+        createMenuItem 'Network Test', executeCommand 'testNetwork'
+        #TODO Cluster I/O
+        createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
+        createMenuItem 'Timeline', executeCommand 'getTimeline'
+        #TODO UDP Drop Test
+        #TODO Task Status
+        createMenuItem 'Shut Down', shutdown
+      ]
+    ,
+      createMenu 'Help', [
+        #TODO createMenuItem 'Tour', startTour, yes
+        createMenuItem 'Contents', showHelp
+        createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
+        menuDivider
+        createMenuItem 'What is H2O?', goToUrl '/starwars.html'
+        createMenuItem 'H2O Documentation', displayDocumentation
+        createMenuItem 'h2o.ai', goToUrl 'http://h2o.ai/'
+        menuDivider
+        #TODO Tutorial Flows
+        createMenuItem 'About', displayAbout
+      ]
     ]
-  ,
-    createMenu 'View', [
-      createMenuItem 'Toggle Input', toggleInput
-      createMenuItem 'Toggle Output', toggleOutput
-      menuDivider
-      createMenuItem 'Toggle All Inputs', toggleAllInputs
-      createMenuItem 'Toggle All Outputs', toggleAllOutputs
-      menuDivider
-      createMenuItem 'Toggle Sidebar', toggleSidebar
-      createMenuItem 'Outline', showOutline
-      createMenuItem 'Flows', showBrowser
-      createMenuItem 'Clips', showClipboard
-      menuDivider
-      createMenuItem 'Presentation Mode', switchToPresentationMode, yes
-    ]
-  ,
-    createMenu 'Format', [
-      createMenuItem 'Code', convertCellToCode
-      menuDivider
-      createMenuItem 'Heading 1', (convertCellToHeading 1)
-      createMenuItem 'Heading 2', (convertCellToHeading 2)
-      createMenuItem 'Heading 3', (convertCellToHeading 3)
-      createMenuItem 'Heading 4', (convertCellToHeading 4)
-      createMenuItem 'Heading 5', (convertCellToHeading 5)
-      createMenuItem 'Heading 6', (convertCellToHeading 6)
-      createMenuItem 'Markdown', convertCellToMarkdown
-      createMenuItem 'Raw', convertCellToRaw
-    ]
-  ,
-    createMenu 'Run', [
-      createMenuItem 'Run', runCell
-      createMenuItem 'Run and Select Below', runCellAndSelectBelow
-      createMenuItem 'Run and Insert Below', runCellAndInsertBelow
-      menuDivider
-      createMenuItem 'Run All', runAllCells
-      createMenuItem 'Continue', continueRunningAllCells
-      menuDivider
-      createMenuItem 'Clear Output', clearCell
-      menuDivider
-      createMenuItem 'Clear All Outputs', clearAllCells
-    ]
-  ,
-    createMenu 'Admin', [
-      createMenuItem 'Cluster Status', executeCommand 'getCloud'
-      createMenuItem 'Jobs', executeCommand 'getJobs'
-      createMenuItem 'Water Meter (CPU meter)', goToUrl '/perfbar.html'
-      menuDivider
-      createMenuHeader 'Logs'
-      createMenuItem 'View Log', executeCommand 'getLogFile'
-      createMenuItem 'Download Logs', goToUrl '/Logs/download'
-      menuDivider
-      createMenuHeader 'Advanced'
-      createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
-      createMenuItem 'Network Test', executeCommand 'testNetwork'
-      createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
-      createMenuItem 'Timeline', executeCommand 'getTimeline'
-      createMenuItem 'Shut Down', shutdown
-    ]
-  ,
-    createMenu 'Help', [
-      createMenuItem 'Tour', startTour, yes
-      createMenuItem 'Contents', showHelp
-      createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
-      menuDivider
-      createMenuItem 'What is H2O?', goToUrl '/starwars.html'
-      createMenuItem 'H2O Documentation', displayDocumentation
-      createMenuItem 'h2o.ai', goToUrl 'http://h2o.ai/'
-      menuDivider
-      createMenuItem 'About', displayAbout
-    ]
-  ]
+
+  setupMenus = ->
+    _.requestModelBuilders (error, builders) ->
+      _menus initializeMenus if error then [] else builders
 
   createTool = (icon, label, action, isDisabled=no) ->
     label: label
@@ -717,8 +725,11 @@ Flow.Notebook = (_, _renderers) ->
       Mousetrap.bindGlobal shortcut, f
     return
 
+
   initialize = ->
     setupKeyboardHandling 'normal'
+
+    setupMenus()
    
     insertNewCellBelow()
 
