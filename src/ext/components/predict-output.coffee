@@ -24,6 +24,8 @@ H2O.PredictOutput = (_, _go, prediction) ->
            g.strokeColor g.value 'red'
          )
          g.from _.inspect 'Prediction - Thresholds x Metric Scores', prediction
+         g.domainX_HACK 0, 1
+         g.domainY_HACK 0, 1
        )
 
   for tableName in _.ls prediction
