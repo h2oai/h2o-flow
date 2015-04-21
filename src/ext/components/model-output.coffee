@@ -69,24 +69,24 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
     when 'gbm', 'drf'
-      if table = _.inspect 'scoring_history', _model
-        if table.schema['validation_mse']
+      if table = _.inspect 'output - Scoring History', _model
+        if table.schema['validation_MSE']
           renderPlot 'Scoring History', _.plot (g) ->
             g(
               g.path(
-                g.position 'number_of_trees', 'training_mse'
+                g.position 'number_of_trees', 'training_MSE'
                 g.strokeColor g.value '#1f77b4'
               )
               g.path(
-                g.position 'number_of_trees', 'validation_mse'
+                g.position 'number_of_trees', 'validation_MSE'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.point(
-                g.position 'number_of_trees', 'training_mse'
+                g.position 'number_of_trees', 'training_MSE'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'number_of_trees', 'validation_mse'
+                g.position 'number_of_trees', 'validation_MSE'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.from table
@@ -95,18 +95,30 @@ H2O.ModelOutput = (_, _go, _model) ->
           renderPlot 'Scoring History', _.plot (g) ->
             g(
               g.path(
-                g.position 'number_of_trees', 'training_mse'
+                g.position 'number_of_trees', 'training_MSE'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'number_of_trees', 'training_mse'
+                g.position 'number_of_trees', 'training_MSE'
                 g.strokeColor g.value '#1f77b4'
               )
               g.from table
             )
           
+      if table = _.inspect 'output - training_metrics - Thresholds x Metric Scores', _model
+       renderPlot 'ROC Curve', _.plot (g) ->
+         g(
+           g.path g.position 'FPR', 'TPR'
+           g.line(
+             g.position (g.value 1), (g.value 0)
+             g.strokeColor g.value 'red'
+           )
+           g.from table
+           g.domainX_HACK 0, 1
+           g.domainY_HACK 0, 1
+         )
 
-      if table = _.inspect 'variable_importances', _model
+      if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', _.plot (g) ->
           g(
             g.rect(
