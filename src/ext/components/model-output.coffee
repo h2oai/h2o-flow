@@ -33,6 +33,21 @@ H2O.ModelOutput = (_, _go, _model) ->
     _plots.push title: title, plot: container
 
   switch _model.algo
+    when 'kmeans'
+      if table = _.inspect 'output - Scoring History', _model
+        renderPlot 'Scoring History', _.plot (g) ->
+          g(
+            g.path(
+              g.position 'number_of_iterations', 'average_within_cluster_sum_of_squares'
+              g.strokeColor g.value '#1f77b4'
+            )
+            g.point(
+              g.position 'number_of_iterations', 'average_within_cluster_sum_of_squares'
+              g.strokeColor g.value '#1f77b4'
+            )
+            g.from table
+          )
+
     when 'glm'
       if table = _.inspect 'output - Coefficient Magnitudes', _model
         renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
