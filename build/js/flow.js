@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.89';
+    Flow.Version = '0.2.90';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -8914,34 +8914,62 @@
             });
         };
         switch (_model.algo) {
+        case 'kmeans':
+            if (table = _.inspect('output - Scoring History', _model)) {
+                renderPlot('Scoring History', _.plot(function (g) {
+                    return g(g.path(g.position('number_of_iterations', 'average_within_cluster_sum_of_squares'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_iterations', 'average_within_cluster_sum_of_squares'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                }));
+            }
+            break;
         case 'glm':
-            if (table = _.inspect('normalized_coefficient_magnitudes', _model)) {
+            if (table = _.inspect('output - Coefficient Magnitudes', _model)) {
                 renderPlot('Normalized Coefficient Magnitudes', _.plot(function (g) {
-                    return g(g.rect(g.position('scaled', 'variable')), g.from(table), g.limit(25));
+                    return g(g.rect(g.position('coefficients', 'names')), g.from(table), g.limit(25));
                 }));
             }
             break;
         case 'deeplearning':
-            if (table = _.inspect('variable_importances', _model)) {
+            if (table = _.inspect('output - training_metrics - Thresholds x Metric Scores', _model)) {
+                renderPlot('ROC Curve', _.plot(function (g) {
+                    return g(g.path(g.position('FPR', 'TPR')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                }));
+            }
+            if (table = _.inspect('output - Variable Importances', _model)) {
                 renderPlot('Variable Importances', _.plot(function (g) {
                     return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
                 }));
             }
-            break;
-        case 'gbm':
-        case 'drf':
-            if (table = _.inspect('scoring_history', _model)) {
-                if (table.schema['validation_mse']) {
+            if (table = _.inspect('output - Scoring History', _model)) {
+                if (table.schema['validation_MSE']) {
                     renderPlot('Scoring History', _.plot(function (g) {
-                        return g(g.path(g.position('number_of_trees', 'training_mse'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_mse'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_mse'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_mse'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                        return g(g.path(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
                     }));
                 } else {
                     renderPlot('Scoring History', _.plot(function (g) {
-                        return g(g.path(g.position('number_of_trees', 'training_mse'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_mse'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                        return g(g.path(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
                     }));
                 }
             }
-            if (table = _.inspect('variable_importances', _model)) {
+            break;
+        case 'gbm':
+        case 'drf':
+            if (table = _.inspect('output - Scoring History', _model)) {
+                if (table.schema['validation_MSE']) {
+                    renderPlot('Scoring History', _.plot(function (g) {
+                        return g(g.path(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                    }));
+                } else {
+                    renderPlot('Scoring History', _.plot(function (g) {
+                        return g(g.path(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                    }));
+                }
+            }
+            if (table = _.inspect('output - training_metrics - Thresholds x Metric Scores', _model)) {
+                renderPlot('ROC Curve', _.plot(function (g) {
+                    return g(g.path(g.position('FPR', 'TPR')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                }));
+            }
+            if (table = _.inspect('output - Variable Importances', _model)) {
                 renderPlot('Variable Importances', _.plot(function (g) {
                     return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
                 }));
@@ -9540,7 +9568,7 @@
         switch (prediction.__meta.schema_type) {
         case 'ModelMetricsBinomial':
             renderPlot('ROC Curve', _.plot(function (g) {
-                return g(g.path(g.position('FPR', 'TPR')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(_.inspect('Prediction - Thresholds x Metric Scores', prediction)));
+                return g(g.path(g.position('FPR', 'TPR')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(_.inspect('Prediction - Thresholds x Metric Scores', prediction)), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
             }));
         }
         _ref = _.ls(prediction);
