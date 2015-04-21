@@ -34,11 +34,11 @@ H2O.ModelOutput = (_, _go, _model) ->
 
   switch _model.algo
     when 'glm'
-      if table = _.inspect 'normalized_coefficient_magnitudes', _model
+      if table = _.inspect 'output - Coefficient Magnitudes', _model
         renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
           g(
             g.rect(
-              g.position 'scaled', 'variable'
+              g.position 'coefficients', 'names'
             )
             g.from table
             g.limit 25
