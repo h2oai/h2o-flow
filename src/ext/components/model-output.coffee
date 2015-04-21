@@ -45,6 +45,19 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
     when 'deeplearning'
+      if table = _.inspect 'output - training_metrics - Thresholds x Metric Scores', _model
+       renderPlot 'ROC Curve', _.plot (g) ->
+         g(
+           g.path g.position 'FPR', 'TPR'
+           g.line(
+             g.position (g.value 1), (g.value 0)
+             g.strokeColor g.value 'red'
+           )
+           g.from table
+           g.domainX_HACK 0, 1
+           g.domainY_HACK 0, 1
+         )
+
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', _.plot (g) ->
           g(
