@@ -533,11 +533,11 @@ H2O.Routines = (_) ->
           else if isObject v
             if meta = v.__meta
               if meta.schema_type is 'Key<Frame>'
-                record[k] = v.name
+                record[k] = "<a href='#' data-type='frame' data-key=#{stringify v.name}>#{escape v.name}</a>"
               else if meta.schema_type is 'Key<Model>'
-                record[k] = v.name
+                record[k] = "<a href='#' data-type='model' data-key=#{stringify v.name}>#{escape v.name}</a>"
               else if meta.schema_type is 'Frame'
-                record[k] = v.key.name
+                record[k] = "<a href='#' data-type='frame' data-key=#{stringify v.key.name}>#{escape v.key.name}</a>"
               else
                 inspectObject inspections, "#{name} - #{k}", origin, v
             else
