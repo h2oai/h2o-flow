@@ -53,7 +53,7 @@ convertColumnToVector = (column, data) ->
     when 'byte', 'short', 'int', 'long'
       createVector column.name, TNumber, parseNumbers data
     when 'float', 'double'
-      createVector column.name, TNumber, parseNumbers data
+      createVector column.name, TNumber, (parseNumbers data), format4f
     when 'string'
       createFactor column.name, TString, data
     when 'matrix'
@@ -77,6 +77,12 @@ getTwoDimData = (table, columnName) ->
 format4f = (number) ->
   if number
     number.toFixed(4).replace(/\.0+$/, '.0')
+  else
+    number
+
+format4fi = (number) ->
+  if number
+    number.toFixed(4).replace(/\.0+$/, '')
   else
     number
 
@@ -116,6 +122,18 @@ parseNulls = (source) ->
   target = new Array source.length
   for element, i in source
     target[i] = if element? then element else undefined
+  target
+
+parseAndFormat = (source) ->
+  target = new Array source.length
+  for element, i in source
+    target[i] = if element?
+      if isNumber element 
+        format4fi element
+      else
+        element
+    else 
+      undefined
   target
 
 repeatValues = (count, value) ->
@@ -411,13 +429,13 @@ H2O.Routines = (_) ->
       origin: origin
 
   inspectRawArray_ = (name, origin, description, array) -> ->
-    createDataframe name, [createList name, parseNulls array], (sequence array.length), null,
+    createDataframe name, [createList name, parseAndFormat array], (sequence array.length), null,
       description: description
       origin: origin
 
   inspectRawObject_ = (name, origin, description, obj) -> ->
     vectors = for k, v of obj
-      createList k, [ if v is null then undefined else v ]
+      createList k, [ if v is null then undefined else if isNumber v then format4fi v else v ]
 
     createDataframe name, vectors, (sequence 1), null,
       description: description
@@ -543,7 +561,7 @@ H2O.Routines = (_) ->
             else
               console.log "WARNING: dropping [#{k}] from inspection:", v
           else
-            record[k] = v
+            record[k] = if isNumber v then format4fi v else v
 
     return
 
