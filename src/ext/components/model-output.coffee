@@ -68,6 +68,42 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.limit 25
           )
 
+      if table = _.inspect 'output - Scoring History', _model
+        if table.schema['validation_MSE']
+          renderPlot 'Scoring History', _.plot (g) ->
+            g(
+              g.path(
+                g.position 'epochs', 'training_MSE'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.path(
+                g.position 'epochs', 'validation_MSE'
+                g.strokeColor g.value '#ff7f0e'
+              )
+              g.point(
+                g.position 'epochs', 'training_MSE'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.point(
+                g.position 'epochs', 'validation_MSE'
+                g.strokeColor g.value '#ff7f0e'
+              )
+              g.from table
+            )
+        else
+          renderPlot 'Scoring History', _.plot (g) ->
+            g(
+              g.path(
+                g.position 'epochs', 'training_MSE'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.point(
+                g.position 'epochs', 'training_MSE'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.from table
+            )
+
     when 'gbm', 'drf'
       if table = _.inspect 'output - Scoring History', _model
         if table.schema['validation_MSE']
