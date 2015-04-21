@@ -1,49 +1,18 @@
 H2O.FrameOutput = (_, _go, _frame) ->
 
-  createGrid = (data) ->
-    [ grid, table, thead, tbody, tr, th, thr, td, tdr, action ] = Flow.HTML.template '.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'th.rt', 'td', 'td.rt', "a data-action='summary' data-index='$1' class='action' href='#'"
-    
-    ths = for vector in data.vectors
-      switch vector.type
-        when TNumber
-          thr escape vector.label
-        else
-          th escape vector.label
+  _grid = signal null
 
-    ths.push th 'Actions'
+  renderPlot = (render) ->
+    render (error, vis) ->
+      if error
+        debug error
+      else
+        $('a', vis.element).on 'click', (e) ->
+          $a = $ e.target
+          if 'label' is $a.attr 'data-type'
+            _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify _frame.key.name}, #{stringify $a.attr 'data-key'}"
 
-    trs = for i in data.indices
-      tds = for vector, vectorIndex in data.vectors
-        value = vector.format i
-        switch vector.type
-          when TString
-            td if value isnt undefined then escape value else '-'
-          when TNumber
-            tdr if value isnt undefined then value else '-'
-          else
-            td '?'
-      tds.push td action 'Summary...', i
-      tr tds
-
-    el = Flow.HTML.render 'div',
-      grid [
-        table [
-          thead tr ths
-          tbody trs
-        ]
-      ]
-
-    $('a.action', el).click (e) ->
-      e.preventDefault()
-      $link = $ @
-      action = $link.attr 'data-action'
-      index = parseInt ($link.attr 'data-index'), 10
-      if index >= 0
-        switch action
-          when 'summary'
-            _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify _frame.key.name}, #{stringify data.schema.label.valueAt index}"
-
-    el
+        _grid vis.element
 
   createModel = ->
     _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify _frame.key.name}"
@@ -65,7 +34,11 @@ H2O.FrameOutput = (_, _go, _frame) ->
       if accept
         _.insertAndExecuteCell 'cs', "deleteFrame #{stringify _frame.key.name}"
 
-  _grid = createGrid _.inspect 'columns', _frame
+  renderPlot _.plot (g) ->
+    g(
+      g.select()
+      g.from _.inspect 'columns', _frame
+    )
 
   defer _go
 

@@ -604,6 +604,7 @@ H2O.Routines = (_) ->
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
       'label'
+      'type'
       'missing_count|Missing'
       'zero_count|Zeros'
       'positive_infinity_count|+Inf'
@@ -612,14 +613,15 @@ H2O.Routines = (_) ->
       'max'
       'mean'
       'sigma'
-      'type'
       'cardinality'
     ]
 
     titleOf = (label) ->
       parts = (split label, '|')
       if title = parts[1] then title else parts[0]
-        
+
+    formatAsLink = (label) ->
+      "<a href='#' data-type='label' data-key=#{stringify label}>#{escape label}</a>"
 
     vectors = for name in attrs
       switch name
@@ -629,7 +631,9 @@ H2O.Routines = (_) ->
           createVector name, TNumber, (head column.maxs for column in frameColumns), format4f
         when 'cardinality'
           createVector name, TNumber, ((if domain = column.domain then domain.length else undefined) for column in frameColumns)
-        when 'label', 'type'
+        when 'label'
+          createFactor name, TString, (column[name] for column in frameColumns), null, formatAsLink
+        when 'type'
           createFactor name, TString, (column[name] for column in frameColumns)
         when 'mean', 'sigma'
           createVector name, TNumber, (column[name] for column in frameColumns), format4f
