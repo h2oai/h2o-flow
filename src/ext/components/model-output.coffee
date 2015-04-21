@@ -45,7 +45,7 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
     when 'deeplearning'
-      if table = _.inspect 'variable_importances', _model
+      if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', _.plot (g) ->
           g(
             g.rect(
