@@ -505,6 +505,7 @@ table.flow-form-ruled tr:first-child {
   white-space: nowrap;
 }
 .flow-plot {
+  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
   overflow: visible;
   margin-bottom: 20px;
 }
@@ -519,8 +520,10 @@ table.flow-form-ruled tr:first-child {
 .flow-plot table th {
   padding: 2px 5px;
 }
+.flow-plot .lz-table > thead > tr {
+  border-bottom: 1px solid #ccc;
+}
 .flow-plot .lz-tooltip table {
-  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
   margin: 0 !important;
   font-size: 100% !important;
 }
