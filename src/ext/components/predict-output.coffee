@@ -10,6 +10,13 @@ H2O.PredictOutput = (_, _go, prediction) ->
       if error
         debug error
       else
+        $('a', vis.element).on 'click', (e) ->
+          $a = $ e.target
+          switch $a.attr 'data-type'
+            when 'frame'
+              _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify $a.attr 'data-key'}"
+            when 'model'
+              _.insertAndExecuteCell 'cs', "getModel #{stringify $a.attr 'data-key'}"
         container vis.element
 
     _plots.push title: title, plot: container
