@@ -74,6 +74,12 @@ getTwoDimData = (table, columnName) ->
   else
     undefined
 
+format4f = (number) ->
+  if number
+    number.toFixed(4).replace(/\.0+$/, '.0')
+  else
+    number
+
 combineTables = (tables) ->
   leader = head tables
 
@@ -598,10 +604,10 @@ H2O.Routines = (_) ->
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
       'label'
-      'missing_count'
-      'zero_count'
-      'positive_infinity_count'
-      'negative_infinity_count'
+      'missing_count|Missing'
+      'zero_count|Zeros'
+      'positive_infinity_count|+Inf'
+      'negative_infinity_count|-Inf'
       'min'
       'max'
       'mean'
@@ -610,24 +616,30 @@ H2O.Routines = (_) ->
       'cardinality'
     ]
 
+    titleOf = (label) ->
+      parts = (split label, '|')
+      if title = parts[1] then title else parts[0]
+        
+
     vectors = for name in attrs
       switch name
         when 'min'
-          createVector name, TNumber, (head column.mins for column in frameColumns)
+          createVector name, TNumber, (head column.mins for column in frameColumns), format4f
         when 'max'
-          createVector name, TNumber, (head column.maxs for column in frameColumns)
+          createVector name, TNumber, (head column.maxs for column in frameColumns), format4f
         when 'cardinality'
           createVector name, TNumber, ((if domain = column.domain then domain.length else undefined) for column in frameColumns)
         when 'label', 'type'
           createFactor name, TString, (column[name] for column in frameColumns)
+        when 'mean', 'sigma'
+          createVector name, TNumber, (column[name] for column in frameColumns), format4f
         else
-          createVector name, TNumber, (column[name] for column in frameColumns)
+          createVector (titleOf name), TNumber, (column[name] for column in frameColumns)
          
     createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
       origin: "getFrameSummary #{stringify frameKey}"
       plot: "plot inspect '#{tableLabel}', getFrameSummary #{stringify frameKey}"
-
 
   inspectFrameData = (frameKey, frame) -> ->
     frameColumns = frame.columns
@@ -636,7 +648,7 @@ H2O.Routines = (_) ->
       #XXX format functions
       switch column.type
         when 'int', 'real'
-          createVector column.label, TNumber, parseNaNs column.data
+          createVector column.label, TNumber, (parseNaNs column.data), format4f
         when 'enum'
           domain = column.domain
           createFactor column.label, TString, ((if index? then domain[index] else undefined) for index in column.data)
