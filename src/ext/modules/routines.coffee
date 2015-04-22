@@ -76,13 +76,19 @@ getTwoDimData = (table, columnName) ->
 
 format4f = (number) ->
   if number
-    number.toFixed(4).replace(/\.0+$/, '.0')
+    if number is 'NaN'
+      undefined
+    else
+      number.toFixed(4).replace(/\.0+$/, '.0')
   else
     number
 
 format6fi = (number) ->
   if number
-    number.toFixed(6).replace(/\.0+$/, '')
+    if number is 'NaN'
+      undefined
+    else
+      number.toFixed(6).replace(/\.0+$/, '')
   else
     number
 
