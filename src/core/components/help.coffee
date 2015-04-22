@@ -64,14 +64,7 @@ Flow.Help = (_) ->
     goTo _history.length - 1
 
   fixImageSources = (html) ->
-    $html = $ html
-    ($ 'img', $html).each ->
-      $self = $ @
-      src = $self.attr 'src'
-      if 0 is src.indexOf 'images/'
-        $self.attr 'src', "help/#{src}"
-      return
-    $html.html()
+    html.replace /\s+src\s*\=\s*\"images\//g, ' src="help/images/'
 
   performAction = (action, $el) ->
     switch action
