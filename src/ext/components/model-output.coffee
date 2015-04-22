@@ -56,6 +56,19 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
     when 'glm'
+      if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
+       renderPlot 'ROC Curve', _.plot (g) ->
+         g(
+           g.path g.position 'FPR', 'TPR'
+           g.line(
+             g.position (g.value 1), (g.value 0)
+             g.strokeColor g.value 'red'
+           )
+           g.from table
+           g.domainX_HACK 0, 1
+           g.domainY_HACK 0, 1
+         )
+
       if table = _.inspect 'output - Coefficient Magnitudes', _model
         renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
           g(
@@ -64,6 +77,21 @@ H2O.ModelOutput = (_, _go, _model) ->
             )
             g.from table
             g.limit 25
+          )
+
+      if table = _.inspect 'output - Scoring History', _model
+        debug table
+        renderPlot 'Scoring History', _.plot (g) ->
+          g(
+            g.path(
+              g.position 'iteration', 'objective'
+              g.strokeColor g.value '#1f77b4'
+            )
+            g.point(
+              g.position 'iteration', 'objective'
+              g.strokeColor g.value '#1f77b4'
+            )
+            g.from table
           )
 
     when 'deeplearning'

@@ -50,7 +50,7 @@ parseNumbers = (source) ->
 
 convertColumnToVector = (column, data) ->
   switch column.type
-    when 'byte', 'short', 'int', 'long'
+    when 'byte', 'short', 'int', 'integer', 'long'
       createVector column.name, TNumber, parseNumbers data
     when 'float', 'double'
       createVector column.name, TNumber, (parseNumbers data), format4f
