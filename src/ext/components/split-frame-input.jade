@@ -23,7 +23,7 @@
               tr
                 td(data-bind="text:lastSplitRatioText")
                 td
-                  input.flow-textbox(type='text' data-bind="value:lastSplitKey")
+                  input.flow-textbox(type='text' style='width:300px' data-bind="value:lastSplitKey")
                 td &nbsp; 
                   
               // ko foreach:splits
@@ -31,7 +31,7 @@
                 td
                   input.flow-textbox(type='text' data-bind="value:ratioText, valueUpdate:'afterkeydown'")
                 td
-                  input.flow-textbox(type='text' data-bind="value:key")
+                  input.flow-textbox(type='text' style='width:300px' data-bind="value:key")
                 td 
                   span.flow-pointer(title='Delete this split' data-bind='click:remove')
                     +fa('remove')

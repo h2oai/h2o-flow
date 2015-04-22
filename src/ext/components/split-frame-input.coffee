@@ -2,9 +2,11 @@ H2O.SplitFrameInput = (_, _go, frameKey) ->
   _frames = signal []
   _frame = signal null
   _lastSplitRatio = signal 1
-  _lastSplitRatioText = lift _lastSplitRatio, (ratio) -> ratio #TODO format?
+  format4f = (value) -> value.toPrecision(4).replace /0+$/, '0'
+  _lastSplitRatioText = lift _lastSplitRatio, (ratio) -> if isNaN ratio then ratio else format4f ratio
   _lastSplitKey = signal ''
   _splits = signals []
+  react _splits, -> updateSplitRatiosAndNames()
   _validationMessage = signal ''
 
   collectRatios = ->
@@ -17,11 +19,23 @@ H2O.SplitFrameInput = (_, _go, frameKey) ->
     splitKeys.push _lastSplitKey().trim()
     splitKeys
 
-  updateLastSplit = ->
+  createSplitName = (key, ratio) ->
+    key + '_' + format4f ratio
+  
+  updateSplitRatiosAndNames = ->
     totalRatio = 0
     for ratio in collectRatios()
       totalRatio += ratio
+    lastSplitRatio = 
     _lastSplitRatio 1 - totalRatio
+
+    frameKey = if frame = _frame() then frame else 'frame'
+    for entry in _splits()
+      entry.key createSplitName frameKey, entry.ratio()
+
+    _lastSplitKey createSplitName frameKey, _lastSplitRatio()
+
+    return
 
   computeSplits = (go) ->
     return go 'Frame not specified.' if not _frame()
@@ -41,17 +55,17 @@ H2O.SplitFrameInput = (_, _go, frameKey) ->
     for key in splitKeys
       return go 'One or more keys are empty or invalid.' if key is ''
 
-    return go 'Pleas specify at least two splits.' if splitKeys.length < 2
+    return go 'Please specify at least two splits.' if splitKeys.length < 2
 
     return go 'Duplicate keys specified.' if splitKeys.length isnt (unique splitKeys).length
 
     return go null, splitRatios, splitKeys
 
-  createSplit = ->
-    _ratioText = signal '0'
+  createSplit = (ratio) ->
+    _ratioText = signal '' + ratio
     _key = signal ''
     _ratio = lift _ratioText, (text) -> parseFloat text
-    react _ratioText, updateLastSplit
+    react _ratioText, updateSplitRatiosAndNames
 
     remove = ->
       _splits.remove self
@@ -62,8 +76,11 @@ H2O.SplitFrameInput = (_, _go, frameKey) ->
       ratio: _ratio
       remove: remove
 
+  addSplitRatio = (ratio) ->
+    _splits.push createSplit ratio
+
   addSplit = ->
-    _splits.push createSplit()
+    addSplitRatio 0
 
   splitFrame = ->
     computeSplits (error, splitRatios, splitKeys) ->
@@ -81,7 +98,7 @@ H2O.SplitFrameInput = (_, _go, frameKey) ->
         frameKeys = (frame.key.name for frame in frames)
         sort frameKeys
         _frames frameKeys
-    addSplit()
+    addSplitRatio 0.25
     defer _go
 
   initialize()
