@@ -834,16 +834,17 @@ H2O.Routines = (_) ->
 
     inspections =
       characteristics: inspectCharacteristics
-    if column.type is 'int' or column.type is 'real'
-      # Skip for columns with all NAs
-      if column.histogram_bins.length
-        inspections.distribution = inspectDistribution
-      # Skip for columns with all NAs
-      unless (some column.percentiles, (a) -> a is 'NaN')
-        inspections.summary = inspectSummary
-        inspections.percentiles = inspectPercentiles
-    else
-      inspections.domain = inspectDomain
+    switch column.type
+      when 'int', 'real'
+        # Skip for columns with all NAs
+        if column.histogram_bins.length
+          inspections.distribution = inspectDistribution
+        # Skip for columns with all NAs
+        unless (some column.percentiles, (a) -> a is 'NaN')
+          inspections.summary = inspectSummary
+          inspections.percentiles = inspectPercentiles
+      when 'enum'
+        inspections.domain = inspectDomain
 
     inspect_ frame, inspections
     render_ frame, H2O.ColumnSummaryOutput, frameKey, frame, columnName
