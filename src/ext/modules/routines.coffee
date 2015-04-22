@@ -80,9 +80,9 @@ format4f = (number) ->
   else
     number
 
-format4fi = (number) ->
+format6fi = (number) ->
   if number
-    number.toFixed(4).replace(/\.0+$/, '')
+    number.toFixed(6).replace(/\.0+$/, '')
   else
     number
 
@@ -129,7 +129,7 @@ parseAndFormat = (source) ->
   for element, i in source
     target[i] = if element?
       if isNumber element 
-        format4fi element
+        format6fi element
       else
         element
     else 
@@ -435,7 +435,7 @@ H2O.Routines = (_) ->
 
   inspectRawObject_ = (name, origin, description, obj) -> ->
     vectors = for k, v of obj
-      createList k, [ if v is null then undefined else if isNumber v then format4fi v else v ]
+      createList k, [ if v is null then undefined else if isNumber v then format6fi v else v ]
 
     createDataframe name, vectors, (sequence 1), null,
       description: description
@@ -561,7 +561,7 @@ H2O.Routines = (_) ->
             else
               console.log "WARNING: dropping [#{k}] from inspection:", v
           else
-            record[k] = if isNumber v then format4fi v else v
+            record[k] = if isNumber v then format6fi v else v
 
     return
 
