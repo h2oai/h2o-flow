@@ -323,6 +323,46 @@ H2O.Routines = (_) ->
       g.from f
     )
 
+  transformBinomialMetrics = (metrics) ->
+    scores = metrics.thresholds_and_metric_scores
+    tps = getTwoDimData scores, 'tps'
+    tns = getTwoDimData scores, 'tns'
+    fps = getTwoDimData scores, 'fps'
+    fns = getTwoDimData scores, 'fns'
+
+    cms = for tp, i in tps
+      [[tns[i], fps[i]], [fns[i], tp]]
+
+    tprs = for tp, i in tps
+      tp / (tp + fns[i])
+
+    fprs = for fp, i in fps
+      fp / (fp + tns[i])
+
+    scores.columns.push
+      name: 'TPR'
+      description: 'True Positive Rate'
+      format: '%f'
+      type: 'double'
+    scores.data.push tprs
+
+    scores.columns.push
+      name: 'FPR'
+      description: 'False Positive Rate'
+      format: '%f'
+      type: 'double'
+    scores.data.push fprs
+
+    scores.columns.push
+      name: 'CM'
+      description: 'CM'
+      format: 'matrix' #TODO HACK
+      type: 'matrix'
+    scores.data.push cms
+
+    metrics
+
+
   extendCloud = (cloud) ->
     render_ cloud, H2O.CloudOutput, cloud
 
@@ -462,48 +502,12 @@ H2O.Routines = (_) ->
       fields: 'names domains help'
     PCAOutput:
       fields: 'names domains help'
+    ModelMetricsBinomialGLM:
+      fields: null
+      transform: transformBinomialMetrics
     ModelMetricsBinomial: 
       fields: null
-      transform: (metrics) ->
-        scores = metrics.thresholds_and_metric_scores
-        tps = getTwoDimData scores, 'tps'
-        tns = getTwoDimData scores, 'tns'
-        fps = getTwoDimData scores, 'fps'
-        fns = getTwoDimData scores, 'fns'
-
-        cms = for tp, i in tps
-          [[tns[i], fps[i]], [fns[i], tp]]
-
-        tprs = for tp, i in tps
-          tp / (tp + fns[i])
-
-        fprs = for fp, i in fps
-          fp / (fp + tns[i])
-
-        scores.columns.push
-          name: 'TPR'
-          description: 'True Positive Rate'
-          format: '%f'
-          type: 'double'
-        scores.data.push tprs
-
-        scores.columns.push
-          name: 'FPR'
-          description: 'False Positive Rate'
-          format: '%f'
-          type: 'double'
-        scores.data.push fprs
-
-        scores.columns.push
-          name: 'CM'
-          description: 'CM'
-          format: 'matrix' #TODO HACK
-          type: 'matrix'
-        scores.data.push cms
-
-        metrics
-
-
+      transform: transformBinomialMetrics
     ModelMetricsMultinomial:
       fields: null
     ModelMetricsRegression:
