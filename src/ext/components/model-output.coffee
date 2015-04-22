@@ -163,7 +163,7 @@ H2O.ModelOutput = (_, _go, _model) ->
               g.from table
             )
           
-      if table = _.inspect 'output - training_metrics - Thresholds x Metric Scores', _model
+      if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
        renderPlot 'ROC Curve', _.plot (g) ->
          g(
            g.path g.position 'FPR', 'TPR'
