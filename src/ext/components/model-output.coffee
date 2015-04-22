@@ -214,6 +214,9 @@ H2O.ModelOutput = (_, _go, _model) ->
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.key.name}"
 
+  previewPOJO = ->
+    window.open "/3/Models.java/#{encodeURIComponent _model.key.name}/preview", '_blank'
+
   deleteModel = ->
     _.confirm 'Are you sure you want to delete this model?', { acceptCaption: 'Delete Model', declineCaption: 'Cancel' }, (accept) ->
       if accept
@@ -230,6 +233,7 @@ H2O.ModelOutput = (_, _go, _model) ->
   cloneModel: cloneModel
   predict: predict
   inspect: inspect
+  previewPOJO: previewPOJO
   deleteModel: deleteModel
   template: 'flow-model-output'
 
