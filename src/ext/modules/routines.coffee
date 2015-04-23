@@ -333,26 +333,6 @@ H2O.Routines = (_) ->
     cms = for tp, i in tps
       [[tns[i], fps[i]], [fns[i], tp]]
 
-    tprs = for tp, i in tps
-      tp / (tp + fns[i])
-
-    fprs = for fp, i in fps
-      fp / (fp + tns[i])
-
-    scores.columns.push
-      name: 'TPR'
-      description: 'True Positive Rate'
-      format: '%f'
-      type: 'double'
-    scores.data.push tprs
-
-    scores.columns.push
-      name: 'FPR'
-      description: 'False Positive Rate'
-      format: '%f'
-      type: 'double'
-    scores.data.push fprs
-
     scores.columns.push
       name: 'CM'
       description: 'CM'
@@ -361,7 +341,6 @@ H2O.Routines = (_) ->
     scores.data.push cms
 
     metrics
-
 
   extendCloud = (cloud) ->
     render_ cloud, H2O.CloudOutput, cloud
@@ -604,20 +583,6 @@ H2O.Routines = (_) ->
     render_ models, H2O.ModelsOutput, models
 
   read = (value) -> if value is 'NaN' then null else value
-
-  #TODO obsolete
-  inspectBinomialConfusionMatrices = (opts, predictions) -> ->
-    vectors = [
-      createList 'CM', (concatArrays (prediction.confusion_matrices for prediction in predictions)), formatConfusionMatrix
-      createVector 'TPR', TNumber, concatArrays (map prediction.confusion_matrices, computeTruePositiveRate for prediction in predictions)
-      createVector 'FPR', TNumber, concatArrays (map prediction.confusion_matrices, computeFalsePositiveRate for prediction in predictions)
-      createFactor 'key', TString, concatArrays (repeatValues prediction.confusion_matrices.length, prediction.model.name + ' on ' + prediction.frame.name for prediction in predictions)
-    ]
-
-    createDataframe 'Confusion Matrices', vectors, (sequence (head vectors).count()), null,
-      description: "Confusion matrices for the selected predictions"
-      origin: formulateGetPredictionsOrigin opts
-      plot: "plot inspect 'Confusion Matrices', #{formulateGetPredictionsOrigin opts}"
 
   extendPredictions = (opts, predictions) ->
     render_ predictions, H2O.PredictsOutput, opts, predictions
