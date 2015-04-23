@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.2.94';
+    Flow.Version = '0.2.95';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4843,6 +4843,7 @@
         case 'byte':
         case 'short':
         case 'int':
+        case 'integer':
         case 'long':
             return createVector(column.name, Flow.TNumber, parseNumbers(data));
         case 'float':
@@ -5046,7 +5047,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, blacklistedAttributesBySchema, buildModel, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameSummary, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, blacklistedAttributesBySchema, buildModel, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectBinomialConfusionMatrices, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameSummary, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5224,6 +5225,72 @@
             return plot(function (g) {
                 return g(g.select(), g.from(f));
             });
+        };
+        transformBinomialMetrics = function (metrics) {
+            var cms, fns, fp, fprs, fps, i, scores, tns, tp, tprs, tps;
+            scores = metrics.thresholds_and_metric_scores;
+            tps = getTwoDimData(scores, 'tps');
+            tns = getTwoDimData(scores, 'tns');
+            fps = getTwoDimData(scores, 'fps');
+            fns = getTwoDimData(scores, 'fns');
+            cms = function () {
+                var _i, _len, _results;
+                _results = [];
+                for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
+                    tp = tps[i];
+                    _results.push([
+                        [
+                            tns[i],
+                            fps[i]
+                        ],
+                        [
+                            fns[i],
+                            tp
+                        ]
+                    ]);
+                }
+                return _results;
+            }();
+            tprs = function () {
+                var _i, _len, _results;
+                _results = [];
+                for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
+                    tp = tps[i];
+                    _results.push(tp / (tp + fns[i]));
+                }
+                return _results;
+            }();
+            fprs = function () {
+                var _i, _len, _results;
+                _results = [];
+                for (i = _i = 0, _len = fps.length; _i < _len; i = ++_i) {
+                    fp = fps[i];
+                    _results.push(fp / (fp + tns[i]));
+                }
+                return _results;
+            }();
+            scores.columns.push({
+                name: 'TPR',
+                description: 'True Positive Rate',
+                format: '%f',
+                type: 'double'
+            });
+            scores.data.push(tprs);
+            scores.columns.push({
+                name: 'FPR',
+                description: 'False Positive Rate',
+                format: '%f',
+                type: 'double'
+            });
+            scores.data.push(fprs);
+            scores.columns.push({
+                name: 'CM',
+                description: 'CM',
+                format: 'matrix',
+                type: 'matrix'
+            });
+            scores.data.push(cms);
+            return metrics;
         };
         extendCloud = function (cloud) {
             return render_(cloud, H2O.CloudOutput, cloud);
@@ -5450,74 +5517,13 @@
             DeepLearningModelOutput: { fields: 'names domains help' },
             NaiveBayesOutput: { fields: 'names domains help' },
             PCAOutput: { fields: 'names domains help' },
+            ModelMetricsBinomialGLM: {
+                fields: null,
+                transform: transformBinomialMetrics
+            },
             ModelMetricsBinomial: {
                 fields: null,
-                transform: function (metrics) {
-                    var cms, fns, fp, fprs, fps, i, scores, tns, tp, tprs, tps;
-                    scores = metrics.thresholds_and_metric_scores;
-                    tps = getTwoDimData(scores, 'tps');
-                    tns = getTwoDimData(scores, 'tns');
-                    fps = getTwoDimData(scores, 'fps');
-                    fns = getTwoDimData(scores, 'fns');
-                    cms = function () {
-                        var _i, _len, _results;
-                        _results = [];
-                        for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
-                            tp = tps[i];
-                            _results.push([
-                                [
-                                    tns[i],
-                                    fps[i]
-                                ],
-                                [
-                                    fns[i],
-                                    tp
-                                ]
-                            ]);
-                        }
-                        return _results;
-                    }();
-                    tprs = function () {
-                        var _i, _len, _results;
-                        _results = [];
-                        for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
-                            tp = tps[i];
-                            _results.push(tp / (tp + fns[i]));
-                        }
-                        return _results;
-                    }();
-                    fprs = function () {
-                        var _i, _len, _results;
-                        _results = [];
-                        for (i = _i = 0, _len = fps.length; _i < _len; i = ++_i) {
-                            fp = fps[i];
-                            _results.push(fp / (fp + tns[i]));
-                        }
-                        return _results;
-                    }();
-                    scores.columns.push({
-                        name: 'TPR',
-                        description: 'True Positive Rate',
-                        format: '%f',
-                        type: 'double'
-                    });
-                    scores.data.push(tprs);
-                    scores.columns.push({
-                        name: 'FPR',
-                        description: 'False Positive Rate',
-                        format: '%f',
-                        type: 'double'
-                    });
-                    scores.data.push(fprs);
-                    scores.columns.push({
-                        name: 'CM',
-                        description: 'CM',
-                        format: 'matrix',
-                        type: 'matrix'
-                    });
-                    scores.data.push(cms);
-                    return metrics;
-                }
+                transform: transformBinomialMetrics
             },
             ModelMetricsMultinomial: { fields: null },
             ModelMetricsRegression: { fields: null },
@@ -8945,9 +8951,20 @@
             }
             break;
         case 'glm':
+            if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
+                renderPlot('ROC Curve', _.plot(function (g) {
+                    return g(g.path(g.position('FPR', 'TPR')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                }));
+            }
             if (table = _.inspect('output - Coefficient Magnitudes', _model)) {
                 renderPlot('Normalized Coefficient Magnitudes', _.plot(function (g) {
                     return g(g.rect(g.position('coefficients', 'names')), g.from(table), g.limit(25));
+                }));
+            }
+            if (table = _.inspect('output - Scoring History', _model)) {
+                console.debug(table);
+                renderPlot('Scoring History', _.plot(function (g) {
+                    return g(g.path(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
                 }));
             }
             break;
