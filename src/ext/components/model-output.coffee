@@ -59,7 +59,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
        renderPlot 'ROC Curve', _.plot (g) ->
          g(
-           g.path g.position 'FPR', 'TPR'
+           g.path g.position 'fpr', 'tpr'
            g.line(
              g.position (g.value 1), (g.value 0)
              g.strokeColor g.value 'red'
@@ -98,7 +98,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
        renderPlot 'ROC Curve', _.plot (g) ->
          g(
-           g.path g.position 'FPR', 'TPR'
+           g.path g.position 'fpr', 'tpr'
            g.line(
              g.position (g.value 1), (g.value 0)
              g.strokeColor g.value 'red'
@@ -194,7 +194,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
        renderPlot 'ROC Curve', _.plot (g) ->
          g(
-           g.path g.position 'FPR', 'TPR'
+           g.path g.position 'fpr', 'tpr'
            g.line(
              g.position (g.value 1), (g.value 0)
              g.strokeColor g.value 'red'

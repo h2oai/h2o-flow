@@ -25,7 +25,7 @@ H2O.PredictOutput = (_, _go, prediction) ->
     when 'ModelMetricsBinomial'
      renderPlot 'ROC Curve', _.plot (g) ->
        g(
-         g.path g.position 'FPR', 'TPR'
+         g.path g.position 'fpr', 'tpr'
          g.line(
            g.position (g.value 1), (g.value 0)
            g.strokeColor g.value 'red'
