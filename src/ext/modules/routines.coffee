@@ -609,29 +609,27 @@ H2O.Routines = (_) ->
       'cardinality'
     ]
 
-    titleOf = (label) ->
-      parts = (split label, '|')
-      if title = parts[1] then title else parts[0]
-
     formatAsLink = (label) ->
       "<a href='#' data-type='label' data-key=#{stringify label}>#{escape label}</a>"
 
-    vectors = for name in attrs
+    vectors = for attr in attrs
+      [ name, title ] = split attr, '|'
+      title = title ? name
       switch name
         when 'min'
-          createVector name, TNumber, (head column.mins for column in frameColumns), format4f
+          createVector title, TNumber, (head column.mins for column in frameColumns), format4f
         when 'max'
-          createVector name, TNumber, (head column.maxs for column in frameColumns), format4f
+          createVector title, TNumber, (head column.maxs for column in frameColumns), format4f
         when 'cardinality'
-          createVector name, TNumber, ((if domain = column.domain then domain.length else undefined) for column in frameColumns)
+          createVector title, TNumber, ((if domain = column.domain then domain.length else undefined) for column in frameColumns)
         when 'label'
-          createFactor name, TString, (column[name] for column in frameColumns), null, formatAsLink
+          createFactor title, TString, (column[name] for column in frameColumns), null, formatAsLink
         when 'type'
-          createFactor name, TString, (column[name] for column in frameColumns)
+          createFactor title, TString, (column[name] for column in frameColumns)
         when 'mean', 'sigma'
-          createVector name, TNumber, (column[name] for column in frameColumns), format4f
+          createVector title, TNumber, (column[name] for column in frameColumns), format4f
         else
-          createVector (titleOf name), TNumber, (column[name] for column in frameColumns)
+          createVector title, TNumber, (column[name] for column in frameColumns)
          
     createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."

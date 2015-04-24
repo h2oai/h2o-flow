@@ -80,7 +80,6 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
       if table = _.inspect 'output - Scoring History', _model
-        debug table
         renderPlot 'Scoring History', _.plot (g) ->
           g(
             g.path(
