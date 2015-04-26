@@ -60,6 +60,8 @@ H2O.CloudOutput = (_, _go, _cloud) ->
     [ "Ping", yes ]
     [ "Cores", yes ]
     [ "Load", yes ]
+    [ "My CPU %", yes ]
+    [ "Sys CPU %", yes ]
     [ "Data (Used/Total)", yes ]
     [ "Data (% Cached)", yes ]
     [ "GC (Free / Total / Max)", yes ]
@@ -81,6 +83,8 @@ H2O.CloudOutput = (_, _go, _cloud) ->
       (moment new Date node.last_ping).fromNow()
       node.num_cpus
       format3f node.sys_load
+      node.my_cpu_pct
+      node.sys_cpu_pct
       "#{prettyPrintBytes node.mem_value_size} / #{prettyPrintBytes node.total_value_size}"
       "#{Math.floor node.mem_value_size * 100 / node.total_value_size}%"
       "#{prettyPrintBytes node.free_mem} / #{prettyPrintBytes node.tot_mem} / #{prettyPrintBytes node.max_mem}"
@@ -103,6 +107,8 @@ H2O.CloudOutput = (_, _go, _cloud) ->
       '-'
       sum nodes, (node) -> node.num_cpus
       format3f sum nodes, (node) -> node.sys_load
+      '-'
+      '-'
       "#{prettyPrintBytes (sum nodes, (node) -> node.mem_value_size)} / #{prettyPrintBytes (sum nodes, (node) -> node.total_value_size)}"
       "#{Math.floor (avg nodes, (node) -> node.mem_value_size * 100 / node.total_value_size)}%"
       "#{prettyPrintBytes (sum nodes, (node) -> node.free_mem)} / #{prettyPrintBytes (sum nodes, (node) -> node.tot_mem)} / #{prettyPrintBytes (sum nodes, (node) -> node.max_mem)}"
