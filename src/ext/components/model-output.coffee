@@ -1,6 +1,8 @@
 H2O.ModelOutput = (_, _go, _model) ->
   _isExpanded = signal no
   _plots = signals []
+  _pojoPreview = signal null
+  _isPojoLoaded = lift _pojoPreview, (preview) -> if preview then yes else no
 
   #TODO use _.enumerate()
   _inputParameters = map _model.parameters, (parameter) ->
@@ -241,10 +243,15 @@ H2O.ModelOutput = (_, _go, _model) ->
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.model_id.name}"
 
-  previewPOJO = ->
-    window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}/preview", '_blank'
+  previewPojo = ->
+    _.requestPojoPreview _model.model_id.name, (error, result) ->
+      if error
+        _pojoPreview "<pre>#{escape error}</pre>"
+      else
+        #TODO syntax highlighting
+        _pojoPreview "<pre>#{escape result}</pre>"
 
-  downloadPOJO = ->
+  downloadPojo = ->
     window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}", '_blank'
 
   deleteModel = ->
@@ -263,8 +270,10 @@ H2O.ModelOutput = (_, _go, _model) ->
   cloneModel: cloneModel
   predict: predict
   inspect: inspect
-  previewPOJO: previewPOJO
-  downloadPOJO: downloadPOJO
+  previewPojo: previewPojo
+  downloadPojo: downloadPojo
+  pojoPreview: _pojoPreview
+  isPojoLoaded: _isPojoLoaded
   deleteModel: deleteModel
   template: 'flow-model-output'
 

@@ -274,6 +274,9 @@ H2O.Proxy = (_) ->
       else
         go error, head patchUpModels result.models
 
+  requestPojoPreview = (key, go) ->
+    download 'text', "/3/Models.java/#{encodeURIComponent key}/preview", go
+
   requestDeleteModel = (key, go) ->
     doDelete "/3/Models/#{encodeURIComponent key}", go
 
@@ -462,6 +465,7 @@ H2O.Proxy = (_) ->
   link _.requestParseFiles, requestParseFiles
   link _.requestModels, requestModels
   link _.requestModel, requestModel
+  link _.requestPojoPreview, requestPojoPreview
   link _.requestDeleteModel, requestDeleteModel
   link _.requestModelBuilder, requestModelBuilder
   link _.requestModelBuilders, requestModelBuilders

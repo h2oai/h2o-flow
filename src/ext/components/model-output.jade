@@ -17,7 +17,7 @@
           td
             +button('Predict&hellip;', 'bolt', 'predict')
             //- +button('Clone this model&hellip;', 'copy', 'cloneModel')
-            +button('Preview POJO', 'puzzle-piece', 'previewPOJO')
+            +button('Download POJO', 'download', 'downloadPojo')
             +button('Inspect', 'list', 'inspect')
             +button('Delete', 'trash-o', 'deleteModel')
       
@@ -48,5 +48,13 @@
   // ko foreach:plots
   h4(data-bind='text:title, collapse:false')
   .flow-plot(data-bind='raw:plot')
+  // /ko
+
+  h4(data-bind='collapse:false') Preview POJO
+  // ko ifnot:isPojoLoaded
+  +button('Preview POJO', 'code', 'previewPojo')
+  // /ko
+  // ko if:isPojoLoaded
+  div(data-bind='html:pojoPreview')
   // /ko
 
