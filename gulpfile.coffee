@@ -59,6 +59,7 @@ config =
       'lib/d3/d3.js'
       'lib/chroma-js/chroma.js'
       'lib/marked/lib/marked.js'
+      'lib/highlightjs/highlight.pack.js'
       'lib/knockoutjs/dist/knockout.debug.js'
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
       'lib/diecut/diecut.js'
@@ -66,6 +67,7 @@ config =
     ]
     css: [
       'lib/fontawesome/css/font-awesome.css'
+      'lib/highlightjs/styles/tomorrow.css'
       'lib/bootstrap/dist/css/bootstrap.css'
     ]
     cssmap: [

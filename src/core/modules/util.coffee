@@ -33,6 +33,12 @@ multilineTextToHTML = (text) ->
 sanitizeName = (name) ->
   name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim()
 
+highlight = (code, lang) ->
+  if window.hljs
+    (window.hljs.highlightAuto code, [ lang ]).value
+  else
+    code
+
 Flow.Util =
   describeCount: describeCount
   fromNow: fromNow
@@ -41,4 +47,5 @@ Flow.Util =
   multilineTextToHTML: multilineTextToHTML
   uuid: if window?.uuid then window.uuid else null
   sanitizeName: sanitizeName
+  highlight: highlight
 

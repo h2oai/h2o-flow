@@ -249,7 +249,7 @@ H2O.ModelOutput = (_, _go, _model) ->
         _pojoPreview "<pre>#{escape error}</pre>"
       else
         #TODO syntax highlighting
-        _pojoPreview "<pre>#{escape result}</pre>"
+        _pojoPreview "<pre>#{Flow.Util.highlight result, 'java'}</pre>"
 
   downloadPojo = ->
     window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}", '_blank'
