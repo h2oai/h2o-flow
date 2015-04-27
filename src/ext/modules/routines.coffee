@@ -407,7 +407,7 @@ H2O.Routines = (_) ->
         else
           createList parameter.label, data
 
-    modelKeys = (model.key.name for model in models)
+    modelKeys = (model.model_id.name for model in models)
 
     createDataframe 'parameters', vectors, (sequence models.length), null,
       description: "Parameters for models #{modelKeys.join ', '}"
@@ -434,8 +434,8 @@ H2O.Routines = (_) ->
       createList attr, data
 
     createDataframe 'parameters', vectors, (sequence parameters.length), null,
-      description: "Parameters for model '#{model.key.name}'" #TODO frame key
-      origin: "getModel #{stringify model.key.name}"
+      description: "Parameters for model '#{model.model_id.name}'" #TODO frame model_id
+      origin: "getModel #{stringify model.model_id.name}"
 
   extendJob = (job) ->
     render_ job, H2O.JobOutput, job
@@ -544,7 +544,7 @@ H2O.Routines = (_) ->
               else if meta.schema_type is 'Key<Model>'
                 record[k] = "<a href='#' data-type='model' data-key=#{stringify v.name}>#{escape v.name}</a>"
               else if meta.schema_type is 'Frame'
-                record[k] = "<a href='#' data-type='frame' data-key=#{stringify v.key.name}>#{escape v.key.name}</a>"
+                record[k] = "<a href='#' data-type='frame' data-key=#{stringify v.frame_id.name}>#{escape v.frame_id.name}</a>"
               else
                 inspectObject inspections, "#{name} - #{k}", origin, v
             else
@@ -558,7 +558,7 @@ H2O.Routines = (_) ->
     inspections = {}
     inspections.parameters = inspectModelParameters model
 
-    inspectObject inspections, 'output', "getModel #{stringify model.key.name}", model.output
+    inspectObject inspections, 'output', "getModel #{stringify model.model_id.name}", model.output
 
     inspect_ model, inspections
     render_ model, H2O.ModelOutput, model
@@ -1097,7 +1097,7 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        sourceKeys = flatten compact map importResults, (result) -> result.keys
+        sourceKeys = flatten compact map importResults, (result) -> result.destination_frames
         _.requestParseSetup sourceKeys, (error, parseSetupResults) ->
           if error
             go error
@@ -1109,13 +1109,13 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        go null, extendParseSetupResults { source_keys: sourceKeys }, parseSetupResults
+        go null, extendParseSetupResults { source_frames: sourceKeys }, parseSetupResults
 
   setupParse = (args) ->
     if args.paths and isArray args.paths
       _fork requestImportAndParseSetup, args.paths
-    else if args.source_keys and isArray args.source_keys
-      _fork requestParseSetup, args.source_keys
+    else if args.source_frames and isArray args.source_frames
+      _fork requestParseSetup, args.source_frames
     else
       assist setupParse
 
@@ -1127,7 +1127,7 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        sourceKeys = flatten compact map importResults, (result) -> result.keys
+        sourceKeys = flatten compact map importResults, (result) -> result.destination_frames
         _.requestParseFiles sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
           if error
             go error
@@ -1143,7 +1143,7 @@ H2O.Routines = (_) ->
 
   parseFiles = (opts) -> #XXX review args
     #XXX validation
-    destinationKey = opts.destination_key
+    destinationKey = opts.destination_frame
     parseType = opts.parse_type
     separator = opts.separator
     columnCount = opts.number_columns
@@ -1157,7 +1157,7 @@ H2O.Routines = (_) ->
     if opts.paths
       _fork requestImportAndParseFiles, opts.paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
     else
-      _fork requestParseFiles, opts.source_keys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
+      _fork requestParseFiles, opts.source_frames, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
 
   requestModelBuild = (algo, opts, go) ->
     _.requestModelBuild algo, opts, (error, result) ->
@@ -1196,7 +1196,7 @@ H2O.Routines = (_) ->
         go null, extendPredictions opts, predictions
 
   predict = (opts={}) ->
-    { destination_key, model, models, frame, frames } = opts 
+    { predictions_frame, model, models, frame, frames } = opts 
     if models or frames
       unless models
         if model
@@ -1213,12 +1213,12 @@ H2O.Routines = (_) ->
 
         _fork requestPredicts, combos
       else
-        assist predict, destination_key: destination_key, models: models, frames: frames
+        assist predict, predictions_frame: predictions_frame, models: models, frames: frames
     else
       if model and frame
-        _fork requestPredict, destination_key, model, frame
+        _fork requestPredict, predictions_frame, model, frame
       else 
-        assist predict, destination_key: destination_key, model: model, frame: frame
+        assist predict, predictions_frame: predictions_frame, model: model, frame: frame
 
   requestPrediction = (modelKey, frameKey, go) ->
     _.requestPrediction modelKey, frameKey, (error, prediction) ->
@@ -1248,11 +1248,11 @@ H2O.Routines = (_) ->
           go null, extendPredictions opts, predictions
 
   getPrediction = (opts={}) ->
-    { destination_key, model, frame } = opts
+    { predictions_frame, model, frame } = opts
     if model and frame
       _fork requestPrediction, model, frame
     else
-      assist getPrediction, destination_key: destination_key, model: model, frame: frame
+      assist getPrediction, predictions_frame: predictions_frame, model: model, frame: frame
 
   getPredictions = (opts={}) ->
     _fork requestPredictions, opts 

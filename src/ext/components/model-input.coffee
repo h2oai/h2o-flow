@@ -383,7 +383,7 @@ H2O.ModelInput = (_, _go, _algo, _opts) ->
 
   populateFramesAndColumns = (frameKey, algorithm, parameters, go) ->
 
-    destinationKeyParameter = find parameters, (parameter) -> parameter.name is 'destination_key'
+    destinationKeyParameter = find parameters, (parameter) -> parameter.name is 'model_id'
 
     if destinationKeyParameter and not destinationKeyParameter.actual_value
       destinationKeyParameter.actual_value = "#{algorithm}-#{Flow.Util.uuid()}"
@@ -400,7 +400,7 @@ H2O.ModelInput = (_, _go, _algo, _opts) ->
       if error
         #TODO handle properly
       else
-        frameKeys = (frame.key.name for frame in frames)
+        frameKeys = (frame.frame_id.name for frame in frames)
         frameParameters = filter parameters, (parameter) -> parameter.type is 'Key<Frame>'
         for parameter in frameParameters
           parameter.values = frameKeys

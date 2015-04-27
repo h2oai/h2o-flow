@@ -236,22 +236,25 @@ H2O.ModelOutput = (_, _go, _model) ->
     alert 'Not implemented'
 
   predict = ->
-    _.insertAndExecuteCell 'cs', "predict model: #{stringify _model.key.name}"
+    _.insertAndExecuteCell 'cs', "predict model: #{stringify _model.model_id.name}"
 
   inspect = ->
-    _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.key.name}"
+    _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.model_id.name}"
 
   previewPOJO = ->
-    window.open "/3/Models.java/#{encodeURIComponent _model.key.name}/preview", '_blank'
+    window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}/preview", '_blank'
+
+  downloadPOJO = ->
+    window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}", '_blank'
 
   deleteModel = ->
     _.confirm 'Are you sure you want to delete this model?', { acceptCaption: 'Delete Model', declineCaption: 'Cancel' }, (accept) ->
       if accept
-        _.insertAndExecuteCell 'cs', "deleteModel #{stringify _model.key.name}"
+        _.insertAndExecuteCell 'cs', "deleteModel #{stringify _model.model_id.name}"
 
   defer _go
 
-  key: _model.key
+  key: _model.model_id
   algo: _model.algo_full_name
   plots: _plots
   inputParameters: _inputParameters
@@ -261,6 +264,7 @@ H2O.ModelOutput = (_, _go, _model) ->
   predict: predict
   inspect: inspect
   previewPOJO: previewPOJO
+  downloadPOJO: downloadPOJO
   deleteModel: deleteModel
   template: 'flow-model-output'
 

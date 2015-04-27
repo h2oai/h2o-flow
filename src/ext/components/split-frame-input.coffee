@@ -95,7 +95,7 @@ H2O.SplitFrameInput = (_, _go, frameKey) ->
       if error
         #TODO handle properly
       else
-        frameKeys = (frame.key.name for frame in frames)
+        frameKeys = (frame.frame_id.name for frame in frames)
         sort frameKeys
         _frames frameKeys
     addSplitRatio 0.25

@@ -1,5 +1,5 @@
 H2O.PredictInput = (_, _go, opt) ->
-  _destinationKey = signal opt.destination_key ? "prediction-#{Flow.Util.uuid()}"
+  _destinationKey = signal opt.predictions_frame ? "prediction-#{Flow.Util.uuid()}"
 
   _selectedModels = if opt.models
     opt.models
@@ -35,14 +35,14 @@ H2O.PredictInput = (_, _go, opt) ->
       if error
         _exception new Flow.Error 'Error fetching frame list.', error
       else
-        _frames (frame.key.name for frame in frames)
+        _frames (frame.frame_id.name for frame in frames)
 
   unless _hasModels
     _.requestModels (error, models) ->
       if error
         _exception new Flow.Error 'Error fetching model list.', error
       else
-        _models (model.key.name for model in models)
+        _models (model.model_id.name for model in models)
 
   predict = ->
     if _hasFrames
@@ -57,7 +57,7 @@ H2O.PredictInput = (_, _go, opt) ->
 
     destinationKey = _destinationKey()
     if destinationKey
-      _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}, destination_key: #{stringify destinationKey}"
+      _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}, predictions_frame: #{stringify destinationKey}"
     else
       _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}"
 

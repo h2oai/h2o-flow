@@ -62,12 +62,12 @@ dataTypes = [
 ]
 
 H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
-  _inputKey = if _inputs.paths then 'paths' else 'source_keys'
-  _sourceKeys = map _result.source_keys, (src) -> src.name
+  _inputKey = if _inputs.paths then 'paths' else 'source_frames'
+  _sourceKeys = map _result.source_frames, (src) -> src.name
   _parseType =  signal find parseTypes, (parseType) -> parseType.type is _result.parse_type
   _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.separator 
   _useSingleQuotes = signal _result.single_quotes
-  _destinationKey = signal _result.destination_key
+  _destinationKey = signal _result.destination_frame
   _headerOptions = auto: 0, header: 1, data: -1
   _headerOption = signal if _result.check_header is 0 then 'auto' else if _result.check_header is -1 then 'data' else 'header'
   _deleteOnDone = signal yes
@@ -102,11 +102,11 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
     columnNames = (column.name() for column in _columns())
     headerOption = _headerOptions[_headerOption()]
     if (every columnNames, (columnName) -> columnName.trim() is '')
-      columnNames = null 
+      columnNames = null
       headerOption = -1
     columnTypes = (column.type() for column in _columns())
 
-    _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_key: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  #{if columnNames then 'column_names: ' + (stringify columnNames) + '\n  ' else ''}column_types: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  check_header: #{headerOption}\n  chunk_size: #{_chunkSize()}"
+    _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_frame: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  #{if columnNames then 'column_names: ' + (stringify columnNames) + '\n  ' else ''}column_types: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  check_header: #{headerOption}\n  chunk_size: #{_chunkSize()}"
 
   defer _go
 

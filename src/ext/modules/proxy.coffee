@@ -221,12 +221,12 @@ H2O.Proxy = (_) ->
 
   requestParseSetup = (sourceKeys, go) ->
     opts =
-      source_keys: encodeArrayForPost sourceKeys
+      source_frames: encodeArrayForPost sourceKeys
     doPost '/3/ParseSetup', opts, go
 
   requestParseSetupPreview = (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, columnTypes, go) ->
     opts = 
-      source_keys: encodeArrayForPost sourceKeys
+      source_frames: encodeArrayForPost sourceKeys
       parse_type: parseType
       separator: separator
       single_quotes: useSingleQuotes
@@ -236,8 +236,8 @@ H2O.Proxy = (_) ->
 
   requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     opts =
-      destination_key: destinationKey
-      source_keys: encodeArrayForPost sourceKeys
+      destination_frame: destinationKey
+      source_frames: encodeArrayForPost sourceKeys
       parse_type: parseType
       separator: separator
       number_columns: columnCount
@@ -294,7 +294,7 @@ H2O.Proxy = (_) ->
 
   requestPredict = (destinationKey, modelKey, frameKey, go) ->
     opts = if destinationKey
-      destination_key: destinationKey
+      predictions_frame: destinationKey
     else
       {}
 
@@ -383,7 +383,7 @@ H2O.Proxy = (_) ->
     doUpload uri, formData, unwrap go, (result) -> result.name
 
   requestUploadFile = (key, formData, go) ->
-    doUpload "/3/PostFile?destination_key=#{encodeURIComponent key}", formData, go
+    doUpload "/3/PostFile?destination_frame=#{encodeURIComponent key}", formData, go
 
   requestCloud = (go) ->
     doGet '/3/Cloud', go

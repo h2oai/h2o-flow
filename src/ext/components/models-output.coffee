@@ -24,19 +24,19 @@ H2O.ModelsOutput = (_, _go, _models) ->
       _checkedModelCount checkedViews.length
 
     predict = ->
-      _.insertAndExecuteCell 'cs', "predict model: #{stringify model.key.name}"
+      _.insertAndExecuteCell 'cs', "predict model: #{stringify model.model_id.name}"
 
     cloneModel = ->
       return alert 'Not implemented'
-      _.insertAndExecuteCell 'cs', "cloneModel #{stringify model.key.name}"
+      _.insertAndExecuteCell 'cs', "cloneModel #{stringify model.model_id.name}"
 
     view = ->
-      _.insertAndExecuteCell 'cs', "getModel #{stringify model.key.name}"
+      _.insertAndExecuteCell 'cs', "getModel #{stringify model.model_id.name}"
 
     inspect = ->
-      _.insertAndExecuteCell 'cs', "inspect getModel #{stringify model.key.name}"
+      _.insertAndExecuteCell 'cs', "inspect getModel #{stringify model.model_id.name}"
 
-    key: model.key.name
+    key: model.model_id.name
     algo: model.algo
     isChecked: _isChecked
     predict: predict

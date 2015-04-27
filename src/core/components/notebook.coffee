@@ -291,7 +291,7 @@ Flow.Notebook = (_, _renderers) ->
           _.alert error.message ? error
         else
           _.growl 'File uploaded successfully!'
-          _.insertAndExecuteCell 'cs', "setupParse source_keys: [ #{stringify result.result.destination_key }]"
+          _.insertAndExecuteCell 'cs', "setupParse source_frames: [ #{stringify result.result.destination_frame }]"
 
   toggleInput = ->
     _selectedCell.toggleInput()

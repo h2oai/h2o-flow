@@ -25,21 +25,21 @@ H2O.FramesOutput = (_, _go, _frames) ->
 
     view = ->
       if frame.is_text
-        _.insertAndExecuteCell 'cs', "setupParse source_keys: [ #{stringify frame.key.name } ]"
+        _.insertAndExecuteCell 'cs', "setupParse source_frames: [ #{stringify frame.frame_id.name } ]"
       else
-        _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify frame.key.name}"
+        _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify frame.frame_id.name}"
 
     predict = ->
-      _.insertAndExecuteCell 'cs', "predict frame: #{stringify frame.key.name}"
+      _.insertAndExecuteCell 'cs', "predict frame: #{stringify frame.frame_id.name}"
 
     inspect = ->
-      _.insertAndExecuteCell 'cs', "inspect getFrameSummary #{stringify frame.key.name}"
+      _.insertAndExecuteCell 'cs', "inspect getFrameSummary #{stringify frame.frame_id.name}"
 
     createModel = ->
-      _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify frame.key.name}"
+      _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify frame.frame_id.name}"
 
 
-    key: frame.key.name
+    key: frame.frame_id.name
     isChecked: _isChecked
     description: description
     size: Flow.Util.formatBytes frame.byte_size
