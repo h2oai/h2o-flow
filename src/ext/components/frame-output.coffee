@@ -23,6 +23,9 @@ H2O.FrameOutput = (_, _go, _frame) ->
   inspectData = ->
     _.insertAndExecuteCell 'cs', "grid inspect 'data', getFrame #{stringify _frame.frame_id.name}"
 
+  splitFrame = ->
+    _.insertAndExecuteCell 'cs', "assist splitFrame, #{stringify _frame.frame_id.name}"
+
   predict = ->
     _.insertAndExecuteCell 'cs', "predict frame: #{stringify _frame.frame_id.name}"
 
@@ -50,6 +53,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
   inspect: inspect
   createModel: createModel
   inspectData: inspectData
+  splitFrame: splitFrame
   predict: predict
   download: download
   deleteFrame: deleteFrame
