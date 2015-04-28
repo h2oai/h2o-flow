@@ -1106,7 +1106,7 @@
                 <td>
                       <button type="button" data-bind="click:predict" class="flow-button"><i class="fa fa-bolt"></i><span>Predict&hellip;</span>
                       </button>
-                      <button type="button" data-bind="click:previewPOJO" class="flow-button"><i class="fa fa-puzzle-piece"></i><span>Preview POJO</span>
+                      <button type="button" data-bind="click:downloadPojo" class="flow-button"><i class="fa fa-download"></i><span>Download POJO</span>
                       </button>
                       <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
                       </button>
@@ -1151,6 +1151,17 @@
         <!-- ko foreach:plots-->
         <h4 data-bind="text:title, collapse:false"></h4>
         <div data-bind="raw:plot" class="flow-plot"></div>
+        <!-- ko if:frame-->
+        <div data-bind="raw:frame" class="flow-plot"></div>
+        <!-- /ko-->
+        <!-- /ko-->
+        <h4 data-bind="collapse:false">Preview POJO</h4>
+        <!-- ko ifnot:isPojoLoaded-->
+            <button type="button" data-bind="click:previewPojo" class="flow-button"><i class="fa fa-code"></i><span>Preview POJO</span>
+            </button>
+        <!-- /ko-->
+        <!-- ko if:isPojoLoaded-->
+        <div data-bind="html:pojoPreview"></div>
         <!-- /ko-->
       </div>
     </script>
@@ -1589,6 +1600,8 @@
                 <th width="1">Actions:</th>
                 <td>
                       <button type="button" data-bind="click:inspectData" class="flow-button"><i class="fa fa-table"></i><span>View Data</span>
+                      </button>
+                      <button type="button" data-bind="click:splitFrame" class="flow-button"><i class="fa fa-scissors"></i><span>Split...</span>
                       </button>
                       <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
                       </button>
