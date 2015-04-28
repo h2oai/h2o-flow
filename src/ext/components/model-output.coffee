@@ -25,6 +25,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
   renderPlot = (title, render) ->
     container = signal null
+    linkedFrame = signal null
 
     render (error, vis) ->
       if error
@@ -39,7 +40,28 @@ H2O.ModelOutput = (_, _go, _model) ->
               _.insertAndExecuteCell 'cs', "getModel #{stringify $a.attr 'data-key'}"
         container vis.element
 
-    _plots.push title: title, plot: container
+        if vis.subscribe
+          vis.subscribe 'markselect', ({frame, indices}) ->
+            subframe = window.plot.createFrame frame.label, frame.vectors, indices
+
+            debug subframe
+            renderTable = (g) ->
+              g(
+                if indices.length > 1 then g.select() else g.select head indices
+                g.from subframe
+              )
+            (_.plot renderTable) (error, table) ->
+              unless error
+                linkedFrame table.element
+            return
+
+          vis.subscribe 'markdeselect', ->
+            linkedFrame null
+
+    _plots.push 
+      title: title
+      plot: container
+      frame: linkedFrame
 
   switch _model.algo
     when 'kmeans'
@@ -193,17 +215,17 @@ H2O.ModelOutput = (_, _go, _model) ->
             )
           
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-       renderPlot 'ROC Curve', _.plot (g) ->
-         g(
-           g.path g.position 'fpr', 'tpr'
-           g.line(
-             g.position (g.value 1), (g.value 0)
-             g.strokeColor g.value 'red'
-           )
-           g.from table
-           g.domainX_HACK 0, 1
-           g.domainY_HACK 0, 1
-         )
+        renderPlot 'ROC Curve', _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
 
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', _.plot (g) ->
@@ -217,18 +239,11 @@ H2O.ModelOutput = (_, _go, _model) ->
 
   for tableName in _.ls _model when tableName isnt 'parameters'
     if table = _.inspect tableName, _model
-      if table.indices.length > 1
-        renderPlot tableName, _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-      else
-        renderPlot tableName, _.plot (g) ->
-          g(
-            g.select 0
-            g.from table
-          )
+      renderPlot tableName, _.plot (g) ->
+        g(
+          if table.indices.length > 1 then g.select() else g.select 0
+          g.from table
+        )
 
   toggle = ->
     _isExpanded not _isExpanded()

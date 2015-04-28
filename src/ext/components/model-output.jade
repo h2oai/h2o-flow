@@ -48,6 +48,9 @@
   // ko foreach:plots
   h4(data-bind='text:title, collapse:false')
   .flow-plot(data-bind='raw:plot')
+  // ko if:frame
+  .flow-plot(data-bind='raw:frame')
+  // /ko
   // /ko
 
   h4(data-bind='collapse:false') Preview POJO
