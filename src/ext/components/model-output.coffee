@@ -44,7 +44,6 @@ H2O.ModelOutput = (_, _go, _model) ->
           vis.subscribe 'markselect', ({frame, indices}) ->
             subframe = window.plot.createFrame frame.label, frame.vectors, indices
 
-            debug subframe
             renderTable = (g) ->
               g(
                 if indices.length > 1 then g.select() else g.select head indices
