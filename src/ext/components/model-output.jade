@@ -54,10 +54,11 @@
   // /ko
 
   h4(data-bind='collapse:false') Preview POJO
-  // ko ifnot:isPojoLoaded
-  +button('Preview POJO', 'code', 'previewPojo')
-  // /ko
-  // ko if:isPojoLoaded
-  div(data-bind='html:pojoPreview')
-  // /ko
+  div
+    // ko ifnot:isPojoLoaded
+    +button('Preview POJO', 'code', 'previewPojo')
+    // /ko
+    // ko if:isPojoLoaded
+    div(data-bind='html:pojoPreview')
+    // /ko
 
