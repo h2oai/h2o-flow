@@ -1149,20 +1149,22 @@
           </table>
         </div>
         <!-- ko foreach:plots-->
-        <h4 data-bind="text:title, collapse:false"></h4>
+        <h4 data-bind="text:title, collapse:isCollapsed"></h4>
         <div data-bind="raw:plot" class="flow-plot"></div>
         <!-- ko if:frame-->
         <div data-bind="raw:frame" class="flow-plot"></div>
         <!-- /ko-->
         <!-- /ko-->
         <h4 data-bind="collapse:false">Preview POJO</h4>
-        <!-- ko ifnot:isPojoLoaded-->
-            <button type="button" data-bind="click:previewPojo" class="flow-button"><i class="fa fa-code"></i><span>Preview POJO</span>
-            </button>
-        <!-- /ko-->
-        <!-- ko if:isPojoLoaded-->
-        <div data-bind="html:pojoPreview"></div>
-        <!-- /ko-->
+        <div>
+          <!-- ko ifnot:isPojoLoaded-->
+              <button type="button" data-bind="click:previewPojo" class="flow-button"><i class="fa fa-code"></i><span>Preview POJO</span>
+              </button>
+          <!-- /ko-->
+          <!-- ko if:isPojoLoaded-->
+          <div data-bind="html:pojoPreview"></div>
+          <!-- /ko-->
+        </div>
       </div>
     </script>
     <script type="text/html" id="flow-import-files-output">

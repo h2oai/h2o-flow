@@ -203,9 +203,6 @@ label input[type="checkbox"] {
 }
 th {
   font-weight: 300;
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 1px;
 }
 .alert {
   -webkit-border-radius: 0;
