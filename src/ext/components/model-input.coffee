@@ -128,7 +128,7 @@ createListControl = (parameter) ->
   react _values, -> _selectedValues []
 
   _value = lift _selectedValues, (views) ->
-    for view in views
+    for view in views when not view.isUnavailable()
       view.value 
 
   _availableValuesCaption = signal "0 items hidden"
