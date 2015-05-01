@@ -17,11 +17,14 @@ flow-color-yellow-lt = #FBF3B5
 flow-color-orange = #F5A623
 flow-color-link = #428bca
 
+normal()
+  font-weight 300
+
 monospace()
   font-family 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important
 
 smallcaps()
-  font-weight 300
+  normal()
   text-transform uppercase
   font-size 10px
   letter-spacing 1px
@@ -120,10 +123,12 @@ flow-sidebar-header-height = 31px
 
 body
   font-family Roboto, 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif
-  color #777
+  color #666
+  normal()
 
-h1, h2, h3, h4
-  font-weight 300
+
+h1, h2, h3, h4, blockquote, label
+  normal()
 
 code, kbd, pre, samp
   monospace()
@@ -135,9 +140,6 @@ kbd
   background-color #fff
   border 1px solid #ccc
   padding 1px 4px
-
-blockquote
-  font-weight 300
 
 pre
   border none
@@ -153,7 +155,6 @@ input
     outline none
 
 label
-  font-weight normal
   input[type="radio"]
     margin-right 6px
   input[type="checkbox"]
@@ -250,7 +251,7 @@ label
         border-bottom 1px solid #ccc
 
 th
-  font-weight 300
+  normal()
 
 .alert
   border-radius 0
@@ -344,7 +345,7 @@ th
 
 .flow-html-output
   h1, h2, h3, blockquote
-    font-weight 300
+    normal()
 
 .flow-raw-output
   pre
@@ -504,7 +505,7 @@ table
   height 32px
   span
     font-size 120%
-    font-weight 300
+    normal()
   input
     width 90%
   .fa
@@ -683,7 +684,7 @@ table
   ul
     padding 0 0 0 20px
   h5
-    font-weight 300
+    normal()
     font-size 18px
     color #999
   h6
@@ -714,7 +715,7 @@ table
     cursor pointer
     color #999
     &:hover
-      color #777
+      color #666
 
 .flow-outline
   pre

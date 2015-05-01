@@ -263,7 +263,6 @@ H2O.ModelOutput = (_, _go, _model) ->
       if error
         _pojoPreview "<pre>#{escape error}</pre>"
       else
-        #TODO syntax highlighting
         _pojoPreview "<pre>#{Flow.Util.highlight result, 'java'}</pre>"
 
   downloadPojo = ->
