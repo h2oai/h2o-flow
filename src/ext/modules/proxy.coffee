@@ -280,10 +280,23 @@ H2O.Proxy = (_) ->
   requestDeleteModel = (key, go) ->
     doDelete "/3/Models/#{encodeURIComponent key}", go
 
+  requestModelBuildersVisibility = (go) ->
+    doGet '/3/Configuration/ModelBuilders/visibility', unwrap go, (result) -> result.value
+
   requestModelBuilders = (go) ->
-    doGet "/3/ModelBuilders", unwrap go, (result) ->
-      for algo, builder of result.model_builders
-        builder
+    requestModelBuildersVisibility (error, visibility) ->
+      visibility = if error then 'Stable' else visibility
+      doGet "/3/ModelBuilders", unwrap go, (result) ->
+        builders = (builder for algo, builder of result.model_builders)
+        switch visibility
+          when 'Stable'
+            for builder in builders when builder.visibility is visibility
+              builder
+          when 'Beta'
+            for builder in builders when builder.visibility is visibility or builder.visibility is 'Stable'
+              builder
+          else
+            builders
 
   requestModelBuilder = (algo, go) ->
     doGet "/3/ModelBuilders/#{algo}", go
