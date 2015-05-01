@@ -416,6 +416,9 @@ H2O.Proxy = (_) ->
   requestRemoveAll = (go) ->
     doDelete '/3/DKV', go
 
+  requestEcho = (message, go) ->
+    doPost '/3/LogAndEcho', { message: message }, go
+
   requestLogFile = (nodeIndex, fileType, go) ->
     doGet "/3/Logs/nodes/#{nodeIndex}/files/#{fileType}", go
 
@@ -499,6 +502,7 @@ H2O.Proxy = (_) ->
   link _.requestProfile, requestProfile
   link _.requestStackTrace, requestStackTrace
   link _.requestRemoveAll, requestRemoveAll
+  link _.requestEcho, requestEcho
   link _.requestLogFile, requestLogFile
   link _.requestNetworkTest, requestNetworkTest
   link _.requestAbout, requestAbout

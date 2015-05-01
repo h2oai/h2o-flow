@@ -40,6 +40,7 @@ H2O.ApplicationContext = (_) ->
   _.requestProfile = do slot
   _.requestStackTrace = do slot
   _.requestRemoveAll = do slot
+  _.requestEcho = do slot
   _.requestLogFile = do slot
   _.requestNetworkTest = do slot
   _.requestAbout = do slot
