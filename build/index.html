@@ -1150,10 +1150,12 @@
         </div>
         <!-- ko foreach:plots-->
         <h4 data-bind="text:title, collapse:isCollapsed"></h4>
-        <div data-bind="raw:plot" class="flow-plot"></div>
-        <!-- ko if:frame-->
-        <div data-bind="raw:frame" class="flow-plot"></div>
-        <!-- /ko-->
+        <div>
+          <div data-bind="raw:plot" class="flow-plot"></div>
+          <!-- ko if:frame-->
+          <div data-bind="raw:frame" class="flow-plot"></div>
+          <!-- /ko-->
+        </div>
         <!-- /ko-->
         <h4 data-bind="collapse:false">Preview POJO</h4>
         <div>
