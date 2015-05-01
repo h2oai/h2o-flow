@@ -65,6 +65,7 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   _inputKey = if _inputs.paths then 'paths' else 'source_frames'
   _sourceKeys = map _result.source_frames, (src) -> src.name
   _parseType =  signal find parseTypes, (parseType) -> parseType.type is _result.parse_type
+  _canReconfigure = lift _parseType, (parseType) -> parseType.type isnt 'SVMLight'
   _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.separator 
   _useSingleQuotes = signal _result.single_quotes
   _destinationKey = signal _result.destination_frame
@@ -111,6 +112,7 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   defer _go
 
   sourceKeys: _inputs[_inputKey]
+  canReconfigure: _canReconfigure
   parseTypes: parseTypes
   dataTypes: dataTypes
   delimiters: parseDelimiters

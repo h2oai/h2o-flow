@@ -19,6 +19,7 @@
         th.flow-narrow Destination Key
         td.flow-wide
           input.flow-textbox(type='text' data-bind="value:destinationKey")
+      // ko if:canReconfigure
       tr
         th.flow-narrow Parser
         td.flow-wide
@@ -53,11 +54,13 @@
             label
               input(type='checkbox' data-bind='checked:deleteOnDone')
               span Delete on done
+      // /ko
 
   // ko if:hasColumns
   h4 Data Preview
   div
     table.flow-form.flow-monospace
+      // ko if:canReconfigure
       thead
         tr
           // ko foreach:columns
@@ -70,6 +73,7 @@
             select(data-bind="options:$parent.dataTypes, value:type")
           // /ko
 
+      // /ko
       tbody
         // ko foreach:rows
         tr
