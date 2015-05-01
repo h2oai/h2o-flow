@@ -23,7 +23,7 @@ H2O.ModelOutput = (_, _go, _model) ->
     help: help
     isModified: default_value is actual_value
 
-  renderPlot = (title, render) ->
+  renderPlot = (title, isCollapsed, render) ->
     container = signal null
     linkedFrame = signal null
 
@@ -61,11 +61,12 @@ H2O.ModelOutput = (_, _go, _model) ->
       title: title
       plot: container
       frame: linkedFrame
+      isCollapsed: isCollapsed
 
   switch _model.algo
     when 'kmeans'
       if table = _.inspect 'output - Scoring History', _model
-        renderPlot 'Scoring History', _.plot (g) ->
+        renderPlot 'Scoring History', no, _.plot (g) ->
           g(
             g.path(
               g.position 'number_of_iterations', 'average_within_cluster_sum_of_squares'
@@ -80,7 +81,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'glm'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-       renderPlot 'ROC Curve', _.plot (g) ->
+       renderPlot 'ROC Curve', no, _.plot (g) ->
          g(
            g.path g.position 'fpr', 'tpr'
            g.line(
@@ -93,7 +94,7 @@ H2O.ModelOutput = (_, _go, _model) ->
          )
 
       if table = _.inspect 'output - Coefficient Magnitudes', _model
-        renderPlot 'Normalized Coefficient Magnitudes', _.plot (g) ->
+        renderPlot 'Normalized Coefficient Magnitudes', no, _.plot (g) ->
           g(
             g.rect(
               g.position 'coefficients', 'names'
@@ -103,7 +104,7 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
       if table = _.inspect 'output - Scoring History', _model
-        renderPlot 'Scoring History', _.plot (g) ->
+        renderPlot 'Scoring History', no, _.plot (g) ->
           g(
             g.path(
               g.position 'iteration', 'objective'
@@ -118,7 +119,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'deeplearning'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-       renderPlot 'ROC Curve', _.plot (g) ->
+       renderPlot 'ROC Curve', no, _.plot (g) ->
          g(
            g.path g.position 'fpr', 'tpr'
            g.line(
@@ -131,7 +132,7 @@ H2O.ModelOutput = (_, _go, _model) ->
          )
 
       if table = _.inspect 'output - Variable Importances', _model
-        renderPlot 'Variable Importances', _.plot (g) ->
+        renderPlot 'Variable Importances', no, _.plot (g) ->
           g(
             g.rect(
               g.position 'scaled_importance', 'variable'
@@ -142,7 +143,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
       if table = _.inspect 'output - Scoring History', _model
         if table.schema['validation_MSE']
-          renderPlot 'Scoring History', _.plot (g) ->
+          renderPlot 'Scoring History', no, _.plot (g) ->
             g(
               g.path(
                 g.position 'epochs', 'training_MSE'
@@ -163,7 +164,7 @@ H2O.ModelOutput = (_, _go, _model) ->
               g.from table
             )
         else
-          renderPlot 'Scoring History', _.plot (g) ->
+          renderPlot 'Scoring History', no, _.plot (g) ->
             g(
               g.path(
                 g.position 'epochs', 'training_MSE'
@@ -179,7 +180,7 @@ H2O.ModelOutput = (_, _go, _model) ->
     when 'gbm', 'drf'
       if table = _.inspect 'output - Scoring History', _model
         if table.schema['validation_MSE']
-          renderPlot 'Scoring History', _.plot (g) ->
+          renderPlot 'Scoring History', no, _.plot (g) ->
             g(
               g.path(
                 g.position 'number_of_trees', 'training_MSE'
@@ -200,7 +201,7 @@ H2O.ModelOutput = (_, _go, _model) ->
               g.from table
             )
         else
-          renderPlot 'Scoring History', _.plot (g) ->
+          renderPlot 'Scoring History', no, _.plot (g) ->
             g(
               g.path(
                 g.position 'number_of_trees', 'training_MSE'
@@ -214,7 +215,7 @@ H2O.ModelOutput = (_, _go, _model) ->
             )
           
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve', _.plot (g) ->
+        renderPlot 'ROC Curve', no, _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -227,7 +228,7 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
       if table = _.inspect 'output - Variable Importances', _model
-        renderPlot 'Variable Importances', _.plot (g) ->
+        renderPlot 'Variable Importances', no, _.plot (g) ->
           g(
             g.rect(
               g.position 'scaled_importance', 'variable'
@@ -238,7 +239,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
   for tableName in _.ls _model when tableName isnt 'parameters'
     if table = _.inspect tableName, _model
-      renderPlot tableName, _.plot (g) ->
+      renderPlot tableName, yes, _.plot (g) ->
         g(
           if table.indices.length > 1 then g.select() else g.select 0
           g.from table

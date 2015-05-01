@@ -46,7 +46,7 @@
 
   
   // ko foreach:plots
-  h4(data-bind='text:title, collapse:false')
+  h4(data-bind='text:title, collapse:isCollapsed')
   .flow-plot(data-bind='raw:plot')
   // ko if:frame
   .flow-plot(data-bind='raw:frame')
