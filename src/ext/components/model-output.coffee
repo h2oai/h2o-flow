@@ -94,7 +94,7 @@ H2O.ModelOutput = (_, _go, _model) ->
          )
 
       if table = _.inspect 'output - Coefficient Magnitudes', _model
-        renderPlot 'Normalized Coefficient Magnitudes', no, _.plot (g) ->
+        renderPlot 'Standardized Coefficient Magnitudes', no, _.plot (g) ->
           g(
             g.rect(
               g.position 'coefficients', 'names'
@@ -104,18 +104,42 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
       if table = _.inspect 'output - Scoring History', _model
-        renderPlot 'Scoring History', no, _.plot (g) ->
-          g(
-            g.path(
-              g.position 'iteration', 'objective'
-              g.strokeColor g.value '#1f77b4'
+        lambdaSearchParameter = find _model.parameters, (parameter) -> parameter.name is 'lambda_search'
+      
+        if lambdaSearchParameter?.actual_value
+          renderPlot 'Scoring History', no, _.plot (g) ->
+            g(
+              g.path(
+                g.position 'lambdaid', '_explained_deviance_train'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.path(
+                g.position 'lambdaid', 'explained_deviance_test'
+                g.strokeColor g.value '#ff7f0e'
+              )
+              g.point(
+                g.position 'lambdaid', '_explained_deviance_train'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.point(
+                g.position 'lambdaid', 'explained_deviance_test'
+                g.strokeColor g.value '#ff7f0e'
+              )
+              g.from table
             )
-            g.point(
-              g.position 'iteration', 'objective'
-              g.strokeColor g.value '#1f77b4'
+        else
+          renderPlot 'Scoring History', no, _.plot (g) ->
+            g(
+              g.path(
+                g.position 'iteration', 'objective'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.point(
+                g.position 'iteration', 'objective'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.from table
             )
-            g.from table
-          )
 
     when 'deeplearning'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
