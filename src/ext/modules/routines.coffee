@@ -487,7 +487,11 @@ H2O.Routines = (_) ->
     ModelMetricsBinomial: 
       fields: null
       transform: transformBinomialMetrics
+    ModelMetricsMultinomialGLM:
+      fields: null
     ModelMetricsMultinomial:
+      fields: null
+    ModelMetricsRegressionGLM:
       fields: null
     ModelMetricsRegression:
       fields: null

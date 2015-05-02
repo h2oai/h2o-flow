@@ -93,11 +93,13 @@ H2O.ModelOutput = (_, _go, _model) ->
            g.domainY_HACK 0, 1
          )
 
-      if table = _.inspect 'output - Coefficient Magnitudes', _model
+      if table = _.inspect 'output - Standardized Coefficient Magnitudes', _model
+        debug table
         renderPlot 'Standardized Coefficient Magnitudes', no, _.plot (g) ->
           g(
             g.rect(
               g.position 'coefficients', 'names'
+              g.fillColor 'sign'
             )
             g.from table
             g.limit 25
