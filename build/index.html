@@ -996,6 +996,7 @@
                 <input type="text" data-bind="value:destinationKey" class="flow-textbox">
               </td>
             </tr>
+            <!-- ko if:canReconfigure-->
             <tr>
               <th class="flow-narrow">Parser</th>
               <td class="flow-wide">
@@ -1043,12 +1044,14 @@
                 </div>
               </td>
             </tr>
+            <!-- /ko-->
           </tbody>
         </table>
         <!-- ko if:hasColumns-->
         <h4>Data Preview</h4>
         <div>
           <table class="flow-form flow-monospace">
+            <!-- ko if:canReconfigure-->
             <thead>
               <tr>
                 <!-- ko foreach:columns-->
@@ -1065,6 +1068,7 @@
                 <!-- /ko-->
               </tr>
             </thead>
+            <!-- /ko-->
             <tbody>
               <!-- ko foreach:rows-->
               <tr>

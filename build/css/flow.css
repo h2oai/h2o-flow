@@ -1,11 +1,14 @@
 body {
   font-family: Roboto, 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  color: #777;
+  color: #666;
+  font-weight: 300;
 }
 h1,
 h2,
 h3,
-h4 {
+h4,
+blockquote,
+label {
   font-weight: 300;
 }
 code,
@@ -23,9 +26,6 @@ kbd {
   border: 1px solid #ccc;
   padding: 1px 4px;
 }
-blockquote {
-  font-weight: 300;
-}
 pre {
   border: none;
   -webkit-border-radius: 0;
@@ -37,9 +37,6 @@ textarea:focus {
 }
 input:focus {
   outline: none;
-}
-label {
-  font-weight: normal;
 }
 label input[type="radio"] {
   margin-right: 6px;
@@ -203,6 +200,7 @@ label input[type="checkbox"] {
 }
 th {
   font-weight: 300;
+  font-style: italic;
 }
 .alert {
   -webkit-border-radius: 0;
@@ -753,7 +751,7 @@ table.flow-form-ruled tr:first-child {
   color: #999;
 }
 .flow-help-toolbar a.flow-help-toolbar-button:hover {
-  color: #777;
+  color: #666;
 }
 .flow-outline pre {
   max-width: 240px;
