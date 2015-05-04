@@ -324,21 +324,21 @@ H2O.Routines = (_) ->
     )
 
   transformBinomialMetrics = (metrics) ->
-    scores = metrics.thresholds_and_metric_scores
-    tps = getTwoDimData scores, 'tps'
-    tns = getTwoDimData scores, 'tns'
-    fps = getTwoDimData scores, 'fps'
-    fns = getTwoDimData scores, 'fns'
+    if scores = metrics.thresholds_and_metric_scores
+      tps = getTwoDimData scores, 'tps'
+      tns = getTwoDimData scores, 'tns'
+      fps = getTwoDimData scores, 'fps'
+      fns = getTwoDimData scores, 'fns'
 
-    cms = for tp, i in tps
-      [[tns[i], fps[i]], [fns[i], tp]]
+      cms = for tp, i in tps
+        [[tns[i], fps[i]], [fns[i], tp]]
 
-    scores.columns.push
-      name: 'CM'
-      description: 'CM'
-      format: 'matrix' #TODO HACK
-      type: 'matrix'
-    scores.data.push cms
+      scores.columns.push
+        name: 'CM'
+        description: 'CM'
+        format: 'matrix' #TODO HACK
+        type: 'matrix'
+      scores.data.push cms
 
     metrics
 

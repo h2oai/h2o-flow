@@ -81,20 +81,19 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'glm'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-       renderPlot 'ROC Curve', no, _.plot (g) ->
-         g(
-           g.path g.position 'fpr', 'tpr'
-           g.line(
-             g.position (g.value 1), (g.value 0)
-             g.strokeColor g.value 'red'
-           )
-           g.from table
-           g.domainX_HACK 0, 1
-           g.domainY_HACK 0, 1
-         )
+        renderPlot 'ROC Curve', no, _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
 
       if table = _.inspect 'output - Standardized Coefficient Magnitudes', _model
-        debug table
         renderPlot 'Standardized Coefficient Magnitudes', no, _.plot (g) ->
           g(
             g.rect(
@@ -145,17 +144,17 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'deeplearning'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-       renderPlot 'ROC Curve', no, _.plot (g) ->
-         g(
-           g.path g.position 'fpr', 'tpr'
-           g.line(
-             g.position (g.value 1), (g.value 0)
-             g.strokeColor g.value 'red'
-           )
-           g.from table
-           g.domainX_HACK 0, 1
-           g.domainY_HACK 0, 1
-         )
+        renderPlot 'ROC Curve', no, _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
 
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', no, _.plot (g) ->

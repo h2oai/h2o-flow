@@ -23,17 +23,18 @@ H2O.PredictOutput = (_, _go, prediction) ->
 
   switch prediction.__meta.schema_type
     when 'ModelMetricsBinomial'
-     renderPlot 'ROC Curve', _.plot (g) ->
-       g(
-         g.path g.position 'fpr', 'tpr'
-         g.line(
-           g.position (g.value 1), (g.value 0)
-           g.strokeColor g.value 'red'
-         )
-         g.from _.inspect 'Prediction - Metrics for Thresholds', prediction
-         g.domainX_HACK 0, 1
-         g.domainY_HACK 0, 1
-       )
+      if table = _.inspect 'Prediction - Metrics for Thresholds', prediction
+        renderPlot 'ROC Curve', _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
 
   for tableName in _.ls prediction
     if table = _.inspect tableName, prediction
