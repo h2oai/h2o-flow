@@ -174,12 +174,8 @@ H2O.Proxy = (_) ->
       else
         go null, result.rdds
 
-  requestColumnSummary = (key, column, go) ->
-    doGet "/3/Frames/#{encodeURIComponent key}/columns/#{encodeURIComponent column}/summary", (error, result) ->
-      if error
-        go error
-      else
-        go null, head result.frames
+  requestColumnSummary = (frameKey, column, go) ->
+    doGet "/3/Frames/#{encodeURIComponent frameKey}/columns/#{encodeURIComponent column}/summary", unwrap go, (result) -> head result.frames
 
   requestJobs = (go) ->
     doGet '/3/Jobs', (error, result) ->
@@ -200,7 +196,6 @@ H2O.Proxy = (_) ->
       if error
         go new Flow.Error "Error canceling job '#{key}'", error
       else
-        debug result
         go null
 
   requestFileGlob = (path, limit, go) ->

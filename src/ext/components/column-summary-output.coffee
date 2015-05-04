@@ -1,8 +1,6 @@
 H2O.ColumnSummaryOutput = (_, _go, frameKey, frame, columnName) ->
   column = head frame.columns
 
-  debug frame
-
   _characteristicsPlot = signal null
   _summaryPlot = signal null
   _distributionPlot = signal null
@@ -52,6 +50,7 @@ H2O.ColumnSummaryOutput = (_, _go, frameKey, frame, columnName) ->
           g.position 'count', 'label'
         )
         g.from table
+        g.limit 1000
       )
 
   inspect = ->

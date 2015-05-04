@@ -783,11 +783,9 @@ H2O.Routines = (_) ->
       #TODO sort table in-place when sorting is implemented
       sortedLevels = sortBy levels, (level) -> -level.count
 
-      top15Levels = head sortedLevels, 15
+      [ labels, counts, percents ] = createArrays 3, sortedLevels.length
 
-      [ labels, counts, percents ] = createArrays 3, top15Levels.length
-
-      for level, i in top15Levels
+      for level, i in sortedLevels
         labels[i] = column.domain[level.index]
         counts[i] = level.count
         percents[i] = 100 * level.count / rowCount
@@ -798,7 +796,7 @@ H2O.Routines = (_) ->
         createVector 'percent', TNumber, percents
       ]
 
-      createDataframe 'domain', vectors, (sequence top15Levels.length), null,
+      createDataframe 'domain', vectors, (sequence sortedLevels.length), null,
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: "plot inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
