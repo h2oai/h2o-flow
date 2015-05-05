@@ -35,7 +35,7 @@ H2O.PredictInput = (_, _go, opt) ->
       if error
         _exception new Flow.Error 'Error fetching frame list.', error
       else
-        _frames (frame.frame_id.name for frame in frames)
+        _frames (frame.frame_id.name for frame in frames when not frame.is_text)
 
   unless _hasModels
     _.requestModels (error, models) ->

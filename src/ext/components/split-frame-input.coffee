@@ -95,7 +95,7 @@ H2O.SplitFrameInput = (_, _go, _frameKey) ->
       if error
         #TODO handle properly
       else
-        frameKeys = (frame.frame_id.name for frame in frames)
+        frameKeys = (frame.frame_id.name for frame in frames when not frame.is_text)
         sort frameKeys
         _frames frameKeys
         _frame _frameKey
