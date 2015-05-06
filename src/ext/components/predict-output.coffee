@@ -1,5 +1,6 @@
 H2O.PredictOutput = (_, _go, prediction) ->
-  { frame, model } = prediction
+  if prediction
+    { frame, model } = prediction
 
   _plots = signals []
 
@@ -21,35 +22,36 @@ H2O.PredictOutput = (_, _go, prediction) ->
 
     _plots.push title: title, plot: container
 
-  switch prediction.__meta.schema_type
-    when 'ModelMetricsBinomial'
-      if table = _.inspect 'Prediction - Metrics for Thresholds', prediction
-        renderPlot 'ROC Curve', _.plot (g) ->
-          g(
-            g.path g.position 'fpr', 'tpr'
-            g.line(
-              g.position (g.value 1), (g.value 0)
-              g.strokeColor g.value 'red'
+  if prediction
+    switch prediction.__meta?.schema_type
+      when 'ModelMetricsBinomial'
+        if table = _.inspect 'Prediction - Metrics for Thresholds', prediction
+          renderPlot 'ROC Curve', _.plot (g) ->
+            g(
+              g.path g.position 'fpr', 'tpr'
+              g.line(
+                g.position (g.value 1), (g.value 0)
+                g.strokeColor g.value 'red'
+              )
+              g.from table
+              g.domainX_HACK 0, 1
+              g.domainY_HACK 0, 1
             )
-            g.from table
-            g.domainX_HACK 0, 1
-            g.domainY_HACK 0, 1
-          )
 
-  for tableName in _.ls prediction
-    if table = _.inspect tableName, prediction
-      if table.indices.length > 1
-        renderPlot tableName, _.plot (g) ->
-          g(
-            g.select()
-            g.from table
-          )
-      else
-        renderPlot tableName, _.plot (g) ->
-          g(
-            g.select 0
-            g.from table
-          )
+    for tableName in _.ls prediction
+      if table = _.inspect tableName, prediction
+        if table.indices.length > 1
+          renderPlot tableName, _.plot (g) ->
+            g(
+              g.select()
+              g.from table
+            )
+        else
+          renderPlot tableName, _.plot (g) ->
+            g(
+              g.select 0
+              g.from table
+            )
 
   inspect = ->
     #XXX get this from prediction table

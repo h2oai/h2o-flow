@@ -592,9 +592,19 @@ H2O.Routines = (_) ->
     render_ predictions, H2O.PredictsOutput, opts, predictions
     predictions
 
-  extendPrediction = (modelKey, frameKey, prediction) ->
+  extendPrediction = (result) ->
+    modelKey = result.model.name
+    frameKey = result.frame.name
+    prediction = head result.model_metrics
+    predictionFrame = result.predictions_frame
+
     inspections = {}
-    inspectObject inspections, 'Prediction', "getPrediction model: #{stringify prediction.model.name}, frame: #{stringify prediction.frame.name}", prediction
+    if prediction
+      inspectObject inspections, 'Prediction', "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", prediction
+    else
+      prediction = {}
+      inspectObject inspections, 'Prediction', "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", predictionFrame
+
     inspect_ prediction, inspections
     render_ prediction, H2O.PredictOutput, prediction
 
@@ -1179,12 +1189,15 @@ H2O.Routines = (_) ->
     else
       assist buildModel, algo, opts
 
-  requestPredict = (destinationKey, modelKey, frameKey, go) ->
-    _.requestPredict destinationKey, modelKey, frameKey, (error, prediction) ->
+  unwrapPrediction = (go) ->
+    (error, result) ->
       if error
         go error
       else
-        go null, extendPrediction modelKey, frameKey, prediction
+        go null, extendPrediction result
+
+  requestPredict = (destinationKey, modelKey, frameKey, go) ->
+    _.requestPredict destinationKey, modelKey, frameKey, unwrapPrediction go
 
   requestPredicts = (opts, go) ->
     futures = map opts, (opt) ->
@@ -1223,11 +1236,7 @@ H2O.Routines = (_) ->
         assist predict, predictions_frame: predictions_frame, model: model, frame: frame
 
   requestPrediction = (modelKey, frameKey, go) ->
-    _.requestPrediction modelKey, frameKey, (error, prediction) ->
-      if error
-        go error
-      else
-        go null, extendPrediction modelKey, frameKey, prediction
+    _.requestPrediction modelKey, frameKey, unwrapPrediction go
 
   requestPredictions = (opts, go) ->
     if isArray opts

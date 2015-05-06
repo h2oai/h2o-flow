@@ -313,14 +313,14 @@ H2O.Proxy = (_) ->
       if error
         go error
       else
-        go null, head result.model_metrics
+        go null, result
 
   requestPrediction = (modelKey, frameKey, go) ->
     doGet "/3/ModelMetrics/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", (error, result) ->
       if error
         go error
       else
-        go null, head result.model_metrics
+        go null, result
 
   requestPredictions = (modelKey, frameKey, _go) ->
     go = (error, result) ->
