@@ -1,6 +1,7 @@
 .flow-widget
   +subtitle('Prediction', 'bolt')
 
+  // ko if:canInspect
   table.flow-form
     tbody
       tr
@@ -8,6 +9,7 @@
           label Actions:
         td
           +button('Inspect', 'list', 'inspect')
+  // /ko
 
   // ko foreach:plots
   h4(data-bind='text:title, collapse:false')

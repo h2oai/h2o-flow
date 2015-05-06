@@ -3,6 +3,7 @@ H2O.PredictOutput = (_, _go, prediction) ->
     { frame, model } = prediction
 
   _plots = signals []
+  _canInspect = if prediction.__meta then yes else no
 
   renderPlot = (title, render) ->
     container = signal null
@@ -61,4 +62,5 @@ H2O.PredictOutput = (_, _go, prediction) ->
 
   plots: _plots
   inspect: inspect
+  canInspect: _canInspect
   template: 'flow-predict-output'
