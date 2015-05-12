@@ -13,7 +13,7 @@ H2O.ModelOutput = (_, _go, _model) ->
         if actual_value then actual_value.name else null
       when 'VecSpecifier'
         if actual_value then actual_value.column_name else null
-      when 'string[]'
+      when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
         if actual_value then join actual_value, ', ' else null
       else
         actual_value
