@@ -315,8 +315,8 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
       else
         hasErrors = no
 
-        if modelBuilder.validation_messages.length
-          validationsByControlName = groupBy modelBuilder.validation_messages, (validation) -> validation.field_name
+        if modelBuilder.messages.length
+          validationsByControlName = groupBy modelBuilder.messages, (validation) -> validation.field_name
 
           for controls in _controlGroups
             for control in controls

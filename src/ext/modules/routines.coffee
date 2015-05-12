@@ -1178,8 +1178,8 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        if result.validation_error_count > 0
-          messages = (validation.message for validation in result.validation_messages)
+        if result.error_count > 0
+          messages = (validation.message for validation in result.messages)
           go new Flow.Error "Model build failure: #{messages.join '; '}"
         else
           go null, extendJob result.job
