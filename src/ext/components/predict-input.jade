@@ -27,6 +27,26 @@
         // ko ifnot:hasFrames
         select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
         // /ko
+
+    // ko if:hasAdditionalOptions
+    tr
+      th
+        label Compute Reconstruction Error:
+      td
+        input(type='checkbox' data-bind="checked:computeReconstructionError")
+    // ko ifnot:computeReconstructionError
+    tr
+      th
+        label Compute Deep Features Hidden Layer:
+      td
+        input(type='checkbox' data-bind="checked:computeDeepFeaturesHiddenLayer")
+        // ko if:computeDeepFeaturesHiddenLayer
+        span Hidden Layer #:
+        input.flow-textbox(type='textbox' style='width:50px' data-bind="value:deepFeaturesHiddenLayer, valueUpdate:'afterkeydown'")
+        // /ko
+
+    // /ko
+    // /ko
     tr
       th
         label Actions:

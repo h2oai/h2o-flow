@@ -1196,13 +1196,13 @@ H2O.Routines = (_) ->
       else
         go null, extendPrediction result
 
-  requestPredict = (destinationKey, modelKey, frameKey, go) ->
-    _.requestPredict destinationKey, modelKey, frameKey, unwrapPrediction go
+  requestPredict = (destinationKey, modelKey, frameKey, options, go) ->
+    _.requestPredict destinationKey, modelKey, frameKey, options, unwrapPrediction go
 
   requestPredicts = (opts, go) ->
     futures = map opts, (opt) ->
-      { model: modelKey, frame: frameKey } = opt
-      _fork _.requestPredict, null, modelKey, frameKey
+      { model: modelKey, frame: frameKey, options: options } = opt
+      _fork _.requestPredict, null, modelKey, frameKey, options or {}
 
     Flow.Async.join futures, (error, predictions) ->
       if error
@@ -1211,7 +1211,7 @@ H2O.Routines = (_) ->
         go null, extendPredictions opts, predictions
 
   predict = (opts={}) ->
-    { predictions_frame, model, models, frame, frames } = opts 
+    { predictions_frame, model, models, frame, frames, reconstruction_error, deep_features_hidden_layer } = opts 
     if models or frames
       unless models
         if model
@@ -1231,7 +1231,9 @@ H2O.Routines = (_) ->
         assist predict, predictions_frame: predictions_frame, models: models, frames: frames
     else
       if model and frame
-        _fork requestPredict, predictions_frame, model, frame
+        _fork requestPredict, predictions_frame, model, frame,
+          reconstruction_error: reconstruction_error
+          deep_features_hidden_layer: deep_features_hidden_layer
       else 
         assist predict, predictions_frame: predictions_frame, model: model, frame: frame
 

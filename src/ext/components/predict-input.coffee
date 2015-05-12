@@ -24,11 +24,33 @@ H2O.PredictInput = (_, _go, opt) ->
   _selectedModel = signal null
   _hasFrames = if _selectedFrames.length then yes else no
   _hasModels = if _selectedModels.length then yes else no
-  _canPredict = lift _selectedFrame, _selectedModel, (frame, model) ->
-    frame and model or _hasFrames and model or _hasModels and frame
 
   _frames = signals []
   _models = signals []
+  _hasAdditionalOptions = lift _selectedModel, (model) ->
+    if model
+      if model.algo is 'deeplearning'
+        for parameter in model.parameters when parameter.name is 'autoencoder' and parameter.actual_value is yes
+          return yes
+    return no
+          
+  _computeReconstructionError = signal no
+  _computeDeepFeaturesHiddenLayer = signal no
+  _deepFeaturesHiddenLayer = signal 0
+  _deepFeaturesHiddenLayerValue = lift _deepFeaturesHiddenLayer, (text) -> parseInt text, 10
+  _canPredict = lift _selectedFrame, _selectedModel, _hasAdditionalOptions, _computeReconstructionError, _computeDeepFeaturesHiddenLayer, _deepFeaturesHiddenLayerValue, (frame, model, hasAdditionalOptions, computeReconstructionError, computeDeepFeaturesHiddenLayer, deepFeaturesHiddenLayerValue) ->
+    hasFrameAndModel = frame and model or _hasFrames and model or _hasModels and frame
+    hasValidOptions = if hasAdditionalOptions
+      if computeReconstructionError
+        yes
+      else if computeDeepFeaturesHiddenLayer
+        not isNaN deepFeaturesHiddenLayerValue
+      else
+        yes
+    else
+      yes
+
+    hasFrameAndModel and hasValidOptions
 
   unless _hasFrames
     _.requestFrames (error, frames) ->
@@ -42,7 +64,13 @@ H2O.PredictInput = (_, _go, opt) ->
       if error
         _exception new Flow.Error 'Error fetching model list.', error
       else
+        #TODO use models directly
         _models (model.model_id.name for model in models)
+
+  unless _selectedModel()
+    if opt.model and isString opt.model
+      _.requestModel opt.model, (error, model) ->
+        _selectedModel model
 
   predict = ->
     if _hasFrames
@@ -56,10 +84,17 @@ H2O.PredictInput = (_, _go, opt) ->
       frameArg = _selectedFrame()
 
     destinationKey = _destinationKey()
+    cs = "predict model: #{stringify modelArg}, frame: #{stringify frameArg}"
     if destinationKey
-      _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}, predictions_frame: #{stringify destinationKey}"
-    else
-      _.insertAndExecuteCell 'cs', "predict model: #{stringify modelArg}, frame: #{stringify frameArg}"
+      cs += ", predictions_frame: #{stringify destinationKey}"
+
+    if _hasAdditionalOptions()
+      if _computeReconstructionError()
+        cs += ', reconstruction_error: true'
+      else if _computeDeepFeaturesHiddenLayer()
+        cs += ", deep_features_hidden_layer: #{_deepFeaturesHiddenLayerValue()}"
+
+    _.insertAndExecuteCell 'cs', cs
 
   defer _go
 
@@ -75,5 +110,9 @@ H2O.PredictInput = (_, _go, opt) ->
   frames: _frames
   models: _models
   predict: predict
+  hasAdditionalOptions: _hasAdditionalOptions
+  computeReconstructionError: _computeReconstructionError
+  computeDeepFeaturesHiddenLayer: _computeDeepFeaturesHiddenLayer
+  deepFeaturesHiddenLayer: _deepFeaturesHiddenLayer
   template: 'flow-predict-input'
 

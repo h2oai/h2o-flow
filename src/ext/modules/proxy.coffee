@@ -303,11 +303,13 @@ H2O.Proxy = (_) ->
     _.trackEvent 'model', algo
     doPost "/3/ModelBuilders/#{algo}", (encodeObjectForPost parameters), go
 
-  requestPredict = (destinationKey, modelKey, frameKey, go) ->
-    opts = if destinationKey
-      predictions_frame: destinationKey
-    else
-      {}
+  requestPredict = (destinationKey, modelKey, frameKey, options, go) ->
+    opts = {}
+    opts.predictions_frame = destinationKey if destinationKey
+    unless undefined is (opt = options.reconstruction_error)
+      opts.reconstruction_error = opt
+    unless undefined is (opt = options.deep_features_hidden_layer)
+      opts.deep_features_hidden_layer = opt
 
     doPost "/3/Predictions/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", opts, (error, result) ->
       if error
