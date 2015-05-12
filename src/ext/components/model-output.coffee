@@ -111,7 +111,7 @@ H2O.ModelOutput = (_, _go, _model) ->
           renderPlot 'Scoring History', no, _.plot (g) ->
             g(
               g.path(
-                g.position 'lambdaid', '_explained_deviance_train'
+                g.position 'lambdaid', 'explained_deviance_train'
                 g.strokeColor g.value '#1f77b4'
               )
               g.path(
@@ -119,7 +119,7 @@ H2O.ModelOutput = (_, _go, _model) ->
                 g.strokeColor g.value '#ff7f0e'
               )
               g.point(
-                g.position 'lambdaid', '_explained_deviance_train'
+                g.position 'lambdaid', 'explained_deviance_train'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
