@@ -499,6 +499,8 @@ H2O.Routines = (_) ->
       fields: null
     ModelMetricsAutoEncoder:
       fields: null
+    ConfusionMatrix:
+      fields: null
 
   blacklistedAttributesBySchema = do ->
     dicts = {}
