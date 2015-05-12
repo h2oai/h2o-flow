@@ -603,7 +603,7 @@ H2O.Routines = (_) ->
       inspectObject inspections, 'Prediction', "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", prediction
     else
       prediction = {}
-      inspectObject inspections, 'Prediction', "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", predictionFrame
+      inspectObject inspections, 'Prediction', "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", { prediction_frame: predictionFrame }
 
     inspect_ prediction, inspections
     render_ prediction, H2O.PredictOutput, prediction
