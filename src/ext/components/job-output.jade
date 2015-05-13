@@ -44,6 +44,17 @@
                 td.flow-narrow &nbsp;
                 td.flow-wide(data-bind='text:progressMessage')
 
+      // ko if:messages
+      tr
+        th.flow-narrow Messages
+        td.flow-wide
+          // ko foreach:messages
+          div
+            i.fa(style='margin-right:5px' data-bind='css:icon')
+            span(data-bind='text:message')
+          // /ko
+      // /ko
+
       tr
         th.flow-narrow Actions
         td.flow-wide

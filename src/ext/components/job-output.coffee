@@ -41,11 +41,17 @@ H2O.JobOutput = (_, _go, _job) ->
   _status = signal null
   _statusColor = signal null
   _exception = signal null
+  _messages = signal null
   _canView = signal no
   _canCancel = signal no
 
   isJobRunning = (job) ->
     job.status is 'CREATED' or job.status is 'RUNNING'
+
+  messageIcons =
+    ERROR: 'fa-times-circle red'
+    WARN: 'fa-warning orange'
+    INFO: 'fa-info-circle'
 
   updateJob = (job) ->
     _runTime Flow.Util.formatMilliseconds job.msec
@@ -53,7 +59,14 @@ H2O.JobOutput = (_, _go, _job) ->
     _progressMessage job.progress_msg
     _status job.status
     _statusColor getJobOutputStatusColor job.status
-    _exception if job.exception then Flow.Failure _, new Flow.Error 'Job failure.', new Error job.exception else null
+    if job.error_count
+      messages = for message in job.messages when message.message_type isnt 'HIDE'
+        icon: messageIcons[message.message_type]
+        message: "#{message.field_name}: #{message.message}"
+      _messages messages
+
+    else if job.exception
+      _exception Flow.Failure _, new Flow.Error 'Job failure.', new Error job.exception
 
     _canView not isJobRunning job
     _canCancel isJobRunning job
@@ -109,6 +122,7 @@ H2O.JobOutput = (_, _go, _job) ->
   progressMessage: _progressMessage
   status: _status
   statusColor: _statusColor
+  messages: _messages
   exception: _exception
   isLive: _isLive
   canView: _canView
