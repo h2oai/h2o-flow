@@ -1786,6 +1786,29 @@
               <!-- /ko-->
             </td>
           </tr>
+          <!-- ko if:hasAdditionalOptions-->
+          <tr>
+            <th>
+              <label>Compute Reconstruction Error:</label>
+            </th>
+            <td>
+              <input type="checkbox" data-bind="checked:computeReconstructionError">
+            </td>
+          </tr>
+          <!-- ko ifnot:computeReconstructionError-->
+          <tr>
+            <th>
+              <label>Compute Deep Features Hidden Layer:</label>
+            </th>
+            <td>
+              <input type="checkbox" data-bind="checked:computeDeepFeaturesHiddenLayer">
+              <!-- ko if:computeDeepFeaturesHiddenLayer--><span>Hidden Layer #:</span>
+              <input type="textbox" style="width:50px" data-bind="value:deepFeaturesHiddenLayer, valueUpdate:'afterkeydown'" class="flow-textbox">
+              <!-- /ko-->
+            </td>
+          </tr>
+          <!-- /ko-->
+          <!-- /ko-->
           <tr>
             <th>
               <label>Actions:</label>
@@ -1854,6 +1877,7 @@
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-bolt"></i>Prediction
             </h3>
+        <!-- ko if:canInspect-->
         <table class="flow-form">
           <tbody>
             <tr>
@@ -1867,6 +1891,7 @@
             </tr>
           </tbody>
         </table>
+        <!-- /ko-->
         <!-- ko foreach:plots-->
         <h4 data-bind="text:title, collapse:false"></h4>
         <div data-bind="raw:plot" class="flow-plot"></div>
