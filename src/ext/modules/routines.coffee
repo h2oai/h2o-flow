@@ -450,12 +450,12 @@ H2O.Routines = (_) ->
 
   inspectTwoDimTable_ = (origin, tableName, table) -> ->
     convertTableToFrame table, tableName,
-      description: table.name
+      description: table.description or ''
       origin: origin
 
   inspectRawArray_ = (name, origin, description, array) -> ->
     createDataframe name, [createList name, parseAndFormat array], (sequence array.length), null,
-      description: description
+      description: ''
       origin: origin
 
   inspectRawObject_ = (name, origin, description, obj) -> ->
@@ -463,7 +463,7 @@ H2O.Routines = (_) ->
       createList k, [ if v is null then undefined else if isNumber v then format6fi v else v ]
 
     createDataframe name, vectors, (sequence 1), null,
-      description: description
+      description: ''
       origin: origin
 
   _schemaHacks =

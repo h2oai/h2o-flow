@@ -264,7 +264,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
   for tableName in _.ls _model when tableName isnt 'parameters'
     if table = _.inspect tableName, _model
-      renderPlot tableName, yes, _.plot (g) ->
+      renderPlot tableName + (if table.metadata.description then " (#{table.metadata.description})" else ''), yes, _.plot (g) ->
         g(
           if table.indices.length > 1 then g.select() else g.select 0
           g.from table
