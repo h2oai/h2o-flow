@@ -1433,10 +1433,6 @@
           </tbody>
         </table>
         <div class="flow-panel">
-              <button type="button" data-bind="click:compareModels, enable:canCompareModels" class="flow-button"><i class="fa fa-area-chart"></i><span>Compare selected&hellip;</span>
-              </button>
-              <button type="button" data-bind="click:predictUsingModels, enable:canCompareModels" class="flow-button"><i class="fa fa-bolt"></i><span>Predict using selected models&hellip;</span>
-              </button>
               <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
               </button>
               <button type="button" data-bind="click:deleteModels, enable:hasSelectedModels" class="flow-button"><i class="fa fa-trash"></i><span>Delete selected</span>
@@ -1881,20 +1877,16 @@
               <td data-bind="text:modelKey"></td>
               <td data-bind="text:frameKey"></td>
               <td class="flow-right">
+                <!-- ko if:hasFrame-->
                     <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-bolt"></i><span>View</span>
                     </button>
+                <!-- /ko-->
               </td>
             </tr>
             <!-- /ko-->
           </tbody>
         </table>
         <div class="flow-panel">
-              <button type="button" data-bind="click:comparePredictions, enable:canComparePredictions" class="flow-button"><i class="fa fa-area-chart"></i><span>Compare selected predictions&hellip;</span>
-              </button>
-              <button type="button" data-bind="click:plotPredictions" class="flow-button"><i class="fa fa-bar-chart"></i><span>Plot predictions</span>
-              </button>
-              <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
-              </button>
         </div>
         <!-- /ko-->
       </div>

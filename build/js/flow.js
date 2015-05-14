@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.6';
+    Flow.Version = '0.3.7';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4171,7 +4171,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, patchUpModels, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestFileGlob, requestFlow, requestFrame, requestFrameSummary, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, _storageConfiguration;
+        var composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, http, mapWithKey, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestFileGlob, requestFlow, requestFrame, requestFrameSummary, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, _storageConfiguration;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4485,35 +4485,12 @@
             };
             return doPost('/3/Parse', opts, go);
         };
-        patchUpModels = function (models) {
-            var model, parameter, parseError, _i, _j, _len, _len1, _ref;
-            for (_i = 0, _len = models.length; _i < _len; _i++) {
-                model = models[_i];
-                _ref = model.parameters;
-                for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
-                    parameter = _ref[_j];
-                    switch (parameter.type) {
-                    case 'Key<Frame>':
-                    case 'Key<Model>':
-                    case 'VecSpecifier':
-                        if (lodash.isString(parameter.actual_value)) {
-                            try {
-                                parameter.actual_value = JSON.parse(parameter.actual_value);
-                            } catch (_error) {
-                                parseError = _error;
-                            }
-                        }
-                    }
-                }
-            }
-            return models;
-        };
         requestModels = function (go, opts) {
             return requestWithOpts('/3/Models', opts, function (error, result) {
                 if (error) {
                     return go(error, result);
                 } else {
-                    return go(error, patchUpModels(result.models));
+                    return go(error, result.models);
                 }
             });
         };
@@ -4522,7 +4499,7 @@
                 if (error) {
                     return go(error, result);
                 } else {
-                    return go(error, lodash.head(patchUpModels(result.models)));
+                    return go(error, lodash.head(result.models));
                 }
             });
         };
@@ -5506,7 +5483,7 @@
         inspectTwoDimTable_ = function (origin, tableName, table) {
             return function () {
                 return convertTableToFrame(table, tableName, {
-                    description: table.name,
+                    description: table.description || '',
                     origin: origin
                 });
             };
@@ -5514,7 +5491,7 @@
         inspectRawArray_ = function (name, origin, description, array) {
             return function () {
                 return createDataframe(name, [createList(name, parseAndFormat(array))], lodash.range(array.length), null, {
-                    description: description,
+                    description: '',
                     origin: origin
                 });
             };
@@ -5532,7 +5509,7 @@
                     return _results;
                 }();
                 return createDataframe(name, vectors, lodash.range(1), null, {
-                    description: description,
+                    description: '',
                     origin: origin
                 });
             };
@@ -5639,17 +5616,13 @@
             return render_(model, H2O.ModelOutput, model);
         };
         extendModels = function (models) {
-            var algos, inspections, model, modelCategories, _i, _len;
-            for (_i = 0, _len = models.length; _i < _len; _i++) {
-                model = models[_i];
-                extendModel(model);
-            }
+            var algos, inspections, model;
             inspections = {};
             algos = lodash.unique(function () {
-                var _j, _len1, _results;
+                var _i, _len, _results;
                 _results = [];
-                for (_j = 0, _len1 = models.length; _j < _len1; _j++) {
-                    model = models[_j];
+                for (_i = 0, _len = models.length; _i < _len; _i++) {
+                    model = models[_i];
                     _results.push(model.algo);
                 }
                 return _results;
@@ -5657,15 +5630,6 @@
             if (algos.length === 1) {
                 inspections.parameters = inspectParametersAcrossModels(models);
             }
-            modelCategories = lodash.unique(function () {
-                var _j, _len1, _results;
-                _results = [];
-                for (_j = 0, _len1 = models.length; _j < _len1; _j++) {
-                    model = models[_j];
-                    _results.push(model.output.model_category);
-                }
-                return _results;
-            }());
             inspect_(models, inspections);
             return render_(models, H2O.ModelsOutput, models);
         };
@@ -9124,7 +9088,7 @@
             tableName = _ref[_i];
             if (tableName !== 'parameters') {
                 if (table = _.inspect(tableName, _model)) {
-                    renderPlot(tableName, true, _.plot(function (g) {
+                    renderPlot(tableName + (table.metadata.description ? ' (' + table.metadata.description + ')' : ''), true, _.plot(function (g) {
                         return g(table.indices.length > 1 ? g.select() : g.select(0), g.from(table));
                     }));
                 }
@@ -9245,7 +9209,7 @@
             };
             return {
                 key: model.model_id.name,
-                algo: model.algo,
+                algo: model.algo_full_name,
                 isChecked: _isChecked,
                 predict: predict,
                 clone: cloneModel,
@@ -9845,9 +9809,10 @@
             _isCheckingAll = false;
         });
         createPredictionView = function (prediction) {
-            var inspect, view, _frameKey, _isChecked, _modelKey;
+            var inspect, view, _frameKey, _hasFrame, _isChecked, _modelKey, _ref;
             _modelKey = prediction.model.name;
-            _frameKey = prediction.frame.name;
+            _frameKey = (_ref = prediction.frame) != null ? _ref.name : void 0;
+            _hasFrame = _frameKey ? true : false;
             _isChecked = Flow.Dataflow.signal(false);
             Flow.Dataflow.react(_isChecked, function () {
                 var checkedViews, view;
@@ -9855,11 +9820,11 @@
                     return;
                 }
                 checkedViews = function () {
-                    var _i, _len, _ref, _results;
-                    _ref = _predictionViews();
+                    var _i, _len, _ref1, _results;
+                    _ref1 = _predictionViews();
                     _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        view = _ref[_i];
+                    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                        view = _ref1[_i];
                         if (view.isChecked()) {
                             _results.push(view);
                         }
@@ -9869,16 +9834,21 @@
                 return _canComparePredictions(arePredictionsComparable(checkedViews));
             });
             view = function () {
-                return _.insertAndExecuteCell('cs', 'getPrediction model: ' + Flow.Prelude.stringify(_modelKey) + ', frame: ' + Flow.Prelude.stringify(_frameKey));
+                if (_hasFrame) {
+                    return _.insertAndExecuteCell('cs', 'getPrediction model: ' + Flow.Prelude.stringify(_modelKey) + ', frame: ' + Flow.Prelude.stringify(_frameKey));
+                }
             };
             inspect = function () {
-                return _.insertAndExecuteCell('cs', 'inspect getPrediction model: ' + Flow.Prelude.stringify(_modelKey) + ', frame: ' + Flow.Prelude.stringify(_frameKey));
+                if (_hasFrame) {
+                    return _.insertAndExecuteCell('cs', 'inspect getPrediction model: ' + Flow.Prelude.stringify(_modelKey) + ', frame: ' + Flow.Prelude.stringify(_frameKey));
+                }
             };
             return {
                 modelKey: _modelKey,
                 frameKey: _frameKey,
                 modelCategory: prediction.model_category,
                 isChecked: _isChecked,
+                hasFrame: _hasFrame,
                 view: view,
                 inspect: inspect
             };
