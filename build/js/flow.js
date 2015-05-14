@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.5';
+    Flow.Version = '0.3.6';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5865,7 +5865,7 @@
             };
         };
         extendFrame = function (frameKey, frame) {
-            var column, enumColumns, inspections;
+            var column, enumColumns, inspections, origin;
             inspections = {
                 columns: inspectFrameColumns('columns', frameKey, frame, frame.columns),
                 data: inspectFrameData(frameKey, frame)
@@ -5885,6 +5885,9 @@
             if (enumColumns.length > 0) {
                 inspections.factors = inspectFrameColumns('factors', frameKey, frame, enumColumns);
             }
+            origin = 'getFrameSummary ' + Flow.Prelude.stringify(frameKey);
+            inspections[frame.chunk_summary.name] = inspectTwoDimTable_(origin, frame.chunk_summary.name, frame.chunk_summary);
+            inspections[frame.distribution_summary.name] = inspectTwoDimTable_(origin, frame.distribution_summary.name, frame.distribution_summary);
             inspect_(frame, inspections);
             return render_(frame, H2O.FrameOutput, frame);
         };
@@ -7529,9 +7532,20 @@
 }.call(this));
 (function () {
     H2O.FrameOutput = function (_, _go, _frame) {
-        var createModel, deleteFrame, download, inspect, inspectData, predict, renderPlot, splitFrame, _grid;
+        var createModel, deleteFrame, download, inspect, inspectData, predict, renderGrid, renderPlot, splitFrame, _chunkSummary, _distributionSummary, _grid;
         _grid = Flow.Dataflow.signal(null);
-        renderPlot = function (render) {
+        _chunkSummary = Flow.Dataflow.signal(null);
+        _distributionSummary = Flow.Dataflow.signal(null);
+        renderPlot = function (container, render) {
+            return render(function (error, vis) {
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    return container(vis.element);
+                }
+            });
+        };
+        renderGrid = function (render) {
             return render(function (error, vis) {
                 if (error) {
                     return console.debug(error);
@@ -7575,8 +7589,14 @@
                 }
             });
         };
-        renderPlot(_.plot(function (g) {
+        renderGrid(_.plot(function (g) {
             return g(g.select(), g.from(_.inspect('columns', _frame)));
+        }));
+        renderPlot(_chunkSummary, _.plot(function (g) {
+            return g(g.select(), g.from(_.inspect('Chunk compression summary', _frame)));
+        }));
+        renderPlot(_distributionSummary, _.plot(function (g) {
+            return g(g.select(), g.from(_.inspect('Frame distribution summary', _frame)));
         }));
         lodash.defer(_go);
         return {
@@ -7584,6 +7604,8 @@
             rowCount: _frame.rows,
             columnCount: _frame.columns.length,
             size: Flow.Util.formatBytes(_frame.byte_size),
+            chunkSummary: _chunkSummary,
+            distributionSummary: _distributionSummary,
             grid: _grid,
             inspect: inspect,
             createModel: createModel,
@@ -8363,12 +8385,13 @@
         return control;
     };
     createListControl = function (parameter) {
-        var control, createValueView, excludeAll, includeAll, view, _availableSearchTerm, _availableValues, _availableValuesCaption, _i, _len, _ref, _searchAvailable, _searchSelected, _selectedSearchTerm, _selectedValues, _selectedValuesCaption, _unavailableValues, _value, _values, _views;
+        var control, createValueView, excludeAll, includeAll, view, _availableSearchTerm, _availableValues, _availableValuesCaption, _i, _ignoreNATerm, _len, _ref, _searchAvailable, _searchSelected, _selectedSearchTerm, _selectedValues, _selectedValuesCaption, _unavailableValues, _value, _values, _views;
         _availableSearchTerm = Flow.Dataflow.signal('');
         _selectedSearchTerm = Flow.Dataflow.signal('');
+        _ignoreNATerm = Flow.Dataflow.signal('');
         createValueView = function (_arg) {
-            var exclude, include, label, self, value, _canExclude, _canInclude, _isAvailable, _isUnavailable;
-            label = _arg.label, value = _arg.value;
+            var exclude, include, label, missingPercent, self, value, _canExclude, _canInclude, _isAvailable, _isUnavailable;
+            label = _arg.label, value = _arg.value, missingPercent = _arg.missingPercent;
             _isAvailable = Flow.Dataflow.signal(true);
             _canInclude = Flow.Dataflow.signal(true);
             _canExclude = Flow.Dataflow.signal(true);
@@ -8384,6 +8407,7 @@
             return self = {
                 label: label,
                 value: value,
+                missingPercent: missingPercent,
                 include: include,
                 exclude: exclude,
                 canInclude: _canInclude,
@@ -8444,8 +8468,8 @@
             }
             return _results;
         });
-        _availableValuesCaption = Flow.Dataflow.signal('0 items hidden');
-        _selectedValuesCaption = Flow.Dataflow.signal('0 items hidden');
+        _availableValuesCaption = Flow.Dataflow.signal('(0 items hidden)');
+        _selectedValuesCaption = Flow.Dataflow.signal('(0 items hidden)');
         includeAll = function () {
             var _j, _len1, _ref1;
             _ref1 = _availableValues();
@@ -8465,20 +8489,27 @@
             }
         };
         _searchAvailable = function () {
-            var hiddenCount, term, _j, _len1, _ref1;
+            var hiddenCount, hide, missingPercent, term, _j, _len1, _ref1;
             hiddenCount = 0;
             _ref1 = _availableValues();
             for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
                 view = _ref1[_j];
                 term = _availableSearchTerm().trim();
-                if (term === '' || 0 <= view.value.toLowerCase().indexOf(term.toLowerCase())) {
-                    view.canInclude(true);
-                } else {
+                missingPercent = parseFloat(_ignoreNATerm().trim());
+                hide = false;
+                if (term !== '' && -1 === view.value.toLowerCase().indexOf(term.toLowerCase())) {
+                    hide = true;
+                } else if (!lodash.isNaN(missingPercent) && missingPercent !== 0 && view.missingPercent <= missingPercent) {
+                    hide = true;
+                }
+                if (hide) {
                     view.canInclude(false);
                     hiddenCount++;
+                } else {
+                    view.canInclude(true);
                 }
             }
-            _availableValuesCaption('' + hiddenCount + ' items hidden');
+            _availableValuesCaption('(' + hiddenCount + ' items hidden)');
         };
         _searchSelected = function () {
             var hiddenCount, term, _j, _len1, _ref1;
@@ -8499,6 +8530,7 @@
             _selectedValuesCaption('' + hiddenCount + ' items hidden');
         };
         Flow.Dataflow.react(_availableSearchTerm, lodash.throttle(_searchAvailable, 500));
+        Flow.Dataflow.react(_ignoreNATerm, lodash.throttle(_searchAvailable, 500));
         Flow.Dataflow.react(_selectedSearchTerm, lodash.throttle(_searchSelected, 500));
         Flow.Dataflow.react(_selectedValues, lodash.throttle(_searchSelected, 500));
         control = createControl('list', parameter);
@@ -8509,6 +8541,7 @@
         control.value = _value;
         control.availableSearchTerm = _availableSearchTerm;
         control.selectedSearchTerm = _selectedSearchTerm;
+        control.ignoreNATerm = _ignoreNATerm;
         control.availableValuesCaption = _availableValuesCaption;
         control.selectedValuesCaption = _selectedValuesCaption;
         control.includeAll = includeAll;
@@ -8650,7 +8683,8 @@
                                         type = column.type === 'enum' ? '' + column.type + '[' + column.domain.length + ']' : column.type;
                                         return {
                                             label: '' + column.label + ' (' + type + na + ')',
-                                            value: column.label
+                                            value: column.label,
+                                            missingPercent: missingPercent
                                         };
                                     });
                                     if (responseColumnParameter) {

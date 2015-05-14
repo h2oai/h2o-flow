@@ -1319,6 +1319,7 @@
           <div style="height:25px">
             <input type="text" placeholder="Search..." data-bind="value:availableSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
           </div>
+          <div style="font-size:80%" data-bind="text:availableValuesCaption"></div>
           <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
             <table>
               <tbody>
@@ -1331,34 +1332,46 @@
               </tbody>
             </table>
           </div>
-          <div data-bind="text:availableValuesCaption"></div>
-          <div>
-                <button type="button" data-bind="click:includeAll" class="flow-button"><i class="fa fa-plus"></i><span>Add all</span>
-                </button>
+          <div style="font-size:80%">Only show columns with more than&nbsp;
+            <input type="text" style="width:30px" placeholder="0" data-bind="value:ignoreNATerm, valueUpdate:'afterkeydown'" class="flow-textbox">% missing values.
           </div>
         </td>
         <td>
-          <div>Not in the model:</div>
-          <div style="height:25px">
-            <input type="text" placeholder="Search..." data-bind="value:selectedSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
-          </div>
-          <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
-            <table>
-              <tbody>
-                <!-- ko foreach:selectedValues-->
-                <tr data-bind="visible:canExclude() &amp;&amp; !isUnavailable(), click:exclude" class="flow-pointer">
-                  <td><i title="Remove" class="fa fa-remove flow-pointer"></i></td>
-                  <td data-bind="text:label"></td>
-                </tr>
-                <!-- /ko-->
-              </tbody>
-            </table>
-          </div>
-          <div data-bind="text:selectedValuesCaption"></div>
-          <div>
-                <button type="button" data-bind="click:excludeAll" class="flow-button"><i class="fa fa-remove"></i><span>Clear All</span>
-                </button>
-          </div>
+          <table style="width:100%">
+            <tbody>
+              <tr>
+                <td width="1">
+                  <div style="margin-top:130px">
+                        <button type="button" data-bind="click:includeAll" class="flow-button"><i class="fa fa-arrow-right"></i>
+                        </button>
+                    <div style="margin-top:6px">
+                          <button type="button" data-bind="click:excludeAll" class="flow-button"><i class="fa fa-arrow-left"></i>
+                          </button>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div>Not in the model:</div>
+                  <div style="height:25px">
+                    <input type="text" placeholder="Search..." data-bind="value:selectedSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
+                  </div>
+                  <div style="font-size:80%" data-bind="text:selectedValuesCaption"></div>
+                  <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
+                    <table>
+                      <tbody>
+                        <!-- ko foreach:selectedValues-->
+                        <tr data-bind="visible:canExclude() &amp;&amp; !isUnavailable(), click:exclude" class="flow-pointer">
+                          <td><i title="Remove" class="fa fa-remove flow-pointer"></i></td>
+                          <td data-bind="text:label"></td>
+                        </tr>
+                        <!-- /ko-->
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </td>
       </tr>
       <tr data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage">
@@ -1648,6 +1661,10 @@
           </table>
         </div>
         <div data-bind="raw:grid" class="flow-plot"></div>
+        <h4 data-bind="collapse:true">Chunk Compression Summary</h4>
+        <div data-bind="raw:chunkSummary" class="flow-plot"></div>
+        <h4 data-bind="collapse:true">Frame Distribution Summary</h4>
+        <div data-bind="raw:distributionSummary" class="flow-plot"></div>
       </div>
     </script>
     <script type="text/html" id="flow-column-summary-output">
