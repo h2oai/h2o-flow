@@ -27,16 +27,18 @@
         td(data-bind='text:modelKey')
         td(data-bind='text:frameKey')
         td.flow-right 
+          // ko if:hasFrame
           +button('View', 'bolt', 'view')
+          // /ko
           //- +button('Inspect', 'list', 'inspect')
       // /ko
   .flow-panel
-    +button('Compare selected predictions&hellip;', 'area-chart', 'comparePredictions', 'canComparePredictions')
-    +button('Plot predictions', 'bar-chart', 'plotPredictions')
+    //- +button('Compare selected predictions&hellip;', 'area-chart', 'comparePredictions', 'canComparePredictions')
+    //- +button('Plot predictions', 'bar-chart', 'plotPredictions')
     //- TODO handle non-binomial models
     //- +button('Plot scores', 'bar-chart', 'plotScores')
     //- +button('Plot metrics', 'bar-chart', 'plotMetrics')
-    +button('Inspect', 'list', 'inspect')
+    //- +button('Inspect', 'list', 'inspect')
 
   //- h4 ROC Curve
   //- .flow-plot(data-bind='raw:rocCurve')

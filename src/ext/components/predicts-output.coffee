@@ -20,7 +20,8 @@ H2O.PredictsOutput = (_, _go, opts, _predictions) ->
 
   createPredictionView = (prediction) ->
     _modelKey = prediction.model.name
-    _frameKey = prediction.frame.name
+    _frameKey = prediction.frame?.name
+    _hasFrame = if _frameKey then yes else no
     _isChecked = signal no
 
     react _isChecked, ->
@@ -29,15 +30,18 @@ H2O.PredictsOutput = (_, _go, opts, _predictions) ->
       _canComparePredictions arePredictionsComparable checkedViews
 
     view = ->
-      _.insertAndExecuteCell 'cs', "getPrediction model: #{stringify _modelKey}, frame: #{stringify _frameKey}"
+      if _hasFrame
+        _.insertAndExecuteCell 'cs', "getPrediction model: #{stringify _modelKey}, frame: #{stringify _frameKey}"
 
     inspect = ->
-      _.insertAndExecuteCell 'cs', "inspect getPrediction model: #{stringify _modelKey}, frame: #{stringify _frameKey}"
+      if _hasFrame
+        _.insertAndExecuteCell 'cs', "inspect getPrediction model: #{stringify _modelKey}, frame: #{stringify _frameKey}"
 
     modelKey: _modelKey
     frameKey: _frameKey
     modelCategory: prediction.model_category
     isChecked: _isChecked
+    hasFrame: _hasFrame
     view: view
     inspect: inspect
   
