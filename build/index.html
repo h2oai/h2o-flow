@@ -1469,7 +1469,6 @@
               </td>
               <td>
                 <p><a href="#" data-bind="text:key, click:view"></a></p>
-                <p data-bind="text:description" class="flow-small"></p>
                 <!-- ko ifnot:isText-->
                 <p>
                       <button type="button" data-bind="click:createModel" class="flow-button"><i class="fa fa-cube"></i><span>Build Model&hellip;</span>
@@ -1738,6 +1737,16 @@
                 </table>
               </td>
             </tr>
+            <!-- ko if:messages-->
+            <tr>
+              <th class="flow-narrow">Messages</th>
+              <td class="flow-wide">
+                <!-- ko foreach:messages-->
+                <div><i style="margin-right:5px" data-bind="css:icon" class="fa"></i><span data-bind="text:message"></span></div>
+                <!-- /ko-->
+              </td>
+            </tr>
+            <!-- /ko-->
             <tr>
               <th class="flow-narrow">Actions</th>
               <td class="flow-wide">
