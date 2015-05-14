@@ -21,7 +21,6 @@ H2O.FramesOutput = (_, _go, _frames) ->
       _hasSelectedFrames checkedViews.length > 0
 
     columnLabels = head (map frame.columns, (column) -> column.label), 15
-    description = 'Columns: ' + (columnLabels.join ', ') + if frame.columns.length > columnLabels.length then "... (#{frame.columns.length - columnLabels.length} more columns)" else ''
 
     view = ->
       if frame.is_text
@@ -41,10 +40,9 @@ H2O.FramesOutput = (_, _go, _frames) ->
 
     key: frame.frame_id.name
     isChecked: _isChecked
-    description: description
     size: Flow.Util.formatBytes frame.byte_size
     rowCount: frame.rows
-    columnCount: frame.columns.length
+    columnCount: frame.columns
     isText: frame.is_text
     view: view
     predict: predict
