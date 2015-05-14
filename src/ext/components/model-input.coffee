@@ -69,8 +69,9 @@ createDropdownControl = (parameter) ->
 createListControl = (parameter) ->
   _availableSearchTerm = signal ''
   _selectedSearchTerm = signal ''
+  _ignoreNATerm = signal ''
 
-  createValueView = ({ label, value }) ->
+  createValueView = ({ label, value, missingPercent }) ->
     _isAvailable = signal yes
     _canInclude = signal yes
     _canExclude = signal yes
@@ -87,6 +88,7 @@ createListControl = (parameter) ->
     self =
       label: label
       value: value
+      missingPercent: missingPercent
       include: include
       exclude: exclude
       canInclude: _canInclude
@@ -131,8 +133,8 @@ createListControl = (parameter) ->
     for view in views when not view.isUnavailable()
       view.value 
 
-  _availableValuesCaption = signal "0 items hidden"
-  _selectedValuesCaption = signal "0 items hidden"
+  _availableValuesCaption = signal "(0 items hidden)"
+  _selectedValuesCaption = signal "(0 items hidden)"
 
   includeAll = ->
     for view in _availableValues() when view.canInclude() and view.isAvailable()
@@ -149,12 +151,19 @@ createListControl = (parameter) ->
     hiddenCount = 0
     for view in _availableValues()
       term = _availableSearchTerm().trim()
-      if term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
-        view.canInclude yes
-      else
+      missingPercent = parseFloat _ignoreNATerm().trim()
+      hide = no
+      if (term isnt '') and -1 is view.value.toLowerCase().indexOf term.toLowerCase()
+        hide = yes
+      else if (not isNaN missingPercent) and (missingPercent isnt 0) and view.missingPercent <= missingPercent
+        hide = yes
+      if hide
         view.canInclude no
         hiddenCount++
-    _availableValuesCaption "#{hiddenCount} items hidden"
+      else
+        view.canInclude yes
+
+    _availableValuesCaption "(#{hiddenCount} items hidden)"
     return
 
   _searchSelected = ->
@@ -170,6 +179,7 @@ createListControl = (parameter) ->
     return
 
   react _availableSearchTerm, throttle _searchAvailable, 500
+  react _ignoreNATerm, throttle _searchAvailable, 500
   react _selectedSearchTerm, throttle _searchSelected, 500
   react _selectedValues, throttle _searchSelected, 500
 
@@ -181,6 +191,7 @@ createListControl = (parameter) ->
   control.value = _value
   control.availableSearchTerm = _availableSearchTerm
   control.selectedSearchTerm = _selectedSearchTerm
+  control.ignoreNATerm = _ignoreNATerm
   control.availableValuesCaption = _availableValuesCaption
   control.selectedValuesCaption = _selectedValuesCaption
   control.includeAll = includeAll
@@ -263,6 +274,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
                   label: "#{column.label} (#{type}#{na})"
                   value: column.label
+                  missingPercent: missingPercent
 
                 if responseColumnParameter
                   responseColumnParameter.values columnValues
