@@ -244,30 +244,19 @@ H2O.Proxy = (_) ->
       chunk_size: chunkSize
     doPost '/3/Parse', opts, go
 
-  patchUpModels = (models) ->
-    for model in models
-      for parameter in model.parameters
-        switch parameter.type
-          when 'Key<Frame>', 'Key<Model>', 'VecSpecifier'
-            if isString parameter.actual_value
-              try
-                parameter.actual_value = JSON.parse parameter.actual_value
-              catch parseError
-    models
-
   requestModels = (go, opts) ->
     requestWithOpts '/3/Models', opts, (error, result) ->
       if error
         go error, result
       else
-        go error, patchUpModels result.models
+        go error, result.models
 
   requestModel = (key, go) ->
     doGet "/3/Models/#{encodeURIComponent key}", (error, result) ->
       if error
         go error, result
       else
-        go error, head patchUpModels result.models
+        go error, head result.models
 
   requestPojoPreview = (key, go) ->
     download 'text', "/3/Models.java/#{encodeURIComponent key}/preview", go

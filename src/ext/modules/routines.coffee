@@ -570,8 +570,8 @@ H2O.Routines = (_) ->
     render_ model, H2O.ModelOutput, model
 
   extendModels = (models) ->
-    for model in models
-      extendModel model
+    # for model in models
+    #  extendModel model
 
     inspections = {}
 
@@ -579,7 +579,7 @@ H2O.Routines = (_) ->
     if algos.length is 1
       inspections.parameters = inspectParametersAcrossModels models 
 
-    modelCategories = unique (model.output.model_category for model in models)
+    # modelCategories = unique (model.output.model_category for model in models)
     # TODO implement model comparision after 2d table cleanup for model metrics
     #if modelCategories.length is 1
     #  inspections.outputs = inspectOutputsAcrossModels (head modelCategories), models
