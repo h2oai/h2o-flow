@@ -1,8 +1,17 @@
 H2O.FrameOutput = (_, _go, _frame) ->
 
   _grid = signal null
+  _chunkSummary = signal null
+  _distributionSummary = signal null
 
-  renderPlot = (render) ->
+  renderPlot = (container, render) ->
+    render (error, vis) ->
+      if error
+        debug error
+      else
+        container vis.element
+
+  renderGrid = (render) ->
     render (error, vis) ->
       if error
         debug error
@@ -37,10 +46,22 @@ H2O.FrameOutput = (_, _go, _frame) ->
       if accept
         _.insertAndExecuteCell 'cs', "deleteFrame #{stringify _frame.frame_id.name}"
 
-  renderPlot _.plot (g) ->
+  renderGrid _.plot (g) ->
     g(
       g.select()
       g.from _.inspect 'columns', _frame
+    )
+
+  renderPlot _chunkSummary, _.plot (g) ->
+    g(
+      g.select()
+      g.from _.inspect 'Chunk compression summary', _frame
+    )
+
+  renderPlot _distributionSummary, _.plot (g) ->
+    g(
+      g.select()
+      g.from _.inspect 'Frame distribution summary', _frame
     )
 
   defer _go
@@ -49,6 +70,8 @@ H2O.FrameOutput = (_, _go, _frame) ->
   rowCount: _frame.rows
   columnCount: _frame.columns.length
   size: Flow.Util.formatBytes _frame.byte_size
+  chunkSummary: _chunkSummary
+  distributionSummary: _distributionSummary
   grid: _grid
   inspect: inspect
   createModel: createModel

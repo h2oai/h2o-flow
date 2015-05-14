@@ -683,6 +683,10 @@ H2O.Routines = (_) ->
 
     enumColumns = (column for column in frame.columns when column.type is 'enum')
     inspections.factors = inspectFrameColumns 'factors', frameKey, frame, enumColumns if enumColumns.length > 0
+
+    origin = "getFrameSummary #{stringify frameKey}"
+    inspections[frame.chunk_summary.name] = inspectTwoDimTable_ origin, frame.chunk_summary.name, frame.chunk_summary
+    inspections[frame.distribution_summary.name] = inspectTwoDimTable_ origin, frame.distribution_summary.name, frame.distribution_summary
     inspect_ frame, inspections
     render_ frame, H2O.FrameOutput, frame
 

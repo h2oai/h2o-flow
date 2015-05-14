@@ -37,3 +37,11 @@
 
 
   .flow-plot(data-bind='raw:grid')
+
+  h4(data-bind='collapse:true') Chunk Compression Summary
+  .flow-plot(data-bind='raw:chunkSummary')
+
+  h4(data-bind='collapse:true') Frame Distribution Summary
+  .flow-plot(data-bind='raw:distributionSummary')
+
+
