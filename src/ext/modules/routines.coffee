@@ -478,7 +478,7 @@ H2O.Routines = (_) ->
     DeepLearningModelOutput:
       fields: 'names domains help'
     NaiveBayesOutput:
-      fields: 'names domains help'
+      fields: 'names domains help pcond'
     PCAOutput:
       fields: 'names domains help'
     ModelMetricsBinomialGLM:
@@ -563,8 +563,15 @@ H2O.Routines = (_) ->
   extendModel = (model) ->
     inspections = {}
     inspections.parameters = inspectModelParameters model
+    origin = "getModel #{stringify model.model_id.name}"
+    inspectObject inspections, 'output', origin, model.output
 
-    inspectObject inspections, 'output', "getModel #{stringify model.model_id.name}", model.output
+    # Obviously, an array of 2d tables calls for a megahack.
+    if model.__meta.schema_type is 'NaiveBayesModel'
+      if isArray model.output.pcond
+        for table in model.output.pcond
+          tableName = "output - pcond - #{table.name}"
+          inspections[tableName] = inspectTwoDimTable_ origin, tableName, table
 
     inspect_ model, inspections
     render_ model, H2O.ModelOutput, model
