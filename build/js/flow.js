@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.7';
+    Flow.Version = '0.3.8';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5520,7 +5520,7 @@
             GLMOutput: { fields: 'names domains help' },
             DRFOutput: { fields: 'names domains help' },
             DeepLearningModelOutput: { fields: 'names domains help' },
-            NaiveBayesOutput: { fields: 'names domains help' },
+            NaiveBayesOutput: { fields: 'names domains help pcond' },
             PCAOutput: { fields: 'names domains help' },
             ModelMetricsBinomialGLM: {
                 fields: null,
@@ -5608,10 +5608,21 @@
             }
         };
         extendModel = function (model) {
-            var inspections;
+            var inspections, origin, table, tableName, _i, _len, _ref1;
             inspections = {};
             inspections.parameters = inspectModelParameters(model);
-            inspectObject(inspections, 'output', 'getModel ' + Flow.Prelude.stringify(model.model_id.name), model.output);
+            origin = 'getModel ' + Flow.Prelude.stringify(model.model_id.name);
+            inspectObject(inspections, 'output', origin, model.output);
+            if (model.__meta.schema_type === 'NaiveBayesModel') {
+                if (lodash.isArray(model.output.pcond)) {
+                    _ref1 = model.output.pcond;
+                    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                        table = _ref1[_i];
+                        tableName = 'output - pcond - ' + table.name;
+                        inspections[tableName] = inspectTwoDimTable_(origin, tableName, table);
+                    }
+                }
+            }
             inspect_(model, inspections);
             return render_(model, H2O.ModelOutput, model);
         };
