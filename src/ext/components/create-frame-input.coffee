@@ -10,6 +10,7 @@ H2O.CreateFrameInput = (_, _go) ->
   _factors = signal 5
   _integerFraction = signal 0.5
   _binaryFraction = signal 0.1
+  _binaryOnesFraction = signal 0.02
   _integerRange = signal 1
   _missingFraction = signal 0.01
   _responseFactors = signal 2
@@ -28,6 +29,7 @@ H2O.CreateFrameInput = (_, _go) ->
       factors: _factors()
       integer_fraction: _integerFraction()
       binary_fraction: _binaryFraction()
+      binary_ones_fraction: _binaryOnesFraction()
       integer_range: _integerRange()
       missing_fraction: _missingFraction()
       response_factors: _responseFactors()
@@ -48,6 +50,7 @@ H2O.CreateFrameInput = (_, _go) ->
   factors: _factors
   integerFraction: _integerFraction
   binaryFraction: _binaryFraction
+  binaryOnesFraction: _binaryOnesFraction
   integerRange: _integerRange
   missingFraction: _missingFraction
   responseFactors: _responseFactors
