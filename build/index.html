@@ -753,12 +753,12 @@
           <tbody>
             <tr>
               <th>
-                <label>Destination Key</label>
+                <label>Name</label>
               </th>
               <td>
                 <input type="text" data-bind="value:key" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>The name of the frame.</td>
             </tr>
             <tr>
               <th>
@@ -767,7 +767,7 @@
               <td>
                 <input type="text" data-bind="value:rows" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Number of rows</td>
             </tr>
             <tr>
               <th>
@@ -776,7 +776,7 @@
               <td>
                 <input type="text" data-bind="value:columns" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Number of data columns (in addition to the first response column)</td>
             </tr>
             <tr>
               <th>
@@ -785,7 +785,7 @@
               <td>
                 <input type="checkbox" data-bind="checked:randomize">
               </td>
-              <td>(No description available)</td>
+              <td>Whether frame should be randomized</td>
             </tr>
             <tr>
               <th>
@@ -794,7 +794,7 @@
               <td>
                 <input type="text" data-bind="value:seed" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Random number seed</td>
             </tr>
             <tr>
               <th>
@@ -803,7 +803,7 @@
               <td>
                 <input type="text" data-bind="value:value" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Constant value (for randomize=false)</td>
             </tr>
             <tr>
               <th>
@@ -812,7 +812,7 @@
               <td>
                 <input type="text" data-bind="value:factors" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Factor levels for categorical variables</td>
             </tr>
             <tr>
               <th>
@@ -821,7 +821,7 @@
               <td>
                 <input type="text" data-bind="value:categoricalFraction" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Fraction of categorical columns (for randomize=true)</td>
             </tr>
             <tr>
               <th>
@@ -830,7 +830,7 @@
               <td>
                 <input type="text" data-bind="value:integerFraction" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Fraction of integer columns (for randomize=true)</td>
             </tr>
             <tr>
               <th>
@@ -839,7 +839,16 @@
               <td>
                 <input type="text" data-bind="value:binaryFraction" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Fraction of binary columns (for randomize=true)</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Binary Ones Fraction</label>
+              </th>
+              <td>
+                <input type="text" data-bind="value:binaryOnesFraction" class="flow-textbox">
+              </td>
+              <td>Fraction of 1's in binary columns</td>
             </tr>
             <tr>
               <th>
@@ -848,7 +857,7 @@
               <td>
                 <input type="text" data-bind="value:missingFraction" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Fraction of missing values</td>
             </tr>
             <tr>
               <th>
@@ -857,7 +866,7 @@
               <td>
                 <input type="text" data-bind="value:responseFactors" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Number of factor levels of the first column (1=real, 2=binomial, N=multinomial)</td>
             </tr>
             <tr>
               <th>
@@ -866,7 +875,7 @@
               <td>
                 <input type="text" data-bind="value:realRange" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Range for real variables (-range ... range)</td>
             </tr>
             <tr>
               <th>
@@ -875,7 +884,7 @@
               <td>
                 <input type="text" data-bind="value:integerRange" class="flow-textbox">
               </td>
-              <td>(No description available)</td>
+              <td>Range for integer variables (-range ... range)</td>
             </tr>
             <tr>
               <th>
@@ -884,7 +893,7 @@
               <td>
                 <input type="checkbox" data-bind="checked:hasResponse">
               </td>
-              <td>(No description available)</td>
+              <td>Whether an additional response column should be generated</td>
             </tr>
           </tbody>
         </table>
