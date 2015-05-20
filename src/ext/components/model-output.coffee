@@ -81,7 +81,20 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'glm'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve', no, _.plot (g) ->
+        renderPlot 'ROC Curve - Training Metrics', no, _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+
+      if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
+        renderPlot 'ROC Curve - Validation Metrics', no, _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -144,7 +157,20 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'deeplearning'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve', no, _.plot (g) ->
+        renderPlot 'ROC Curve - Training Metrics', no, _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+
+      if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
+        renderPlot 'ROC Curve - Validation Metrics', no, _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -240,7 +266,20 @@ H2O.ModelOutput = (_, _go, _model) ->
             )
           
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve', no, _.plot (g) ->
+        renderPlot 'ROC Curve - Training Metrics', no, _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+
+      if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
+        renderPlot 'ROC Curve - Validation Metrics', no, _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
