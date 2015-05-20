@@ -79,7 +79,10 @@ config =
       'lib/fontawesome/fonts/*.*'
     ]
     img: [
-      'src/images/*.*'
+      'src/*.png'
+    ]
+    custom: [
+      'custom/*.*'
     ]
 
 gulp.task 'build-scripts', ->
@@ -122,8 +125,8 @@ gulp.task 'build-libs', ->
     .pipe concat 'flow-lib.js'
     .pipe gulp.dest config.dir.deploy + '/js/'
 
-  #gulp.src config.lib.img
-  #  .pipe gulp.dest config.dir.deploy + '/img/'
+  gulp.src config.lib.img
+    .pipe gulp.dest config.dir.deploy + '/img/'
 
   gulp.src config.lib.fonts
     .pipe gulp.dest config.dir.deploy + '/fonts/'
@@ -134,6 +137,9 @@ gulp.task 'build-libs', ->
 
   gulp.src config.lib.cssmap
     .pipe gulp.dest config.dir.deploy + '/css/'
+
+  gulp.src config.lib.custom
+    .pipe gulp.dest config.dir.deploy + '/custom/'
 
 gulp.task 'watch', ->
   gulp.watch 'src/**/*.coffee', [ 'build-scripts' ]
