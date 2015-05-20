@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.10';
+    Flow.Version = '0.3.11';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -9026,7 +9026,12 @@
             break;
         case 'glm':
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
-                renderPlot('ROC Curve', false, _.plot(function (g) {
+                renderPlot('ROC Curve - Training Metrics', false, _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                }));
+            }
+            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
+                renderPlot('ROC Curve - Validation Metrics', false, _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
                 }));
             }
@@ -9052,7 +9057,12 @@
             break;
         case 'deeplearning':
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
-                renderPlot('ROC Curve', false, _.plot(function (g) {
+                renderPlot('ROC Curve - Training Metrics', false, _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                }));
+            }
+            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
+                renderPlot('ROC Curve - Validation Metrics', false, _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
                 }));
             }
@@ -9087,7 +9097,12 @@
                 }
             }
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
-                renderPlot('ROC Curve', false, _.plot(function (g) {
+                renderPlot('ROC Curve - Training Metrics', false, _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                }));
+            }
+            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
+                renderPlot('ROC Curve - Validation Metrics', false, _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
                 }));
             }
