@@ -8,7 +8,8 @@
     <meta name="description" content="H2O Flow">
     <link rel="stylesheet" href="css/flow-lib.css" type="text/css">
     <link rel="stylesheet" href="css/flow.css" type="text/css">
-    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600" type="text/css"><!--[if lt IE 9]>
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600" type="text/css">
+    <link rel="stylesheet" href="custom/custom.css" type="text/css"><!--[if lt IE 9]>
     <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
     <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script><![endif]-->
   </head>
@@ -50,6 +51,7 @@
                 <td data-bind="text:message"></td>
                 <td width="1">Connections:</td>
                 <td width="1" data-bind="text:connections" class="flow-right"></td>
+                <td width="1" class="h2o-logo">&nbsp;</td>
               </tr>
             </tbody>
           </table>
@@ -185,7 +187,7 @@
     </script>
     <script type="text/html" id="flow-navbar">
       <div class="navbar-header">
-        <button type="button" data-toggle="collapse" data-target="#flow-compass" class="navbar-toggle collapsed"><span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span></button><span class="navbar-brand"></span>
+        <button type="button" data-toggle="collapse" data-target="#flow-compass" class="navbar-toggle collapsed"><span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span></button><span class="navbar-brand flow-logo"></span>
       </div>
       <!-- ko if:menus-->
       <div id="flow-compass" class="collapse navbar-collapse">
@@ -222,6 +224,7 @@
               <td data-bind="text:message"></td>
               <td width="1">Connections:</td>
               <td width="1" data-bind="text:connections" class="flow-right"></td>
+              <td width="1" class="h2o-logo">&nbsp;</td>
             </tr>
           </tbody>
         </table>
