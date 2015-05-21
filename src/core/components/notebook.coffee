@@ -278,7 +278,7 @@ Flow.Notebook = (_, _renderers) ->
       if result
         { error, filename } = result
         if error
-          _.alert error.message ? error
+          _.growl error.message ? error
         else
           loadNotebook filename
           _.loaded()
@@ -288,7 +288,7 @@ Flow.Notebook = (_, _renderers) ->
       if result
         { error } = result
         if error
-          _.alert error.message ? error
+          _.growl error.message ? error
         else
           _.growl 'File uploaded successfully!'
           _.insertAndExecuteCell 'cs', "setupParse source_frames: [ #{stringify result.result.destination_frame }]"
