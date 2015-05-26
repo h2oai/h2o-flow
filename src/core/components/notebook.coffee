@@ -345,14 +345,25 @@ Flow.Notebook = (_, _renderers) ->
   displayKeyboardShortcuts = ->
     $('#keyboardHelpDialog').modal()
 
-  displayDocumentation = ->
-    hash = if Flow.BuildProperties
-      hashEntry = find Flow.BuildProperties, (entry) -> entry.caption is 'H2O Build git hash'
-      if hashEntry then hashEntry.value else 'master'
+  findBuildProperty = (caption) ->
+    if Flow.BuildProperties
+      if entry = (find Flow.BuildProperties, (entry) -> entry.caption is caption)
+        entry.value
+      else
+        undefined
     else
-      'master'
+      undefined
 
-    window.open "https://github.com/h2oai/h2o-dev/blob/#{hash}/h2o-docs/src/product/flow/README.md", '_blank'
+  displayDocumentation = ->
+    gitBranch = findBuildProperty 'H2O Build git branch'
+    projectVersion = findBuildProperty 'H2O Build project version' 
+    buildVersion = if projectVersion then last projectVersion.split '.' else undefined
+
+    if buildVersion and buildVersion isnt '99999'
+      window.open "http://h2o-release.s3.amazonaws.com/h2o/#{gitBranch}/#{buildVersion}/docs-website/h2o-docs/index.html", '_blank'
+    else
+      gitHash = (findBuildProperty 'H2O Build git hash') or 'master'
+      window.open "https://github.com/h2oai/h2o-dev/blob/#{gitHash}/h2o-docs/src/product/flow/README.md", '_blank'
 
   executeCommand = (command) -> ->
     _.insertAndExecuteCell 'cs', command
