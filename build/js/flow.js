@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.13';
+    Flow.Version = '0.3.14';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -8564,6 +8564,7 @@
         case 'boolean':
             return createCheckboxControl(parameter);
         case 'Key<Model>':
+        case 'string':
         case 'byte':
         case 'short':
         case 'int':
