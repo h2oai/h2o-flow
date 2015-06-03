@@ -63,7 +63,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       frame: linkedFrame
       isCollapsed: isCollapsed
 
-  renderMultinomialConfusionMatrix = (cm) ->
+  renderMultinomialConfusionMatrix = (title, cm) ->
     [table, tbody, tr, normal, bold, yellow] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong', 'td.bg-yellow'
     columnCount = cm.columns.length
     rowCount = cm.rowcount
@@ -89,7 +89,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       rows.push tr cells
 
     _plots.push
-      title: 'Confusion Matrix'
+      title: title
       plot: signal Flow.HTML.render 'div', table tbody rows
       frame: signal null
       isCollapsed: no
@@ -258,9 +258,13 @@ H2O.ModelOutput = (_, _go, _model) ->
               )
               g.from table
             )
+
       if output = _model.output
-        if (output.model_category is 'Multinomial') and (confusionMatrix = output.training_metrics?.cm?.table)
-          renderMultinomialConfusionMatrix confusionMatrix
+        if output.model_category is 'Multinomial'
+          if confusionMatrix = output.training_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.validation_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
 
     when 'gbm', 'drf'
       if table = _.inspect 'output - Scoring History', _model
@@ -336,10 +340,21 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
       if output = _model.output
-        if (output.model_category is 'Multinomial') and (confusionMatrix = output.training_metrics?.cm?.table)
-          renderMultinomialConfusionMatrix confusionMatrix
+        if output.model_category is 'Multinomial'
+          if confusionMatrix = output.training_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.validation_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
 
   for tableName in _.ls _model when tableName isnt 'parameters'
+
+    # Skip CM tables for multinomial models
+    if output = _model.output?.model_category is 'Multinomial'
+      if 0 is tableName.indexOf 'output - training_metrics - cm'
+        continue
+      else if 0 is tableName.indexOf 'output - validation_metrics - cm'
+        continue
+
     if table = _.inspect tableName, _model
       renderPlot tableName + (if table.metadata.description then " (#{table.metadata.description})" else ''), yes, _.plot (g) ->
         g(
