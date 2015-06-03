@@ -261,18 +261,20 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
       if responseColumnParameter or ignoredColumnsParameter
         act trainingFrameParameter.value, (frameKey) ->
           if frameKey
-            _.requestFrameSummary frameKey, (error, frame) ->
+            _.requestFrameSummaryWithoutData frameKey, (error, frame) ->
               unless error
                 columnValues = map frame.columns, (column) -> column.label
                 columnLabels = map frame.columns, (column) -> 
                   missingPercent = 100 * column.missing_count / frame.rows
                   na = if missingPercent is 0 then '' else " - #{round missingPercent}% NA"
-                  type = if column.type is 'enum'
-                    "#{column.type}[#{column.domain.length}]"
-                  else
-                    column.type
+                  # Disabling for now. Too expensive to fetch domain.
+                  # -----
+                  # type = if column.type is 'enum'
+                  #  "#{column.type}[#{column.domain.length}]"
+                  # else
+                  #  column.type
 
-                  label: "#{column.label} (#{type}#{na})"
+                  label: "#{column.label} (#{column.type}#{na})"
                   value: column.label
                   missingPercent: missingPercent
 

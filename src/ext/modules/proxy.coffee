@@ -151,14 +151,13 @@ H2O.Proxy = (_) ->
         go null, result.frames
 
   requestFrame = (key, go) ->
-    doGet "/3/Frames/#{encodeURIComponent key}", (error, result) ->
-      if error
-        go error
-      else
-        go null, head result.frames
+    doGet "/3/Frames/#{encodeURIComponent key}", unwrap go, (result) -> head result.frames
 
   requestFrameSummary = (key, go) ->
-    doGet "/3/Frames/#{encodeURIComponent key}/summary", (error, result) ->
+    doGet "/3/Frames/#{encodeURIComponent key}/summary", unwrap go, (result) -> head result.frames
+
+  requestFrameSummaryWithoutData = (key, go) ->
+    doGet "/3/Frames/#{encodeURIComponent key}/summary?_exclude_fields=frames/chunk_summary,frames/distribution_summary,frames/vec_ids,frames/columns/data,frames/columns/domain,frames/columns/histogram_bins,frames/columns/percentiles", (error, result) ->
       if error
         go error
       else
@@ -453,6 +452,7 @@ H2O.Proxy = (_) ->
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
   link _.requestFrameSummary, requestFrameSummary
+  link _.requestFrameSummaryWithoutData, requestFrameSummaryWithoutData
   link _.requestDeleteFrame, requestDeleteFrame
   link _.requestRDDs, requestRDDs
   link _.requestColumnSummary, requestColumnSummary
