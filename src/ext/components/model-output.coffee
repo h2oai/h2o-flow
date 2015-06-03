@@ -63,6 +63,37 @@ H2O.ModelOutput = (_, _go, _model) ->
       frame: linkedFrame
       isCollapsed: isCollapsed
 
+  renderMultinomialConfusionMatrix = (cm) ->
+    [table, tbody, tr, normal, bold, yellow] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong', 'td.bg-yellow'
+    columnCount = cm.columns.length
+    rowCount = cm.rowcount
+    headers = map cm.columns, (column, i) -> bold column.description
+    headers.unshift normal ' ' # NW corner cell
+    rows = [tr headers]
+    for rowIndex in [0 ... rowCount]
+      cells = for column, i in cm.data
+        # Last two columns should be emphasized
+        cell = if i < columnCount - 2
+          if i is rowIndex
+            yellow
+          else
+            if rowIndex < rowCount - 1
+              normal
+            else
+              bold
+        else
+          bold
+        cell column[rowIndex]
+      # Add the corresponding column label
+      cells.unshift bold cm.columns[rowIndex].description
+      rows.push tr cells
+
+    _plots.push
+      title: 'Confusion Matrix'
+      plot: signal Flow.HTML.render 'div', table tbody rows
+      frame: signal null
+      isCollapsed: no
+
   switch _model.algo
     when 'kmeans'
       if table = _.inspect 'output - Scoring History', _model
@@ -227,6 +258,9 @@ H2O.ModelOutput = (_, _go, _model) ->
               )
               g.from table
             )
+      if output = _model.output
+        if (output.model_category is 'Multinomial') and (confusionMatrix = output.training_metrics?.cm?.table)
+          renderMultinomialConfusionMatrix confusionMatrix
 
     when 'gbm', 'drf'
       if table = _.inspect 'output - Scoring History', _model
@@ -300,6 +334,10 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.from table
             g.limit 25
           )
+
+      if output = _model.output
+        if (output.model_category is 'Multinomial') and (confusionMatrix = output.training_metrics?.cm?.table)
+          renderMultinomialConfusionMatrix confusionMatrix
 
   for tableName in _.ls _model when tableName isnt 'parameters'
     if table = _.inspect tableName, _model

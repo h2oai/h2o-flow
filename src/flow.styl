@@ -267,6 +267,12 @@ th
 .orange
   color: tomorrow-orange
 
+.strong
+  font-weight bold
+
+.bg-yellow
+  background-color flow-color-yellow
+
 //
 //
 //
@@ -552,6 +558,15 @@ table
     td, th
       padding 2px 5px
 
+    &.flow-confusion-matrix
+      th
+        font-style normal
+        font-weight bold
+      tr:nth-child(odd)
+        background-color inherit
+      td
+        border 1px dotted #999
+
   .lz-table > thead > tr
     border-bottom 1px solid #ccc
 
@@ -764,3 +779,6 @@ table
     background-color flow-color-yellow
   p
     margin 0
+
+
+
