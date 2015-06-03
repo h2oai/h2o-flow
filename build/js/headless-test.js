@@ -16,7 +16,7 @@ phantom.onError = function(message, stacktrace) {
       }
       return _results;
     })();
-    console.log(("ERROR: " + message + "\n") + stack.join('\n'));
+    console.log(("PHANTOM: *** ERROR *** " + message + "\n") + stack.join('\n'));
     return phantom.exit(1);
   }
 };
@@ -28,11 +28,11 @@ page = webpage.create();
 page.onResourceError = function(_arg) {
   var errorString, url;
   url = _arg.url, errorString = _arg.errorString;
-  return console.log("ERROR: " + url + ": " + errorString);
+  return console.log("BROWSER: *** RESOURCE ERROR *** " + url + ": " + errorString);
 };
 
 page.onConsoleMessage = function(message) {
-  return console.log(message);
+  return console.log("BROWSER: " + message);
 };
 
 waitFor = function(test, onReady, timeout) {
@@ -44,14 +44,14 @@ waitFor = function(test, onReady, timeout) {
   condition = false;
   retest = function() {
     if ((new Date().getTime() - startTime < timeout) && !condition) {
-      console.log('Polling...');
+      console.log('PHANTOM: PING');
       return condition = test();
     } else {
       if (condition) {
         onReady();
         return clearInterval(interval);
       } else {
-        console.log('ERROR: Timeout exceeded');
+        console.log('PHANTOM: *** ERROR *** Timeout Exceeded');
         return phantom.exit(1);
       }
     }
@@ -78,7 +78,7 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
             return context.requestPacks(function(error, packNames) {
               var tasks;
               if (error) {
-                console.log('Failed fetching packs');
+                console.log('*** ERROR *** Failed fetching packs');
                 return go(error);
               } else {
                 console.log('Processing packs...');
@@ -96,7 +96,7 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
             return context.requestPack(packName, function(error, flowNames) {
               var tasks;
               if (error) {
-                console.log('Failed fetching pack');
+                console.log('*** ERROR *** Failed fetching pack');
                 return go(error);
               } else {
                 console.log('Processing pack...');
@@ -110,11 +110,11 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
             });
           };
           runFlow = function(packName, flowName, go) {
-            console.log("Fetching flow: " + packName + " - " + flowName);
+            console.log("Fetching flow document: " + packName + " - " + flowName);
             return context.requestFlow(packName, flowName, function(error, flow) {
               var flowTitle, waitForFlow;
               if (error) {
-                console.log('Failed fetching flow');
+                console.log('*** ERROR *** Failed fetching flow document');
                 return go(error);
               } else {
                 flowTitle = "" + packName + " - " + flowName;
@@ -124,10 +124,10 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
                 waitForFlow = function() {
                   var errors;
                   if (window._phantom_running_) {
-                    console.log('Flow still running...');
+                    console.log('ACK');
                     return setTimeout(waitForFlow, 2000);
                   } else {
-                    console.log('Flow completed');
+                    console.log('Flow completed!');
                     errors = window._phantom_errors_;
                     return context.requestRemoveAll(function() {
                       return go(errors ? errors : null);
@@ -151,10 +151,9 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
           window._phantom_started_ = true;
           runPacks(function(error) {
             if (error) {
-              console.log('Error running packs');
-              console.log(JSON.stringify(error, null, 2));
+              console.log('*** ERROR *** Error running packs: ' + JSON.stringify(error));
             } else {
-              console.log('Finished running all packs');
+              console.log('Finished running all packs!');
             }
             return window._phantom_exit_ = true;
           });
@@ -168,16 +167,15 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
         return window._phantom_errors_;
       });
       if (errors) {
-        console.log(JSON.stringify(errors, null, 2));
-        console.log('ERROR: One or more flows failed to complete');
+        console.log('PHANTOM: *** ERROR *** One or more flows failed to complete: ' + JSON.stringify(errors));
         return phantom.exit(1);
       } else {
-        console.log('Success! All flows ran to completion!');
+        console.log('PHANTOM: Success! All flows ran to completion!');
         return phantom.exit(0);
       }
     });
   } else {
-    console.log('ERROR: Unable to access network.');
+    console.log('PHANTOM: *** ERROR *** Unable to access network.');
     return phantom.exit(1);
   }
 });
