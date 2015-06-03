@@ -7,12 +7,14 @@ _homeMarkdown = """
 Using Flow for the first time?
 <br/>
 <div style='margin-top:10px'>
-  <button type='button' data-action='assist' class='flow-button'><i class='fa fa-support'></i><span>Assist Me!</span>
+  <button type='button' data-action='assist' class='flow-button'><i class='fa fa-support'></i><span>Assist Me</span>
   </button>
 </div>
 </blockquote> 
 
-##### Help Topics
+###### Star H2O on Github!
+
+<iframe src="https://ghbtns.com/github-btn.html?user=h2oai&repo=h2o-3&type=star&count=true" frameborder="0" scrolling="0" width="170px" height="20px"></iframe>
 
 ###### General
 
