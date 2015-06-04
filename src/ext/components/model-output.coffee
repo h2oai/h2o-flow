@@ -23,6 +23,11 @@ H2O.ModelOutput = (_, _go, _model) ->
     help: help
     isModified: default_value is actual_value
 
+  getAucAsLabel = (model, tableName) ->
+    if metrics = _.inspect tableName, model
+      " , AUC = #{metrics.schema.AUC.at 0}"
+    else
+      ''
 
   getThresholdsAndCriteria = (model, tableName) ->
     if criterionTable = _.inspect tableName, _model
@@ -187,7 +192,7 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainY_HACK 0, 1
           )
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot 'ROC Curve - Training Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
+        renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
         plotter = _.plot (g) ->
@@ -202,7 +207,7 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainY_HACK 0, 1
           )
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot 'ROC Curve - Validation Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
+        renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - Standardized Coefficient Magnitudes', _model
         renderPlot 'Standardized Coefficient Magnitudes', no, _.plot (g) ->
@@ -267,7 +272,7 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainY_HACK 0, 1
           )
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot 'ROC Curve - Training Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
+        renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
         plotter = _.plot (g) ->
@@ -282,7 +287,7 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainY_HACK 0, 1
           )
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot 'ROC Curve - Validation Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
+        renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', no, _.plot (g) ->
@@ -388,7 +393,7 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot 'ROC Curve - Training Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
+        renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
         plotter = _.plot (g) ->
@@ -404,7 +409,7 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot 'ROC Curve - Validation Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
+        renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', no, _.plot (g) ->
