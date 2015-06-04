@@ -48,10 +48,32 @@
   // ko foreach:plots
   h4(data-bind='text:title, collapse:isCollapsed')
   div
-    .flow-plot(data-bind='raw:plot')
-    // ko if:frame
-    .flow-plot(data-bind='raw:frame')
-    // /ko
+    table(style='margin:10px 0 20px 0')
+      tbody
+        tr
+          td(style='vertical-align:top')
+            div
+              .flow-plot(data-bind='raw:plot')
+            // ko with:controls
+            div
+              table
+                tbody
+                  tr
+                    td.flow-monospace-label Threshold:
+                    td.flow-monospace-label Criterion:
+                  tr
+                    td
+                      select(data-bind="options:thresholds, optionsText:'value', value:threshold, optionsCaption: 'Choose...'")
+                    td
+                      select(data-bind="options:criteria, optionsText:'value', value:criterion, optionsCaption: 'Choose...'")
+            // /ko
+
+          // ko if:frame
+          td(style='vertical-align:top; padding-left:20px')
+            div
+              .flow-monospace-label Selected mark(s):
+            .flow-plot(data-bind='raw:frame')
+          // /ko
   // /ko
 
   h4(data-bind='collapse:false') Preview POJO

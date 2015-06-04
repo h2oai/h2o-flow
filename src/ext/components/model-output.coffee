@@ -23,9 +23,38 @@ H2O.ModelOutput = (_, _go, _model) ->
     help: help
     isModified: default_value is actual_value
 
-  renderPlot = (title, isCollapsed, render) ->
+
+  getThresholdsAndCriteria = (model) ->
+    if criterionTable = _.inspect 'output - training_metrics - Maximum Metrics', _model
+
+      # Threshold dropdown items
+      thresholdVector = table.schema.threshold
+      thresholds = for i in [0 ... thresholdVector.count()]
+        index: i
+        value: thresholdVector.at i
+
+      # Threshold criterion dropdown item
+      metricVector = criterionTable.schema.metric
+      idxVector = criterionTable.schema.idx
+      criteria = for i in [0 ... metricVector.count()]
+        index: idxVector.at i
+        value: metricVector.valueAt i
+
+      { thresholds, criteria }
+    else
+      undefined
+
+  # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+  renderPlot = (title, isCollapsed, render, thresholdsAndCriteria) ->
     container = signal null
     linkedFrame = signal null
+
+    if thresholdsAndCriteria # TODO HACK
+      rocPanel = 
+        thresholds: signals thresholdsAndCriteria.thresholds
+        threshold: signal null
+        criteria: signals thresholdsAndCriteria.criteria
+        criterion: signal null
 
     render (error, vis) ->
       if error
@@ -40,6 +69,7 @@ H2O.ModelOutput = (_, _go, _model) ->
               _.insertAndExecuteCell 'cs', "getModel #{stringify $a.attr 'data-key'}"
         container vis.element
 
+        _autoHighlight = yes
         if vis.subscribe
           vis.subscribe 'markselect', ({frame, indices}) ->
             subframe = window.plot.createFrame frame.label, frame.vectors, indices
@@ -52,15 +82,41 @@ H2O.ModelOutput = (_, _go, _model) ->
             (_.plot renderTable) (error, table) ->
               unless error
                 linkedFrame table.element
+            
+            if rocPanel # TODO HACK
+              if indices.length is 1
+                selectedIndex = head indices
+
+                _autoHighlight = no
+                rocPanel.threshold find rocPanel.thresholds(), (threshold) -> threshold.index is selectedIndex
+                rocPanel.criterion find rocPanel.criteria(), (criterion) -> criterion.index is selectedIndex
+                _autoHighlight = yes
+              else
+                rocPanel.criterion null
+                rocPanel.threshold null
             return
 
           vis.subscribe 'markdeselect', ->
             linkedFrame null
+            
+            if rocPanel # TODO HACK
+              rocPanel.criterion null
+              rocPanel.threshold null
+
+          if rocPanel # TODO HACK
+            react rocPanel.threshold, (threshold) ->
+              if threshold and _autoHighlight
+                vis.highlight [ threshold.index ]
+
+            react rocPanel.criterion, (criterion) ->
+              if criterion and _autoHighlight
+                vis.highlight [ criterion.index ]
 
     _plots.push 
       title: title
       plot: container
       frame: linkedFrame
+      controls: signal rocPanel
       isCollapsed: isCollapsed
 
   renderMultinomialConfusionMatrix = (title, cm) ->
@@ -92,6 +148,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       title: title
       plot: signal Flow.HTML.render 'div', table tbody rows
       frame: signal null
+      controls: signal null
       isCollapsed: no
 
   switch _model.algo
@@ -304,7 +361,7 @@ H2O.ModelOutput = (_, _go, _model) ->
             )
           
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve - Training Metrics', no, _.plot (g) ->
+        plotter = _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -315,6 +372,9 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainX_HACK 0, 1
             g.domainY_HACK 0, 1
           )
+
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot 'ROC Curve - Training Metrics', no, plotter, getThresholdsAndCriteria _model
 
       if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
         renderPlot 'ROC Curve - Validation Metrics', no, _.plot (g) ->
