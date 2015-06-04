@@ -24,8 +24,8 @@ H2O.ModelOutput = (_, _go, _model) ->
     isModified: default_value is actual_value
 
 
-  getThresholdsAndCriteria = (model) ->
-    if criterionTable = _.inspect 'output - training_metrics - Maximum Metrics', _model
+  getThresholdsAndCriteria = (model, tableName) ->
+    if criterionTable = _.inspect tableName, _model
 
       # Threshold dropdown items
       thresholdVector = table.schema.threshold
@@ -175,7 +175,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'glm'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve - Training Metrics', no, _.plot (g) ->
+        plotter = _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -186,9 +186,11 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainX_HACK 0, 1
             g.domainY_HACK 0, 1
           )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot 'ROC Curve - Training Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve - Validation Metrics', no, _.plot (g) ->
+        plotter = _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -199,6 +201,8 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainX_HACK 0, 1
             g.domainY_HACK 0, 1
           )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot 'ROC Curve - Validation Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - Standardized Coefficient Magnitudes', _model
         renderPlot 'Standardized Coefficient Magnitudes', no, _.plot (g) ->
@@ -251,7 +255,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'deeplearning'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve - Training Metrics', no, _.plot (g) ->
+        plotter = _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -262,9 +266,11 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainX_HACK 0, 1
             g.domainY_HACK 0, 1
           )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot 'ROC Curve - Training Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve - Validation Metrics', no, _.plot (g) ->
+        plotter = _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -275,6 +281,8 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainX_HACK 0, 1
             g.domainY_HACK 0, 1
           )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot 'ROC Curve - Validation Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', no, _.plot (g) ->
@@ -380,10 +388,10 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot 'ROC Curve - Training Metrics', no, plotter, getThresholdsAndCriteria _model
+        renderPlot 'ROC Curve - Training Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
-        renderPlot 'ROC Curve - Validation Metrics', no, _.plot (g) ->
+        plotter = _.plot (g) ->
           g(
             g.path g.position 'fpr', 'tpr'
             g.line(
@@ -394,6 +402,9 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.domainX_HACK 0, 1
             g.domainY_HACK 0, 1
           )
+
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot 'ROC Curve - Validation Metrics', no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', no, _.plot (g) ->
