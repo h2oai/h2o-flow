@@ -147,7 +147,7 @@ H2O.ModelOutput = (_, _go, _model) ->
           bold
         cell column[rowIndex]
       # Add the corresponding column label
-      cells.unshift bold cm.columns[rowIndex].description
+      cells.unshift bold if rowIndex is rowCount - 1 then 'Total' else cm.columns[rowIndex].description
       rows.push tr cells
 
     _plots.push
