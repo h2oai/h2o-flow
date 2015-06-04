@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.15';
+    Flow.Version = '0.3.16';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -8953,7 +8953,7 @@
 }.call(this));
 (function () {
     H2O.ModelOutput = function (_, _go, _model) {
-        var cloneModel, confusionMatrix, deleteModel, downloadPojo, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
+        var cloneModel, confusionMatrix, deleteModel, downloadPojo, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
         _isExpanded = Flow.Dataflow.signal(false);
         _plots = Flow.Dataflow.signals([]);
         _pojoPreview = Flow.Dataflow.signal(null);
@@ -9008,9 +9008,28 @@
                 isModified: default_value === actual_value
             };
         });
-        getThresholdsAndCriteria = function (model) {
+        format4f = function (number) {
+            if (number) {
+                if (number === 'NaN') {
+                    return void 0;
+                } else {
+                    return number.toFixed(4).replace(/\.0+$/, '.0');
+                }
+            } else {
+                return number;
+            }
+        };
+        getAucAsLabel = function (model, tableName) {
+            var metrics;
+            if (metrics = _.inspect(tableName, model)) {
+                return ' , AUC = ' + metrics.schema.AUC.at(0);
+            } else {
+                return '';
+            }
+        };
+        getThresholdsAndCriteria = function (model, tableName) {
             var criteria, criterionTable, i, idxVector, metricVector, thresholdVector, thresholds;
-            if (criterionTable = _.inspect('output - training_metrics - Maximum Metrics', _model)) {
+            if (criterionTable = _.inspect(tableName, _model)) {
                 thresholdVector = table.schema.threshold;
                 thresholds = function () {
                     var _i, _ref, _results;
@@ -9075,7 +9094,7 @@
                     _autoHighlight = true;
                     if (vis.subscribe) {
                         vis.subscribe('markselect', function (_arg) {
-                            var frame, indices, renderTable, selectedIndex, subframe;
+                            var currentCriterion, frame, indices, renderTable, selectedIndex, subframe;
                             frame = _arg.frame, indices = _arg.indices;
                             subframe = window.plot.createFrame(frame.label, frame.vectors, indices);
                             renderTable = function (g) {
@@ -9093,9 +9112,12 @@
                                     rocPanel.threshold(lodash.find(rocPanel.thresholds(), function (threshold) {
                                         return threshold.index === selectedIndex;
                                     }));
-                                    rocPanel.criterion(lodash.find(rocPanel.criteria(), function (criterion) {
-                                        return criterion.index === selectedIndex;
-                                    }));
+                                    currentCriterion = rocPanel.criterion();
+                                    if (!currentCriterion || currentCriterion && currentCriterion.index !== selectedIndex) {
+                                        rocPanel.criterion(lodash.find(rocPanel.criteria(), function (criterion) {
+                                            return criterion.index === selectedIndex;
+                                        }));
+                                    }
                                     _autoHighlight = true;
                                 } else {
                                     rocPanel.criterion(null);
@@ -9134,7 +9156,7 @@
             });
         };
         renderMultinomialConfusionMatrix = function (title, cm) {
-            var bold, cell, cells, column, columnCount, headers, i, normal, rowCount, rowIndex, rows, table, tbody, tr, yellow, _i, _ref;
+            var bold, cell, cells, column, columnCount, errorColumnIndex, headers, i, normal, rowCount, rowIndex, rows, table, tbody, totalRowIndex, tr, yellow, _i, _ref;
             _ref = Flow.HTML.template('table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong', 'td.bg-yellow'), table = _ref[0], tbody = _ref[1], tr = _ref[2], normal = _ref[3], bold = _ref[4], yellow = _ref[5];
             columnCount = cm.columns.length;
             rowCount = cm.rowcount;
@@ -9143,6 +9165,8 @@
             });
             headers.unshift(normal(' '));
             rows = [tr(headers)];
+            errorColumnIndex = columnCount - 2;
+            totalRowIndex = rowCount - 1;
             for (rowIndex = _i = 0; 0 <= rowCount ? _i < rowCount : _i > rowCount; rowIndex = 0 <= rowCount ? ++_i : --_i) {
                 cells = function () {
                     var _j, _len, _ref1, _results;
@@ -9150,12 +9174,12 @@
                     _results = [];
                     for (i = _j = 0, _len = _ref1.length; _j < _len; i = ++_j) {
                         column = _ref1[i];
-                        cell = i < columnCount - 2 ? i === rowIndex ? yellow : rowIndex < rowCount - 1 ? normal : bold : bold;
-                        _results.push(cell(column[rowIndex]));
+                        cell = i < errorColumnIndex ? i === rowIndex ? yellow : rowIndex < totalRowIndex ? normal : bold : bold;
+                        _results.push(cell(i === errorColumnIndex ? format4f(column[rowIndex]) : column[rowIndex]));
                     }
                     return _results;
                 }();
-                cells.unshift(bold(cm.columns[rowIndex].description));
+                cells.unshift(bold(rowIndex === rowCount - 1 ? 'Total' : cm.columns[rowIndex].description));
                 rows.push(tr(cells));
             }
             return _plots.push({
@@ -9176,14 +9200,16 @@
             break;
         case 'glm':
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
-                renderPlot('ROC Curve - Training Metrics', false, _.plot(function (g) {
+                plotter = _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                }));
+                });
+                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
             }
             if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
-                renderPlot('ROC Curve - Validation Metrics', false, _.plot(function (g) {
+                plotter = _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                }));
+                });
+                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
             }
             if (table = _.inspect('output - Standardized Coefficient Magnitudes', _model)) {
                 renderPlot('Standardized Coefficient Magnitudes', false, _.plot(function (g) {
@@ -9207,14 +9233,16 @@
             break;
         case 'deeplearning':
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
-                renderPlot('ROC Curve - Training Metrics', false, _.plot(function (g) {
+                plotter = _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                }));
+                });
+                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
             }
             if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
-                renderPlot('ROC Curve - Validation Metrics', false, _.plot(function (g) {
+                plotter = _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                }));
+                });
+                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
             }
             if (table = _.inspect('output - Variable Importances', _model)) {
                 renderPlot('Variable Importances', false, _.plot(function (g) {
@@ -9260,12 +9288,13 @@
                 plotter = _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
                 });
-                renderPlot('ROC Curve - Training Metrics', false, plotter, getThresholdsAndCriteria(_model));
+                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
             }
             if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
-                renderPlot('ROC Curve - Validation Metrics', false, _.plot(function (g) {
+                plotter = _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                }));
+                });
+                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
             }
             if (table = _.inspect('output - Variable Importances', _model)) {
                 renderPlot('Variable Importances', false, _.plot(function (g) {
