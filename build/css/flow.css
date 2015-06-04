@@ -216,6 +216,12 @@ th {
 .orange {
   color: #f5871f;
 }
+.strong {
+  font-weight: bold;
+}
+.bg-yellow {
+  background-color: #faf185;
+}
 .flow-navbar {
   border-top: 5px solid #faf185;
 }
@@ -349,6 +355,11 @@ th {
   margin-bottom: 10px;
 }
 .flow-monospace {
+  font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
+}
+.flow-monospace-label {
+  font-size: 85%;
+  font-weight: bold;
   font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
 }
 .flow-pointer {
@@ -512,7 +523,6 @@ table.flow-form-ruled tr:first-child {
   margin-bottom: 20px;
 }
 .flow-plot table {
-  margin: 10px 0 20px 0;
   font-size: 85%;
 }
 .flow-plot table tr:nth-child(odd) {
@@ -521,6 +531,16 @@ table.flow-form-ruled tr:first-child {
 .flow-plot table td,
 .flow-plot table th {
   padding: 2px 5px;
+}
+.flow-plot table.flow-confusion-matrix th {
+  font-style: normal;
+  font-weight: bold;
+}
+.flow-plot table.flow-confusion-matrix tr:nth-child(odd) {
+  background-color: inherit;
+}
+.flow-plot table.flow-confusion-matrix td {
+  border: 1px dotted #999;
 }
 .flow-plot .lz-table > thead > tr {
   border-bottom: 1px solid #ccc;

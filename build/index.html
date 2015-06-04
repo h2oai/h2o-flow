@@ -1167,10 +1167,45 @@
         <!-- ko foreach:plots-->
         <h4 data-bind="text:title, collapse:isCollapsed"></h4>
         <div>
-          <div data-bind="raw:plot" class="flow-plot"></div>
-          <!-- ko if:frame-->
-          <div data-bind="raw:frame" class="flow-plot"></div>
-          <!-- /ko-->
+          <table style="margin:10px 0 20px 0">
+            <tbody>
+              <tr>
+                <td style="vertical-align:top">
+                  <div>
+                    <div data-bind="raw:plot" class="flow-plot"></div>
+                  </div>
+                  <!-- ko with:controls-->
+                  <div>
+                    <table>
+                      <tbody>
+                        <tr>
+                          <td class="flow-monospace-label">Threshold:</td>
+                          <td class="flow-monospace-label">Criterion:</td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <select data-bind="options:thresholds, optionsText:'value', value:threshold, optionsCaption: 'Choose...'"></select>
+                          </td>
+                          <td>
+                            <select data-bind="options:criteria, optionsText:'value', value:criterion, optionsCaption: 'Choose...'"></select>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <!-- /ko-->
+                </td>
+                <!-- ko if:frame-->
+                <td style="vertical-align:top; padding-left:20px">
+                  <div>
+                    <div class="flow-monospace-label">Selected mark(s):</div>
+                  </div>
+                  <div data-bind="raw:frame" class="flow-plot"></div>
+                </td>
+                <!-- /ko-->
+              </tr>
+            </tbody>
+          </table>
         </div>
         <!-- /ko-->
         <h4 data-bind="collapse:false">Preview POJO</h4>
