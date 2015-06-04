@@ -89,7 +89,13 @@ H2O.ModelOutput = (_, _go, _model) ->
 
                 _autoHighlight = no
                 rocPanel.threshold find rocPanel.thresholds(), (threshold) -> threshold.index is selectedIndex
-                rocPanel.criterion find rocPanel.criteria(), (criterion) -> criterion.index is selectedIndex
+
+                currentCriterion = rocPanel.criterion()
+                # More than one criterion can point to the same threshold, so ensure that
+                #  we're preserving the existing criterion, if any.
+                if (not currentCriterion) or (currentCriterion and (currentCriterion.index isnt selectedIndex))
+                  rocPanel.criterion find rocPanel.criteria(), (criterion) -> criterion.index is selectedIndex
+
                 _autoHighlight = yes
               else
                 rocPanel.criterion null
