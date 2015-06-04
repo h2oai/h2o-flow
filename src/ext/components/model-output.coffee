@@ -23,6 +23,16 @@ H2O.ModelOutput = (_, _go, _model) ->
     help: help
     isModified: default_value is actual_value
 
+  #TODO copied over from routines.coffee. replace post h2o.js integration.
+  format4f = (number) ->
+    if number
+      if number is 'NaN'
+        undefined
+      else
+        number.toFixed(4).replace(/\.0+$/, '.0')
+    else
+      number
+
   getAucAsLabel = (model, tableName) ->
     if metrics = _.inspect tableName, model
       " , AUC = #{metrics.schema.AUC.at 0}"
@@ -137,20 +147,23 @@ H2O.ModelOutput = (_, _go, _model) ->
     headers = map cm.columns, (column, i) -> bold column.description
     headers.unshift normal ' ' # NW corner cell
     rows = [tr headers]
+    errorColumnIndex = columnCount - 2
+    totalRowIndex = rowCount - 1
     for rowIndex in [0 ... rowCount]
       cells = for column, i in cm.data
         # Last two columns should be emphasized
-        cell = if i < columnCount - 2
+        cell = if i < errorColumnIndex
           if i is rowIndex
             yellow
           else
-            if rowIndex < rowCount - 1
+            if rowIndex < totalRowIndex
               normal
             else
               bold
         else
           bold
-        cell column[rowIndex]
+        # special-format error column
+        cell if i is errorColumnIndex then format4f column[rowIndex] else column[rowIndex]
       # Add the corresponding column label
       cells.unshift bold if rowIndex is rowCount - 1 then 'Total' else cm.columns[rowIndex].description
       rows.push tr cells
