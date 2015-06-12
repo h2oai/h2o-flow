@@ -751,8 +751,6 @@ Flow.Notebook = (_, _renderers) ->
     setupKeyboardHandling 'normal'
 
     setupMenus()
-   
-    insertNewCellBelow()
 
     link _.load, loadNotebook
     link _.open, openNotebook
@@ -772,6 +770,8 @@ Flow.Notebook = (_, _renderers) ->
 
     link _.loaded, ->
       _.growl 'Notebook loaded.'
+
+    do (executeCommand 'assist')
 
     _.setDirty() #TODO setPristine() when autosave is implemented.
 
