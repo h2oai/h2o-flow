@@ -29,7 +29,12 @@ H2O.ImportFilesInput = (_, _go) ->
     for file in files
       dictionary[file.path] = yes
     dictionary
-  _selectedFileCount = lift _selectedFiles, (files) -> "#{Flow.Util.describeCount files.length, 'file'} selected:"
+  _selectedFileCount = lift _selectedFiles, (files) -> 
+    if files.length
+      "#{Flow.Util.describeCount files.length, 'file'} selected:"
+    else
+      "(No files selected)"
+
   _hasSelectedFiles = lift _selectedFiles, (files) -> files.length > 0
 
   importFiles = (files) ->
