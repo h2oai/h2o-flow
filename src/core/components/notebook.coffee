@@ -513,19 +513,19 @@ Flow.Notebook = (_, _renderers) ->
 
     [
       createMenu 'Flow', [
-        createMenuItem 'New', createNotebook
-        createMenuItem 'Open...', promptForNotebook
-        createMenuItem 'Save', saveNotebook
+        createMenuItem 'New Flow', createNotebook
+        createMenuItem 'Open Flow...', promptForNotebook
+        createMenuItem 'Save Flow', saveNotebook
         createMenuItem 'Make a Copy...', duplicateNotebook
         menuDivider
-        createMenuItem 'Run All', runAllCells
-        createMenuItem 'Run All Below', continueRunningAllCells
+        createMenuItem 'Run All Cells', runAllCells
+        createMenuItem 'Run All Cells Below', continueRunningAllCells
         menuDivider
-        createMenuItem 'Toggle All Inputs', toggleAllInputs
-        createMenuItem 'Toggle All Outputs', toggleAllOutputs
-        createMenuItem 'Clear All Outputs', clearAllCells
+        createMenuItem 'Toggle All Cell Inputs', toggleAllInputs
+        createMenuItem 'Toggle All Cell Outputs', toggleAllOutputs
+        createMenuItem 'Clear All Cell Outputs', clearAllCells
         menuDivider
-        createMenuItem 'Download...', exportNotebook 
+        createMenuItem 'Download this Flow...', exportNotebook 
       ]
     ,
       createMenu 'Cell', [
