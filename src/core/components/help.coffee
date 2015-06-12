@@ -3,14 +3,16 @@ _index = {}
 _homeContent = null
 
 _homeMarkdown = """
-<blockquote> 
+<blockquote>
 Using Flow for the first time?
 <br/>
 <div style='margin-top:10px'>
-  <button type='button' data-action='assist' class='flow-button'><i class='fa fa-support'></i><span>Assist Me</span>
+  <button type='button' data-action='get-flow' data-pack-name='examples' data-flow-name='QuickStartVideos.flow' class='flow-button'><i class='fa fa-file-movie-o'></i><span>Quickstart Videos</span>
   </button>
 </div>
-</blockquote> 
+</blockquote>
+
+Or, <a href='#' data-action='get-pack' data-pack-name='examples'>view example Flows</a> to explore and learn H<sub>2</sub>O.
 
 ###### Star H2O on Github!
 
@@ -20,7 +22,7 @@ Using Flow for the first time?
 
 %HELP_TOPICS%
 
-###### Packs
+###### Examples
 
 Flow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Flows and run them in your browser.<br/><a href='#' data-action='get-packs'>Browse installed packs...</a>
 
