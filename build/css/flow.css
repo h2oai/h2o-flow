@@ -1,7 +1,7 @@
 body {
   font-family: Roboto, 'Source Sans Pro', Lato, 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  color: #666;
-  font-weight: 300;
+  color: #000;
+  font-weight: normal !important;
 }
 h1,
 h2,
@@ -9,7 +9,7 @@ h3,
 h4,
 blockquote,
 label {
-  font-weight: 300;
+  font-weight: normal !important;
 }
 code,
 kbd,
@@ -203,7 +203,7 @@ label input[type="checkbox"] {
   border-bottom: 1px solid #ccc;
 }
 th {
-  font-weight: 300;
+  font-weight: normal !important;
   font-style: italic;
 }
 .alert {
@@ -310,7 +310,7 @@ th {
 .flow-html-output h2,
 .flow-html-output h3,
 .flow-html-output blockquote {
-  font-weight: 300;
+  font-weight: normal !important;
 }
 .flow-raw-output pre {
   background: inherit;
@@ -410,7 +410,7 @@ table.flow-form-ruled tr:first-child {
   font-size: 85%;
 }
 .flow-small-caps {
-  font-weight: 300;
+  font-weight: normal !important;
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 1px;
@@ -490,7 +490,7 @@ table.flow-form-ruled tr:first-child {
 }
 .flow-titlebar span {
   font-size: 120%;
-  font-weight: 300;
+  font-weight: normal !important;
 }
 .flow-titlebar input {
   width: 90%;
@@ -623,7 +623,7 @@ table.flow-form-ruled tr:first-child {
   line-height: 21px;
   width: 25%;
   text-align: center;
-  font-weight: 300;
+  font-weight: normal !important;
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 1px;
@@ -742,7 +742,7 @@ table.flow-form-ruled tr:first-child {
   padding: 0 0 0 20px;
 }
 .flow-help h5 {
-  font-weight: 300;
+  font-weight: normal !important;
   font-size: 18px;
   color: #999;
 }

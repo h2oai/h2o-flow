@@ -1252,7 +1252,18 @@
             <tr>
               <th width="125">Search:</th>
               <td>
-                <input type="text" style="width:100%" data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder="File or directory path" class="flow-textbox">
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder="Enter a file or directory path and press the Enter key" class="flow-textbox">
+                      </td>
+                      <td style="padding:0" class="flow-narrow">
+                        <button type="button" data-bind="click:tryImportFiles" title="Search for files" class="flow-button"><i class="fa fa-search"></i></button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </td>
             </tr>
             <!-- ko if:hasErrorMessage-->
