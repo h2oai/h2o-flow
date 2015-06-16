@@ -644,6 +644,7 @@ H2O.Routines = (_) ->
         when 'max'
           createVector title, TNumber, (head column.maxs for column in frameColumns), format4f
         when 'cardinality'
+          #TODO switch to cardinality
           createVector title, TNumber, ((if domain = column.domain then domain.length else undefined) for column in frameColumns)
         when 'label'
           createFactor title, TString, (column[name] for column in frameColumns), null, formatAsLink
@@ -681,7 +682,15 @@ H2O.Routines = (_) ->
 
     createDataframe 'data', vectors, (sequence frame.row_count - frame.row_offset), null,
       description: 'A partial list of rows in the H2O Frame.'
-      origin: "getFrame #{stringify frameKey}"
+      origin: "getFrameData #{stringify frameKey}"
+
+  extendFrameData = (frameKey, frame) ->
+    inspections =
+      data: inspectFrameData frameKey, frame
+
+    origin = "getFrameData #{stringify frameKey}"
+    inspect_ frame, inspections
+    render_ frame, H2O.FrameDataOutput, frame
 
   extendFrame = (frameKey, frame) ->
     inspections =
@@ -826,6 +835,7 @@ H2O.Routines = (_) ->
 
     inspections =
       characteristics: inspectCharacteristics
+
     switch column.type
       when 'int', 'real'
         # Skip for columns with all NAs
@@ -842,14 +852,28 @@ H2O.Routines = (_) ->
     render_ frame, H2O.ColumnSummaryOutput, frameKey, frame, columnName
 
   requestFrame = (frameKey, go) ->
-    _.requestFrame frameKey, (error, frame) ->
+    _.requestFrameSlice frameKey, undefined, 0, 20, (error, frame) ->
+      if error
+        go error
+      else
+        go null, extendFrame frameKey, frame
+
+  requestFrameData = (frameKey, searchTerm, offset, count, go) ->
+    _.requestFrameSlice frameKey, searchTerm, offset, count, (error, frame) ->
+      if error
+        go error
+      else
+        go null, extendFrameData frameKey, frame
+
+  requestFrameSummarySlice = (frameKey, searchTerm, offset, length, go) ->
+    _.requestFrameSummarySlice frameKey, searchTerm, offset, length, (error, frame) ->
       if error
         go error
       else
         go null, extendFrame frameKey, frame
 
   requestFrameSummary = (frameKey, go) ->
-    _.requestFrameSummary frameKey, (error, frame) ->
+    _.requestFrameSummarySlice frameKey, undefined, 0, 20, (error, frame) ->
       if error
         go error
       else
@@ -976,6 +1000,13 @@ H2O.Routines = (_) ->
     switch typeOf frameKey
       when 'String'
         _fork requestFrameSummary, frameKey
+      else
+        assist getFrameSummary
+
+  getFrameData = (frameKey) ->
+    switch typeOf frameKey
+      when 'String'
+        _fork requestFrameData, frameKey, undefined, 0, 20
       else
         assist getFrameSummary
 
@@ -1434,6 +1465,8 @@ H2O.Routines = (_) ->
         lightning.select 0
         lightning.from frame
       )
+    link _.requestFrameDataE, requestFrameData
+    link _.requestFrameSummarySliceE, requestFrameSummarySlice
 
   link _.initialized, ->
     #TODO Hack for sparkling-water
@@ -1489,6 +1522,7 @@ H2O.Routines = (_) ->
   getFrames: getFrames
   getFrame: getFrame
   getFrameSummary: getFrameSummary
+  getFrameData: getFrameData
   deleteFrames: deleteFrames
   deleteFrame: deleteFrame
   getRDDs: getRDDs
