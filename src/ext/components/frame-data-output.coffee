@@ -3,7 +3,7 @@ H2O.FrameDataOutput = (_, _go, _frame) ->
   _data = signal null
   _columnNameSearchTerm = signal null
   _currentPage = signal 0
-  _maxPages = signal 10000 #TODO FIXME 
+  _maxPages = signal Math.ceil _frame.total_column_count / MaxItemsPerPage
   _canGoToPreviousPage = lift _currentPage, (index) -> index > 0
   _canGoToNextPage = lift _maxPages, _currentPage, (maxPages, index) -> index < maxPages - 1
 
@@ -26,8 +26,9 @@ H2O.FrameDataOutput = (_, _go, _frame) ->
     searchTerm = _columnNameSearchTerm()
     if searchTerm isnt _lastUsedSearchTerm
       pageIndex = 0
-       
-    _.requestFrameDataE _frame.frame_id.name, searchTerm, pageIndex * MaxItemsPerPage, MaxItemsPerPage, (error, frame) ->
+    startIndex = pageIndex * MaxItemsPerPage
+    itemCount = if startIndex + MaxItemsPerPage < _frame.total_column_count then MaxItemsPerPage else _frame.total_column_count - startIndex
+    _.requestFrameDataE _frame.frame_id.name, searchTerm, startIndex, itemCount, (error, frame) ->
       if error
         #TODO
       else
