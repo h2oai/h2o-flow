@@ -9,6 +9,13 @@ phantom.onError = (message, stacktrace) ->
     phantom.exit 1
 
 hostname = system.args[1] ? 'localhost:54321'
+console.log "PHANTOM: Using #{hostname}"
+
+timeout = if timeoutArg = system.args[2]
+  1000 * parseInt timeoutArg, 10
+else
+  3600000
+console.log "PHANTOM: Timeout set to #{timeout}ms"
 
 page = webpage.create()
 
@@ -18,15 +25,15 @@ page.onResourceError = ({ url, errorString }) ->
 page.onConsoleMessage = (message) ->
   console.log "BROWSER: #{message}"
 
-waitFor = (test, onReady, timeout=3600000) ->
+waitFor = (test, onReady) ->
   startTime = new Date().getTime()
-  condition = false
+  isComplete = no
   retest = ->
-    if (new Date().getTime() - startTime < timeout) and not condition
+    if (new Date().getTime() - startTime < timeout) and not isComplete
       console.log 'PHANTOM: PING'
-      condition = test()
+      isComplete = test()
     else
-      if condition
+      if isComplete
         onReady()
         clearInterval interval
       else
