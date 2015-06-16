@@ -153,8 +153,16 @@ H2O.Proxy = (_) ->
   requestFrame = (key, go) ->
     doGet "/3/Frames/#{encodeURIComponent key}", unwrap go, (result) -> head result.frames
 
+  requestFrameSlice = (key, searchTerm, offset, count, go) ->
+    #TODO send search term
+    doGet "/3/Frames/#{encodeURIComponent key}?column_offset=#{offset}&column_count=#{count}", unwrap go, (result) -> head result.frames
+
   requestFrameSummary = (key, go) ->
     doGet "/3/Frames/#{encodeURIComponent key}/summary", unwrap go, (result) -> head result.frames
+
+  requestFrameSummarySlice = (key, searchTerm, offset, count, go) ->
+    #TODO send search term
+    doGet "/3/Frames/#{encodeURIComponent key}/summary?column_offset=#{offset}&column_count=#{count}", unwrap go, (result) -> head result.frames
 
   requestFrameSummaryWithoutData = (key, go) ->
     doGet "/3/Frames/#{encodeURIComponent key}/summary?_exclude_fields=frames/chunk_summary,frames/distribution_summary,frames/vec_ids,frames/columns/data,frames/columns/domain,frames/columns/histogram_bins,frames/columns/percentiles", (error, result) ->
@@ -451,7 +459,9 @@ H2O.Proxy = (_) ->
   link _.requestSplitFrame, requestSplitFrame
   link _.requestFrames, requestFrames
   link _.requestFrame, requestFrame
+  link _.requestFrameSlice, requestFrameSlice
   link _.requestFrameSummary, requestFrameSummary
+  link _.requestFrameSummarySlice, requestFrameSummarySlice
   link _.requestFrameSummaryWithoutData, requestFrameSummaryWithoutData
   link _.requestDeleteFrame, requestDeleteFrame
   link _.requestRDDs, requestRDDs
