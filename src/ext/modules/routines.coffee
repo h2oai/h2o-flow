@@ -644,8 +644,7 @@ H2O.Routines = (_) ->
         when 'max'
           createVector title, TNumber, (head column.maxs for column in frameColumns), format4f
         when 'cardinality'
-          #TODO switch to cardinality
-          createVector title, TNumber, ((if domain = column.domain then domain.length else undefined) for column in frameColumns)
+          createVector title, TNumber, ((if column.type is 'enum' then column.domain_cardinality else undefined) for column in frameColumns)
         when 'label'
           createFactor title, TString, (column[name] for column in frameColumns), null, formatAsLink
         when 'type'
