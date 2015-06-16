@@ -1,3 +1,5 @@
+MaxItemsPerPage = 15 
+
 parseTypes = map [ 'AUTO', 'ARFF', 'XLS', 'XLSX', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
 
 parseDelimiters = do ->
@@ -72,32 +74,58 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   _headerOptions = auto: 0, header: 1, data: -1
   _headerOption = signal if _result.check_header is 0 then 'auto' else if _result.check_header is -1 then 'data' else 'header'
   _deleteOnDone = signal yes
+  _columnNameSearchTerm = signal ''
 
   _preview = signal _result
+  _chunkSize = lift _preview, (preview) -> preview.chunk_size
   refreshPreview = ->
     columnTypes = (column.type() for column in _columns())
     _.requestParseSetupPreview _sourceKeys, _parseType().type, _delimiter().charCode, _useSingleQuotes(), _headerOptions[_headerOption()], columnTypes, (error, result) ->
       unless error
         _preview result
 
-  _columnCount = lift _preview, (preview) -> preview.number_columns
-  _hasColumns = lift _columnCount, (count) -> count > 0
-
   _columns = lift _preview, (preview) ->
-    columnNames = preview.column_names
     columnTypes = preview.column_types
-    for i in [0 ... preview.number_columns]
-      name: signal if columnNames then columnNames[i] else ''
-      type: signal columnTypes[i]
+    columnCount = columnTypes.length
+    previewData = preview.data
+    rowCount = previewData.length
+    columnNames = preview.column_names
+
+    rows = new Array columnCount
+    for j in [0 ... columnCount]
+      data = new Array rowCount
+      for i in [0 ... rowCount]
+        data[i] = previewData[i][j]
+
+      rows[j] = row =
+        index: "#{j + 1}"
+        name: signal if columnNames then columnNames[j] else ''
+        type: signal columnTypes[j]
+        data: data
+    rows
+
+  _columnCount = lift _columns, (columns) -> columns?.length or 0
 
   act _columns, (columns) ->
     forEach columns, (column) ->
       react column.type, refreshPreview
 
-  _rows = lift _preview, (preview) -> preview.data
-  _chunkSize = lift _preview, (preview) -> preview.chunk_size
-
   react _parseType, _delimiter, _useSingleQuotes, _headerOption, refreshPreview
+
+  _filteredColumns = lift _columns, (columns) -> columns
+
+  _currentPage = lift _columns, (columns) -> columns: columns, index: 0
+
+  filterColumns = ->
+    _currentPage
+      index: 0
+      columns: filter _columns(), (column) -> -1 < column.name().toLowerCase().indexOf _columnNameSearchTerm().toLowerCase()
+
+  react _columnNameSearchTerm, throttle filterColumns, 500
+
+  _visibleColumns = lift _currentPage, (currentPage) ->
+    start = currentPage.index * MaxItemsPerPage
+    currentPage.columns.slice start, start + MaxItemsPerPage
 
   parseFiles = ->
     columnNames = (column.name() for column in _columns())
@@ -109,6 +137,21 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
 
     _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_frame: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  #{if columnNames then 'column_names: ' + (stringify columnNames) + '\n  ' else ''}column_types: #{stringify columnTypes}\n  delete_on_done: #{_deleteOnDone()}\n  check_header: #{headerOption}\n  chunk_size: #{_chunkSize()}"
 
+  _canGoToNextPage = lift _currentPage, (currentPage) ->
+    (currentPage.index + 1) * MaxItemsPerPage < currentPage.columns.length
+
+  _canGoToPreviousPage = lift _currentPage, (currentPage) ->
+    currentPage.index > 0
+
+  goToNextPage = ->
+    currentPage = _currentPage()
+    _currentPage columns: currentPage.columns, index: currentPage.index + 1
+
+  goToPreviousPage = ->
+    currentPage = _currentPage()
+    if currentPage.index > 0
+      _currentPage columns: currentPage.columns, index: currentPage.index - 1
+
   defer _go
 
   sourceKeys: _inputs[_inputKey]
@@ -119,14 +162,16 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   parseType: _parseType
   delimiter: _delimiter
   useSingleQuotes: _useSingleQuotes
-  columns: _columns
-  rows: _rows
-  columnCount: _columnCount
-  hasColumns: _hasColumns
   destinationKey: _destinationKey
   headerOption: _headerOption
   deleteOnDone: _deleteOnDone
+  columns: _visibleColumns
   parseFiles: parseFiles
+  columnNameSearchTerm: _columnNameSearchTerm
+  canGoToNextPage: _canGoToNextPage
+  canGoToPreviousPage: _canGoToPreviousPage
+  goToNextPage: goToNextPage
+  goToPreviousPage: goToPreviousPage
   template: 'flow-parse-raw-input'
 
 

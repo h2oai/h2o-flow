@@ -56,32 +56,30 @@
               span Delete on done
       // /ko
 
-  // ko if:hasColumns
-  h4 Data Preview
+  h4 Edit Column Names and Types
   div
+    input.flow-textbox(type='text' placeholder='Search by column name...' data-bind="value:columnNameSearchTerm, valueUpdate:'afterkeydown'")
     table.flow-form.flow-monospace
-      // ko if:canReconfigure
-      thead
+      tbody
+        // ko foreach:columns
         tr
-          // ko foreach:columns
+          td(data-bind='text:index')
           td(style='min-width:100px')
             input.flow-textbox(type='textbox' data-bind="value:name, attr:{'title':name}")
-          // /ko
-        tr
-          // ko foreach:columns
           td
             select(data-bind="options:$parent.dataTypes, value:type")
-          // /ko
-
-      // /ko
-      tbody
-        // ko foreach:rows
-        tr
-          // ko foreach:$data
+          // ko foreach:data
           td(data-bind="text:$data")
           // /ko
         // /ko
-  // /ko
+    div
+      button.flow-button(type='button' data-bind="click:goToPreviousPage, enable:canGoToPreviousPage")
+        i.fa.fa-arrow-left
+        span Previous page
+      button.flow-button(type='button' data-bind="click:goToNextPage, enable:canGoToNextPage")
+        i.fa.fa-arrow-right
+        span Next page
+
   .flow-panel
     button.flow-button(type='button' data-bind='click:parseFiles')
       i.fa.fa-indent
