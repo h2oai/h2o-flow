@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.19';
+    Flow.Version = '0.3.20';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4415,7 +4415,7 @@
             }));
         };
         requestFrameSummarySlice = function (key, searchTerm, offset, count, go) {
-            return doGet('/3/Frames/' + encodeURIComponent(key) + '/summary?column_offset=' + offset + '&column_count=' + count, unwrap(go, function (result) {
+            return doGet('/3/Frames/' + encodeURIComponent(key) + '/summary?column_offset=' + offset + '&column_count=' + count + '&_exclude_fields=frames/vec_ids,frames/columns/data,frames/columns/domain,frames/columns/histogram_bins,frames/columns/percentiles', unwrap(go, function (result) {
                 return lodash.head(result.frames);
             }));
         };
@@ -4809,8 +4809,8 @@
         Flow.Dataflow.link(_.requestFrame, requestFrame);
         Flow.Dataflow.link(_.requestFrameSlice, requestFrameSlice);
         Flow.Dataflow.link(_.requestFrameSummary, requestFrameSummary);
-        Flow.Dataflow.link(_.requestFrameSummarySlice, requestFrameSummarySlice);
         Flow.Dataflow.link(_.requestFrameSummaryWithoutData, requestFrameSummaryWithoutData);
+        Flow.Dataflow.link(_.requestFrameSummarySlice, requestFrameSummarySlice);
         Flow.Dataflow.link(_.requestDeleteFrame, requestDeleteFrame);
         Flow.Dataflow.link(_.requestRDDs, requestRDDs);
         Flow.Dataflow.link(_.requestColumnSummary, requestColumnSummary);
@@ -5719,7 +5719,7 @@
         };
         inspectFrameColumns = function (tableLabel, frameKey, frame, frameColumns) {
             return function () {
-                var attr, attrs, column, domain, formatAsLink, title, vectors;
+                var attr, attrs, column, formatAsLink, title, vectors;
                 attrs = [
                     'label',
                     'type',
@@ -5772,7 +5772,7 @@
                                 _results1 = [];
                                 for (_j = 0, _len1 = frameColumns.length; _j < _len1; _j++) {
                                     column = frameColumns[_j];
-                                    _results1.push((domain = column.domain) ? domain.length : void 0);
+                                    _results1.push(column.type === 'enum' ? column.domain_cardinality : void 0);
                                 }
                                 return _results1;
                             }()));
@@ -7597,7 +7597,7 @@
         _data = Flow.Dataflow.signal(null);
         _columnNameSearchTerm = Flow.Dataflow.signal(null);
         _currentPage = Flow.Dataflow.signal(0);
-        _maxPages = Flow.Dataflow.signal(10000);
+        _maxPages = Flow.Dataflow.signal(Math.ceil(_frame.total_column_count / MaxItemsPerPage));
         _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
             return index > 0;
         });
@@ -7620,12 +7620,14 @@
         };
         _lastUsedSearchTerm = null;
         refreshColumns = function (pageIndex) {
-            var searchTerm;
+            var itemCount, searchTerm, startIndex;
             searchTerm = _columnNameSearchTerm();
             if (searchTerm !== _lastUsedSearchTerm) {
                 pageIndex = 0;
             }
-            return _.requestFrameDataE(_frame.frame_id.name, searchTerm, pageIndex * MaxItemsPerPage, MaxItemsPerPage, function (error, frame) {
+            startIndex = pageIndex * MaxItemsPerPage;
+            itemCount = startIndex + MaxItemsPerPage < _frame.total_column_count ? MaxItemsPerPage : _frame.total_column_count - startIndex;
+            return _.requestFrameDataE(_frame.frame_id.name, searchTerm, startIndex, itemCount, function (error, frame) {
                 if (error) {
                 } else {
                     _lastUsedSearchTerm = searchTerm;
@@ -7672,7 +7674,7 @@
         _distributionSummary = Flow.Dataflow.signal(null);
         _columnNameSearchTerm = Flow.Dataflow.signal(null);
         _currentPage = Flow.Dataflow.signal(0);
-        _maxPages = Flow.Dataflow.signal(10000);
+        _maxPages = Flow.Dataflow.signal(Math.ceil(_frame.total_column_count / MaxItemsPerPage));
         _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
             return index > 0;
         });
@@ -7745,12 +7747,14 @@
         };
         _lastUsedSearchTerm = null;
         refreshColumns = function (pageIndex) {
-            var searchTerm;
+            var itemCount, searchTerm, startIndex;
             searchTerm = _columnNameSearchTerm();
             if (searchTerm !== _lastUsedSearchTerm) {
                 pageIndex = 0;
             }
-            return _.requestFrameSummarySliceE(_frame.frame_id.name, searchTerm, pageIndex * MaxItemsPerPage, MaxItemsPerPage, function (error, frame) {
+            startIndex = pageIndex * MaxItemsPerPage;
+            itemCount = startIndex + MaxItemsPerPage < _frame.total_column_count ? MaxItemsPerPage : _frame.total_column_count - startIndex;
+            return _.requestFrameSummarySliceE(_frame.frame_id.name, searchTerm, startIndex, itemCount, function (error, frame) {
                 if (error) {
                 } else {
                     _lastUsedSearchTerm = searchTerm;
@@ -7779,7 +7783,7 @@
         return {
             key: _frame.frame_id.name,
             rowCount: _frame.rows,
-            columnCount: _frame.columns.length,
+            columnCount: _frame.total_column_count,
             size: Flow.Util.formatBytes(_frame.byte_size),
             chunkSummary: _chunkSummary,
             distributionSummary: _distributionSummary,
@@ -8866,11 +8870,12 @@
                                         return column.label;
                                     });
                                     columnLabels = lodash.map(frame.columns, function (column) {
-                                        var missingPercent, na;
+                                        var missingPercent, na, type;
                                         missingPercent = 100 * column.missing_count / frame.rows;
                                         na = missingPercent === 0 ? '' : ' - ' + Math.round(missingPercent) + '% NA';
+                                        type = column.type === 'enum' ? '' + column.type + '[' + column.domain_cardinality + ']' : column.type;
                                         return {
-                                            label: '' + column.label + ' (' + column.type + na + ')',
+                                            label: '' + column.label + ' (' + type + na + ')',
                                             value: column.label,
                                             missingPercent: missingPercent
                                         };
