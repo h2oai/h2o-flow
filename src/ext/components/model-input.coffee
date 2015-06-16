@@ -267,14 +267,12 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                 columnLabels = map frame.columns, (column) -> 
                   missingPercent = 100 * column.missing_count / frame.rows
                   na = if missingPercent is 0 then '' else " - #{round missingPercent}% NA"
-                  # Disabling for now. Too expensive to fetch domain.
-                  # -----
-                  # type = if column.type is 'enum'
-                  #  "#{column.type}[#{column.domain.length}]"
-                  # else
-                  #  column.type
+                  type = if column.type is 'enum'
+                    "#{column.type}[#{column.domain_cardinality}]"
+                  else
+                    column.type
 
-                  label: "#{column.label} (#{column.type}#{na})"
+                  label: "#{column.label} (#{type}#{na})"
                   value: column.label
                   missingPercent: missingPercent
 
