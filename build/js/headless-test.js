@@ -1,4 +1,4 @@
-var hostname, page, system, waitFor, webpage, _ref;
+var hostname, page, system, timeout, timeoutArg, waitFor, webpage, _ref;
 
 system = require('system');
 
@@ -23,6 +23,12 @@ phantom.onError = function(message, stacktrace) {
 
 hostname = (_ref = system.args[1]) != null ? _ref : 'localhost:54321';
 
+console.log("PHANTOM: Using " + hostname);
+
+timeout = (timeoutArg = system.args[2]) ? 1000 * parseInt(timeoutArg, 10) : 3600000;
+
+console.log("PHANTOM: Timeout set to " + timeout + "ms");
+
 page = webpage.create();
 
 page.onResourceError = function(_arg) {
@@ -35,19 +41,16 @@ page.onConsoleMessage = function(message) {
   return console.log("BROWSER: " + message);
 };
 
-waitFor = function(test, onReady, timeout) {
-  var condition, interval, retest, startTime;
-  if (timeout == null) {
-    timeout = 3600000;
-  }
+waitFor = function(test, onReady) {
+  var interval, isComplete, retest, startTime;
   startTime = new Date().getTime();
-  condition = false;
+  isComplete = false;
   retest = function() {
-    if ((new Date().getTime() - startTime < timeout) && !condition) {
+    if ((new Date().getTime() - startTime < timeout) && !isComplete) {
       console.log('PHANTOM: PING');
-      return condition = test();
+      return isComplete = test();
     } else {
-      if (condition) {
+      if (isComplete) {
         onReady();
         return clearInterval(interval);
       } else {

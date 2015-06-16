@@ -1059,40 +1059,32 @@
             <!-- /ko-->
           </tbody>
         </table>
-        <!-- ko if:hasColumns-->
-        <h4>Data Preview</h4>
+        <h4>Edit Column Names and Types</h4>
         <div>
+          <input type="text" placeholder="Search by column name..." data-bind="value:columnNameSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
           <table class="flow-form flow-monospace">
-            <!-- ko if:canReconfigure-->
-            <thead>
+            <tbody>
+              <!-- ko foreach:columns-->
               <tr>
-                <!-- ko foreach:columns-->
+                <td data-bind="text:index"></td>
                 <td style="min-width:100px">
                   <input type="textbox" data-bind="value:name, attr:{'title':name}" class="flow-textbox">
                 </td>
-                <!-- /ko-->
-              </tr>
-              <tr>
-                <!-- ko foreach:columns-->
                 <td>
                   <select data-bind="options:$parent.dataTypes, value:type"></select>
                 </td>
-                <!-- /ko-->
-              </tr>
-            </thead>
-            <!-- /ko-->
-            <tbody>
-              <!-- ko foreach:rows-->
-              <tr>
-                <!-- ko foreach:$data-->
+                <!-- ko foreach:data-->
                 <td data-bind="text:$data"></td>
                 <!-- /ko-->
               </tr>
               <!-- /ko-->
             </tbody>
           </table>
+          <div>
+            <button type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage" class="flow-button"><i class="fa fa-arrow-left"></i><span>Previous page</span></button>
+            <button type="button" data-bind="click:goToNextPage, enable:canGoToNextPage" class="flow-button"><i class="fa fa-arrow-right"></i><span>Next page</span></button>
+          </div>
         </div>
-        <!-- /ko-->
         <div class="flow-panel">
           <button type="button" data-bind="click:parseFiles" class="flow-button"><i class="fa fa-indent"></i>Parse</button>
         </div>
@@ -1712,11 +1704,37 @@
             </tbody>
           </table>
         </div>
-        <div data-bind="raw:grid" class="flow-plot"></div>
+        <h4 data-bind="collapse:false">Column Summaries</h4>
+        <div>
+          <!-- input.flow-textbox(type='text' placeholder='Search by column name...' data-bind="value:columnNameSearchTerm, valueUpdate:'afterkeydown'")-->
+          <div data-bind="raw:grid" class="flow-plot"></div>
+          <div>
+            <button type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage" class="flow-button"><i class="fa fa-arrow-left"></i><span>Previous 20 Columns</span></button>
+            <button type="button" data-bind="click:goToNextPage, enable:canGoToNextPage" class="flow-button"><i class="fa fa-arrow-right"></i><span>Next 20 Columns</span></button>
+          </div>
+        </div>
         <h4 data-bind="collapse:true">Chunk Compression Summary</h4>
         <div data-bind="raw:chunkSummary" class="flow-plot"></div>
         <h4 data-bind="collapse:true">Frame Distribution Summary</h4>
         <div data-bind="raw:distributionSummary" class="flow-plot"></div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-frame-data-output">
+      <div class="flow-widget flow-frame-data-output">
+        <h3 class="flow-hint"><i class="fa fa-database"></i><span data-bind="text:key"></span></h3>
+        <h4 data-bind="collapse:false">Data</h4>
+        <div>
+          <!-- input.flow-textbox(type='text' placeholder='Search by column name...' data-bind="value:columnNameSearchTerm, valueUpdate:'afterkeydown'")-->
+          <div style="padding:0 0 10px 0">
+            <button type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage" class="flow-button"><i class="fa fa-arrow-left"></i><span>Previous 20 Columns</span></button>
+            <button type="button" data-bind="click:goToNextPage, enable:canGoToNextPage" class="flow-button"><i class="fa fa-arrow-right"></i><span>Next 20 Columns</span></button>
+          </div>
+          <div data-bind="raw:data" class="flow-plot"></div>
+          <div>
+            <button type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage" class="flow-button"><i class="fa fa-arrow-left"></i><span>Previous 20 Columns</span></button>
+            <button type="button" data-bind="click:goToNextPage, enable:canGoToNextPage" class="flow-button"><i class="fa fa-arrow-right"></i><span>Next 20 Columns</span></button>
+          </div>
+        </div>
       </div>
     </script>
     <script type="text/html" id="flow-column-summary-output">
