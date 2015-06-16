@@ -1,8 +1,14 @@
 H2O.FrameOutput = (_, _go, _frame) ->
+  MaxItemsPerPage = 20
 
   _grid = signal null
   _chunkSummary = signal null
   _distributionSummary = signal null
+  _columnNameSearchTerm = signal null
+  _currentPage = signal 0
+  _maxPages = signal 10000 #TODO FIXME 
+  _canGoToPreviousPage = lift _currentPage, (index) -> index > 0
+  _canGoToNextPage = lift _maxPages, _currentPage, (maxPages, index) -> index < maxPages - 1
 
   renderPlot = (container, render) ->
     render (error, vis) ->
@@ -30,7 +36,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
     _.insertAndExecuteCell 'cs', "inspect getFrameSummary #{stringify _frame.frame_id.name}"
 
   inspectData = ->
-    _.insertAndExecuteCell 'cs', "grid inspect 'data', getFrame #{stringify _frame.frame_id.name}"
+    _.insertAndExecuteCell 'cs', "getFrameData #{stringify _frame.frame_id.name}"
 
   splitFrame = ->
     _.insertAndExecuteCell 'cs', "assist splitFrame, #{stringify _frame.frame_id.name}"
@@ -46,23 +52,54 @@ H2O.FrameOutput = (_, _go, _frame) ->
       if accept
         _.insertAndExecuteCell 'cs', "deleteFrame #{stringify _frame.frame_id.name}"
 
-  renderGrid _.plot (g) ->
-    g(
-      g.select()
-      g.from _.inspect 'columns', _frame
-    )
+  renderFrame = (frame) ->
+    renderGrid _.plot (g) ->
+      g(
+        g.select()
+        g.from _.inspect 'columns', frame
+      )
 
-  renderPlot _chunkSummary, _.plot (g) ->
-    g(
-      g.select()
-      g.from _.inspect 'Chunk compression summary', _frame
-    )
+    renderPlot _chunkSummary, _.plot (g) ->
+      g(
+        g.select()
+        g.from _.inspect 'Chunk compression summary', frame
+      )
 
-  renderPlot _distributionSummary, _.plot (g) ->
-    g(
-      g.select()
-      g.from _.inspect 'Frame distribution summary', _frame
-    )
+    renderPlot _distributionSummary, _.plot (g) ->
+      g(
+        g.select()
+        g.from _.inspect 'Frame distribution summary', frame
+      )
+
+  _lastUsedSearchTerm = null 
+  refreshColumns = (pageIndex) ->
+    searchTerm = _columnNameSearchTerm()
+    if searchTerm isnt _lastUsedSearchTerm
+      pageIndex = 0
+       
+    _.requestFrameSummarySliceE _frame.frame_id.name, searchTerm, pageIndex * MaxItemsPerPage, MaxItemsPerPage, (error, frame) ->
+      if error
+        #TODO
+      else
+        _lastUsedSearchTerm = searchTerm
+        _currentPage pageIndex
+        renderFrame frame
+       
+  goToPreviousPage = ->
+    currentPage = _currentPage()
+    if currentPage > 0
+      refreshColumns currentPage - 1
+    return
+
+  goToNextPage = ->
+    currentPage = _currentPage()
+    if currentPage < _maxPages() - 1
+      refreshColumns currentPage + 1
+    return
+
+  react _columnNameSearchTerm, throttle refreshColumns, 500
+
+  renderFrame _frame
 
   defer _go
 
@@ -72,6 +109,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
   size: Flow.Util.formatBytes _frame.byte_size
   chunkSummary: _chunkSummary
   distributionSummary: _distributionSummary
+  columnNameSearchTerm: _columnNameSearchTerm
   grid: _grid
   inspect: inspect
   createModel: createModel
@@ -79,6 +117,10 @@ H2O.FrameOutput = (_, _go, _frame) ->
   splitFrame: splitFrame
   predict: predict
   download: download
+  canGoToPreviousPage: _canGoToPreviousPage
+  canGoToNextPage: _canGoToNextPage
+  goToPreviousPage: goToPreviousPage
+  goToNextPage: goToNextPage
   deleteFrame: deleteFrame
   template: 'flow-frame-output'
 
