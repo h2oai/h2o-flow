@@ -445,6 +445,9 @@ H2O.Routines = (_) ->
       extendJob job
     render_ jobs, H2O.JobsOutput, jobs
 
+  extendCancelJob = (cancellation) ->
+    render_ cancellation, H2O.CancelJobOutput, cancellation
+
   extendDeletedKeys = (keys) ->
     render_ keys, H2O.DeleteObjectsOutput, keys
 
@@ -1127,6 +1130,20 @@ H2O.Routines = (_) ->
       else
         assist getJob
 
+  requestCancelJob = (key, go) ->
+    _.requestCancelJob key, (error) ->
+      if error
+        go error
+      else
+        go null, extendCancelJob {}
+
+  cancelJob = (arg) ->
+    switch typeOf arg
+      when 'String'
+        _fork requestCancelJob, arg
+      else
+        assist cancelJob
+
   extendImportResults = (importResults) ->
     render_ importResults, H2O.ImportFilesOutput, importResults
 
@@ -1513,6 +1530,7 @@ H2O.Routines = (_) ->
   # H2O
   getJobs: getJobs
   getJob: getJob
+  cancelJob: cancelJob
   importFiles: importFiles
   setupParse: setupParse
   parseFiles: parseFiles
