@@ -354,16 +354,31 @@ Flow.Notebook = (_, _renderers) ->
     else
       undefined
 
-  displayDocumentation = ->
-    gitBranch = findBuildProperty 'H2O Build git branch'
+
+  getBuildProperties = ->
     projectVersion = findBuildProperty 'H2O Build project version' 
-    buildVersion = if projectVersion then last projectVersion.split '.' else undefined
+    [
+      findBuildProperty 'H2O Build git branch'
+      projectVersion
+      if projectVersion then last projectVersion.split '.' else undefined
+      (findBuildProperty 'H2O Build git hash') or 'master'
+    ]
+
+  displayDocumentation = ->
+    [ gitBranch, projectVersion, buildVersion, gitHash ] = getBuildProperties()
 
     if buildVersion and buildVersion isnt '99999'
       window.open "http://h2o-release.s3.amazonaws.com/h2o/#{gitBranch}/#{buildVersion}/docs-website/h2o-docs/index.html", '_blank'
     else
-      gitHash = (findBuildProperty 'H2O Build git hash') or 'master'
-      window.open "https://github.com/h2oai/h2o-dev/blob/#{gitHash}/h2o-docs/src/product/flow/README.md", '_blank'
+      window.open "https://github.com/h2oai/h2o-3/blob/#{gitHash}/h2o-docs/src/product/flow/README.md", '_blank'
+
+  displayFAQ = ->
+    [ gitBranch, projectVersion, buildVersion, gitHash ] = getBuildProperties()
+
+    if buildVersion and buildVersion isnt '99999'
+      window.open "http://h2o-release.s3.amazonaws.com/h2o/#{gitBranch}/#{buildVersion}/docs-website/h2o-docs/index.html", '_blank'
+    else
+      window.open "https://github.com/h2oai/h2o-3/blob/#{gitHash}/h2o-docs/src/product/howto/FAQ.md", '_blank'
 
   executeCommand = (command) -> ->
     _.insertAndExecuteCell 'cs', command
@@ -605,7 +620,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
         menuDivider
         createMenuItem 'Documentation', displayDocumentation
-        createMenuItem 'FAQ', goToUrl 'http://h2o.ai/product/faq/'
+        createMenuItem 'FAQ', displayFAQ
         createMenuItem 'H2O.ai', goToUrl 'http://h2o.ai/'
         createMenuItem 'H2O on Github', goToUrl 'https://github.com/h2oai/h2o-3'
         createMenuItem 'Report an issue', goToUrl 'http://jira.h2o.ai'
