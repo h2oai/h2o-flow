@@ -67,135 +67,58 @@ createDropdownControl = (parameter) ->
   control
 
 createListControl = (parameter) ->
-  _availableSearchTerm = signal ''
-  _selectedSearchTerm = signal ''
+  MaxEntriesToDisplay = 100
+  _searchCaption = signal "(0 items hidden)"
+  _searchTerm = signal ''
   _ignoreNATerm = signal ''
 
-  createValueView = ({ label, value, missingPercent }) ->
-    _isAvailable = signal yes
-    _canInclude = signal yes
-    _canExclude = signal yes
-    _isUnavailable = signal no
+  _values = signal [] 
 
-    include = ->
-      self.isAvailable no
-      _selectedValues.push self
+  _entries = lift _values, (values) ->
+    map values, (value) ->
+      isSelected: signal no
+      value: value.value
+      type: value.type
+      missingLabel: value.missingLabel
+      missingPercent: value.missingPercent
 
-    exclude = ->
-      self.isAvailable yes
-      _selectedValues.remove self
+  _entryCount = lift _entries, (entries) -> entries.length
 
-    self =
-      label: label
-      value: value
-      missingPercent: missingPercent
-      include: include
-      exclude: exclude
-      canInclude: _canInclude
-      canExclude: _canExclude
-      isAvailable: _isAvailable
-      isUnavailable: _isUnavailable
+  _filteredEntries = lift _entries, (entries) -> entries.slice 0, MaxEntriesToDisplay
 
-  _values = signals map parameter.values, (value) ->
-    label: value
-    value: value
+  _searchCaption = lift _entryCount, _filteredEntries, (total, entries) ->
+    "(Showing #{entries.length} of #{total})"
 
-  _unavailableValues = signal []
-
-  _availableValues = lift _values, (vals) -> map vals, createValueView
-  _views = {}
-  for view in _availableValues()
-    _views[view.value] = view
-
-  _selectedValues = signals map parameter.actual_value, (selectedValue) ->
-    view = _views[selectedValue]
-    view.isAvailable no
-    view
-
-  act _unavailableValues, (unavailableValues) ->
-    # Build lookup dict
-    isUnavailable = {}
-    for value in unavailableValues
-      isUnavailable[value] = yes
-
-    for view in _availableValues() 
-      hidden = isUnavailable[view.value]
-      # Deselect if in exclusion list
-      view.exclude() if hidden and not view.isAvailable()
-      # Mark as unavailable to hide it from both lists.
-      view.isUnavailable hidden
-    return
-
-  # Clear selected values whenever raw values change
-  react _values, -> _selectedValues []
-
-  _value = lift _selectedValues, (views) ->
-    for view in views when not view.isUnavailable()
-      view.value 
-
-  _availableValuesCaption = signal "(0 items hidden)"
-  _selectedValuesCaption = signal "(0 items hidden)"
-
-  includeAll = ->
-    for view in _availableValues() when view.canInclude() and view.isAvailable()
-      view.include()
-    return
-
-  excludeAll = ->
-    selectedValues = copy _selectedValues()
-    for view in selectedValues
-      view.exclude()
-    return
-  
-  _searchAvailable = ->
-    hiddenCount = 0
-    for view in _availableValues()
-      term = _availableSearchTerm().trim()
+  filterEntries = ->
+    filteredEntries = []
+    for entry, i in _entries()
+      term = _searchTerm().trim()
       missingPercent = parseFloat _ignoreNATerm().trim()
       hide = no
-      if (term isnt '') and -1 is view.value.toLowerCase().indexOf term.toLowerCase()
+      if (term isnt '') and -1 is entry.value.toLowerCase().indexOf term.toLowerCase()
         hide = yes
-      else if (not isNaN missingPercent) and (missingPercent isnt 0) and view.missingPercent <= missingPercent
+      else if (not isNaN missingPercent) and (missingPercent isnt 0) and entry.missingPercent <= missingPercent
         hide = yes
-      if hide
-        view.canInclude no
-        hiddenCount++
-      else
-        view.canInclude yes
 
-    _availableValuesCaption "(#{hiddenCount} items hidden)"
+      unless hide
+        filteredEntries.push entry
+
+      if filteredEntries.length > MaxEntriesToDisplay
+        break
+
+    _filteredEntries filteredEntries
     return
 
-  _searchSelected = ->
-    hiddenCount = 0
-    for view in _availableValues()
-      term = _selectedSearchTerm().trim()
-      if term is '' or 0 <= view.value.toLowerCase().indexOf term.toLowerCase()
-        view.canExclude yes
-      else
-        view.canExclude no
-        hiddenCount++ if not view.isAvailable()
-    _selectedValuesCaption "#{hiddenCount} items hidden"
-    return
-
-  react _availableSearchTerm, throttle _searchAvailable, 500
-  react _ignoreNATerm, throttle _searchAvailable, 500
-  react _selectedSearchTerm, throttle _searchSelected, 500
-  react _selectedValues, throttle _searchSelected, 500
+  react _searchTerm, throttle filterEntries, 500
+  react _ignoreNATerm, throttle filterEntries, 500
 
   control = createControl 'list', parameter
   control.values = _values
-  control.availableValues = _availableValues
-  control.unavailableValues = _unavailableValues
-  control.selectedValues = _selectedValues
-  control.value = _value
-  control.availableSearchTerm = _availableSearchTerm
-  control.selectedSearchTerm = _selectedSearchTerm
+  control.entries = _filteredEntries
+  control.searchCaption = _searchCaption
+  control.searchTerm = _searchTerm
   control.ignoreNATerm = _ignoreNATerm
-  control.availableValuesCaption = _availableValuesCaption
-  control.selectedValuesCaption = _selectedValuesCaption
-  control.includeAll = includeAll
-  control.excludeAll = excludeAll
+  control.value = _entries
   control
 
 createCheckboxControl = (parameter) ->
@@ -266,15 +189,11 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                 columnValues = map frame.columns, (column) -> column.label
                 columnLabels = map frame.columns, (column) -> 
                   missingPercent = 100 * column.missing_count / frame.rows
-                  na = if missingPercent is 0 then '' else " - #{round missingPercent}% NA"
-                  type = if column.type is 'enum'
-                    "#{column.type}[#{column.domain_cardinality}]"
-                  else
-                    column.type
 
-                  label: "#{column.label} (#{type}#{na})"
+                  type: if column.type is 'enum' then "enum(#{column.domain_cardinality})" else column.type
                   value: column.label
                   missingPercent: missingPercent
+                  missingLabel: if missingPercent is 0 then '' else "#{round missingPercent}% NA"
 
                 if responseColumnParameter
                   responseColumnParameter.values columnValues
@@ -291,7 +210,8 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                 if responseColumnParameter and ignoredColumnsParameter
                   # Mark response column as 'unavailable' in ignored column list.
                   lift responseColumnParameter.value, (responseVariableName) ->
-                    ignoredColumnsParameter.unavailableValues [ responseVariableName ]
+                    # FIXME
+                    # ignoredColumnsParameter.unavailableValues [ responseVariableName ]
 
           return
 
@@ -307,7 +227,9 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                 parameters[control.name] = value
             when 'list'
               if value.length
-                parameters[control.name] = value
+                selectedValues = for entry in value when entry.isSelected()
+                  entry.value
+                parameters[control.name] = selectedValues
             else
               parameters[control.name] = value
     parameters
