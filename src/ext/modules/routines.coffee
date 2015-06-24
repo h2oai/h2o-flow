@@ -940,7 +940,7 @@ H2O.Routines = (_) ->
       frameExpr = JSON.stringify frameKey
       randomVecKey = createTempKey()
 
-      _.requestExec "(= !#{randomVecKey} (h2o.runif #{frameExpr} #-1))", (error, result) ->
+      _.requestExec "(gput #{randomVecKey} (h2o.runif #{frameExpr} #-1))", (error, result) ->
         if error
           go error
         else
@@ -956,7 +956,7 @@ H2O.Routines = (_) ->
             else
               g
 
-            "(= !#{JSON.stringify part.key} ([ %#{frameExpr} #{sliceExpr} \"null\"))"
+            "(gput #{JSON.stringify part.key} ([ %#{frameExpr} #{sliceExpr} \"null\"))"
 
           futures = map exprs, (expr) ->
             _fork _.requestExec, expr
