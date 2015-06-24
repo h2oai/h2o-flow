@@ -731,6 +731,12 @@ table.flow-form-ruled tr:first-child {
 .flow-outline .fa-trash-o:hover {
   color: #f00;
 }
+.flow-aside {
+  font-size: 80%;
+  text-transform: uppercase;
+  color: #999;
+  border-left: 1px dotted #ccc;
+}
 .flow-help mark {
   display: inline-block;
   font-size: 10px;

@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.20';
+    Flow.Version = '0.3.21';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -948,7 +948,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
         _localName = Flow.Dataflow.signal('Untitled Flow');
         _remoteName = Flow.Dataflow.signal(null);
         _isEditingName = Flow.Dataflow.signal(false);
@@ -1392,16 +1392,32 @@
                 return void 0;
             }
         };
-        displayDocumentation = function () {
-            var buildVersion, gitBranch, gitHash, projectVersion;
-            gitBranch = findBuildProperty('H2O Build git branch');
+        getBuildProperties = function () {
+            var projectVersion;
             projectVersion = findBuildProperty('H2O Build project version');
-            buildVersion = projectVersion ? lodash.last(projectVersion.split('.')) : void 0;
+            return [
+                findBuildProperty('H2O Build git branch'),
+                projectVersion,
+                projectVersion ? lodash.last(projectVersion.split('.')) : void 0,
+                findBuildProperty('H2O Build git hash') || 'master'
+            ];
+        };
+        displayDocumentation = function () {
+            var buildVersion, gitBranch, gitHash, projectVersion, _ref;
+            _ref = getBuildProperties(), gitBranch = _ref[0], projectVersion = _ref[1], buildVersion = _ref[2], gitHash = _ref[3];
             if (buildVersion && buildVersion !== '99999') {
                 return window.open('http://h2o-release.s3.amazonaws.com/h2o/' + gitBranch + '/' + buildVersion + '/docs-website/h2o-docs/index.html', '_blank');
             } else {
-                gitHash = findBuildProperty('H2O Build git hash') || 'master';
-                return window.open('https://github.com/h2oai/h2o-dev/blob/' + gitHash + '/h2o-docs/src/product/flow/README.md', '_blank');
+                return window.open('https://github.com/h2oai/h2o-3/blob/' + gitHash + '/h2o-docs/src/product/flow/README.md', '_blank');
+            }
+        };
+        displayFAQ = function () {
+            var buildVersion, gitBranch, gitHash, projectVersion, _ref;
+            _ref = getBuildProperties(), gitBranch = _ref[0], projectVersion = _ref[1], buildVersion = _ref[2], gitHash = _ref[3];
+            if (buildVersion && buildVersion !== '99999') {
+                return window.open('http://h2o-release.s3.amazonaws.com/h2o/' + gitBranch + '/' + buildVersion + '/docs-website/h2o-docs/index.html', '_blank');
+            } else {
+                return window.open('https://github.com/h2oai/h2o-3/blob/' + gitHash + '/h2o-docs/src/product/howto/FAQ.md', '_blank');
             }
         };
         executeCommand = function (command) {
@@ -1653,7 +1669,7 @@
                     createMenuItem('Keyboard Shortcuts', displayKeyboardShortcuts),
                     menuDivider,
                     createMenuItem('Documentation', displayDocumentation),
-                    createMenuItem('FAQ', goToUrl('http://h2o.ai/product/faq/')),
+                    createMenuItem('FAQ', displayFAQ),
                     createMenuItem('H2O.ai', goToUrl('http://h2o.ai/')),
                     createMenuItem('H2O on Github', goToUrl('https://github.com/h2oai/h2o-3')),
                     createMenuItem('Report an issue', goToUrl('http://jira.h2o.ai')),
@@ -5129,7 +5145,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, blacklistedAttributesBySchema, buildModel, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrameData, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrameData, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5522,6 +5538,9 @@
                 extendJob(job);
             }
             return render_(jobs, H2O.JobsOutput, jobs);
+        };
+        extendCancelJob = function (cancellation) {
+            return render_(cancellation, H2O.CancelJobOutput, cancellation);
         };
         extendDeletedKeys = function (keys) {
             return render_(keys, H2O.DeleteObjectsOutput, keys);
@@ -6454,6 +6473,23 @@
                 return assist(getJob);
             }
         };
+        requestCancelJob = function (key, go) {
+            return _.requestCancelJob(key, function (error) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendCancelJob({}));
+                }
+            });
+        };
+        cancelJob = function (arg) {
+            switch (Flow.Prelude.typeOf(arg)) {
+            case 'String':
+                return _fork(requestCancelJob, arg);
+            default:
+                return assist(cancelJob);
+            }
+        };
         extendImportResults = function (importResults) {
             return render_(importResults, H2O.ImportFilesOutput, importResults);
         };
@@ -6970,6 +7006,7 @@
             loadScript: loadScript,
             getJobs: getJobs,
             getJob: getJob,
+            cancelJob: cancelJob,
             importFiles: importFiles,
             setupParse: setupParse,
             parseFiles: parseFiles,
@@ -7040,6 +7077,12 @@
             }(),
             template: 'flow-assist'
         };
+    };
+}.call(this));
+(function () {
+    H2O.CancelJobOutput = function (_, _go, _cancellation) {
+        lodash.defer(_go);
+        return { template: 'flow-cancel-job-output' };
     };
 }.call(this));
 (function () {
@@ -8575,167 +8618,118 @@
         return control;
     };
     createListControl = function (parameter) {
-        var control, createValueView, excludeAll, includeAll, view, _availableSearchTerm, _availableValues, _availableValuesCaption, _i, _ignoreNATerm, _len, _ref, _searchAvailable, _searchSelected, _selectedSearchTerm, _selectedValues, _selectedValuesCaption, _unavailableValues, _value, _values, _views;
-        _availableSearchTerm = Flow.Dataflow.signal('');
-        _selectedSearchTerm = Flow.Dataflow.signal('');
+        var MaxEntriesToDisplay, blockSelectionUpdates, changeSelection, control, createEntry, deselectAll, deselectVisible, filterEntries, incrementSelectionCount, selectAll, selectVisible, _entries, _filteredEntries, _hasVisibleEntries, _ignoreNATerm, _isUpdatingSelectionCount, _searchCaption, _searchTerm, _selectionCount, _values;
+        MaxEntriesToDisplay = 100;
+        _searchCaption = Flow.Dataflow.signal('(0 items hidden)');
+        _searchTerm = Flow.Dataflow.signal('');
         _ignoreNATerm = Flow.Dataflow.signal('');
-        createValueView = function (_arg) {
-            var exclude, include, label, missingPercent, self, value, _canExclude, _canInclude, _isAvailable, _isUnavailable;
-            label = _arg.label, value = _arg.value, missingPercent = _arg.missingPercent;
-            _isAvailable = Flow.Dataflow.signal(true);
-            _canInclude = Flow.Dataflow.signal(true);
-            _canExclude = Flow.Dataflow.signal(true);
-            _isUnavailable = Flow.Dataflow.signal(false);
-            include = function () {
-                self.isAvailable(false);
-                return _selectedValues.push(self);
-            };
-            exclude = function () {
-                self.isAvailable(true);
-                return _selectedValues.remove(self);
-            };
-            return self = {
-                label: label,
-                value: value,
-                missingPercent: missingPercent,
-                include: include,
-                exclude: exclude,
-                canInclude: _canInclude,
-                canExclude: _canExclude,
-                isAvailable: _isAvailable,
-                isUnavailable: _isUnavailable
-            };
+        _values = Flow.Dataflow.signal([]);
+        _selectionCount = Flow.Dataflow.signal(0);
+        _isUpdatingSelectionCount = false;
+        blockSelectionUpdates = function (f) {
+            _isUpdatingSelectionCount = true;
+            f();
+            return _isUpdatingSelectionCount = false;
         };
-        _values = Flow.Dataflow.signals(lodash.map(parameter.values, function (value) {
-            return {
-                label: value,
-                value: value
-            };
-        }));
-        _unavailableValues = Flow.Dataflow.signal([]);
-        _availableValues = Flow.Dataflow.lift(_values, function (vals) {
-            return lodash.map(vals, createValueView);
-        });
-        _views = {};
-        _ref = _availableValues();
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            view = _ref[_i];
-            _views[view.value] = view;
-        }
-        _selectedValues = Flow.Dataflow.signals(lodash.map(parameter.actual_value, function (selectedValue) {
-            view = _views[selectedValue];
-            view.isAvailable(false);
-            return view;
-        }));
-        Flow.Dataflow.act(_unavailableValues, function (unavailableValues) {
-            var hidden, isUnavailable, value, _j, _k, _len1, _len2, _ref1;
-            isUnavailable = {};
-            for (_j = 0, _len1 = unavailableValues.length; _j < _len1; _j++) {
-                value = unavailableValues[_j];
-                isUnavailable[value] = true;
-            }
-            _ref1 = _availableValues();
-            for (_k = 0, _len2 = _ref1.length; _k < _len2; _k++) {
-                view = _ref1[_k];
-                hidden = isUnavailable[view.value];
-                if (hidden && !view.isAvailable()) {
-                    view.exclude();
-                }
-                view.isUnavailable(hidden);
-            }
-        });
-        Flow.Dataflow.react(_values, function () {
-            return _selectedValues([]);
-        });
-        _value = Flow.Dataflow.lift(_selectedValues, function (views) {
-            var _j, _len1, _results;
-            _results = [];
-            for (_j = 0, _len1 = views.length; _j < _len1; _j++) {
-                view = views[_j];
-                if (!view.isUnavailable()) {
-                    _results.push(view.value);
-                }
-            }
-            return _results;
-        });
-        _availableValuesCaption = Flow.Dataflow.signal('(0 items hidden)');
-        _selectedValuesCaption = Flow.Dataflow.signal('(0 items hidden)');
-        includeAll = function () {
-            var _j, _len1, _ref1;
-            _ref1 = _availableValues();
-            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-                view = _ref1[_j];
-                if (view.canInclude() && view.isAvailable()) {
-                    view.include();
-                }
-            }
+        incrementSelectionCount = function (amount) {
+            return _selectionCount(_selectionCount() + amount);
         };
-        excludeAll = function () {
-            var selectedValues, _j, _len1;
-            selectedValues = Flow.Prelude.copy(_selectedValues());
-            for (_j = 0, _len1 = selectedValues.length; _j < _len1; _j++) {
-                view = selectedValues[_j];
-                view.exclude();
-            }
-        };
-        _searchAvailable = function () {
-            var hiddenCount, hide, missingPercent, term, _j, _len1, _ref1;
-            hiddenCount = 0;
-            _ref1 = _availableValues();
-            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-                view = _ref1[_j];
-                term = _availableSearchTerm().trim();
-                missingPercent = parseFloat(_ignoreNATerm().trim());
-                hide = false;
-                if (term !== '' && -1 === view.value.toLowerCase().indexOf(term.toLowerCase())) {
-                    hide = true;
-                } else if (!lodash.isNaN(missingPercent) && missingPercent !== 0 && view.missingPercent <= missingPercent) {
-                    hide = true;
-                }
-                if (hide) {
-                    view.canInclude(false);
-                    hiddenCount++;
-                } else {
-                    view.canInclude(true);
-                }
-            }
-            _availableValuesCaption('(' + hiddenCount + ' items hidden)');
-        };
-        _searchSelected = function () {
-            var hiddenCount, term, _j, _len1, _ref1;
-            hiddenCount = 0;
-            _ref1 = _availableValues();
-            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-                view = _ref1[_j];
-                term = _selectedSearchTerm().trim();
-                if (term === '' || 0 <= view.value.toLowerCase().indexOf(term.toLowerCase())) {
-                    view.canExclude(true);
-                } else {
-                    view.canExclude(false);
-                    if (!view.isAvailable()) {
-                        hiddenCount++;
+        createEntry = function (value) {
+            var isSelected;
+            isSelected = Flow.Dataflow.signal(false);
+            Flow.Dataflow.react(isSelected, function (isSelected) {
+                if (!_isUpdatingSelectionCount) {
+                    if (isSelected) {
+                        incrementSelectionCount(1);
+                    } else {
+                        incrementSelectionCount(-1);
                     }
                 }
-            }
-            _selectedValuesCaption('' + hiddenCount + ' items hidden');
+            });
+            return {
+                isSelected: isSelected,
+                value: value.value,
+                type: value.type,
+                missingLabel: value.missingLabel,
+                missingPercent: value.missingPercent
+            };
         };
-        Flow.Dataflow.react(_availableSearchTerm, lodash.throttle(_searchAvailable, 500));
-        Flow.Dataflow.react(_ignoreNATerm, lodash.throttle(_searchAvailable, 500));
-        Flow.Dataflow.react(_selectedSearchTerm, lodash.throttle(_searchSelected, 500));
-        Flow.Dataflow.react(_selectedValues, lodash.throttle(_searchSelected, 500));
+        _entries = Flow.Dataflow.lift(_values, function (values) {
+            return lodash.map(values, createEntry);
+        });
+        _filteredEntries = Flow.Dataflow.lift(_entries, function (entries) {
+            return entries.slice(0, MaxEntriesToDisplay);
+        });
+        _hasVisibleEntries = Flow.Dataflow.lift(_filteredEntries, function (entries) {
+            return entries.length > 0;
+        });
+        _searchCaption = Flow.Dataflow.lift(_entries, _filteredEntries, _selectionCount, function (entries, filteredEntries, selectionCount) {
+            return 'Showing ' + filteredEntries.length + ' of ' + entries.length + ' (' + selectionCount + ' selected).';
+        });
+        filterEntries = function () {
+            var entry, filteredEntries, hide, i, missingPercent, term, _i, _len, _ref;
+            filteredEntries = [];
+            _ref = _entries();
+            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                entry = _ref[i];
+                term = _searchTerm().trim();
+                missingPercent = parseFloat(_ignoreNATerm().trim());
+                hide = false;
+                if (term !== '' && -1 === entry.value.toLowerCase().indexOf(term.toLowerCase())) {
+                    hide = true;
+                } else if (!lodash.isNaN(missingPercent) && missingPercent !== 0 && entry.missingPercent <= missingPercent) {
+                    hide = true;
+                }
+                if (!hide) {
+                    filteredEntries.push(entry);
+                }
+                if (filteredEntries.length > MaxEntriesToDisplay) {
+                    break;
+                }
+            }
+            _filteredEntries(filteredEntries);
+        };
+        changeSelection = function (source, value) {
+            var entry, _i, _len;
+            for (_i = 0, _len = source.length; _i < _len; _i++) {
+                entry = source[_i];
+                entry.isSelected(value);
+            }
+        };
+        selectAll = function () {
+            var entries;
+            entries = _entries();
+            blockSelectionUpdates(function () {
+                return changeSelection(entries, true);
+            });
+            return _selectionCount(entries.length);
+        };
+        deselectAll = function () {
+            blockSelectionUpdates(function () {
+                return changeSelection(_entries(), false);
+            });
+            return _selectionCount(0);
+        };
+        selectVisible = function () {
+            return changeSelection(_filteredEntries(), true);
+        };
+        deselectVisible = function () {
+            return changeSelection(_filteredEntries(), false);
+        };
+        Flow.Dataflow.react(_searchTerm, lodash.throttle(filterEntries, 500));
+        Flow.Dataflow.react(_ignoreNATerm, lodash.throttle(filterEntries, 500));
         control = createControl('list', parameter);
         control.values = _values;
-        control.availableValues = _availableValues;
-        control.unavailableValues = _unavailableValues;
-        control.selectedValues = _selectedValues;
-        control.value = _value;
-        control.availableSearchTerm = _availableSearchTerm;
-        control.selectedSearchTerm = _selectedSearchTerm;
+        control.entries = _filteredEntries;
+        control.hasVisibleEntries = _hasVisibleEntries;
+        control.searchCaption = _searchCaption;
+        control.searchTerm = _searchTerm;
         control.ignoreNATerm = _ignoreNATerm;
-        control.availableValuesCaption = _availableValuesCaption;
-        control.selectedValuesCaption = _selectedValuesCaption;
-        control.includeAll = includeAll;
-        control.excludeAll = excludeAll;
+        control.value = _entries;
+        control.selectAll = selectAll;
+        control.deselectAll = deselectAll;
+        control.selectVisible = selectVisible;
+        control.deselectVisible = deselectVisible;
         return control;
     };
     createCheckboxControl = function (parameter) {
@@ -8870,14 +8864,13 @@
                                         return column.label;
                                     });
                                     columnLabels = lodash.map(frame.columns, function (column) {
-                                        var missingPercent, na, type;
+                                        var missingPercent;
                                         missingPercent = 100 * column.missing_count / frame.rows;
-                                        na = missingPercent === 0 ? '' : ' - ' + Math.round(missingPercent) + '% NA';
-                                        type = column.type === 'enum' ? '' + column.type + '[' + column.domain_cardinality + ']' : column.type;
                                         return {
-                                            label: '' + column.label + ' (' + type + na + ')',
+                                            type: column.type === 'enum' ? 'enum(' + column.domain_cardinality + ')' : column.type,
                                             value: column.label,
-                                            missingPercent: missingPercent
+                                            missingPercent: missingPercent,
+                                            missingLabel: missingPercent === 0 ? '' : '' + Math.round(missingPercent) + '% NA'
                                         };
                                     });
                                     if (responseColumnParameter) {
@@ -8894,7 +8887,6 @@
                                     }
                                     if (responseColumnParameter && ignoredColumnsParameter) {
                                         return Flow.Dataflow.lift(responseColumnParameter.value, function (responseVariableName) {
-                                            return ignoredColumnsParameter.unavailableValues([responseVariableName]);
                                         });
                                     }
                                 }
@@ -8905,7 +8897,7 @@
             }
         }());
         collectParameters = function (includeUnchangedParameters) {
-            var controls, parameters, value, _l, _len3, _len4, _m;
+            var controls, entry, parameters, selectedValues, value, _l, _len3, _len4, _m;
             if (includeUnchangedParameters == null) {
                 includeUnchangedParameters = false;
             }
@@ -8924,7 +8916,18 @@
                             break;
                         case 'list':
                             if (value.length) {
-                                parameters[control.name] = value;
+                                selectedValues = function () {
+                                    var _len5, _n, _results;
+                                    _results = [];
+                                    for (_n = 0, _len5 = value.length; _n < _len5; _n++) {
+                                        entry = value[_n];
+                                        if (entry.isSelected()) {
+                                            _results.push(entry.value);
+                                        }
+                                    }
+                                    return _results;
+                                }();
+                                parameters[control.name] = selectedValues;
                             }
                             break;
                         default:
