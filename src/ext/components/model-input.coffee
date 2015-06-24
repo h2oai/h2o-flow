@@ -74,20 +74,40 @@ createListControl = (parameter) ->
 
   _values = signal [] 
 
-  _entries = lift _values, (values) ->
-    map values, (value) ->
-      isSelected: signal no
-      value: value.value
-      type: value.type
-      missingLabel: value.missingLabel
-      missingPercent: value.missingPercent
+  _selectionCount = signal 0
 
-  _entryCount = lift _entries, (entries) -> entries.length
+  _isUpdatingSelectionCount = no
+  blockSelectionUpdates = (f) ->
+    _isUpdatingSelectionCount = yes
+    f()
+    _isUpdatingSelectionCount = no
+
+  incrementSelectionCount = (amount) ->
+    _selectionCount _selectionCount() + amount
+  createEntry = (value) ->
+    isSelected = signal no
+    react isSelected, (isSelected) -> 
+      unless _isUpdatingSelectionCount
+        if isSelected
+          incrementSelectionCount 1
+        else
+          incrementSelectionCount -1
+      return
+
+    isSelected: isSelected
+    value: value.value
+    type: value.type
+    missingLabel: value.missingLabel
+    missingPercent: value.missingPercent
+
+  _entries = lift _values, (values) -> map values, createEntry
 
   _filteredEntries = lift _entries, (entries) -> entries.slice 0, MaxEntriesToDisplay
 
-  _searchCaption = lift _entryCount, _filteredEntries, (total, entries) ->
-    "(Showing #{entries.length} of #{total})"
+  _hasVisibleEntries = lift _filteredEntries, (entries) -> entries.length > 0
+
+  _searchCaption = lift _entries, _filteredEntries, _selectionCount, (entries, filteredEntries, selectionCount) ->
+    "Showing #{filteredEntries.length} of #{entries.length} (#{selectionCount} selected)."
 
   filterEntries = ->
     filteredEntries = []
@@ -109,16 +129,41 @@ createListControl = (parameter) ->
     _filteredEntries filteredEntries
     return
 
+  changeSelection = (source, value) ->
+    for entry in source
+      entry.isSelected value
+    return
+
+  selectAll = ->
+    entries = _entries()
+    blockSelectionUpdates -> changeSelection entries, yes
+    _selectionCount entries.length
+
+  deselectAll = ->
+    blockSelectionUpdates -> changeSelection _entries(), no
+    _selectionCount 0
+
+  selectVisible = ->
+    changeSelection _filteredEntries(), yes
+
+  deselectVisible = ->
+    changeSelection _filteredEntries(), no
+
   react _searchTerm, throttle filterEntries, 500
   react _ignoreNATerm, throttle filterEntries, 500
 
   control = createControl 'list', parameter
   control.values = _values
   control.entries = _filteredEntries
+  control.hasVisibleEntries = _hasVisibleEntries
   control.searchCaption = _searchCaption
   control.searchTerm = _searchTerm
   control.ignoreNATerm = _ignoreNATerm
   control.value = _entries
+  control.selectAll = selectAll
+  control.deselectAll = deselectAll
+  control.selectVisible = selectVisible
+  control.deselectVisible = deselectVisible
   control
 
 createCheckboxControl = (parameter) ->
