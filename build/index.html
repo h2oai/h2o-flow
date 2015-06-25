@@ -1370,11 +1370,11 @@
           </div>
           <div style="font-size:80%" data-bind="text:searchCaption"></div>
           <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
-            <table width="100%">
+            <table>
               <tbody>
                 <!-- ko foreach:entries-->
                 <tr>
-                  <td class="flow-wide">
+                  <td>
                     <label>
                       <input type="checkbox" data-bind="checked:isSelected"><span data-bind="text:value"></span>
                     </label>
@@ -1386,11 +1386,15 @@
               </tbody>
             </table>
           </div>
+          <div style="margin-bottom:10px">
+                <button type="button" data-bind="click:selectFiltered, enable:hasFilteredItems" class="flow-button">Ignore These</button>
+                <button type="button" data-bind="click:deselectFiltered, enable:hasFilteredItems" class="flow-button">Include These</button>
+                <button type="button" data-bind="click:selectAll" class="flow-button">Ignore All</button>
+                <button type="button" data-bind="click:deselectAll" class="flow-button">Include All</button>
+          </div>
           <div>
-                <button type="button" data-bind="click:selectVisible, enable:hasVisibleEntries" class="flow-button">Select Visible</button>
-                <button type="button" data-bind="click:deselectVisible, enable:hasVisibleEntries" class="flow-button">Deselect Visible</button>
-                <button type="button" data-bind="click:selectAll" class="flow-button">Select All</button>
-                <button type="button" data-bind="click:deselectAll" class="flow-button">Deselect All</button>
+            <button type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage" class="flow-button"><i class="fa fa-arrow-left"></i><span>Previous 100</span></button>
+            <button type="button" data-bind="click:goToNextPage, enable:canGoToNextPage" class="flow-button"><i class="fa fa-arrow-right"></i><span>Next 100</span></button>
           </div>
           <div style="font-size:80%">Only show columns with more than&nbsp;
             <input type="text" style="width:30px" placeholder="0" data-bind="value:ignoreNATerm, valueUpdate:'afterkeydown'" class="flow-textbox">% missing values.
