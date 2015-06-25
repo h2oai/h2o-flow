@@ -67,8 +67,7 @@ createDropdownControl = (parameter) ->
   control
 
 createListControl = (parameter) ->
-  MaxEntriesToDisplay = 100
-  _searchCaption = signal "(0 items hidden)"
+  MaxItemsPerPage = 100
   _searchTerm = signal ''
   _ignoreNATerm = signal ''
 
@@ -101,32 +100,46 @@ createListControl = (parameter) ->
     missingPercent: value.missingPercent
 
   _entries = lift _values, (values) -> map values, createEntry
+  _filteredItems = signal []
+  _visibleItems = signal []
+  _hasFilteredItems = lift _filteredItems, (entries) -> entries.length > 0
+  _currentPage = signal 0
+  _maxPages = lift _filteredItems, (entries) -> Math.ceil entries.length / MaxItemsPerPage
+  _canGoToPreviousPage = lift _currentPage, (index) -> index > 0
+  _canGoToNextPage = lift _maxPages, _currentPage, (maxPages, index) -> index < maxPages - 1
 
-  _filteredEntries = lift _entries, (entries) -> entries.slice 0, MaxEntriesToDisplay
+  _searchCaption = lift _entries, _filteredItems, _selectionCount, _currentPage, _maxPages, (entries, filteredItems, selectionCount, currentPage, maxPages) ->
+    (if maxPages is 0 then '' else "Showing page #{currentPage + 1} of #{maxPages}. ") + "Filtered #{filteredItems.length} of #{entries.length}. #{selectionCount} ignored."
 
-  _hasVisibleEntries = lift _filteredEntries, (entries) -> entries.length > 0
+  react _entries, -> filterItems()
 
-  _searchCaption = lift _entries, _filteredEntries, _selectionCount, (entries, filteredEntries, selectionCount) ->
-    "Showing #{filteredEntries.length} of #{entries.length} (#{selectionCount} selected)."
+  _lastUsedSearchTerm = null
+  _lastUsedIgnoreNaTerm = null
+  filterItems = ->
+    searchTerm = _searchTerm().trim()
+    ignoreNATerm = _ignoreNATerm().trim()
 
-  filterEntries = ->
-    filteredEntries = []
-    for entry, i in _entries()
-      term = _searchTerm().trim()
-      missingPercent = parseFloat _ignoreNATerm().trim()
-      hide = no
-      if (term isnt '') and -1 is entry.value.toLowerCase().indexOf term.toLowerCase()
-        hide = yes
-      else if (not isNaN missingPercent) and (missingPercent isnt 0) and entry.missingPercent <= missingPercent
-        hide = yes
+    if searchTerm isnt _lastUsedSearchTerm or ignoreNATerm isnt _lastUsedIgnoreNaTerm
+      filteredItems = []
+      for entry, i in _entries()
+        missingPercent = parseFloat ignoreNATerm
+        hide = no
+        if (searchTerm isnt '') and -1 is entry.value.toLowerCase().indexOf searchTerm.toLowerCase()
+          hide = yes
+        else if (not isNaN missingPercent) and (missingPercent isnt 0) and entry.missingPercent <= missingPercent
+          hide = yes
 
-      unless hide
-        filteredEntries.push entry
+        unless hide
+          filteredItems.push entry
 
-      if filteredEntries.length > MaxEntriesToDisplay
-        break
+      _lastUsedSearchTerm = searchTerm
+      _lastUsedIgnoreNaTerm = ignoreNATerm
+      _currentPage 0
+      _filteredItems filteredItems
+    
+    start = _currentPage() * MaxItemsPerPage
+    _visibleItems _filteredItems().slice start, start + MaxItemsPerPage
 
-    _filteredEntries filteredEntries
     return
 
   changeSelection = (source, value) ->
@@ -143,27 +156,43 @@ createListControl = (parameter) ->
     blockSelectionUpdates -> changeSelection _entries(), no
     _selectionCount 0
 
-  selectVisible = ->
-    changeSelection _filteredEntries(), yes
+  selectFiltered = ->
+    changeSelection _filteredItems(), yes
 
-  deselectVisible = ->
-    changeSelection _filteredEntries(), no
+  deselectFiltered = ->
+    changeSelection _filteredItems(), no
 
-  react _searchTerm, throttle filterEntries, 500
-  react _ignoreNATerm, throttle filterEntries, 500
+  goToPreviousPage = ->
+    if _canGoToPreviousPage()
+      _currentPage _currentPage() - 1
+      filterItems()
+    return
+  
+  goToNextPage = ->
+    if _canGoToNextPage()
+      _currentPage _currentPage() + 1
+      filterItems()
+    return
+
+  react _searchTerm, throttle filterItems, 500
+  react _ignoreNATerm, throttle filterItems, 500
 
   control = createControl 'list', parameter
   control.values = _values
-  control.entries = _filteredEntries
-  control.hasVisibleEntries = _hasVisibleEntries
+  control.entries = _visibleItems
+  control.hasFilteredItems = _hasFilteredItems
   control.searchCaption = _searchCaption
   control.searchTerm = _searchTerm
   control.ignoreNATerm = _ignoreNATerm
   control.value = _entries
   control.selectAll = selectAll
   control.deselectAll = deselectAll
-  control.selectVisible = selectVisible
-  control.deselectVisible = deselectVisible
+  control.selectFiltered = selectFiltered
+  control.deselectFiltered = deselectFiltered
+  control.goToPreviousPage = goToPreviousPage
+  control.goToNextPage = goToNextPage
+  control.canGoToPreviousPage = _canGoToPreviousPage
+  control.canGoToNextPage = _canGoToNextPage
   control
 
 createCheckboxControl = (parameter) ->
