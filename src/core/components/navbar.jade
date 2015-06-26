@@ -30,9 +30,9 @@
         // /ko
 
         // ko if:action
-        li(data-bind="css:{ 'disabled':isDisabled }")
+        li
           a(href='#' data-bind='click:action') 
-            span(data-bind='text:label')
+            span(data-bind='html:label')
         // /ko
 
         // /ko

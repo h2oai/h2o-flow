@@ -509,10 +509,17 @@ Flow.Notebook = (_, _renderers) ->
     label: label
     action: null
 
-  createMenuItem = (label, action, isDisabled=no) ->
-    label: label
+  createShortcutHint = (shortcut) ->
+    "<span style='float:right'>" + (map shortcut, (key) -> "<kbd>#{ key }</kbd>").join(' ') + "</span>"
+
+  createMenuItem = (label, action, shortcut) ->
+    kbds = if shortcut
+      createShortcutHint shortcut
+    else
+      ''
+
+    label: "#{ escape label }#{ kbds }"
     action: action
-    isDisabled: isDisabled
 
   menuDivider = label: null, action: null
 
@@ -520,7 +527,7 @@ Flow.Notebook = (_, _renderers) ->
 
   initializeMenus = (builder) ->
     modelMenuItems = map(builder, (builder) ->
-      createMenuItem builder.algo_full_name, executeCommand "buildModel #{stringify builder.algo}"
+      createMenuItem "#{ builder.algo_full_name }...", executeCommand "buildModel #{stringify builder.algo}"
     ).concat [
       menuDivider
       createMenuItem 'List All Models', executeCommand 'getModels'
@@ -530,7 +537,7 @@ Flow.Notebook = (_, _renderers) ->
       createMenu 'Flow', [
         createMenuItem 'New Flow', createNotebook
         createMenuItem 'Open Flow...', promptForNotebook
-        createMenuItem 'Save Flow', saveNotebook
+        createMenuItem 'Save Flow', saveNotebook, ['s']
         createMenuItem 'Make a Copy...', duplicateNotebook
         menuDivider
         createMenuItem 'Run All Cells', runAllCells
@@ -544,25 +551,25 @@ Flow.Notebook = (_, _renderers) ->
       ]
     ,
       createMenu 'Cell', [
-        createMenuItem 'Cut Cell', cutCell
-        createMenuItem 'Copy Cell', copyCell
-        createMenuItem 'Paste Cell Above', pasteCellAbove
-        createMenuItem 'Paste Cell Below', pasteCellBelow
+        createMenuItem 'Cut Cell', cutCell, ['x']
+        createMenuItem 'Copy Cell', copyCell, ['c']
+        createMenuItem 'Paste Cell Above', pasteCellAbove, ['shift', 'v']
+        createMenuItem 'Paste Cell Below', pasteCellBelow, ['v']
         #TODO createMenuItem 'Paste Cell and Replace', pasteCellandReplace, yes
-        createMenuItem 'Delete Cell', deleteCell
-        createMenuItem 'Undo Delete Cell', undoLastDelete
+        createMenuItem 'Delete Cell', deleteCell, ['d', 'd']
+        createMenuItem 'Undo Delete Cell', undoLastDelete, ['z']
         menuDivider
-        createMenuItem 'Move Cell Up', moveCellUp
-        createMenuItem 'Move Cell Down', moveCellDown
+        createMenuItem 'Move Cell Up', moveCellUp, ['ctrl', 'k']
+        createMenuItem 'Move Cell Down', moveCellDown, ['ctrl', 'j']
         menuDivider
-        createMenuItem 'Insert Cell Above', insertNewCellAbove
-        createMenuItem 'Insert Cell Below', insertNewCellBelow
+        createMenuItem 'Insert Cell Above', insertNewCellAbove, ['a']
+        createMenuItem 'Insert Cell Below', insertNewCellBelow, ['b']
         #TODO createMenuItem 'Split Cell', splitCell
         #TODO createMenuItem 'Merge Cell Above', mergeCellAbove, yes
         #TODO createMenuItem 'Merge Cell Below', mergeCellBelow
         menuDivider
         createMenuItem 'Toggle Cell Input', toggleInput
-        createMenuItem 'Toggle Cell Output', toggleOutput
+        createMenuItem 'Toggle Cell Output', toggleOutput, ['o']
         createMenuItem 'Clear Cell Output', clearCell
       ]
     ,
@@ -601,7 +608,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Download Logs', goToUrl '/Logs/download'
         menuDivider
         createMenuHeader 'Advanced'
-        createMenuItem 'Create Synthetic Frame', executeCommand 'createFrame'
+        createMenuItem 'Create Synthetic Frame...', executeCommand 'createFrame'
         createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
         createMenuItem 'Network Test', executeCommand 'testNetwork'
         #TODO Cluster I/O
@@ -617,7 +624,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Assist Me', executeCommand 'assist'
         menuDivider
         createMenuItem 'Contents', showHelp
-        createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts
+        createMenuItem 'Keyboard Shortcuts', displayKeyboardShortcuts, ['h']
         menuDivider
         createMenuItem 'Documentation', displayDocumentation
         createMenuItem 'FAQ', displayFAQ
@@ -645,20 +652,21 @@ Flow.Notebook = (_, _renderers) ->
     [
       createTool 'file-o', 'New', createNotebook
       createTool 'folder-open-o', 'Open', promptForNotebook
-      createTool 'save', 'Save', saveNotebook
+      createTool 'save', 'Save (s)', saveNotebook
     ]
   ,
     [
-      createTool 'plus', 'Insert Cell Below', insertNewCellBelow
-      createTool 'arrow-up', 'Move Cell Up', moveCellUp
-      createTool 'arrow-down', 'Move Cell Down', moveCellDown
+      createTool 'plus', 'Insert Cell Below (b)', insertNewCellBelow
+      createTool 'arrow-up', 'Move Cell Up (ctrl+k)', moveCellUp
+      createTool 'arrow-down', 'Move Cell Down (ctrl+j)', moveCellDown
     ]
   ,
     [
-      createTool 'cut', 'Cut Cell', cutCell
-      createTool 'copy', 'Copy Cell', copyCell
-      createTool 'paste', 'Paste Cell Below', pasteCellBelow
+      createTool 'cut', 'Cut Cell (x)', cutCell
+      createTool 'copy', 'Copy Cell (c)', copyCell
+      createTool 'paste', 'Paste Cell Below (v)', pasteCellBelow
       createTool 'eraser', 'Clear Cell', clearCell
+      createTool 'trash-o', 'Delete Cell (d d)', deleteCell
     ]
   ,
     [
@@ -668,7 +676,7 @@ Flow.Notebook = (_, _renderers) ->
     ]
   ,
     [
-      createTool 'support', 'Assist Me', executeCommand 'assist'
+      createTool 'question-circle', 'Assist Me', executeCommand 'assist'
     ]
   ]
 
