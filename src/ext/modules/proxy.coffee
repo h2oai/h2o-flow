@@ -6,6 +6,16 @@ H2O.Proxy = (_) ->
       url: url
       success: (data, status, xhr) -> go null, data
       error: (xhr, status, error) -> go new Flow.Error error
+
+  optsToString = (opts) ->
+    if opts?
+      str = " with opts #{ JSON.stringify opts }"
+      if str.length > 50
+        "#{ str.substr 0, 50 }..."
+      else
+        str
+    else
+      ''
   
   http = (method, path, opts, go) ->
     _.status 'server', 'request', path
@@ -49,14 +59,10 @@ H2O.Proxy = (_) ->
         serverError
       else if error?.message
         new Flow.Error error.message
-      else if status is 0
-        new Flow.Error 'Could not connect to H2O'
-      else if isString error
-        new Flow.Error error
       else
-        new Flow.Error 'Unknown error'
+        new Flow.Error "HTTP connection failure: status=#{status}, code=#{xhr.status}, error=#{error or '?'}"
 
-      go new Flow.Error "Error calling #{method} #{path} with opts #{JSON.stringify opts}", cause
+      go new Flow.Error "Error calling #{method} #{path}#{optsToString opts}", cause
 
   doGet = (path, go) -> http 'GET', path, null, go
   doPost = (path, opts, go) -> http 'POST', path, opts, go
