@@ -551,6 +551,8 @@ Flow.Notebook = (_, _renderers) ->
       ]
     ,
       createMenu 'Cell', [
+        createMenuItem 'Run Cell', runCell, ['ctrl', 'enter']
+        menuDivider
         createMenuItem 'Cut Cell', cutCell, ['x']
         createMenuItem 'Copy Cell', copyCell, ['c']
         createMenuItem 'Paste Cell Above', pasteCellAbove, ['shift', 'v']
@@ -671,7 +673,7 @@ Flow.Notebook = (_, _renderers) ->
   ,
     [
       createTool 'step-forward', 'Run and Select Below', runCellAndSelectBelow
-      createTool 'play', 'Run', runCell
+      createTool 'play', 'Run (ctrl+enter)', runCell
       createTool 'forward', 'Run All', runAllCells
     ]
   ,
