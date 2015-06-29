@@ -8,13 +8,50 @@ phantom.onError = (message, stacktrace) ->
     console.log "PHANTOM: *** ERROR *** #{message}\n" + stack.join '\n'
     phantom.exit 1
 
-hostname = system.args[1] ? 'localhost:54321'
+printUsageAndExit = (message) ->
+  console.log "*** #{message} ***"
+  console.log 'Usage: phantomjs headless-test.js [--host ip:port] [--timeout seconds] --pack foo [--pack bar ...]'
+  console.log '    ip:port  defaults to localhost:54321'
+  console.log '    timeout  defaults to 3600'
+  phantom.exit 1
+
+parseOpts = (args) ->
+  if args.length % 2 is 1
+    printUsageAndExit 'Expected even number of command line arguments'
+  opts = {}
+  for key, i in args when i % 2 is 0
+    if key[0 .. 1] isnt '--'
+      return printUsageAndExit "Expected keyword. Found #{key}"
+    value = args[i + 1]
+    if key of opts
+      previous = opts[key]
+      if Array.isArray previous
+        previous.push value
+      else
+        opts[key] = [ previous, value ]
+    else
+      opts[key] = value
+  opts
+
+opts = parseOpts system.args[1..]
+
+hostname = opts['--host'] ? 'localhost:54321'
 console.log "PHANTOM: Using #{hostname}"
 
-timeout = if timeoutArg = system.args[2]
+timeout = if timeoutArg = opts['--timeout']
   1000 * parseInt timeoutArg, 10
 else
   3600000
+
+packsArg = opts['--pack']
+packNames = if packsArg
+  if Array.isArray packsArg
+    packsArg
+  else
+    [ packsArg ]
+else
+  []
+
 console.log "PHANTOM: Timeout set to #{timeout}ms"
 
 page = webpage.create()
@@ -38,95 +75,119 @@ waitFor = (test, onReady) ->
         clearInterval interval
       else
         console.log 'PHANTOM: *** ERROR *** Timeout Exceeded'
-        phantom.exit 1 
+        phantom.exit 1
 
   interval = setInterval retest, 2000
 
 page.open "http://#{hostname}/flow/index.html", (status) ->
   if status is 'success'
     test = ->
-      page.evaluate -> 
-        context = window.flow.context
-        if window._phantom_started_
-          if window._phantom_exit_ then yes else no
+      page.evaluate(
+        (packNames) ->
+          context = window.flow.context
+          if window._phantom_started_
+            if window._phantom_exit_ then yes else no
+          else
+            runPacks = (go) ->
+              window._phantom_test_summary_ = {}
+              tasks = packNames.map (packName) ->
+                (go) -> runPack packName, go
+              (Flow.Async.iterate tasks) go
+
+            runPack = (packName, go) ->
+              console.log "Fetching pack: #{packName}..."
+              context.requestPack packName, (error, flowNames) ->
+                if error
+                  console.log "*** ERROR *** Failed fetching pack #{packName}"
+                  go new Error "Failed fetching pack #{packName}", error
+                else
+                  console.log 'Processing pack...'
+                  tasks = flowNames.map (flowName) ->
+                    (go) -> runFlow packName, flowName, go
+                  (Flow.Async.iterate tasks) go
+
+            runFlow = (packName, flowName, go) ->
+              flowTitle = "#{packName} - #{flowName}"
+              window._phantom_test_summary_[flowTitle] = 'FAILED'
+              console.log "Fetching flow document: #{packName} - #{flowName}..."
+              context.requestFlow packName, flowName, (error, flow) ->
+                if error
+                  console.log "*** ERROR *** Failed fetching flow #{flowTitle}"
+                  go new Error "Failed fetching flow #{flowTitle}", error
+                else
+                  console.log "Opening flow #{flowTitle}..."
+
+                  window._phantom_running_ = yes
+
+                  # open flow
+                  context.open flowTitle, flow
+
+                  waitForFlow = ->
+                    if window._phantom_running_
+                      console.log 'ACK'
+                      setTimeout waitForFlow, 2000
+                    else
+                      console.log 'Flow completed!'
+                      errors = window._phantom_errors_
+                      # delete all keys from the k/v store
+                      context.requestRemoveAll ->
+                        go if errors then errors else null
+
+                  console.log 'Running flow...'
+                  context.executeAllCells yes, (status, errors) ->
+                    console.log "Flow finished with status: #{status}"
+                    if status is 'failed'
+                      window._phantom_errors_ = errors
+                    else
+                      window._phantom_test_summary_[flowTitle] = 'PASSED'
+                    window._phantom_running_ = no
+
+                  setTimeout waitForFlow, 2000
+
+            console.log 'Starting tests...'
+            window._phantom_errors_ = null
+            window._phantom_started_ = yes
+            runPacks (error) ->
+              if error
+                console.log '*** ERROR *** Error running packs'
+                window._phantom_errors_ = error.message ? error
+              else
+                console.log 'Finished running all packs!'
+              window._phantom_exit_ = yes
+            no
+        packNames
+      )
+
+    printErrors = (errors, prefix='') ->
+      if errors
+        if Array.isArray errors
+          (printErrors error, prefix + '  ' for error in errors).join '\n'
+        else if errors.message
+          if errors.cause
+            errors.message + '\n' + printErrors errors.cause, prefix + '  '
+          else
+            errors.message
         else
-          runPacks = (go) ->
-            console.log 'Fetching packs...'
-            context.requestPacks (error, packNames) ->
-              if error
-                console.log '*** ERROR *** Failed fetching packs'
-                go error
-              else
-                console.log 'Processing packs...'
-                tasks = packNames.map (packName) ->
-                  (go) -> runPack packName, go
-                (Flow.Async.iterate tasks) go
-
-          runPack = (packName, go) ->
-            console.log "Fetching pack: #{packName}"
-            context.requestPack packName, (error, flowNames) ->
-              if error
-                console.log '*** ERROR *** Failed fetching pack'
-                go error
-              else
-                console.log 'Processing pack...'
-                tasks = flowNames.map (flowName) ->
-                  (go) -> runFlow packName, flowName, go
-                (Flow.Async.iterate tasks) go
-
-          runFlow = (packName, flowName, go) ->
-            console.log "Fetching flow document: #{packName} - #{flowName}"
-            context.requestFlow packName, flowName, (error, flow) ->
-              if error
-                console.log '*** ERROR *** Failed fetching flow document'
-                go error
-              else
-                flowTitle = "#{packName} - #{flowName}"
-                console.log "Opening flow #{flowTitle}"
-
-                window._phantom_running_ = yes
-
-                # open flow
-                context.open flowTitle, flow
-
-                waitForFlow = ->
-                  if window._phantom_running_
-                    console.log 'ACK'
-                    setTimeout waitForFlow, 2000
-                  else
-                    console.log 'Flow completed!'
-                    errors = window._phantom_errors_
-                    # delete all keys from the k/v store
-                    context.requestRemoveAll ->
-                      go if errors then errors else null
-                
-                console.log 'Running flow...'
-                context.executeAllCells yes, (status, errors) ->
-                  console.log "Flow finished with status: #{status}"
-                  if status is 'failed'
-                    window._phantom_errors_ = errors
-                  window._phantom_running_ = no
-
-                setTimeout waitForFlow, 2000
-
-          console.log 'Starting tests...'
-          window._phantom_errors_ = null
-          window._phantom_started_ = yes
-          runPacks (error) ->
-            if error
-              console.log '*** ERROR *** Error running packs: ' + JSON.stringify error
-            else
-              console.log 'Finished running all packs!'
-            window._phantom_exit_ = yes
-          no
+          errors
+      else
+        errors
 
     waitFor test, ->
       errors = page.evaluate -> window._phantom_errors_
       if errors
-        console.log 'PHANTOM: *** ERROR *** One or more flows failed to complete: ' + JSON.stringify errors
+        console.log '------------------ FAILED -------------------'
+        console.log printErrors errors
+        console.log '---------------------------------------------'
         phantom.exit 1
       else
-        console.log 'PHANTOM: Success! All flows ran to completion!'
+        summary = page.evaluate -> window._phantom_test_summary_
+        console.log '------------------ PASSED -------------------'
+        testCount = 0
+        for flowTitle, testStatus of summary
+          console.log "#{testStatus}: #{flowTitle}"
+          testCount++
+        console.log "(#{testCount} tests executed.)"
+        console.log '---------------------------------------------'
         phantom.exit 0
   else
     console.log 'PHANTOM: *** ERROR *** Unable to access network.'
