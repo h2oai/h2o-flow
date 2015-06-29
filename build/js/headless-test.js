@@ -1,4 +1,4 @@
-var hostname, page, system, timeout, timeoutArg, waitFor, webpage, _ref;
+var hostname, opts, packNames, packsArg, page, parseOpts, printUsageAndExit, system, timeout, timeoutArg, waitFor, webpage, _ref;
 
 system = require('system');
 
@@ -21,11 +21,54 @@ phantom.onError = function(message, stacktrace) {
   }
 };
 
-hostname = (_ref = system.args[1]) != null ? _ref : 'localhost:54321';
+printUsageAndExit = function(message) {
+  console.log("*** " + message + " ***");
+  console.log('Usage: phantomjs headless-test.js [--host ip:port] [--timeout seconds] --pack foo [--pack bar ...]');
+  console.log('    ip:port  defaults to localhost:54321');
+  console.log('    timeout  defaults to 3600');
+  return phantom.exit(1);
+};
+
+parseOpts = function(args) {
+  var i, key, opts, previous, value, _i, _len;
+  if (args.length % 2 === 1) {
+    printUsageAndExit('Expected even number of command line arguments');
+  }
+  opts = {};
+  for (i = _i = 0, _len = args.length; _i < _len; i = ++_i) {
+    key = args[i];
+    if (!(i % 2 === 0)) {
+      continue;
+    }
+    if (key.slice(0, 2) !== '--') {
+      return printUsageAndExit("Expected keyword. Found " + key);
+    }
+    value = args[i + 1];
+    if (key in opts) {
+      previous = opts[key];
+      if (Array.isArray(previous)) {
+        previous.push(value);
+      } else {
+        opts[key] = [previous, value];
+      }
+    } else {
+      opts[key] = value;
+    }
+  }
+  return opts;
+};
+
+opts = parseOpts(system.args.slice(1));
+
+hostname = (_ref = opts['--host']) != null ? _ref : 'localhost:54321';
 
 console.log("PHANTOM: Using " + hostname);
 
-timeout = (timeoutArg = system.args[2]) ? 1000 * parseInt(timeoutArg, 10) : 3600000;
+timeout = (timeoutArg = opts['--timeout']) ? 1000 * parseInt(timeoutArg, 10) : 3600000;
+
+packsArg = opts['--pack'];
+
+packNames = packsArg ? Array.isArray(packsArg) ? packsArg : [packsArg] : [];
 
 console.log("PHANTOM: Timeout set to " + timeout + "ms");
 
@@ -63,10 +106,10 @@ waitFor = function(test, onReady) {
 };
 
 page.open("http://" + hostname + "/flow/index.html", function(status) {
-  var test;
+  var printErrors, test;
   if (status === 'success') {
     test = function() {
-      return page.evaluate(function() {
+      return page.evaluate(function(packNames) {
         var context, runFlow, runPack, runPacks;
         context = window.flow.context;
         if (window._phantom_started_) {
@@ -77,30 +120,22 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
           }
         } else {
           runPacks = function(go) {
-            console.log('Fetching packs...');
-            return context.requestPacks(function(error, packNames) {
-              var tasks;
-              if (error) {
-                console.log('*** ERROR *** Failed fetching packs');
-                return go(error);
-              } else {
-                console.log('Processing packs...');
-                tasks = packNames.map(function(packName) {
-                  return function(go) {
-                    return runPack(packName, go);
-                  };
-                });
-                return (Flow.Async.iterate(tasks))(go);
-              }
+            var tasks;
+            window._phantom_test_summary_ = {};
+            tasks = packNames.map(function(packName) {
+              return function(go) {
+                return runPack(packName, go);
+              };
             });
+            return (Flow.Async.iterate(tasks))(go);
           };
           runPack = function(packName, go) {
-            console.log("Fetching pack: " + packName);
+            console.log("Fetching pack: " + packName + "...");
             return context.requestPack(packName, function(error, flowNames) {
               var tasks;
               if (error) {
-                console.log('*** ERROR *** Failed fetching pack');
-                return go(error);
+                console.log("*** ERROR *** Failed fetching pack " + packName);
+                return go(new Error("Failed fetching pack " + packName, error));
               } else {
                 console.log('Processing pack...');
                 tasks = flowNames.map(function(flowName) {
@@ -113,15 +148,17 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
             });
           };
           runFlow = function(packName, flowName, go) {
-            console.log("Fetching flow document: " + packName + " - " + flowName);
+            var flowTitle;
+            flowTitle = "" + packName + " - " + flowName;
+            window._phantom_test_summary_[flowTitle] = 'FAILED';
+            console.log("Fetching flow document: " + packName + " - " + flowName + "...");
             return context.requestFlow(packName, flowName, function(error, flow) {
-              var flowTitle, waitForFlow;
+              var waitForFlow;
               if (error) {
-                console.log('*** ERROR *** Failed fetching flow document');
-                return go(error);
+                console.log("*** ERROR *** Failed fetching flow " + flowTitle);
+                return go(new Error("Failed fetching flow " + flowTitle, error));
               } else {
-                flowTitle = "" + packName + " - " + flowName;
-                console.log("Opening flow " + flowTitle);
+                console.log("Opening flow " + flowTitle + "...");
                 window._phantom_running_ = true;
                 context.open(flowTitle, flow);
                 waitForFlow = function() {
@@ -142,6 +179,8 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
                   console.log("Flow finished with status: " + status);
                   if (status === 'failed') {
                     window._phantom_errors_ = errors;
+                  } else {
+                    window._phantom_test_summary_[flowTitle] = 'PASSED';
                   }
                   return window._phantom_running_ = false;
                 });
@@ -153,8 +192,10 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
           window._phantom_errors_ = null;
           window._phantom_started_ = true;
           runPacks(function(error) {
+            var _ref1;
             if (error) {
-              console.log('*** ERROR *** Error running packs: ' + JSON.stringify(error));
+              console.log('*** ERROR *** Error running packs');
+              window._phantom_errors_ = (_ref1 = error.message) != null ? _ref1 : error;
             } else {
               console.log('Finished running all packs!');
             }
@@ -162,18 +203,60 @@ page.open("http://" + hostname + "/flow/index.html", function(status) {
           });
           return false;
         }
-      });
+      }, packNames);
+    };
+    printErrors = function(errors, prefix) {
+      var error;
+      if (prefix == null) {
+        prefix = '';
+      }
+      if (errors) {
+        if (Array.isArray(errors)) {
+          return ((function() {
+            var _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = errors.length; _i < _len; _i++) {
+              error = errors[_i];
+              _results.push(printErrors(error, prefix + '  '));
+            }
+            return _results;
+          })()).join('\n');
+        } else if (errors.message) {
+          if (errors.cause) {
+            return errors.message + '\n' + printErrors(errors.cause, prefix + '  ');
+          } else {
+            return errors.message;
+          }
+        } else {
+          return errors;
+        }
+      } else {
+        return errors;
+      }
     };
     return waitFor(test, function() {
-      var errors;
+      var errors, flowTitle, summary, testCount, testStatus;
       errors = page.evaluate(function() {
         return window._phantom_errors_;
       });
       if (errors) {
-        console.log('PHANTOM: *** ERROR *** One or more flows failed to complete: ' + JSON.stringify(errors));
+        console.log('------------------ FAILED -------------------');
+        console.log(printErrors(errors));
+        console.log('---------------------------------------------');
         return phantom.exit(1);
       } else {
-        console.log('PHANTOM: Success! All flows ran to completion!');
+        summary = page.evaluate(function() {
+          return window._phantom_test_summary_;
+        });
+        console.log('------------------ PASSED -------------------');
+        testCount = 0;
+        for (flowTitle in summary) {
+          testStatus = summary[flowTitle];
+          console.log("" + testStatus + ": " + flowTitle);
+          testCount++;
+        }
+        console.log("(" + testCount + " tests executed.)");
+        console.log('---------------------------------------------');
         return phantom.exit(0);
       }
     });

@@ -205,7 +205,7 @@
               <!-- /ko-->
               <!-- /ko-->
               <!-- ko if:action-->
-              <li data-bind="css:{ 'disabled':isDisabled }"><a href="#" data-bind="click:action"><span data-bind="text:label"></span></a></li>
+              <li><a href="#" data-bind="click:action"><span data-bind="html:label"></span></a></li>
               <!-- /ko-->
               <!-- /ko-->
             </ul>
@@ -595,7 +595,7 @@
     </script>
     <script type="text/html" id="flow-assist">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-support"></i>Assistance</h3>
+        <h3 class="flow-hint"><i class="fa fa-question-circle"></i>Assistance</h3>
         <table class="flow-form">
           <thead>
             <tr>
@@ -618,7 +618,7 @@
     </script>
     <script type="text/html" id="flow-no-assist">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-support"></i>Uh-oh</h3>
+        <h3 class="flow-hint"><i class="fa fa-question-circle"></i>Uh-oh</h3>
         <blockquote>Sorry, I cannot assist you with that routine.</blockquote>
         <div class="flow-panel">
           <button type="button" data-bind="click:showAssist" class="flow-button"><i class="fa fa-bars"></i>Assist me&hellip;</button>

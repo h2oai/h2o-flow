@@ -66,6 +66,9 @@ label input[type="checkbox"] {
 .navbar-default .navbar-nav > .open > a:focus {
   background-color: #faf185;
 }
+.dropdown-menu {
+  min-width: 230px;
+}
 .flow-box {
   position: absolute;
   display: block;
