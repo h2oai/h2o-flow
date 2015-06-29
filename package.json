@@ -11,7 +11,7 @@
     "build": "gulp",
     "clean": "gulp clean",
     "watch": "gulp && gulp watch",
-    "headless": "gulp && phantomjs build/js/headless-test.js",
+    "headless": "gulp && phantomjs build/js/headless-test.js --packs examples",
     "test-raw": "gulp build-tests && node build/js/flow-tests.js -s",
     "test": "gulp build-tests && node build/js/flow-tests.js -s | faucet",
     "coverage": "mkdir -p build/js/coverage && gulp build-tests && istanbul cover --dir build/js/coverage -x \"**/lib/**\" build/js/flow-tests.js && istanbul report --dir build/js/coverage cobertura"
