@@ -23,14 +23,15 @@ phantom.onError = function(message, stacktrace) {
 
 printUsageAndExit = function(message) {
   console.log("*** " + message + " ***");
-  console.log('Usage: phantomjs headless-test.js [--host ip:port] [--timeout seconds] --pack foo [--pack bar ...]');
+  console.log('Usage: phantomjs headless-test.js [--host ip:port] [--timeout seconds] --packs foo:bar:baz');
   console.log('    ip:port  defaults to localhost:54321');
   console.log('    timeout  defaults to 3600');
   return phantom.exit(1);
 };
 
 parseOpts = function(args) {
-  var i, key, opts, previous, value, _i, _len;
+  var i, key, opts, _i, _len;
+  console.log("Using args " + (args.join(' ')));
   if (args.length % 2 === 1) {
     printUsageAndExit('Expected even number of command line arguments');
   }
@@ -43,17 +44,7 @@ parseOpts = function(args) {
     if (key.slice(0, 2) !== '--') {
       return printUsageAndExit("Expected keyword. Found " + key);
     }
-    value = args[i + 1];
-    if (key in opts) {
-      previous = opts[key];
-      if (Array.isArray(previous)) {
-        previous.push(value);
-      } else {
-        opts[key] = [previous, value];
-      }
-    } else {
-      opts[key] = value;
-    }
+    opts[key] = args[i + 1];
   }
   return opts;
 };
@@ -66,11 +57,11 @@ console.log("PHANTOM: Using " + hostname);
 
 timeout = (timeoutArg = opts['--timeout']) ? 1000 * parseInt(timeoutArg, 10) : 3600000;
 
-packsArg = opts['--pack'];
+console.log("PHANTOM: Using timeout " + timeout + "ms");
 
-packNames = packsArg ? Array.isArray(packsArg) ? packsArg : [packsArg] : [];
+packsArg = opts['--packs'];
 
-console.log("PHANTOM: Timeout set to " + timeout + "ms");
+packNames = packsArg ? packsArg.split(':') : ['examples'];
 
 page = webpage.create();
 
