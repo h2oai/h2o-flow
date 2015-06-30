@@ -1114,10 +1114,10 @@ H2O.Routines = (_) ->
             requestColumnSummary frame, column, go
 
   imputeColumn = (opts) ->
-    if opts
+    if opts and opts.frame and opts.column and opts.method
       _fork requestImputeColumn, opts
     else
-      assist imputeColumn
+      assist imputeColumn, opts
 
   requestDeleteModel = (modelKey, go) ->
     _.requestDeleteModel modelKey, (error, result) ->

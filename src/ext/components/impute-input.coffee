@@ -18,13 +18,13 @@ _allCombineMethods = createOptions [
 H2O.ImputeInput = (_, _go, opts={}) ->
   _frames = signal []
 
-  _frame = signal opts.frame or null
+  _frame = signal null
 
   _hasFrame = lift _frame, (frame) -> if frame then yes else no
 
   _columns = signal []
 
-  _column = signal opts.column or null
+  _column = signal null
 
   _methods = _allMethods
 
@@ -63,6 +63,10 @@ H2O.ImputeInput = (_, _go, opts={}) ->
       #TODO handle properly
     else
       _frames (frame.frame_id.name for frame in frames when not frame.is_text)
+      if opts.frame
+        _frame opts.frame
+
+      return
 
   react _frame, (frame) ->
     if frame
@@ -71,6 +75,9 @@ H2O.ImputeInput = (_, _go, opts={}) ->
           #TODO handle properly
         else
           _columns (column.label for column in frame.columns)
+          if opts.column
+            _column opts.column
+            delete opts.column #HACK
     else
       _columns []
   
