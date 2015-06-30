@@ -50,7 +50,8 @@ H2O.ImputeInput = (_, _go, opts={}) ->
       method: method.value
 
     if method.value is 'MEDIAN'
-      arg.combineMethod = _combineMethod()
+      if combineMethod = _combineMethod()
+        arg.combineMethod = combineMethod.value
     else
       groupByColumns = _groupByColumns()
       if groupByColumns.length
