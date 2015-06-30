@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.25';
+    Flow.Version = '0.3.26';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1618,6 +1618,11 @@
                     createMenuItem('Download this Flow...', exportNotebook)
                 ]),
                 createMenu('Cell', [
+                    createMenuItem('Run Cell', runCell, [
+                        'ctrl',
+                        'enter'
+                    ]),
+                    menuDivider,
                     createMenuItem('Cut Cell', cutCell, ['x']),
                     createMenuItem('Copy Cell', copyCell, ['c']),
                     createMenuItem('Paste Cell Above', pasteCellAbove, [
@@ -1652,7 +1657,9 @@
                     createMenuItem('Upload File...', uploadFile),
                     createMenuItem('Split Frame...', executeCommand('splitFrame')),
                     menuDivider,
-                    createMenuItem('List All Frames', executeCommand('getFrames'))
+                    createMenuItem('List All Frames', executeCommand('getFrames')),
+                    menuDivider,
+                    createMenuItem('Impute...', executeCommand('imputeColumn'))
                 ]),
                 createMenu('Model', modelMenuItems),
                 createMenu('Score', [
@@ -1730,7 +1737,7 @@
             ],
             [
                 createTool('step-forward', 'Run and Select Below', runCellAndSelectBelow),
-                createTool('play', 'Run', runCell),
+                createTool('play', 'Run (ctrl+enter)', runCell),
                 createTool('forward', 'Run All', runAllCells)
             ],
             [createTool('question-circle', 'Assist Me', executeCommand('assist'))]
@@ -4307,7 +4314,7 @@
                 var cause, meta, response, serverError;
                 _.status('server', 'error', path);
                 response = xhr.responseJSON;
-                cause = (meta = response != null ? response.__meta : void 0) && (meta.schema_type === 'H2OError' || meta.schema_type === 'H2OModelBuilderError') ? (serverError = new Flow.Error(response.exception_msg), serverError.stack = '' + response.dev_msg + ' (' + response.exception_type + ')' + '\n  ' + response.stacktrace.join('\n  '), serverError) : (error != null ? error.message : void 0) ? new Flow.Error(error.message) : new Flow.Error('HTTP connection failure: status=' + status + ', code=' + xhr.status + ', error=' + (error || '?'));
+                cause = (meta = response != null ? response.__meta : void 0) && (meta.schema_type === 'H2OError' || meta.schema_type === 'H2OModelBuilderError') ? (serverError = new Flow.Error(response.exception_msg), serverError.stack = '' + response.dev_msg + ' (' + response.exception_type + ')' + '\n  ' + response.stacktrace.join('\n  '), serverError) : (error != null ? error.message : void 0) ? new Flow.Error(error.message) : status === 'error' && code === 0 ? new Flow.Error('Could not connect to H2O. Your H2O cloud is currently unresponsive.') : new Flow.Error('HTTP connection failure: status=' + status + ', code=' + xhr.status + ', error=' + (error || '?'));
                 return go(new Flow.Error('Error calling ' + method + ' ' + path + optsToString(opts), cause));
             });
         };
@@ -5174,7 +5181,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrameData, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrameData, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -6427,6 +6434,71 @@
                 return assist(getModel);
             }
         };
+        findColumnIndexByColumnLabel = function (frame, columnLabel) {
+            var column, i, _i, _len, _ref1;
+            _ref1 = frame.columns;
+            for (i = _i = 0, _len = _ref1.length; _i < _len; i = ++_i) {
+                column = _ref1[i];
+                if (column.label === columnLabel) {
+                    return i;
+                }
+            }
+            throw new Flow.Error('Column [' + columnLabel + '] not found in frame');
+        };
+        findColumnIndicesByColumnLabels = function (frame, columnLabels) {
+            var columnLabel, _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = columnLabels.length; _i < _len; _i++) {
+                columnLabel = columnLabels[_i];
+                _results.push(findColumnIndexByColumnLabel(frame, columnLabel));
+            }
+            return _results;
+        };
+        requestImputeColumn = function (opts, go) {
+            var column, combineMethod, frame, groupByColumns, method;
+            frame = opts.frame, column = opts.column, method = opts.method, combineMethod = opts.combineMethod, groupByColumns = opts.groupByColumns;
+            combineMethod = combineMethod != null ? combineMethod : 'INTERPOLATE';
+            return _.requestFrameSummaryWithoutData(frame, function (error, result) {
+                var columnIndex, columnIndicesError, columnKeyError, groupByArg, groupByColumnIndices;
+                if (error) {
+                    return go(error);
+                } else {
+                    try {
+                        columnIndex = findColumnIndexByColumnLabel(result, column);
+                    } catch (_error) {
+                        columnKeyError = _error;
+                        return go(columnKeyError);
+                    }
+                    if (groupByColumns && groupByColumns.length) {
+                        try {
+                            groupByColumnIndices = findColumnIndicesByColumnLabels(result, groupByColumns);
+                        } catch (_error) {
+                            columnIndicesError = _error;
+                            return go(columnIndicesError);
+                        }
+                    } else {
+                        groupByColumnIndices = null;
+                    }
+                    groupByArg = groupByColumnIndices ? '(llist ' + groupByColumnIndices.map(function (a) {
+                        return '#' + a;
+                    }).join(' ') + ')' : '()';
+                    return _.requestExec('(h2o.impute %' + JSON.stringify(frame) + ' #' + columnIndex + ' ' + JSON.stringify(method) + ' ' + JSON.stringify(combineMethod) + ' ' + groupByArg + ' %TRUE)', function (error, result) {
+                        if (error) {
+                            return go(error);
+                        } else {
+                            return requestColumnSummary(frame, column, go);
+                        }
+                    });
+                }
+            });
+        };
+        imputeColumn = function (opts) {
+            if (opts && opts.frame && opts.column && opts.method) {
+                return _fork(requestImputeColumn, opts);
+            } else {
+                return assist(imputeColumn, opts);
+            }
+        };
         requestDeleteModel = function (modelKey, go) {
             return _.requestDeleteModel(modelKey, function (error, result) {
                 if (error) {
@@ -6971,6 +7043,8 @@
                     return _fork(proceed, H2O.CreateFrameInput, args);
                 case splitFrame:
                     return _fork(proceed, H2O.SplitFrameInput, args);
+                case imputeColumn:
+                    return _fork(proceed, H2O.ImputeInput, args);
                 default:
                     return _fork(proceed, H2O.NoAssist, []);
                 }
@@ -7049,6 +7123,7 @@
             deleteFrame: deleteFrame,
             getRDDs: getRDDs,
             getColumnSummary: getColumnSummary,
+            imputeColumn: imputeColumn,
             buildModel: buildModel,
             getModels: getModels,
             getModel: getModel,
@@ -7450,7 +7525,7 @@
 }.call(this));
 (function () {
     H2O.ColumnSummaryOutput = function (_, _go, frameKey, frame, columnName) {
-        var column, inspect, renderPlot, table, _characteristicsPlot, _distributionPlot, _domainPlot, _summaryPlot;
+        var column, impute, inspect, renderPlot, table, _characteristicsPlot, _distributionPlot, _domainPlot, _summaryPlot;
         column = lodash.head(frame.columns);
         _characteristicsPlot = Flow.Dataflow.signal(null);
         _summaryPlot = Flow.Dataflow.signal(null);
@@ -7485,6 +7560,9 @@
                 return g(g.rect(g.position('count', 'label')), g.from(table), g.limit(1000));
             }));
         }
+        impute = function () {
+            return _.insertAndExecuteCell('cs', 'imputeColumn frame: ' + Flow.Prelude.stringify(frameKey) + ', column: ' + Flow.Prelude.stringify(columnName));
+        };
         inspect = function () {
             return _.insertAndExecuteCell('cs', 'inspect getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName));
         };
@@ -7495,6 +7573,7 @@
             summaryPlot: _summaryPlot,
             distributionPlot: _distributionPlot,
             domainPlot: _domainPlot,
+            impute: impute,
             inspect: inspect,
             template: 'flow-column-summary-output'
         };
@@ -8184,6 +8263,145 @@
             templateOf: function (view) {
                 return view.template;
             }
+        };
+    };
+}.call(this));
+(function () {
+    var createOptions, _allCombineMethods, _allMethods;
+    createOptions = function (options) {
+        var option, _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = options.length; _i < _len; _i++) {
+            option = options[_i];
+            _results.push({
+                caption: option,
+                value: option.toUpperCase()
+            });
+        }
+        return _results;
+    };
+    _allMethods = createOptions([
+        'Mean',
+        'Median',
+        'Mode'
+    ]);
+    _allCombineMethods = createOptions([
+        'Interpolate',
+        'Average',
+        'Low',
+        'High'
+    ]);
+    H2O.ImputeInput = function (_, _go, opts) {
+        var impute, _canGroupByColumns, _canImpute, _canUseCombineMethod, _column, _columns, _combineMethod, _combineMethods, _frame, _frames, _groupByColumns, _hasFrame, _method, _methods;
+        if (opts == null) {
+            opts = {};
+        }
+        _frames = Flow.Dataflow.signal([]);
+        _frame = Flow.Dataflow.signal(null);
+        _hasFrame = Flow.Dataflow.lift(_frame, function (frame) {
+            if (frame) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        _columns = Flow.Dataflow.signal([]);
+        _column = Flow.Dataflow.signal(null);
+        _methods = _allMethods;
+        _method = Flow.Dataflow.signal(_allMethods[0]);
+        _canUseCombineMethod = Flow.Dataflow.lift(_method, function (method) {
+            return method.value === 'MEDIAN';
+        });
+        _combineMethods = _allCombineMethods;
+        _combineMethod = Flow.Dataflow.signal(_allCombineMethods[0]);
+        _canGroupByColumns = Flow.Dataflow.lift(_method, function (method) {
+            return method.value !== 'MEDIAN';
+        });
+        _groupByColumns = Flow.Dataflow.signals([]);
+        _canImpute = Flow.Dataflow.lift(_frame, _column, function (frame, column) {
+            return frame && column;
+        });
+        impute = function () {
+            var arg, groupByColumns, method;
+            method = _method();
+            arg = {
+                frame: _frame(),
+                column: _column(),
+                method: method.value
+            };
+            if (method.value === 'MEDIAN') {
+                arg.combineMethod = _combineMethod();
+            } else {
+                groupByColumns = _groupByColumns();
+                if (groupByColumns.length) {
+                    arg.groupByColumns = groupByColumns;
+                }
+            }
+            return _.insertAndExecuteCell('cs', 'imputeColumn ' + JSON.stringify(arg));
+        };
+        _.requestFrames(function (error, frames) {
+            var frame;
+            if (error) {
+            } else {
+                _frames(function () {
+                    var _i, _len, _results;
+                    _results = [];
+                    for (_i = 0, _len = frames.length; _i < _len; _i++) {
+                        frame = frames[_i];
+                        if (!frame.is_text) {
+                            _results.push(frame.frame_id.name);
+                        }
+                    }
+                    return _results;
+                }());
+                if (opts.frame) {
+                    _frame(opts.frame);
+                }
+            }
+        });
+        Flow.Dataflow.react(_frame, function (frame) {
+            if (frame) {
+                return _.requestFrameSummaryWithoutData(frame, function (error, frame) {
+                    var column;
+                    if (error) {
+                    } else {
+                        _columns(function () {
+                            var _i, _len, _ref, _results;
+                            _ref = frame.columns;
+                            _results = [];
+                            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                                column = _ref[_i];
+                                _results.push(column.label);
+                            }
+                            return _results;
+                        }());
+                        if (opts.column) {
+                            _column(opts.column);
+                            return delete opts.column;
+                        }
+                    }
+                });
+            } else {
+                return _columns([]);
+            }
+        });
+        lodash.defer(_go);
+        return {
+            frames: _frames,
+            frame: _frame,
+            hasFrame: _hasFrame,
+            columns: _columns,
+            column: _column,
+            methods: _methods,
+            method: _method,
+            canUseCombineMethod: _canUseCombineMethod,
+            combineMethods: _combineMethods,
+            combineMethod: _combineMethod,
+            canGroupByColumns: _canGroupByColumns,
+            groupByColumns: _groupByColumns,
+            canImpute: _canImpute,
+            impute: impute,
+            template: 'flow-impute-input'
         };
     };
 }.call(this));

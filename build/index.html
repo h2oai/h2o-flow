@@ -1722,6 +1722,8 @@
             <tr>
               <th width="1">Actions</th>
               <td>
+                    <button type="button" data-bind="click:impute" class="flow-button"><i class="fa fa-reply-all"></i><span>Impute</span>
+                    </button>
                     <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
                     </button>
               </td>
@@ -2035,6 +2037,55 @@
             <!-- ko ifnot:isLive--><i class="fa fa-refresh"></i>Refresh
             <!-- /ko-->
           </button>
+        </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-impute-input">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-reply-all"></i>Impute</h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th class="flow-narrow">Frame</th>
+              <td class="flow-wide">
+                <select data-bind="options:frames, value:frame, optionsCaption:'Choose...'"></select>
+              </td>
+            </tr>
+            <!-- ko if:hasFrame-->
+            <tr>
+              <th class="flow-narrow">Column</th>
+              <td class="flow-wide">
+                <select data-bind="options:columns, value:column, optionsCaption:'Choose...'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th class="flow-narrow">Method</th>
+              <td class="flow-wide">
+                <select data-bind="options:methods, optionsText:'caption', value:method"></select>
+              </td>
+            </tr>
+            <!-- ko if:canUseCombineMethod-->
+            <tr>
+              <th class="flow-narrow">Combine Method</th>
+              <td class="flow-wide">
+                <select data-bind="options:combineMethods, optionsText:'caption', value:combineMethod"></select>
+              </td>
+            </tr>
+            <!-- /ko-->
+            <!-- ko if:canGroupByColumns-->
+            <tr>
+              <th class="flow-narrow">Group By</th>
+              <td class="flow-wide">
+                <select data-bind="options:columns, selectedOptions:groupByColumns" size="15" multiple="true"></select>
+              </td>
+            </tr>
+            <!-- /ko-->
+            <!-- /ko-->
+          </tbody>
+        </table>
+        <div class="flow-panel">
+              <button type="button" data-bind="click:impute, enable:canImpute" class="flow-button"><i class="fa fa-reply-all"></i><span>Impute</span>
+              </button>
         </div>
       </div>
     </script>
