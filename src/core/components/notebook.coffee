@@ -581,8 +581,9 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Split Frame...', executeCommand 'splitFrame'
         menuDivider
         createMenuItem 'List All Frames', executeCommand 'getFrames'
+        menuDivider
+        createMenuItem 'Impute...', executeCommand 'imputeColumn'
         #TODO Quantiles
-        #TODO Impute
         #TODO Interaction
       ]
     ,

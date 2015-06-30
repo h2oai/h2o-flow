@@ -1,0 +1,35 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-reply-all
+    | Impute
+  table.flow-form
+    tbody
+      tr
+        th.flow-narrow Frame
+        td.flow-wide
+          select(data-bind="options:frames, value:frame, optionsCaption:'Choose...'")
+      // ko if:hasFrame
+      tr
+        th.flow-narrow Column
+        td.flow-wide
+          select(data-bind="options:columns, value:column, optionsCaption:'Choose...'")
+      tr
+        th.flow-narrow Method
+        td.flow-wide
+          select(data-bind="options:methods, optionsText:'caption', value:method")
+      // ko if:canUseCombineMethod
+      tr
+        th.flow-narrow Combine Method
+        td.flow-wide
+          select(data-bind="options:combineMethods, optionsText:'caption', value:combineMethod")
+      // /ko
+      // ko if:canGroupByColumns
+      tr
+        th.flow-narrow Group By
+        td.flow-wide
+          select(data-bind="options:columns, selectedOptions:groupByColumns" size='15' multiple='true')
+      // /ko
+      // /ko
+
+  .flow-panel
+    +button('Impute', 'reply-all', 'impute', 'canImpute')

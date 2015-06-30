@@ -1073,6 +1073,12 @@ H2O.Routines = (_) ->
       else
         assist getModel
 
+  imputeColumn = (opts) ->
+    if opts
+      _fork requestImputeColumn, opts
+    else
+      assist imputeColumn
+
   requestDeleteModel = (modelKey, go) ->
     _.requestDeleteModel modelKey, (error, result) ->
       if error then go error else go null, extendDeletedKeys [ modelKey ]
@@ -1464,6 +1470,8 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.CreateFrameInput, args
         when splitFrame
           _fork proceed, H2O.SplitFrameInput, args
+        when imputeColumn
+          _fork proceed, H2O.ImputeInput, args
         else
           _fork proceed, H2O.NoAssist, []
 
@@ -1544,6 +1552,7 @@ H2O.Routines = (_) ->
   deleteFrame: deleteFrame
   getRDDs: getRDDs
   getColumnSummary: getColumnSummary
+  imputeColumn: imputeColumn
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
