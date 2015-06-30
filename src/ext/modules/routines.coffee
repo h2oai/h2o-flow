@@ -1073,6 +1073,46 @@ H2O.Routines = (_) ->
       else
         assist getModel
 
+  findColumnIndexByColumnLabel = (frame, columnLabel) ->
+    for column, i in frame.columns when column.label is columnLabel
+      return i
+    throw new Flow.Error "Column [#{columnLabel}] not found in frame"
+
+  findColumnIndicesByColumnLabels = (frame, columnLabels) ->
+    for columnLabel in columnLabels
+      findColumnIndexByColumnLabel frame, columnLabel
+
+  requestImputeColumn = (opts, go) ->
+    { frame, column, method, combineMethod, groupByColumns } = opts 
+    combineMethod = combineMethod ? 'INTERPOLATE'
+    _.requestFrameSummaryWithoutData frame, (error, result) ->
+      if error
+        go error
+      else
+        try
+          columnIndex = findColumnIndexByColumnLabel result, column
+        catch columnKeyError
+          return go columnKeyError
+
+        if groupByColumns and groupByColumns.length
+          try
+            groupByColumnIndices = findColumnIndicesByColumnLabels result, groupByColumns
+          catch columnIndicesError
+            return go columnIndicesError
+        else
+          groupByColumnIndices = null
+
+        groupByArg = if groupByColumnIndices
+          "(llist #{groupByColumnIndices.map((a) -> '#' + a).join ' '})"
+        else
+          "()"
+
+        _.requestExec "(h2o.impute %#{JSON.stringify frame} ##{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg} %TRUE)", (error, result) ->
+          if error
+            go error
+          else
+            requestColumnSummary frame, column, go
+
   imputeColumn = (opts) ->
     if opts
       _fork requestImputeColumn, opts

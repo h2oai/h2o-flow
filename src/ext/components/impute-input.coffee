@@ -54,10 +54,7 @@ H2O.ImputeInput = (_, _go, opts={}) ->
     else
       groupByColumns = _groupByColumns()
       if groupByColumns.length
-        columns = _columns()
-        indices = for groupByColumn in groupByColumns
-          columns.indexOf groupByColumn
-        arg.groupByColumns = indices
+        arg.groupByColumns = groupByColumns
 
     _.insertAndExecuteCell 'cs', "imputeColumn #{JSON.stringify arg}"
 
