@@ -284,30 +284,45 @@ H2O.Proxy = (_) ->
   requestModelBuildersVisibility = (go) ->
     doGet '/3/Configuration/ModelBuilders/visibility', unwrap go, (result) -> result.value
 
+  __modelBuilders = null
+  __modelBuilderEndpoints = null
+  cacheModelBuilders = (modelBuilders) ->
+    modelBuilderEndpoints = {}
+    for modelBuilder in modelBuilders
+      modelBuilderEndpoints[modelBuilder.algo] = "/#{modelBuilder.__meta.schema_version}/ModelBuilders/#{modelBuilder.algo}"
+    __modelBuilderEndpoints = modelBuilderEndpoints
+    __modelBuilders = modelBuilders
+  getModelBuilders = -> __modelBuilders
+  getModelBuilderEndpoint = (algo) -> __modelBuilderEndpoints[algo]
+
   requestModelBuilders = (go) ->
-    requestModelBuildersVisibility (error, visibility) ->
-      visibility = if error then 'Stable' else visibility
-      doGet "/3/ModelBuilders", unwrap go, (result) ->
-        builders = (builder for algo, builder of result.model_builders)
-        switch visibility
-          when 'Stable'
-            for builder in builders when builder.visibility is visibility
-              builder
-          when 'Beta'
-            for builder in builders when builder.visibility is visibility or builder.visibility is 'Stable'
-              builder
-          else
-            builders
+    if modelBuilders = getModelBuilders()
+      go null, modelBuilders
+    else
+      requestModelBuildersVisibility (error, visibility) ->
+        visibility = if error then 'Stable' else visibility
+        doGet "/3/ModelBuilders", unwrap go, (result) ->
+          builders = (builder for algo, builder of result.model_builders)
+          availableBuilders = switch visibility
+            when 'Stable'
+              for builder in builders when builder.visibility is visibility
+                builder
+            when 'Beta'
+              for builder in builders when builder.visibility is visibility or builder.visibility is 'Stable'
+                builder
+            else
+              builders
+          cacheModelBuilders availableBuilders
 
   requestModelBuilder = (algo, go) ->
-    doGet "/3/ModelBuilders/#{algo}", go
+    doGet getModelBuilderEndpoint(algo), go
 
   requestModelInputValidation = (algo, parameters, go) ->
-    doPost "/3/ModelBuilders/#{algo}/parameters", (encodeObjectForPost parameters), go
+    doPost "#{getModelBuilderEndpoint(algo)}/parameters", (encodeObjectForPost parameters), go
 
   requestModelBuild = (algo, parameters, go) ->
     _.trackEvent 'model', algo
-    doPost "/3/ModelBuilders/#{algo}", (encodeObjectForPost parameters), go
+    doPost getModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
 
   requestPredict = (destinationKey, modelKey, frameKey, options, go) ->
     opts = {}
