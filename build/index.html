@@ -627,7 +627,7 @@
     </script>
     <script type="text/html" id="flow-inspects-output">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-table"></i>Data</h3>
+        <h3 class="flow-hint"><i class="fa fa-info"></i>Data</h3>
         <!-- ko ifnot:hasTables-->
         <blockquote>No data found.</blockquote>
         <!-- /ko-->
@@ -644,7 +644,7 @@
           <tbody>
             <!-- ko foreach:tables-->
             <tr>
-              <td><i class="fa fa-table"></i></td>
+              <td><i class="fa fa-info"></i></td>
               <td><a href="#" data-bind="text:label, click:grid"></a></td>
               <td>
                 <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span></button>
@@ -661,7 +661,7 @@
     </script>
     <script type="text/html" id="flow-inspect-output">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-table"></i><span data-bind="text:label"></span></h3>
+        <h3 class="flow-hint"><i class="fa fa-info"></i><span data-bind="text:label"></span></h3>
         <h4>Schema</h4>
         <table class="flow-form">
           <thead>
@@ -687,7 +687,7 @@
             <tr>
               <th width="1">Actions</th>
               <td>
-                <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-table"></i><span>View</span></button>
+                <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-info"></i><span>View</span></button>
                 <!-- ko if:canPlot-->
                 <button type="button" data-bind="click:plot" class="flow-button"><i class="fa fa-bar-chart"></i><span>Plot</span></button>
                 <!-- /ko-->
@@ -751,7 +751,7 @@
     </script>
     <script type="text/html" id="flow-create-frame-input">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-database"></i>Create a Frame</h3>
+        <h3 class="flow-hint"><i class="fa fa-table"></i>Create a Frame</h3>
         <table class="flow-form">
           <tbody>
             <tr>
@@ -901,7 +901,7 @@
           </tbody>
         </table>
         <div class="flow-panel">
-              <button type="button" data-bind="click:createFrame" class="flow-button"><i class="fa fa-database"></i><span>Create</span>
+              <button type="button" data-bind="click:createFrame" class="flow-button"><i class="fa fa-table"></i><span>Create</span>
               </button>
         </div>
       </div>
@@ -966,7 +966,7 @@
     </script>
     <script type="text/html" id="flow-split-frame-output">
       <div class="flow-widget">
-            <h3 class="flow-hint"><i class="fa fa-database"></i>Split Frames
+            <h3 class="flow-hint"><i class="fa fa-table"></i>Split Frames
             </h3>
         <table class="flow-form">
           <thead>
@@ -979,7 +979,7 @@
           <tbody>
             <!-- ko foreach:frames-->
             <tr>
-              <td><i class="fa fa-database"></i></td>
+              <td><i class="fa fa-table"></i></td>
               <td><a href="#" data-bind="text:key, click:view"></a></td>
               <td data-bind="text:ratio" class="flow-right"></td>
             </tr>
@@ -1468,7 +1468,7 @@
     </script>
     <script type="text/html" id="flow-frames-output">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-database"></i>Frames</h3>
+        <h3 class="flow-hint"><i class="fa fa-table"></i>Frames</h3>
         <!-- ko ifnot:hasFrames-->
         <blockquote>Your H<sub>2</sub>O cloud has no frames.</blockquote>
         <div class="flow-panel">
@@ -1496,13 +1496,19 @@
                 <input type="checkbox" data-bind="checked:isChecked">
               </td>
               <td>
-                <!-- ko if:isText--><i class="fa fa-file-o"></i>
+                <!-- ko if:isText--><i class="fa fa-columns"></i>
                 <!-- /ko-->
-                <!-- ko ifnot:isText--><i class="fa fa-database"></i>
+                <!-- ko ifnot:isText--><i class="fa fa-table"></i>
                 <!-- /ko-->
               </td>
               <td>
                 <p><a href="#" data-bind="text:key, click:view"></a></p>
+                <!-- ko if:isText-->
+                <p>
+                      <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-cog"></i><span>Parse&hellip;</span>
+                      </button>
+                </p>
+                <!-- /ko-->
                 <!-- ko ifnot:isText-->
                 <p>
                       <button type="button" data-bind="click:createModel" class="flow-button"><i class="fa fa-cube"></i><span>Build Model&hellip;</span>
@@ -1532,7 +1538,7 @@
     </script>
     <script type="text/html" id="flow-rdds-output">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-database"></i>RDDs</h3>
+        <h3 class="flow-hint"><i class="fa fa-table"></i>RDDs</h3>
         <!-- ko ifnot:hasRDDs-->
         <blockquote>Your H<sub>2</sub>O cloud has no RDDs.</blockquote>
         <!-- /ko-->
@@ -1633,18 +1639,16 @@
     </script>
     <script type="text/html" id="flow-frame-output">
       <div class="flow-widget flow-frame-output">
-        <h3 class="flow-hint"><i class="fa fa-database"></i><span data-bind="text:key"></span></h3>
+        <h3 class="flow-hint"><i class="fa fa-table"></i><span data-bind="text:key"></span></h3>
         <div class="flow-margin-after">
           <table class="flow-form">
             <tbody>
               <tr>
                 <th width="1">Actions:</th>
                 <td>
-                      <button type="button" data-bind="click:inspectData" class="flow-button"><i class="fa fa-table"></i><span>View Data</span>
+                      <button type="button" data-bind="click:inspectData" class="flow-button"><i class="fa fa-th"></i><span>View Data</span>
                       </button>
                       <button type="button" data-bind="click:splitFrame" class="flow-button"><i class="fa fa-scissors"></i><span>Split...</span>
-                      </button>
-                      <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
                       </button>
                       <button type="button" data-bind="click:createModel" class="flow-button"><i class="fa fa-cube"></i><span>Build Model&hellip;</span>
                       </button>
@@ -1698,7 +1702,7 @@
     </script>
     <script type="text/html" id="flow-frame-data-output">
       <div class="flow-widget flow-frame-data-output">
-        <h3 class="flow-hint"><i class="fa fa-database"></i><span data-bind="text:key"></span></h3>
+        <h3 class="flow-hint"><i class="fa fa-table"></i><span data-bind="text:key"></span></h3>
         <h4 data-bind="collapse:false">Data</h4>
         <div>
           <!-- input.flow-textbox(type='text' placeholder='Search by column name...' data-bind="value:columnNameSearchTerm, valueUpdate:'afterkeydown'")-->
