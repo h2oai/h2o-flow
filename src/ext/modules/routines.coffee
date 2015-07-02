@@ -15,7 +15,7 @@ _assistance =
     icon: 'files-o'
   getFrames:
     description: 'Get a list of frames in H<sub>2</sub>O'
-    icon: 'database'
+    icon: 'table'
   splitFrame:
     description: 'Split a frame into two or more frames'
     icon: 'scissors'
@@ -1580,7 +1580,7 @@ H2O.Routines = (_) ->
           if route.url_pattern is '/3/RDDs'
             _assistance.getRDDs =
               description: 'Get a list of RDDs in H<sub>2</sub>O'
-              icon: 'database'
+              icon: 'table'
 
 
   # fork/join 

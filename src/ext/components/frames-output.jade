@@ -1,6 +1,6 @@
 .flow-widget
   h3.flow-hint
-    i.fa.fa-database
+    i.fa.fa-table
     | Frames
 
   // ko ifnot:hasFrames
@@ -30,10 +30,10 @@
           input(type='checkbox' data-bind="checked:isChecked")
         td
           // ko if:isText
-          i.fa.fa-file-o
+          i.fa.fa-columns
           // /ko
           // ko ifnot:isText
-          i.fa.fa-database
+          i.fa.fa-table
           // /ko
         td
           p

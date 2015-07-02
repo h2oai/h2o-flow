@@ -1,6 +1,6 @@
 .flow-widget.flow-frame-output
   h3.flow-hint
-    i.fa.fa-database
+    i.fa.fa-table
     span(data-bind="text:key")
 
   .flow-margin-after
@@ -9,9 +9,8 @@
         tr 
           th(width='1') Actions:
           td
-            +button('View Data', 'table', 'inspectData')
+            +button('View Data', 'th', 'inspectData')
             +button('Split...', 'scissors', 'splitFrame')
-            +button('Inspect', 'list', 'inspect')
             +button('Build Model&hellip;', 'cube', 'createModel')
             +button('Predict', 'bolt', 'predict')
             +button('Download', 'cloud-download', 'download')

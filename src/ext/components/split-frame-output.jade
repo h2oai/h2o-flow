@@ -1,5 +1,5 @@
 .flow-widget
-  +subtitle('Split Frames', 'database')
+  +subtitle('Split Frames', 'table')
 
   table.flow-form
     thead
@@ -11,7 +11,7 @@
       // ko foreach:frames
       tr
         td
-          i.fa.fa-database
+          i.fa.fa-table
         td
           a(href='#' data-bind='text:key, click:view')
         td.flow-right(data-bind='text:ratio')
