@@ -38,6 +38,10 @@
         td
           p
             a(href='#' data-bind='text:key, click:view')
+          // ko if:isText
+          p
+            +button('Parse&hellip;', 'cog', 'view')
+          // /ko
           // ko ifnot:isText
           p
             +button('Build Model&hellip;', 'cube', 'createModel')
