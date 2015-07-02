@@ -635,8 +635,18 @@ H2O.Routines = (_) ->
       'cardinality'
     ]
 
-    formatAsLink = (label) ->
-      "<a href='#' data-type='label' data-key=#{stringify label}>#{escape label}</a>"
+    toColumnSummaryLink = (label) ->
+      "<a href='#' data-type='summary-link' data-key=#{stringify label}>#{escape label}</a>"
+
+    toConversionLink = (value) ->
+      [ type, label ] = value.split '\0'
+      switch type
+        when 'enum'
+          "<a href='#' data-type='as-numeric-link' data-key=#{stringify label}>Convert to numeric</a>"
+        when 'int'
+          "<a href='#' data-type='as-factor-link' data-key=#{stringify label}>Convert to enum</a>"
+        else
+          undefined
 
     vectors = for attr in attrs
       [ name, title ] = split attr, '|'
@@ -649,13 +659,18 @@ H2O.Routines = (_) ->
         when 'cardinality'
           createVector title, TNumber, ((if column.type is 'enum' then column.domain_cardinality else undefined) for column in frameColumns)
         when 'label'
-          createFactor title, TString, (column[name] for column in frameColumns), null, formatAsLink
+          createFactor title, TString, (column[name] for column in frameColumns), null, toColumnSummaryLink
         when 'type'
           createFactor title, TString, (column[name] for column in frameColumns)
         when 'mean', 'sigma'
           createVector title, TNumber, (column[name] for column in frameColumns), format4f
         else
           createVector title, TNumber, (column[name] for column in frameColumns)
+
+    [ labelVector, typeVector ] = vectors
+    actionsData = for i in [0 ... frameColumns.length]
+      "#{typeVector.valueAt i}\0#{labelVector.valueAt i}"
+    vectors.push createFactor 'Actions', TString, actionsData, null, toConversionLink
          
     createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
@@ -1113,11 +1128,36 @@ H2O.Routines = (_) ->
           else
             requestColumnSummary frame, column, go
 
+  requestChangeColumnType = (opts, go) ->
+    { frame, column, type } = opts
+
+    method = if type is 'enum' then 'as.factor' else 'as.numeric'
+
+    _.requestFrameSummaryWithoutData frame, (error, result) ->
+        try
+          columnIndex = findColumnIndexByColumnLabel result, column
+        catch columnKeyError
+          return go columnKeyError
+
+        target = "([ %#{JSON.stringify frame} \"null\" ##{columnIndex})"
+
+        _.requestExec "(= #{target} (#{method} #{target}))", (error, result) ->
+          if error
+            go error
+          else
+            requestColumnSummary frame, column, go
+
   imputeColumn = (opts) ->
     if opts and opts.frame and opts.column and opts.method
       _fork requestImputeColumn, opts
     else
       assist imputeColumn, opts
+
+  changeColumnType = (opts) ->
+    if opts and opts.frame and opts.column and opts.type
+      _fork requestChangeColumnType, opts
+    else
+      assist changeColumnType, opts
 
   requestDeleteModel = (modelKey, go) ->
     _.requestDeleteModel modelKey, (error, result) ->
@@ -1592,6 +1632,7 @@ H2O.Routines = (_) ->
   deleteFrame: deleteFrame
   getRDDs: getRDDs
   getColumnSummary: getColumnSummary
+  changeColumnType: changeColumnType
   imputeColumn: imputeColumn
   buildModel: buildModel
   getModels: getModels

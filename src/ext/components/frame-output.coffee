@@ -24,8 +24,13 @@ H2O.FrameOutput = (_, _go, _frame) ->
       else
         $('a', vis.element).on 'click', (e) ->
           $a = $ e.target
-          if 'label' is $a.attr 'data-type'
-            _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify _frame.frame_id.name}, #{stringify $a.attr 'data-key'}"
+          switch $a.attr 'data-type'
+            when 'summary-link'
+              _.insertAndExecuteCell 'cs', "getColumnSummary #{stringify _frame.frame_id.name}, #{stringify $a.attr 'data-key'}"
+            when 'as-factor-link'
+              _.insertAndExecuteCell 'cs', "changeColumnType frame: #{stringify _frame.frame_id.name}, column: #{stringify $a.attr 'data-key'}, type: 'enum'"
+            when 'as-numeric-link'
+              _.insertAndExecuteCell 'cs', "changeColumnType frame: #{stringify _frame.frame_id.name}, column: #{stringify $a.attr 'data-key'}, type: 'int'"
 
         _grid vis.element
 
