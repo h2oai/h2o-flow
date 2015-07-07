@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.28';
+    Flow.Version = '0.3.29';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5208,7 +5208,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrameData, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -6023,6 +6023,30 @@
             inspect_(frame, inspections);
             return render_(frame, H2O.FrameOutput, frame);
         };
+        extendFrameSummary = function (frameKey, frame) {
+            var column, enumColumns, inspections, origin;
+            inspections = { columns: inspectFrameColumns('columns', frameKey, frame, frame.columns) };
+            enumColumns = function () {
+                var _i, _len, _ref1, _results;
+                _ref1 = frame.columns;
+                _results = [];
+                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                    column = _ref1[_i];
+                    if (column.type === 'enum') {
+                        _results.push(column);
+                    }
+                }
+                return _results;
+            }();
+            if (enumColumns.length > 0) {
+                inspections.factors = inspectFrameColumns('factors', frameKey, frame, enumColumns);
+            }
+            origin = 'getFrameSummary ' + Flow.Prelude.stringify(frameKey);
+            inspections[frame.chunk_summary.name] = inspectTwoDimTable_(origin, frame.chunk_summary.name, frame.chunk_summary);
+            inspections[frame.distribution_summary.name] = inspectTwoDimTable_(origin, frame.distribution_summary.name, frame.distribution_summary);
+            inspect_(frame, inspections);
+            return render_(frame, H2O.FrameOutput, frame);
+        };
         extendColumnSummary = function (frameKey, frame, columnName) {
             var column, inspectCharacteristics, inspectDistribution, inspectDomain, inspectPercentiles, inspectSummary, inspections, rowCount;
             column = lodash.head(frame.columns);
@@ -6222,7 +6246,7 @@
                 if (error) {
                     return go(error);
                 } else {
-                    return go(null, extendFrame(frameKey, frame));
+                    return go(null, extendFrameSummary(frameKey, frame));
                 }
             });
         };
@@ -6231,7 +6255,7 @@
                 if (error) {
                     return go(error);
                 } else {
-                    return go(null, extendFrame(frameKey, frame));
+                    return go(null, extendFrameSummary(frameKey, frame));
                 }
             });
         };

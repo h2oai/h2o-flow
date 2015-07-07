@@ -627,7 +627,7 @@
     </script>
     <script type="text/html" id="flow-inspects-output">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-info"></i>Data</h3>
+        <h3 class="flow-hint"><i class="fa fa-info-circle"></i>Data</h3>
         <!-- ko ifnot:hasTables-->
         <blockquote>No data found.</blockquote>
         <!-- /ko-->
@@ -644,7 +644,7 @@
           <tbody>
             <!-- ko foreach:tables-->
             <tr>
-              <td><i class="fa fa-info"></i></td>
+              <td><i class="fa fa-info-circle"></i></td>
               <td><a href="#" data-bind="text:label, click:grid"></a></td>
               <td>
                 <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span></button>
@@ -661,7 +661,7 @@
     </script>
     <script type="text/html" id="flow-inspect-output">
       <div class="flow-widget">
-        <h3 class="flow-hint"><i class="fa fa-info"></i><span data-bind="text:label"></span></h3>
+        <h3 class="flow-hint"><i class="fa fa-info-circle"></i><span data-bind="text:label"></span></h3>
         <h4>Schema</h4>
         <table class="flow-form">
           <thead>
@@ -687,7 +687,7 @@
             <tr>
               <th width="1">Actions</th>
               <td>
-                <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-info"></i><span>View</span></button>
+                <button type="button" data-bind="click:view" class="flow-button"><i class="fa fa-info-circle"></i><span>View</span></button>
                 <!-- ko if:canPlot-->
                 <button type="button" data-bind="click:plot" class="flow-button"><i class="fa fa-bar-chart"></i><span>Plot</span></button>
                 <!-- /ko-->
