@@ -723,6 +723,19 @@ H2O.Routines = (_) ->
     inspect_ frame, inspections
     render_ frame, H2O.FrameOutput, frame
 
+  extendFrameSummary = (frameKey, frame) ->
+    inspections =
+      columns: inspectFrameColumns 'columns', frameKey, frame, frame.columns
+
+    enumColumns = (column for column in frame.columns when column.type is 'enum')
+    inspections.factors = inspectFrameColumns 'factors', frameKey, frame, enumColumns if enumColumns.length > 0
+
+    origin = "getFrameSummary #{stringify frameKey}"
+    inspections[frame.chunk_summary.name] = inspectTwoDimTable_ origin, frame.chunk_summary.name, frame.chunk_summary
+    inspections[frame.distribution_summary.name] = inspectTwoDimTable_ origin, frame.distribution_summary.name, frame.distribution_summary
+    inspect_ frame, inspections
+    render_ frame, H2O.FrameOutput, frame
+
   extendColumnSummary = (frameKey, frame, columnName) ->
     column = head frame.columns
     rowCount = frame.rows
@@ -887,14 +900,14 @@ H2O.Routines = (_) ->
       if error
         go error
       else
-        go null, extendFrame frameKey, frame
+        go null, extendFrameSummary frameKey, frame
 
   requestFrameSummary = (frameKey, go) ->
     _.requestFrameSummarySlice frameKey, undefined, 0, 20, (error, frame) ->
       if error
         go error
       else
-        go null, extendFrame frameKey, frame
+        go null, extendFrameSummary frameKey, frame
 
   requestColumnSummary = (frameKey, columnName, go) ->
     _.requestColumnSummary frameKey, columnName, (error, frame) ->
