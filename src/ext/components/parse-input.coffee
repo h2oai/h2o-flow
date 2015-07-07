@@ -106,24 +106,30 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
 
   _columnCount = lift _columns, (columns) -> columns?.length or 0
 
+  _currentPage = 0
+
   act _columns, (columns) ->
     forEach columns, (column) ->
-      react column.type, refreshPreview
+      react column.type, ->
+        _currentPage = _activePage().index
+        refreshPreview()
 
-  react _parseType, _delimiter, _useSingleQuotes, _headerOption, refreshPreview
+  react _parseType, _delimiter, _useSingleQuotes, _headerOption, ->
+    _currentPage = 0
+    refreshPreview()
 
   _filteredColumns = lift _columns, (columns) -> columns
 
-  _currentPage = lift _columns, (columns) -> columns: columns, index: 0
+  makePage = (index, columns) -> { index, columns }
+
+  _activePage = lift _columns, (columns) -> makePage _currentPage, columns
 
   filterColumns = ->
-    _currentPage
-      index: 0
-      columns: filter _columns(), (column) -> -1 < column.name().toLowerCase().indexOf _columnNameSearchTerm().toLowerCase()
+    _activePage makePage 0, filter _columns(), (column) -> -1 < column.name().toLowerCase().indexOf _columnNameSearchTerm().toLowerCase()
 
   react _columnNameSearchTerm, throttle filterColumns, 500
 
-  _visibleColumns = lift _currentPage, (currentPage) ->
+  _visibleColumns = lift _activePage, (currentPage) ->
     start = currentPage.index * MaxItemsPerPage
     currentPage.columns.slice start, start + MaxItemsPerPage
 
@@ -137,20 +143,20 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
 
     _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_frame: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  #{if _canReconfigure() then 'column_names: ' + (stringify columnNames) + '\n  ' else ''}#{if _canReconfigure() then 'column_types: ' + (stringify columnTypes) + '\n  ' else ''}delete_on_done: #{_deleteOnDone()}\n  check_header: #{headerOption}\n  chunk_size: #{_chunkSize()}"
 
-  _canGoToNextPage = lift _currentPage, (currentPage) ->
+  _canGoToNextPage = lift _activePage, (currentPage) ->
     (currentPage.index + 1) * MaxItemsPerPage < currentPage.columns.length
 
-  _canGoToPreviousPage = lift _currentPage, (currentPage) ->
+  _canGoToPreviousPage = lift _activePage, (currentPage) ->
     currentPage.index > 0
 
   goToNextPage = ->
-    currentPage = _currentPage()
-    _currentPage columns: currentPage.columns, index: currentPage.index + 1
+    currentPage = _activePage()
+    _activePage makePage currentPage.index + 1, currentPage.columns
 
   goToPreviousPage = ->
-    currentPage = _currentPage()
+    currentPage = _activePage()
     if currentPage.index > 0
-      _currentPage columns: currentPage.columns, index: currentPage.index - 1
+      _activePage makePage currentPage.index - 1, currentPage.columns
 
   defer _go
 
