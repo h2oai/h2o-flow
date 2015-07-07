@@ -58,16 +58,20 @@
 
   h4 Edit Column Names and Types
   div
+    // ko if:canReconfigure
     input.flow-textbox(type='text' placeholder='Search by column name...' data-bind="value:columnNameSearchTerm, valueUpdate:'afterkeydown'")
+    // /ko
     table.flow-form.flow-monospace
       tbody
         // ko foreach:columns
         tr
           td(data-bind='text:index')
+          // ko if:$parent.canReconfigure
           td(style='min-width:100px')
             input.flow-textbox(type='textbox' data-bind="value:name, attr:{'title':name}")
           td
             select(data-bind="options:$parent.dataTypes, value:type")
+          // /ko
           // ko foreach:data
           td(data-bind="text:$data")
           // /ko
