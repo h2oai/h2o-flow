@@ -109,17 +109,22 @@ createListControl = (parameter) ->
   _canGoToNextPage = lift _maxPages, _currentPage, (maxPages, index) -> index < maxPages - 1
 
   _searchCaption = lift _entries, _filteredItems, _selectionCount, _currentPage, _maxPages, (entries, filteredItems, selectionCount, currentPage, maxPages) ->
-    (if maxPages is 0 then '' else "Showing page #{currentPage + 1} of #{maxPages}. ") + "Filtered #{filteredItems.length} of #{entries.length}. #{selectionCount} ignored."
+    caption = if maxPages is 0 then '' else "Showing page #{currentPage + 1} of #{maxPages}."
+    if filteredItems.length isnt entries.length
+      caption += " Filtered #{filteredItems.length} of #{entries.length}."
+    if selectionCount isnt 0
+      caption += " #{selectionCount} ignored."
+    caption
 
-  react _entries, -> filterItems()
+  react _entries, -> filterItems yes
 
   _lastUsedSearchTerm = null
   _lastUsedIgnoreNaTerm = null
-  filterItems = ->
+  filterItems = (force=no) ->
     searchTerm = _searchTerm().trim()
     ignoreNATerm = _ignoreNATerm().trim()
 
-    if searchTerm isnt _lastUsedSearchTerm or ignoreNATerm isnt _lastUsedIgnoreNaTerm
+    if force or searchTerm isnt _lastUsedSearchTerm or ignoreNATerm isnt _lastUsedIgnoreNaTerm
       filteredItems = []
       for entry, i in _entries()
         missingPercent = parseFloat ignoreNATerm
