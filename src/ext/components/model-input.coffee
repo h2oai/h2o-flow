@@ -83,6 +83,7 @@ createListControl = (parameter) ->
 
   incrementSelectionCount = (amount) ->
     _selectionCount _selectionCount() + amount
+
   createEntry = (value) ->
     isSelected = signal no
     react isSelected, (isSelected) -> 
@@ -152,20 +153,14 @@ createListControl = (parameter) ->
       entry.isSelected value
     return
 
-  selectAll = ->
-    entries = _entries()
+  selectFiltered = ->
+    entries = _filteredItems()
     blockSelectionUpdates -> changeSelection entries, yes
     _selectionCount entries.length
 
-  deselectAll = ->
-    blockSelectionUpdates -> changeSelection _entries(), no
-    _selectionCount 0
-
-  selectFiltered = ->
-    changeSelection _filteredItems(), yes
-
   deselectFiltered = ->
-    changeSelection _filteredItems(), no
+    blockSelectionUpdates -> changeSelection _filteredItems(), no
+    _selectionCount 0
 
   goToPreviousPage = ->
     if _canGoToPreviousPage()
@@ -190,8 +185,6 @@ createListControl = (parameter) ->
   control.searchTerm = _searchTerm
   control.ignoreNATerm = _ignoreNATerm
   control.value = _entries
-  control.selectAll = selectAll
-  control.deselectAll = deselectAll
   control.selectFiltered = selectFiltered
   control.deselectFiltered = deselectFiltered
   control.goToPreviousPage = goToPreviousPage
