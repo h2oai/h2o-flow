@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.29';
+    Flow.Version = '0.3.30';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -9930,7 +9930,7 @@
             });
         };
         downloadPojo = function () {
-            return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name), '_blank');
+            return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name) + '.java', '_blank');
         };
         deleteModel = function () {
             return _.confirm('Are you sure you want to delete this model?', {
@@ -10210,7 +10210,7 @@
         'Invalid'
     ];
     H2O.SetupParseOutput = function (_, _go, _inputs, _result) {
-        var filterColumns, goToNextPage, goToPreviousPage, parseFiles, refreshPreview, _canGoToNextPage, _canGoToPreviousPage, _canReconfigure, _chunkSize, _columnCount, _columnNameSearchTerm, _columns, _currentPage, _deleteOnDone, _delimiter, _destinationKey, _filteredColumns, _headerOption, _headerOptions, _inputKey, _parseType, _preview, _sourceKeys, _useSingleQuotes, _visibleColumns;
+        var filterColumns, goToNextPage, goToPreviousPage, makePage, parseFiles, refreshPreview, _activePage, _canGoToNextPage, _canGoToPreviousPage, _canReconfigure, _chunkSize, _columnCount, _columnNameSearchTerm, _columns, _currentPage, _deleteOnDone, _delimiter, _destinationKey, _filteredColumns, _headerOption, _headerOptions, _inputKey, _parseType, _preview, _sourceKeys, _useSingleQuotes, _visibleColumns;
         _inputKey = _inputs.paths ? 'paths' : 'source_frames';
         _sourceKeys = lodash.map(_result.source_frames, function (src) {
             return src.name;
@@ -10281,31 +10281,38 @@
         _columnCount = Flow.Dataflow.lift(_columns, function (columns) {
             return (columns != null ? columns.length : void 0) || 0;
         });
+        _currentPage = 0;
         Flow.Dataflow.act(_columns, function (columns) {
             return lodash.forEach(columns, function (column) {
-                return Flow.Dataflow.react(column.type, refreshPreview);
+                return Flow.Dataflow.react(column.type, function () {
+                    _currentPage = _activePage().index;
+                    return refreshPreview();
+                });
             });
         });
-        Flow.Dataflow.react(_parseType, _delimiter, _useSingleQuotes, _headerOption, refreshPreview);
+        Flow.Dataflow.react(_parseType, _delimiter, _useSingleQuotes, _headerOption, function () {
+            _currentPage = 0;
+            return refreshPreview();
+        });
         _filteredColumns = Flow.Dataflow.lift(_columns, function (columns) {
             return columns;
         });
-        _currentPage = Flow.Dataflow.lift(_columns, function (columns) {
+        makePage = function (index, columns) {
             return {
-                columns: columns,
-                index: 0
+                index: index,
+                columns: columns
             };
+        };
+        _activePage = Flow.Dataflow.lift(_columns, function (columns) {
+            return makePage(_currentPage, columns);
         });
         filterColumns = function () {
-            return _currentPage({
-                index: 0,
-                columns: lodash.filter(_columns(), function (column) {
-                    return -1 < column.name().toLowerCase().indexOf(_columnNameSearchTerm().toLowerCase());
-                })
-            });
+            return _activePage(makePage(0, lodash.filter(_columns(), function (column) {
+                return -1 < column.name().toLowerCase().indexOf(_columnNameSearchTerm().toLowerCase());
+            })));
         };
         Flow.Dataflow.react(_columnNameSearchTerm, lodash.throttle(filterColumns, 500));
-        _visibleColumns = Flow.Dataflow.lift(_currentPage, function (currentPage) {
+        _visibleColumns = Flow.Dataflow.lift(_activePage, function (currentPage) {
             var start;
             start = currentPage.index * MaxItemsPerPage;
             return currentPage.columns.slice(start, start + MaxItemsPerPage);
@@ -10339,30 +10346,24 @@
                 }
                 return _results;
             }();
-            return _.insertAndExecuteCell('cs', 'parseFiles\n  ' + _inputKey + ': ' + Flow.Prelude.stringify(_inputs[_inputKey]) + '\n  destination_frame: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount() + '\n  single_quotes: ' + _useSingleQuotes() + '\n  ' + (columnNames ? 'column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  ' : '') + 'column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + headerOption + '\n  chunk_size: ' + _chunkSize());
+            return _.insertAndExecuteCell('cs', 'parseFiles\n  ' + _inputKey + ': ' + Flow.Prelude.stringify(_inputs[_inputKey]) + '\n  destination_frame: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount() + '\n  single_quotes: ' + _useSingleQuotes() + '\n  ' + (_canReconfigure() ? 'column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  ' : '') + (_canReconfigure() ? 'column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  ' : '') + 'delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + headerOption + '\n  chunk_size: ' + _chunkSize());
         };
-        _canGoToNextPage = Flow.Dataflow.lift(_currentPage, function (currentPage) {
+        _canGoToNextPage = Flow.Dataflow.lift(_activePage, function (currentPage) {
             return (currentPage.index + 1) * MaxItemsPerPage < currentPage.columns.length;
         });
-        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (currentPage) {
+        _canGoToPreviousPage = Flow.Dataflow.lift(_activePage, function (currentPage) {
             return currentPage.index > 0;
         });
         goToNextPage = function () {
             var currentPage;
-            currentPage = _currentPage();
-            return _currentPage({
-                columns: currentPage.columns,
-                index: currentPage.index + 1
-            });
+            currentPage = _activePage();
+            return _activePage(makePage(currentPage.index + 1, currentPage.columns));
         };
         goToPreviousPage = function () {
             var currentPage;
-            currentPage = _currentPage();
+            currentPage = _activePage();
             if (currentPage.index > 0) {
-                return _currentPage({
-                    columns: currentPage.columns,
-                    index: currentPage.index - 1
-                });
+                return _activePage(makePage(currentPage.index - 1, currentPage.columns));
             }
         };
         lodash.defer(_go);

@@ -1061,18 +1061,22 @@
         </table>
         <h4>Edit Column Names and Types</h4>
         <div>
+          <!-- ko if:canReconfigure-->
           <input type="text" placeholder="Search by column name..." data-bind="value:columnNameSearchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
+          <!-- /ko-->
           <table class="flow-form flow-monospace">
             <tbody>
               <!-- ko foreach:columns-->
               <tr>
                 <td data-bind="text:index"></td>
+                <!-- ko if:$parent.canReconfigure-->
                 <td style="min-width:100px">
                   <input type="textbox" data-bind="value:name, attr:{'title':name}" class="flow-textbox">
                 </td>
                 <td>
                   <select data-bind="options:$parent.dataTypes, value:type"></select>
                 </td>
+                <!-- /ko-->
                 <!-- ko foreach:data-->
                 <td data-bind="text:$data"></td>
                 <!-- /ko-->
