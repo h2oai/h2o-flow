@@ -68,6 +68,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
 
   execute = (go) ->
     startTime = Date.now()
+    _time "Started at #{Flow.Util.formatClockTime startTime}"
     input = _input().trim()
     unless input
       return if go then go null else undefined 

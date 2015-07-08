@@ -46,6 +46,9 @@ formatElapsedTime = (s) ->
   else
     "#{ms}ms"
 
+formatClockTime = (date) ->
+  (moment date).format 'h:mm:ss a'
+
 EOL = "\n"
 multilineTextToHTML = (text) ->
   join (map (split text, EOL), (str) -> escape str), '<br/>'
@@ -65,6 +68,7 @@ Flow.Util =
   formatBytes: formatBytes
   formatMilliseconds: formatMilliseconds
   formatElapsedTime: formatElapsedTime
+  formatClockTime: formatClockTime
   multilineTextToHTML: multilineTextToHTML
   uuid: if window?.uuid then window.uuid else null
   sanitizeName: sanitizeName
