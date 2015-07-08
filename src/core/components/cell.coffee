@@ -8,6 +8,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   _hasError = signal no
   _isBusy = signal no
   _isReady = lift _isBusy, (isBusy) -> not isBusy
+  _time = signal ''
   _hasInput = signal yes
   _input = signal input
   _outputs = signals []
@@ -66,6 +67,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     _hasInput yes unless _isCode()
 
   execute = (go) ->
+    startTime = Date.now()
     input = _input().trim()
     unless input
       return if go then go null else undefined 
@@ -94,6 +96,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
       end: ->
         _hasInput _isCode()
         _isBusy no
+        _time Flow.Util.formatElapsedTime Date.now() - startTime
         if go
           go if _hasError() then _errors.slice 0 else null
         return
@@ -109,6 +112,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     hasError: _hasError
     isBusy: _isBusy
     isReady: _isReady
+    time: _time
     input: _input
     hasInput: _hasInput
     outputs: _outputs

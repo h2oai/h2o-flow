@@ -17,14 +17,34 @@ formatBytes = (bytes) ->
   Math.round(bytes / Math.pow(1024, i), 2) + sizes[i]
 
 padTime = (n) -> "#{if n < 10 then '0' else ''}#{n}"
-formatMilliseconds = (s) ->
+
+splitTime = (s) ->
   ms = s % 1000
   s = (s - ms) / 1000
   secs = s % 60
   s = (s - secs) / 60
   mins = s % 60
   hrs = (s - mins) / 60
+
+  [ hrs, mins, secs, ms ]
+
+formatMilliseconds = (s) ->
+  [ hrs, mins, secs, ms ] = splitTime s
   "#{padTime hrs}:#{padTime mins}:#{padTime secs}.#{ms}"
+
+format1d0 = (n) ->
+  Math.round(n * 10) / 10
+
+formatElapsedTime = (s) ->
+  [ hrs, mins, secs, ms ] = splitTime s
+  if hrs isnt 0
+    "#{format1d0 (hrs * 60 + mins)/60}h"
+  else if mins isnt 0
+    "#{format1d0 (mins * 60 + secs)/60}m"
+  else if secs isnt 0
+    "#{format1d0 (secs * 1000 + ms)/1000}s"
+  else
+    "#{ms}ms"
 
 EOL = "\n"
 multilineTextToHTML = (text) ->
@@ -44,6 +64,7 @@ Flow.Util =
   fromNow: fromNow
   formatBytes: formatBytes
   formatMilliseconds: formatMilliseconds
+  formatElapsedTime: formatElapsedTime
   multilineTextToHTML: multilineTextToHTML
   uuid: if window?.uuid then window.uuid else null
   sanitizeName: sanitizeName

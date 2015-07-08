@@ -9,6 +9,10 @@
               textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_actions, autoResize:_actions")
             td.flow-cell-actions
               i.fa.fa-paperclip.flow-pointer(title='Save to clipboard' data-bind='click:clip')
+          tr
+            td.flow-cell-time(data-bind='text:time')
+            td.flow-cell-actions
+
   .flow-cell-output(data-bind="css:{ 'flow-hide-output': isOutputHidden }")
     // ko if:result
     .flow-cell-result(data-bind='template:{ name: templateOf, data:result }')

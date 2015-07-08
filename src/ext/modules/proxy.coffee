@@ -61,7 +61,7 @@ H2O.Proxy = (_) ->
         new Flow.Error error.message
       else
         # special-case net::ERR_CONNECTION_REFUSED
-        if status is 'error' and code is 0
+        if status is 'error' and xhr.status is 0
           new Flow.Error "Could not connect to H2O. Your H2O cloud is currently unresponsive."
         else
           new Flow.Error "HTTP connection failure: status=#{status}, code=#{xhr.status}, error=#{error or '?'}"
