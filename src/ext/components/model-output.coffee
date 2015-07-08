@@ -478,7 +478,7 @@ H2O.ModelOutput = (_, _go, _model) ->
         _pojoPreview "<pre>#{Flow.Util.highlight result, 'java'}</pre>"
 
   downloadPojo = ->
-    window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}", '_blank'
+    window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}.java", '_blank'
 
   deleteModel = ->
     _.confirm 'Are you sure you want to delete this model?', { acceptCaption: 'Delete Model', declineCaption: 'Cancel' }, (accept) ->
