@@ -544,6 +544,10 @@
                   </td>
                   <td class="flow-cell-actions"><i title="Save to clipboard" data-bind="click:clip" class="fa fa-paperclip flow-pointer"></i></td>
                 </tr>
+                <tr>
+                  <td data-bind="text:time" class="flow-cell-time"></td>
+                  <td class="flow-cell-actions"></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -1765,6 +1769,10 @@
         <table class="flow-form">
           <tbody>
             <tr>
+              <th class="flow-narrow">Run Time</th>
+              <td data-bind="text:runTime" style="font-size:120%" class="flow-wide"></td>
+            </tr>
+            <tr>
               <th class="flow-narrow">Type</th>
               <td data-bind="text:destinationType" class="flow-wide"></td>
             </tr>
@@ -1785,10 +1793,6 @@
             <tr>
               <th class="flow-narrow">Status</th>
               <td data-bind="text:status" class="flow-wide"></td>
-            </tr>
-            <tr>
-              <th class="flow-narrow">Run Time</th>
-              <td data-bind="text:runTime" class="flow-wide"></td>
             </tr>
             <tr>
               <th class="flow-narrow">Progress</th>
