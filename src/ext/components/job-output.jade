@@ -8,6 +8,9 @@
   table.flow-form
     tbody
       tr
+        th.flow-narrow Run Time
+        td.flow-wide(data-bind='text:runTime' style='font-size:120%')
+      tr
         th.flow-narrow Type
         td.flow-wide(data-bind='text:destinationType')
       tr
@@ -27,9 +30,6 @@
       tr
         th.flow-narrow Status
         td.flow-wide(data-bind='text:status')
-      tr
-        th.flow-narrow Run Time
-        td.flow-wide(data-bind='text:runTime')
       tr
         th.flow-narrow Progress
         td.flow-wide
