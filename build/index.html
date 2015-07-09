@@ -1394,16 +1394,24 @@
               </tbody>
             </table>
           </div>
-          <div style="margin-bottom:10px">
-                <button type="button" data-bind="click:selectFiltered, enable:hasFilteredItems" class="flow-button">Ignore These</button>
-                <button type="button" data-bind="click:deselectFiltered, enable:hasFilteredItems" class="flow-button">Include These</button>
-                <button type="button" data-bind="click:selectAll" class="flow-button">Ignore All</button>
-                <button type="button" data-bind="click:deselectAll" class="flow-button">Include All</button>
-          </div>
-          <div>
-            <button type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage" class="flow-button"><i class="fa fa-arrow-left"></i><span>Previous 100</span></button>
-            <button type="button" data-bind="click:goToNextPage, enable:canGoToNextPage" class="flow-button"><i class="fa fa-arrow-right"></i><span>Next 100</span></button>
-          </div>
+          <table style="margin-bottom:10px;width:100%">
+            <tbody>
+              <tr>
+                <td>
+                      <button type="button" data-bind="click:selectFiltered, enable:hasFilteredItems" class="flow-button"><i class="fa fa-check-square-o"></i><span>All</span>
+                      </button>
+                      <button type="button" data-bind="click:deselectFiltered, enable:hasFilteredItems" class="flow-button"><i class="fa fa-square-o"></i><span>None</span>
+                      </button>
+                </td>
+                <td style="text-align:right">
+                      <button type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage" class="flow-button"><i class="fa fa-arrow-left"></i><span>Previous 100</span>
+                      </button>
+                      <button type="button" data-bind="click:goToNextPage, enable:canGoToNextPage" class="flow-button"><i class="fa fa-arrow-right"></i><span>Next 100</span>
+                      </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
           <div style="font-size:80%">Only show columns with more than&nbsp;
             <input type="text" style="width:30px" placeholder="0" data-bind="value:ignoreNATerm, valueUpdate:'afterkeydown'" class="flow-textbox">% missing values.
           </div>
