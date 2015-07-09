@@ -1,6 +1,6 @@
 {
   "name": "h2o-flow",
-  "version": "0.3.32",
+  "version": "0.3.33",
   "homepage": "https://github.com/h2oai/h2o-flow",
   "authors": [
     "Prithvi Prabhu <prithvi@h2o.ai>"
