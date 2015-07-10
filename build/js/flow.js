@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.33';
+    Flow.Version = '0.3.34';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5196,15 +5196,23 @@
         return fp / (fp + tn);
     };
     formatConfusionMatrix = function (cm) {
-        var fn, fp, normal, table, tbody, tn, tp, tr, yellow, _ref, _ref1, _ref2;
-        (_ref = cm[0], tn = _ref[0], fp = _ref[1]), (_ref1 = cm[1], fn = _ref1[0], tp = _ref1[1]);
-        _ref2 = Flow.HTML.template('table.flow-matrix', 'tbody', 'tr', 'td', 'td.bg-yellow'), table = _ref2[0], tbody = _ref2[1], tr = _ref2[2], normal = _ref2[3], yellow = _ref2[4];
+        var domain, fn, fp, normal, strong, table, tbody, tn, tp, tr, yellow, _ref, _ref1, _ref2, _ref3;
+        _ref = cm.matrix, (_ref1 = _ref[0], tn = _ref1[0], fp = _ref1[1]), (_ref2 = _ref[1], fn = _ref2[0], tp = _ref2[1]);
+        domain = cm.domain;
+        _ref3 = Flow.HTML.template('table.flow-matrix', 'tbody', 'tr', 'td.strong.flow-center', 'td', 'td.bg-yellow'), table = _ref3[0], tbody = _ref3[1], tr = _ref3[2], strong = _ref3[3], normal = _ref3[4], yellow = _ref3[5];
         return table([tbody([
                 tr([
+                    strong(''),
+                    strong(domain[0]),
+                    strong(domain[1])
+                ]),
+                tr([
+                    strong(domain[0]),
                     yellow(tn),
                     normal(fp)
                 ]),
                 tr([
+                    strong(domain[1]),
                     normal(fn),
                     yellow(tp)
                 ])
@@ -5424,8 +5432,9 @@
             });
         };
         transformBinomialMetrics = function (metrics) {
-            var cms, fns, fps, i, scores, tns, tp, tps;
+            var cms, domain, fns, fps, i, scores, tns, tp, tps;
             if (scores = metrics.thresholds_and_metric_scores) {
+                domain = metrics.domain;
                 tps = getTwoDimData(scores, 'tps');
                 tns = getTwoDimData(scores, 'tns');
                 fps = getTwoDimData(scores, 'fps');
@@ -5435,16 +5444,19 @@
                     _results = [];
                     for (i = _i = 0, _len = tps.length; _i < _len; i = ++_i) {
                         tp = tps[i];
-                        _results.push([
-                            [
-                                tns[i],
-                                fps[i]
-                            ],
-                            [
-                                fns[i],
-                                tp
+                        _results.push({
+                            domain: domain,
+                            matrix: [
+                                [
+                                    tns[i],
+                                    fps[i]
+                                ],
+                                [
+                                    fns[i],
+                                    tp
+                                ]
                             ]
-                        ]);
+                        });
                     }
                     return _results;
                 }();
