@@ -167,16 +167,25 @@ computeFalsePositiveRate = (cm) ->
   fp / (fp + tn)
 
 formatConfusionMatrix = (cm) ->
-  [[tn, fp], [fn, tp]] = cm
-  [ table, tbody, tr, normal, yellow ] = Flow.HTML.template 'table.flow-matrix', 'tbody', 'tr', 'td', 'td.bg-yellow'
+  [[tn, fp], [fn, tp]] = cm.matrix
+  domain = cm.domain
+
+  [ table, tbody, tr, strong, normal, yellow ] = Flow.HTML.template 'table.flow-matrix', 'tbody', 'tr', 'td.strong.flow-center', 'td', 'td.bg-yellow'
 
   table [ 
     tbody [
       tr [
+        strong ''
+        strong domain[0]
+        strong domain[1]
+      ]
+      tr [
+        strong domain[0]
         yellow tn
         normal fp
       ]
       tr [
+        strong domain[1]
         normal fn
         yellow tp
       ]
@@ -325,13 +334,15 @@ H2O.Routines = (_) ->
 
   transformBinomialMetrics = (metrics) ->
     if scores = metrics.thresholds_and_metric_scores
+      domain = metrics.domain
       tps = getTwoDimData scores, 'tps'
       tns = getTwoDimData scores, 'tns'
       fps = getTwoDimData scores, 'fps'
       fns = getTwoDimData scores, 'fns'
 
       cms = for tp, i in tps
-        [[tns[i], fps[i]], [fns[i], tp]]
+        domain: domain
+        matrix: [[tns[i], fps[i]], [fns[i], tp]]
 
       scores.columns.push
         name: 'CM'
