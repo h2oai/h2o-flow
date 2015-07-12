@@ -412,7 +412,7 @@ H2O.Proxy = (_) ->
     doPost uri, { value: JSON.stringify value, null, 2 }, unwrap go, (result) -> result.name
 
   requestUploadObject = (type, name, formData, go) ->
-    uri = "/3/NodePersistentStorage/#{encodeURIComponent type}"
+    uri = "/3/NodePersistentStorage.bin/#{encodeURIComponent type}"
     uri += "/#{encodeURIComponent name}" if name
     doUpload uri, formData, unwrap go, (result) -> result.name
 
