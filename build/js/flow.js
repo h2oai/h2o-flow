@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.34';
+    Flow.Version = '0.3.35';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4840,7 +4840,7 @@
         };
         requestUploadObject = function (type, name, formData, go) {
             var uri;
-            uri = '/3/NodePersistentStorage/' + encodeURIComponent(type);
+            uri = '/3/NodePersistentStorage.bin/' + encodeURIComponent(type);
             if (name) {
                 uri += '/' + encodeURIComponent(name);
             }
