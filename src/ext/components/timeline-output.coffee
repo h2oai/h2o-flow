@@ -8,6 +8,7 @@ H2O.TimelineOutput = (_, _go, _timeline) ->
     'Who'
     'I/O Type'
     'Event'
+    'Type'
     'Bytes'
   ]
 
@@ -23,6 +24,7 @@ H2O.TimelineOutput = (_, _go, _timeline) ->
           event.node
           event.io_flavor or '-'
           'I/O'
+          '-'
           event.data
         ]
 
@@ -32,7 +34,8 @@ H2O.TimelineOutput = (_, _go, _timeline) ->
           event.nanos
           'many &#8594;  many'
           'UDP'
-          'heartbeat'
+          event.type
+          '-'
           "#{event.sends} sent #{event.recvs} received"
         ]
 
@@ -43,6 +46,7 @@ H2O.TimelineOutput = (_, _go, _timeline) ->
           "#{event.from} &#8594; #{event.to}"
           event.protocol
           event.msg_type
+          if event.is_send then 'send' else 'receive'
           event.data
         ]
 
