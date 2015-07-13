@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.35';
+    Flow.Version = '0.3.36';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -11183,6 +11183,7 @@
             'Who',
             'I/O Type',
             'Event',
+            'Type',
             'Bytes'
         ];
         _data = Flow.Dataflow.signal(null);
@@ -11196,6 +11197,7 @@
                     event.node,
                     event.io_flavor || '-',
                     'I/O',
+                    '-',
                     event.data
                 ];
             case 'heartbeat':
@@ -11204,7 +11206,8 @@
                     event.nanos,
                     'many &#8594;  many',
                     'UDP',
-                    'heartbeat',
+                    event.type,
+                    '-',
                     '' + event.sends + ' sent ' + event.recvs + ' received'
                 ];
             case 'network_msg':
@@ -11214,6 +11217,7 @@
                     '' + event.from + ' &#8594; ' + event.to,
                     event.protocol,
                     event.msg_type,
+                    event.is_send ? 'send' : 'receive',
                     event.data
                 ];
             }
