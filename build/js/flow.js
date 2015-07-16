@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.37';
+    Flow.Version = '0.3.38';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -9367,15 +9367,16 @@
             });
         };
         (function () {
-            var ignoredColumnsParameter, offsetColumnsParameter, responseColumnParameter, trainingFrameParameter, validationFrameParameter, weightsColumnParameter, _ref;
+            var foldColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, responseColumnParameter, trainingFrameParameter, validationFrameParameter, weightsColumnParameter, _ref;
             _ref = lodash.map([
                 'training_frame',
                 'validation_frame',
                 'response_column',
                 'ignored_columns',
                 'offset_column',
-                'weights_column'
-            ], findFormField), trainingFrameParameter = _ref[0], validationFrameParameter = _ref[1], responseColumnParameter = _ref[2], ignoredColumnsParameter = _ref[3], offsetColumnsParameter = _ref[4], weightsColumnParameter = _ref[5];
+                'weights_column',
+                'fold_column'
+            ], findFormField), trainingFrameParameter = _ref[0], validationFrameParameter = _ref[1], responseColumnParameter = _ref[2], ignoredColumnsParameter = _ref[3], offsetColumnsParameter = _ref[4], weightsColumnParameter = _ref[5], foldColumnParameter = _ref[6];
             if (trainingFrameParameter) {
                 if (responseColumnParameter || ignoredColumnsParameter) {
                     return Flow.Dataflow.act(trainingFrameParameter.value, function (frameKey) {
@@ -9404,6 +9405,9 @@
                                     }
                                     if (weightsColumnParameter) {
                                         weightsColumnParameter.values(columnValues);
+                                    }
+                                    if (foldColumnParameter) {
+                                        foldColumnParameter.values(columnValues);
                                     }
                                     if (offsetColumnsParameter) {
                                         offsetColumnsParameter.values(columnValues);
