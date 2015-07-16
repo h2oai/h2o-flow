@@ -250,7 +250,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   findFormField = (name) -> find _form, (field) -> field.name is name
 
   do ->
-    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter ] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column' ], findFormField
+    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter ] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column' ], findFormField
 
     if trainingFrameParameter
       if responseColumnParameter or ignoredColumnsParameter
@@ -275,6 +275,9 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
                 if weightsColumnParameter
                   weightsColumnParameter.values columnValues
+
+                if foldColumnParameter
+                  foldColumnParameter.values columnValues
 
                 if offsetColumnsParameter
                   offsetColumnsParameter.values columnValues
