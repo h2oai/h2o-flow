@@ -1672,6 +1672,8 @@
                       </button>
                       <button type="button" data-bind="click:download" class="flow-button"><i class="fa fa-cloud-download"></i><span>Download</span>
                       </button>
+                      <button type="button" data-bind="click:exportFrame" class="flow-button"><i class="fa fa-save"></i><span>Export</span>
+                      </button>
                 </td>
                 <td class="flow-right">
                       <button type="button" data-bind="click:deleteFrame" class="flow-button"><i class="fa fa-trash-o"></i><span>Delete</span>
@@ -1714,6 +1716,53 @@
         <div data-bind="raw:chunkSummary" class="flow-plot"></div>
         <h4 data-bind="collapse:true">Frame Distribution Summary</h4>
         <div data-bind="raw:distributionSummary" class="flow-plot"></div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-export-frame-input">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-save"></i>Export Frame
+            </h3>
+        <table class="flow-form">
+          <tr>
+            <th width="1">
+              <label>Frame:</label>
+            </th>
+            <td>
+              <select data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'"></select>
+            </td>
+          </tr>
+          <tr>
+            <th width="1">
+              <label>Path:</label>
+            </th>
+            <td>
+              <input type="text" data-bind="value:path, valueUpdate:'afterkeydown'" class="flow-textbox">
+            </td>
+          </tr>
+          <tr>
+            <th width="1">
+              <label>Overwrite:</label>
+            </th>
+            <td>
+              <input type="checkbox" data-bind="checked:overwrite">
+            </td>
+          </tr>
+          <tr>
+            <th>
+              <label>Actions:</label>
+            </th>
+            <td>
+              <button type="button" data-bind="click:exportFrame, enable:canExportFrame" class="flow-button"><i class="fa fa-save"></i><span>Export</span></button>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </script>
+    <script type="text/html" id="flow-export-frame-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-save"></i>Frame Exported
+            </h3>
+        <blockquote>The specified frame was exported successfully.</blockquote>
       </div>
     </script>
     <script type="text/html" id="flow-frame-data-output">
@@ -1858,7 +1907,7 @@
         <table class="flow-form">
           <tr>
             <th width="1">
-              <label>Key:</label>
+              <label>Name:</label>
             </th>
             <td>
               <input data-bind="value:destinationKey">
