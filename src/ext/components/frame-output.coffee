@@ -52,6 +52,9 @@ H2O.FrameOutput = (_, _go, _frame) ->
   download = ->
     window.open "/3/DownloadDataset?frame_id=#{encodeURIComponent _frame.frame_id.name}", '_blank'
 
+  exportFrame = ->
+    _.insertAndExecuteCell 'cs', "exportFrame #{stringify _frame.frame_id.name}"
+
   deleteFrame = ->
     _.confirm 'Are you sure you want to delete this frame?', { acceptCaption: 'Delete Frame', declineCaption: 'Cancel' }, (accept) ->
       if accept
@@ -124,6 +127,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
   splitFrame: splitFrame
   predict: predict
   download: download
+  exportFrame: exportFrame
   canGoToPreviousPage: _canGoToPreviousPage
   canGoToNextPage: _canGoToNextPage
   goToPreviousPage: goToPreviousPage

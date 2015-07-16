@@ -17,6 +17,7 @@ H2O.ApplicationContext = (_) ->
   _.requestFrameSummarySliceE = do slot
   _.requestFrameSummaryWithoutData = do slot
   _.requestDeleteFrame = do slot
+  _.requestExportFrame = do slot
   _.requestRDDs = do slot
   _.requestColumnSummary = do slot
   _.requestModelBuilder = do slot

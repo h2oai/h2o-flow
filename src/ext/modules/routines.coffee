@@ -1061,6 +1061,19 @@ H2O.Routines = (_) ->
     else
       assist deleteFrame
 
+  extendExportFrame = (result) ->
+    render_ result, H2O.ExportFrameOutput, result
+
+  requestExportFrame = (frameKey, path, opts, go) ->
+    _.requestExportFrame frameKey, path, (if opts.overwrite then yes else no), (error, result) ->
+      if error then go error else go null, extendExportFrame result
+
+  exportFrame = (frameKey, path, opts={}) ->
+    if frameKey and path
+      _fork requestExportFrame, frameKey, path, opts
+    else
+      assist exportFrame, frameKey, path, opts
+
   requestDeleteFrames = (frameKeys, go) ->
     futures = map frameKeys, (frameKey) ->
       _fork _.requestDeleteFrame, frameKey
@@ -1574,6 +1587,8 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.CreateFrameInput, args
         when splitFrame
           _fork proceed, H2O.SplitFrameInput, args
+        when exportFrame
+          _fork proceed, H2O.ExportFrameInput, args
         when imputeColumn
           _fork proceed, H2O.ImputeInput, args
         else
@@ -1654,6 +1669,7 @@ H2O.Routines = (_) ->
   getFrameData: getFrameData
   deleteFrames: deleteFrames
   deleteFrame: deleteFrame
+  exportFrame: exportFrame
   getRDDs: getRDDs
   getColumnSummary: getColumnSummary
   changeColumnType: changeColumnType

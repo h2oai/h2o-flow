@@ -184,6 +184,9 @@ H2O.Proxy = (_) ->
   requestDeleteFrame = (key, go) ->
     doDelete "/3/Frames/#{encodeURIComponent key}", go
 
+  requestExportFrame = (key, path, overwrite, go) ->
+    doGet "/3/Frames/#{encodeURIComponent key}/export/#{encodeURIComponent path}/overwrite/#{if overwrite then 'true' else 'false'}", go
+
   requestRDDs = (go) ->
     doGet '/3/RDDs', (error, result) ->
       if error
@@ -489,6 +492,7 @@ H2O.Proxy = (_) ->
   link _.requestFrameSummaryWithoutData, requestFrameSummaryWithoutData
   link _.requestFrameSummarySlice, requestFrameSummarySlice
   link _.requestDeleteFrame, requestDeleteFrame
+  link _.requestExportFrame, requestExportFrame
   link _.requestRDDs, requestRDDs
   link _.requestColumnSummary, requestColumnSummary
   link _.requestJobs, requestJobs

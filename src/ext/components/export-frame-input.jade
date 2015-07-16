@@ -1,0 +1,26 @@
+.flow-widget
+  +subtitle('Export Frame', 'save')
+
+  table.flow-form
+    tr
+      th(width='1')
+        label Frame:
+      td
+        select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
+    tr
+      th(width='1')
+        label Path:
+      td
+        input.flow-textbox(type='text' data-bind="value:path, valueUpdate:'afterkeydown'")
+    tr
+      th(width='1')
+        label Overwrite:
+      td
+        input(type='checkbox' data-bind="checked:overwrite")
+    tr
+      th
+        label Actions:
+      td
+        button.flow-button(type='button' data-bind='click:exportFrame, enable:canExportFrame')
+          i.fa.fa-save
+          span Export
