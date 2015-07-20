@@ -130,12 +130,24 @@ parseNulls = (source) ->
     target[i] = if element? then element else undefined
   target
 
-parseAndFormat = (source) ->
+parseAndFormatArray = (source) ->
   target = new Array source.length
   for element, i in source
     target[i] = if element?
       if isNumber element 
         format6fi element
+      else
+        element
+    else 
+      undefined
+  target
+
+parseAndFormatObjectArray = (source) ->
+  target = new Array source.length
+  for element, i in source
+    target[i] = if element?
+      if element.__meta?.schema_type is 'Key<Keyed>'
+        "<a href='#' data-type='model' data-key=#{stringify element.name}>#{escape element.name}</a>"
       else
         element
     else 
@@ -468,7 +480,12 @@ H2O.Routines = (_) ->
       origin: origin
 
   inspectRawArray_ = (name, origin, description, array) -> ->
-    createDataframe name, [createList name, parseAndFormat array], (sequence array.length), null,
+    createDataframe name, [createList name, parseAndFormatArray array], (sequence array.length), null,
+      description: ''
+      origin: origin
+
+  inspectObjectArray_ = (name, origin, description, array) -> ->
+    createDataframe name, [createList name, parseAndFormatObjectArray array], (sequence array.length), null,
       description: ''
       origin: origin
 
@@ -556,7 +573,10 @@ H2O.Routines = (_) ->
           inspections["#{name} - #{v.name}"] = inspectTwoDimTable_ origin, "#{name} - #{v.name}", v
         else
           if isArray v
-            inspections[k] = inspectRawArray_ k, origin, k, v
+            if k is 'cross_validation_models' # megahack
+              inspections[k] = inspectObjectArray_ k, origin, k, v
+            else
+              inspections[k] = inspectRawArray_ k, origin, k, v
           else if isObject v
             if meta = v.__meta
               if meta.schema_type is 'Key<Frame>'
@@ -591,9 +611,6 @@ H2O.Routines = (_) ->
     render_ model, H2O.ModelOutput, model
 
   extendModels = (models) ->
-    # for model in models
-    #  extendModel model
-
     inspections = {}
 
     algos = unique (model.algo for model in models)
