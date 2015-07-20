@@ -146,8 +146,10 @@ parseAndFormatObjectArray = (source) ->
   target = new Array source.length
   for element, i in source
     target[i] = if element?
-      if element.__meta?.schema_type is 'Key<Keyed>'
+      if element.__meta?.schema_type is 'Key<Model>'
         "<a href='#' data-type='model' data-key=#{stringify element.name}>#{escape element.name}</a>"
+      else if element.__meta?.schema_type is 'Key<Frame>'
+        "<a href='#' data-type='frame' data-key=#{stringify element.name}>#{escape element.name}</a>"
       else
         element
     else 
@@ -573,7 +575,7 @@ H2O.Routines = (_) ->
           inspections["#{name} - #{v.name}"] = inspectTwoDimTable_ origin, "#{name} - #{v.name}", v
         else
           if isArray v
-            if k is 'cross_validation_models' # megahack
+            if k is 'cross_validation_models' or k is 'cross_validation_predictions' # megahack
               inspections[k] = inspectObjectArray_ k, origin, k, v
             else
               inspections[k] = inspectRawArray_ k, origin, k, v
