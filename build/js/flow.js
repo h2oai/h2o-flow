@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.38';
+    Flow.Version = '0.3.39';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4984,7 +4984,7 @@
     };
 }.call(this));
 (function () {
-    var combineTables, computeFalsePositiveRate, computeTruePositiveRate, concatArrays, convertColumnToVector, convertTableToFrame, createArrays, createDataframe, createFactor, createList, createTempKey, createVector, format4f, format6fi, formatConfusionMatrix, formulateGetPredictionsOrigin, getTwoDimData, lightning, parseAndFormat, parseNaNs, parseNulls, parseNumbers, repeatValues, _assistance, __slice = [].slice;
+    var combineTables, computeFalsePositiveRate, computeTruePositiveRate, concatArrays, convertColumnToVector, convertTableToFrame, createArrays, createDataframe, createFactor, createList, createTempKey, createVector, format4f, format6fi, formatConfusionMatrix, formulateGetPredictionsOrigin, getTwoDimData, lightning, parseAndFormatArray, parseAndFormatObjectArray, parseNaNs, parseNulls, parseNumbers, repeatValues, _assistance, __slice = [].slice;
     lightning = (typeof window !== 'undefined' && window !== null ? window.plot : void 0) != null ? window.plot : {};
     if (lightning.settings) {
         lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace';
@@ -5161,12 +5161,21 @@
         }
         return target;
     };
-    parseAndFormat = function (source) {
+    parseAndFormatArray = function (source) {
         var element, i, target, _i, _len;
         target = new Array(source.length);
         for (i = _i = 0, _len = source.length; _i < _len; i = ++_i) {
             element = source[i];
             target[i] = element != null ? lodash.isNumber(element) ? format6fi(element) : element : void 0;
+        }
+        return target;
+    };
+    parseAndFormatObjectArray = function (source) {
+        var element, i, target, _i, _len, _ref;
+        target = new Array(source.length);
+        for (i = _i = 0, _len = source.length; _i < _len; i = ++_i) {
+            element = source[i];
+            target[i] = element != null ? ((_ref = element.__meta) != null ? _ref.schema_type : void 0) === 'Key<Keyed>' ? '<a href=\'#\' data-type=\'model\' data-key=' + Flow.Prelude.stringify(element.name) + '>' + lodash.escape(element.name) + '</a>' : element : void 0;
         }
         return target;
     };
@@ -5257,7 +5266,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestCurrentNodeIndex, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5671,7 +5680,15 @@
         };
         inspectRawArray_ = function (name, origin, description, array) {
             return function () {
-                return createDataframe(name, [createList(name, parseAndFormat(array))], lodash.range(array.length), null, {
+                return createDataframe(name, [createList(name, parseAndFormatArray(array))], lodash.range(array.length), null, {
+                    description: '',
+                    origin: origin
+                });
+            };
+        };
+        inspectObjectArray_ = function (name, origin, description, array) {
+            return function () {
+                return createDataframe(name, [createList(name, parseAndFormatObjectArray(array))], lodash.range(array.length), null, {
                     description: '',
                     origin: origin
                 });
@@ -5765,7 +5782,11 @@
                             inspections['' + name + ' - ' + v.name] = inspectTwoDimTable_(origin, '' + name + ' - ' + v.name, v);
                         } else {
                             if (lodash.isArray(v)) {
-                                inspections[k] = inspectRawArray_(k, origin, k, v);
+                                if (k === 'cross_validation_models') {
+                                    inspections[k] = inspectObjectArray_(k, origin, k, v);
+                                } else {
+                                    inspections[k] = inspectRawArray_(k, origin, k, v);
+                                }
                             } else if (lodash.isObject(v)) {
                                 if (meta = v.__meta) {
                                     if (meta.schema_type === 'Key<Frame>') {
@@ -9666,7 +9687,7 @@
 }.call(this));
 (function () {
     H2O.ModelOutput = function (_, _go, _model) {
-        var cloneModel, confusionMatrix, deleteModel, downloadPojo, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
+        var cloneModel, confusionMatrix, deleteModel, downloadPojo, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
         _isExpanded = Flow.Dataflow.signal(false);
         _plots = Flow.Dataflow.signals([]);
         _pojoPreview = Flow.Dataflow.signal(null);
@@ -9924,6 +9945,12 @@
                 });
                 renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
             }
+            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
+            }
             if (table = _.inspect('output - Standardized Coefficient Magnitudes', _model)) {
                 renderPlot('Standardized Coefficient Magnitudes', false, _.plot(function (g) {
                     return g(g.rect(g.position('coefficients', 'names'), g.fillColor('sign')), g.from(table), g.limit(25));
@@ -9957,6 +9984,12 @@
                 });
                 renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
             }
+            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
+            }
             if (table = _.inspect('output - Variable Importances', _model)) {
                 renderPlot('Variable Importances', false, _.plot(function (g) {
                     return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
@@ -9980,6 +10013,9 @@
                     }
                     if (confusionMatrix = (_ref2 = output.validation_metrics) != null ? (_ref3 = _ref2.cm) != null ? _ref3.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref4 = output.cross_validation_metrics) != null ? (_ref5 = _ref4.cm) != null ? _ref5.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
                     }
                 }
             }
@@ -10009,6 +10045,12 @@
                 });
                 renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
             }
+            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
+            }
             if (table = _.inspect('output - Variable Importances', _model)) {
                 renderPlot('Variable Importances', false, _.plot(function (g) {
                     return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
@@ -10016,25 +10058,30 @@
             }
             if (output = _model.output) {
                 if (output.model_category === 'Multinomial') {
-                    if (confusionMatrix = (_ref4 = output.training_metrics) != null ? (_ref5 = _ref4.cm) != null ? _ref5.table : void 0 : void 0) {
+                    if (confusionMatrix = (_ref6 = output.training_metrics) != null ? (_ref7 = _ref6.cm) != null ? _ref7.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
                     }
-                    if (confusionMatrix = (_ref6 = output.validation_metrics) != null ? (_ref7 = _ref6.cm) != null ? _ref7.table : void 0 : void 0) {
+                    if (confusionMatrix = (_ref8 = output.validation_metrics) != null ? (_ref9 = _ref8.cm) != null ? _ref9.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref10 = output.cross_validation_metrics) != null ? (_ref11 = _ref10.cm) != null ? _ref11.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
                     }
                 }
             }
         }
-        _ref8 = _.ls(_model);
-        for (_i = 0, _len = _ref8.length; _i < _len; _i++) {
-            tableName = _ref8[_i];
+        _ref12 = _.ls(_model);
+        for (_i = 0, _len = _ref12.length; _i < _len; _i++) {
+            tableName = _ref12[_i];
             if (!(tableName !== 'parameters')) {
                 continue;
             }
-            if (output = ((_ref9 = _model.output) != null ? _ref9.model_category : void 0) === 'Multinomial') {
+            if (output = ((_ref13 = _model.output) != null ? _ref13.model_category : void 0) === 'Multinomial') {
                 if (0 === tableName.indexOf('output - training_metrics - cm')) {
                     continue;
                 } else if (0 === tableName.indexOf('output - validation_metrics - cm')) {
+                    continue;
+                } else if (0 === tableName.indexOf('output - cross_validation_metrics - cm')) {
                     continue;
                 }
             }
