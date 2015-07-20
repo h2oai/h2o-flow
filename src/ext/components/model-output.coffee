@@ -222,6 +222,21 @@ H2O.ModelOutput = (_, _go, _model) ->
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
         renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
+      if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
+        plotter = _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
+
       if table = _.inspect 'output - Standardized Coefficient Magnitudes', _model
         renderPlot 'Standardized Coefficient Magnitudes', no, _.plot (g) ->
           g(
@@ -302,6 +317,21 @@ H2O.ModelOutput = (_, _go, _model) ->
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
         renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
+      if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
+        plotter = _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
+
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', no, _.plot (g) ->
           g(
@@ -354,6 +384,8 @@ H2O.ModelOutput = (_, _go, _model) ->
             renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
           if confusionMatrix = output.validation_metrics?.cm?.table
             renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.cross_validation_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
     when 'gbm', 'drf'
       if table = _.inspect 'output - Scoring History', _model
@@ -424,6 +456,22 @@ H2O.ModelOutput = (_, _go, _model) ->
         # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
         renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
 
+      if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
+        plotter = _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
+
       if table = _.inspect 'output - Variable Importances', _model
         renderPlot 'Variable Importances', no, _.plot (g) ->
           g(
@@ -440,6 +488,8 @@ H2O.ModelOutput = (_, _go, _model) ->
             renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
           if confusionMatrix = output.validation_metrics?.cm?.table
             renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.cross_validation_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
   for tableName in _.ls _model when tableName isnt 'parameters'
 
@@ -448,6 +498,8 @@ H2O.ModelOutput = (_, _go, _model) ->
       if 0 is tableName.indexOf 'output - training_metrics - cm'
         continue
       else if 0 is tableName.indexOf 'output - validation_metrics - cm'
+        continue
+      else if 0 is tableName.indexOf 'output - cross_validation_metrics - cm'
         continue
 
     if table = _.inspect tableName, _model
