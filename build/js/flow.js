@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.39';
+    Flow.Version = '0.3.40';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5171,11 +5171,11 @@
         return target;
     };
     parseAndFormatObjectArray = function (source) {
-        var element, i, target, _i, _len, _ref;
+        var element, i, target, _i, _len, _ref, _ref1;
         target = new Array(source.length);
         for (i = _i = 0, _len = source.length; _i < _len; i = ++_i) {
             element = source[i];
-            target[i] = element != null ? ((_ref = element.__meta) != null ? _ref.schema_type : void 0) === 'Key<Keyed>' ? '<a href=\'#\' data-type=\'model\' data-key=' + Flow.Prelude.stringify(element.name) + '>' + lodash.escape(element.name) + '</a>' : element : void 0;
+            target[i] = element != null ? ((_ref = element.__meta) != null ? _ref.schema_type : void 0) === 'Key<Model>' ? '<a href=\'#\' data-type=\'model\' data-key=' + Flow.Prelude.stringify(element.name) + '>' + lodash.escape(element.name) + '</a>' : ((_ref1 = element.__meta) != null ? _ref1.schema_type : void 0) === 'Key<Frame>' ? '<a href=\'#\' data-type=\'frame\' data-key=' + Flow.Prelude.stringify(element.name) + '>' + lodash.escape(element.name) + '</a>' : element : void 0;
         }
         return target;
     };
@@ -5782,7 +5782,7 @@
                             inspections['' + name + ' - ' + v.name] = inspectTwoDimTable_(origin, '' + name + ' - ' + v.name, v);
                         } else {
                             if (lodash.isArray(v)) {
-                                if (k === 'cross_validation_models') {
+                                if (k === 'cross_validation_models' || k === 'cross_validation_predictions') {
                                     inspections[k] = inspectObjectArray_(k, origin, k, v);
                                 } else {
                                     inspections[k] = inspectRawArray_(k, origin, k, v);
