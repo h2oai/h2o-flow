@@ -571,6 +571,7 @@ table.flow-form-ruled tr:first-child {
   background-color: inherit !important;
 }
 .flow-plot table.flow-matrix td {
+  white-space: nowrap;
   border-left: 1px solid #aaa;
   border-top: 1px solid #aaa;
 }

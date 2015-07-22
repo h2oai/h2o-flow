@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.41';
+    Flow.Version = '0.3.42';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5210,25 +5210,40 @@
         return fp / (fp + tn);
     };
     formatConfusionMatrix = function (cm) {
-        var domain, fn, fp, normal, strong, table, tbody, tn, tp, tr, yellow, _ref, _ref1, _ref2, _ref3;
+        var domain, fn, fp, fpr, normal, strong, table, tbody, tn, tp, tpr, tr, yellow, _ref, _ref1, _ref2, _ref3;
         _ref = cm.matrix, (_ref1 = _ref[0], tn = _ref1[0], fp = _ref1[1]), (_ref2 = _ref[1], fn = _ref2[0], tp = _ref2[1]);
+        tpr = tp / (tp + fn);
+        fpr = fp / (fp + tn);
         domain = cm.domain;
         _ref3 = Flow.HTML.template('table.flow-matrix', 'tbody', 'tr', 'td.strong.flow-center', 'td', 'td.bg-yellow'), table = _ref3[0], tbody = _ref3[1], tr = _ref3[2], strong = _ref3[3], normal = _ref3[4], yellow = _ref3[5];
         return table([tbody([
                 tr([
                     strong(''),
                     strong(domain[0]),
-                    strong(domain[1])
+                    strong(domain[1]),
+                    strong('Error'),
+                    strong('Rate')
                 ]),
                 tr([
                     strong(domain[0]),
                     yellow(tn),
-                    normal(fp)
+                    normal(fp),
+                    normal(format4f(fpr)),
+                    normal(fp + ' / ' + (fp + tn))
                 ]),
                 tr([
                     strong(domain[1]),
                     normal(fn),
-                    yellow(tp)
+                    yellow(tp),
+                    normal(format4f(tpr)),
+                    normal(tp + ' / ' + (tp + fn))
+                ]),
+                tr([
+                    strong('Total'),
+                    strong(tn + fn),
+                    strong(tp + fp),
+                    strong(format4f(tpr + fpr)),
+                    strong(tp + fp + ' / ' + (fp + tn + tp + fn))
                 ])
             ])]);
     };
