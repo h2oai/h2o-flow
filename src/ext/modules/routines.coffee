@@ -182,6 +182,8 @@ computeFalsePositiveRate = (cm) ->
 
 formatConfusionMatrix = (cm) ->
   [[tn, fp], [fn, tp]] = cm.matrix
+  tpr = tp / (tp + fn)
+  fpr = fp / (fp + tn)
   domain = cm.domain
 
   [ table, tbody, tr, strong, normal, yellow ] = Flow.HTML.template 'table.flow-matrix', 'tbody', 'tr', 'td.strong.flow-center', 'td', 'td.bg-yellow'
@@ -192,16 +194,29 @@ formatConfusionMatrix = (cm) ->
         strong ''
         strong domain[0]
         strong domain[1]
+        strong 'Error'
+        strong 'Rate'
       ]
       tr [
         strong domain[0]
         yellow tn
         normal fp
+        normal format4f fpr
+        normal fp + ' / ' + (fp + tn)
       ]
       tr [
         strong domain[1]
         normal fn
         yellow tp
+        normal format4f tpr
+        normal tp + ' / ' + (tp + fn)
+      ]
+      tr [
+        strong 'Total'
+        strong tn + fn
+        strong tp + fp
+        strong format4f tpr + fpr
+        strong (tp + fp) + ' / ' + (fp + tn + tp + fn)
       ]
     ]
   ]
