@@ -75,10 +75,11 @@ H2O.ImportFilesInput = (_, _go) ->
         process map result.matches, (value) -> value: value
 
   selectAllFiles = ->
-    _selectedFiles map _importedFiles(), (file) ->
-      createSelectedFileItem file.path
-    for file in _importedFiles()
-      file.isSelected yes
+    dict = {}
+    for file in _selectedFiles()
+      dict[file.path] = yes
+    for file in _importedFiles() when not dict[file.path]
+      file.select()
     return
 
   deselectAllFiles = ->
