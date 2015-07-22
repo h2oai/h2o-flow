@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.40';
+    Flow.Version = '0.3.41';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -8446,14 +8446,19 @@
             });
         };
         selectAllFiles = function () {
-            var file, _i, _len, _ref;
-            _selectedFiles(lodash.map(_importedFiles(), function (file) {
-                return createSelectedFileItem(file.path);
-            }));
-            _ref = _importedFiles();
+            var dict, file, _i, _j, _len, _len1, _ref, _ref1;
+            dict = {};
+            _ref = _selectedFiles();
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
                 file = _ref[_i];
-                file.isSelected(true);
+                dict[file.path] = true;
+            }
+            _ref1 = _importedFiles();
+            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+                file = _ref1[_j];
+                if (!dict[file.path]) {
+                    file.select();
+                }
             }
         };
         deselectAllFiles = function () {
