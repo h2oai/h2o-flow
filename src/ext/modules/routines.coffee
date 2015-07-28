@@ -735,9 +735,9 @@ H2O.Routines = (_) ->
           createFactor column.label, TString, ((if index? then domain[index] else undefined) for index in column.data)
         when 'time'
           createVector column.label, TNumber, parseNaNs column.data
-        when 'string'
+        when 'string', 'uuid'
           createList column.label, parseNulls column.string_data
-        else # uuid / etc.
+        else
           createList column.label, parseNulls column.data
 
     vectors.unshift createVector 'Row', TNumber, (rowIndex + 1 for rowIndex in [frame.row_offset ... frame.row_count])
