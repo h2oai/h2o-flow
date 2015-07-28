@@ -243,7 +243,7 @@ formulateGetPredictionsOrigin = (opts) ->
 H2O.Routines = (_) ->
   #TODO move these into Flow.Async
   _fork = (f, args...) -> Flow.Async.fork f, args
-  _join = (args..., go) -> Flow.Async.join args, Flow.Async.applicate go
+  _join = (args, go) -> Flow.Async.join args, Flow.Async.applicate go
   _call = (go, args...) -> Flow.Async.join args, Flow.Async.applicate go
   _apply = (go, args) -> Flow.Async.join args, go
   _isFuture = Flow.Async.isFuture
