@@ -27,7 +27,14 @@ H2O.LogFileOutput = (_, _go, _cloud, _nodeIndex, _fileType, _logFile) ->
   initialize = (cloud, nodeIndex, fileType, logFile) ->
     _activeFileType fileType
     _contents logFile.log
-    _nodes nodes = (createNode node, i for node, i in cloud.nodes)
+    nodes = []
+    if cloud.is_client
+      clientNode = ip_port: "driver"
+      NODE_INDEX_SELF = -1
+      nodes.push createNode(clientNode, NODE_INDEX_SELF)
+    for n, i in cloud.nodes
+      nodes.push createNode(n, i)
+    _nodes nodes
     _activeNode nodes[nodeIndex] if nodeIndex < nodes.length
     react _activeNode, _activeFileType, refreshActiveView
     defer _go
