@@ -1517,23 +1517,14 @@ H2O.Routines = (_) ->
   getStackTrace = ->
     _fork requestStackTrace
 
-  requestCurrentNodeIndex = (nodeIndex, go) ->
-    if nodeIndex < 0
-      _.requestCloud (error, cloud) ->
-        if error
-          go error
-        else
-          go null, cloud.node_idx
-    else
-      go null, nodeIndex
-
   requestLogFile = (nodeIndex, fileType, go) ->
     _.requestCloud (error, cloud) ->
       if error
         go error
       else
         if nodeIndex < 0 or nodeIndex >= cloud.nodes.length
-          nodeIndex = cloud.node_idx
+          NODE_INDEX_SELF = -1
+          nodeIndex = NODE_INDEX_SELF
         _.requestLogFile nodeIndex, fileType, (error, logFile) ->
           if error
             go error
