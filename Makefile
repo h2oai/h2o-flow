@@ -2,7 +2,7 @@ B=node_modules/.bin
 O=src/main/resources/www/steam
 
 default: 
-	npm run build --output=../h2o-dev/h2o-web/src/main/resources/www/flow
+	npm run build --output=../h2o-3/h2o-web/src/main/resources/www/flow
 
 build:
 	npm run build
