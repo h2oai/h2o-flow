@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.46';
+    Flow.Version = '0.3.47';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -10009,13 +10009,24 @@
             }
             if (table = _.inspect('output - Scoring History', _model)) {
                 if (table.schema['validation_MSE']) {
-                    renderPlot('Scoring History', false, _.plot(function (g) {
+                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
                         return g(g.path(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
                     }));
                 } else {
-                    renderPlot('Scoring History', false, _.plot(function (g) {
+                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
                         return g(g.path(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
                     }));
+                }
+                if (table.schema['training_deviance']) {
+                    if (table.schema['validation_deviance']) {
+                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
+                            return g(g.path(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                        }));
+                    } else {
+                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
+                            return g(g.path(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                        }));
+                    }
                 }
             }
             if (output = _model.output) {
@@ -10036,13 +10047,24 @@
         case 'drf':
             if (table = _.inspect('output - Scoring History', _model)) {
                 if (table.schema['validation_MSE']) {
-                    renderPlot('Scoring History', false, _.plot(function (g) {
+                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
                         return g(g.path(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
                     }));
                 } else {
-                    renderPlot('Scoring History', false, _.plot(function (g) {
+                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
                         return g(g.path(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
                     }));
+                }
+                if (table.schema['training_deviance']) {
+                    if (table.schema['validation_deviance']) {
+                        renderPlot('Scoring History - MSE', false, _.plot(function (g) {
+                            return g(g.path(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                        }));
+                    } else {
+                        renderPlot('Scoring History - MSE', false, _.plot(function (g) {
+                            return g(g.path(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                        }));
+                    }
                 }
             }
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
