@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.45';
+    Flow.Version = '0.3.46';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5210,15 +5210,15 @@
         return fp / (fp + tn);
     };
     formatConfusionMatrix = function (cm) {
-        var domain, fn, fp, fpr, normal, strong, table, tbody, tn, tp, tpr, tr, yellow, _ref, _ref1, _ref2, _ref3;
+        var domain, fn, fnr, fp, fpr, normal, strong, table, tbody, tn, tp, tr, yellow, _ref, _ref1, _ref2, _ref3;
         _ref = cm.matrix, (_ref1 = _ref[0], tn = _ref1[0], fp = _ref1[1]), (_ref2 = _ref[1], fn = _ref2[0], tp = _ref2[1]);
-        tpr = tp / (tp + fn);
+        fnr = fn / (tp + fn);
         fpr = fp / (fp + tn);
         domain = cm.domain;
         _ref3 = Flow.HTML.template('table.flow-matrix', 'tbody', 'tr', 'td.strong.flow-center', 'td', 'td.bg-yellow'), table = _ref3[0], tbody = _ref3[1], tr = _ref3[2], strong = _ref3[3], normal = _ref3[4], yellow = _ref3[5];
         return table([tbody([
                 tr([
-                    strong(''),
+                    strong('Actual/Predicted'),
                     strong(domain[0]),
                     strong(domain[1]),
                     strong('Error'),
@@ -5235,15 +5235,15 @@
                     strong(domain[1]),
                     normal(fn),
                     yellow(tp),
-                    normal(format4f(tpr)),
-                    normal(tp + ' / ' + (tp + fn))
+                    normal(format4f(fnr)),
+                    normal(fn + ' / ' + (tp + fn))
                 ]),
                 tr([
                     strong('Total'),
                     strong(tn + fn),
                     strong(tp + fp),
-                    strong(format4f(tpr + fpr)),
-                    strong(tp + fp + ' / ' + (fp + tn + tp + fn))
+                    strong(format4f((fn + fp) / (fp + tn + tp + fn))),
+                    strong(fn + fp + ' / ' + (fp + tn + tp + fn))
                 ])
             ])]);
     };
@@ -5287,7 +5287,9 @@
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
             return Flow.Async.fork(f, args);
         };
-        _join = function (args, go) {
+        _join = function () {
+            var args, go, _i;
+            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
             return Flow.Async.join(args, Flow.Async.applicate(go));
         };
         _call = function () {
