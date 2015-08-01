@@ -344,7 +344,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
       if table = _.inspect 'output - Scoring History', _model
         if table.schema['validation_MSE']
-          renderPlot 'Scoring History', no, _.plot (g) ->
+          renderPlot 'Scoring History - MSE', no, _.plot (g) ->
             g(
               g.path(
                 g.position 'epochs', 'training_MSE'
@@ -365,7 +365,7 @@ H2O.ModelOutput = (_, _go, _model) ->
               g.from table
             )
         else
-          renderPlot 'Scoring History', no, _.plot (g) ->
+          renderPlot 'Scoring History - MSE', no, _.plot (g) ->
             g(
               g.path(
                 g.position 'epochs', 'training_MSE'
@@ -377,6 +377,42 @@ H2O.ModelOutput = (_, _go, _model) ->
               )
               g.from table
             )
+
+        if table.schema['training_deviance']
+          if table.schema['validation_deviance']
+            renderPlot 'Scoring History - Deviance', no, _.plot (g) ->
+              g(
+                g.path(
+                  g.position 'number_of_trees', 'training_deviance'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.path(
+                  g.position 'number_of_trees', 'validation_deviance'
+                  g.strokeColor g.value '#ff7f0e'
+                )
+                g.point(
+                  g.position 'number_of_trees', 'training_deviance'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.point(
+                  g.position 'number_of_trees', 'validation_deviance'
+                  g.strokeColor g.value '#ff7f0e'
+                )
+                g.from table
+              )
+          else
+            renderPlot 'Scoring History - Deviance', no, _.plot (g) ->
+              g(
+                g.path(
+                  g.position 'number_of_trees', 'training_deviance'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.point(
+                  g.position 'number_of_trees', 'training_deviance'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.from table
+              )
 
       if output = _model.output
         if output.model_category is 'Multinomial'
@@ -390,7 +426,7 @@ H2O.ModelOutput = (_, _go, _model) ->
     when 'gbm', 'drf'
       if table = _.inspect 'output - Scoring History', _model
         if table.schema['validation_MSE']
-          renderPlot 'Scoring History', no, _.plot (g) ->
+          renderPlot 'Scoring History - MSE', no, _.plot (g) ->
             g(
               g.path(
                 g.position 'number_of_trees', 'training_MSE'
@@ -411,7 +447,7 @@ H2O.ModelOutput = (_, _go, _model) ->
               g.from table
             )
         else
-          renderPlot 'Scoring History', no, _.plot (g) ->
+          renderPlot 'Scoring History - MSE', no, _.plot (g) ->
             g(
               g.path(
                 g.position 'number_of_trees', 'training_MSE'
@@ -423,6 +459,42 @@ H2O.ModelOutput = (_, _go, _model) ->
               )
               g.from table
             )
+
+        if table.schema['training_deviance']
+          if table.schema['validation_deviance']
+            renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+              g(
+                g.path(
+                  g.position 'number_of_trees', 'training_deviance'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.path(
+                  g.position 'number_of_trees', 'validation_deviance'
+                  g.strokeColor g.value '#ff7f0e'
+                )
+                g.point(
+                  g.position 'number_of_trees', 'training_deviance'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.point(
+                  g.position 'number_of_trees', 'validation_deviance'
+                  g.strokeColor g.value '#ff7f0e'
+                )
+                g.from table
+              )
+          else
+            renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+              g(
+                g.path(
+                  g.position 'number_of_trees', 'training_deviance'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.point(
+                  g.position 'number_of_trees', 'training_deviance'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.from table
+              )
           
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
         plotter = _.plot (g) ->
