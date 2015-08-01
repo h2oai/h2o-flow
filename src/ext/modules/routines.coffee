@@ -182,7 +182,7 @@ computeFalsePositiveRate = (cm) ->
 
 formatConfusionMatrix = (cm) ->
   [[tn, fp], [fn, tp]] = cm.matrix
-  tpr = tp / (tp + fn)
+  fnr = fn / (tp + fn)
   fpr = fp / (fp + tn)
   domain = cm.domain
 
@@ -191,7 +191,7 @@ formatConfusionMatrix = (cm) ->
   table [ 
     tbody [
       tr [
-        strong ''
+        strong 'Actual/Predicted'
         strong domain[0]
         strong domain[1]
         strong 'Error'
@@ -208,15 +208,15 @@ formatConfusionMatrix = (cm) ->
         strong domain[1]
         normal fn
         yellow tp
-        normal format4f tpr
-        normal tp + ' / ' + (tp + fn)
+        normal format4f fnr
+        normal fn + ' / ' + (tp + fn)
       ]
       tr [
         strong 'Total'
         strong tn + fn
         strong tp + fp
-        strong format4f tpr + fpr
-        strong (tp + fp) + ' / ' + (fp + tn + tp + fn)
+        strong format4f (fn + fp) / (fp + tn + tp + fn)
+        strong (fn + fp) + ' / ' + (fp + tn + tp + fn)
       ]
     ]
   ]
