@@ -44,6 +44,9 @@ label input[type="radio"] {
 label input[type="checkbox"] {
   margin-right: 6px;
 }
+.flow-print-title {
+  display: none;
+}
 .container-fluid {
   padding-left: 0;
   padding-right: 0;
@@ -843,4 +846,30 @@ table.flow-form-ruled tr:first-child {
 }
 .tt-suggestion p {
   margin: 0;
+}
+@media print {
+  .flow-print-title {
+    display: block;
+  }
+  .flow-box {
+    position: static;
+  }
+  .flow-box .flow-box-body {
+    position: static;
+  }
+  .flow-box .flow-box-body .flow-box-notebook {
+    position: static;
+  }
+  .flow-box .flow-box-body .flow-box-notebook .flow-cell-input {
+    display: none;
+  }
+  .flow-box .flow-box-body .flow-box-sidebar {
+    display: none;
+  }
+  .flow-box .flow-box-header {
+    display: none;
+  }
+  .flow-box .flow-box-footer {
+    display: none;
+  }
 }
