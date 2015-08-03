@@ -462,7 +462,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
         if table.schema['training_deviance']
           if table.schema['validation_deviance']
-            renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+            renderPlot 'Scoring History - Deviance', no, _.plot (g) ->
               g(
                 g.path(
                   g.position 'number_of_trees', 'training_deviance'
@@ -483,7 +483,7 @@ H2O.ModelOutput = (_, _go, _model) ->
                 g.from table
               )
           else
-            renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+            renderPlot 'Scoring History - Deviance', no, _.plot (g) ->
               g(
                 g.path(
                   g.position 'number_of_trees', 'training_deviance'
