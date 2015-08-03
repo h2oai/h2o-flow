@@ -160,9 +160,13 @@ label
   input[type="checkbox"]
     margin-right 6px
 
+.flow-print-title
+  display none
+
 .container-fluid
   padding-left 0
   padding-right 0
+
 .flow-box-notebook
   .container-fluid
     padding 10px 20px 10px flow-box-padding-left
@@ -797,5 +801,21 @@ table
   p
     margin 0
 
-
+@media print
+  .flow-print-title
+    display block
+  .flow-box
+    position static
+    .flow-box-body
+      position static
+      .flow-box-notebook
+        position static
+        .flow-cell-input
+          display none
+      .flow-box-sidebar
+        display none
+    .flow-box-header
+      display none
+    .flow-box-footer
+      display none
 

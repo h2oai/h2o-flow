@@ -11,6 +11,9 @@ Flow.Renderers = (_, _sandbox) ->
 
 Flow.Notebook = (_, _renderers) ->
   _localName = signal 'Untitled Flow'
+  react _localName, (name) ->
+    document.title = 'H2O' + if name and name.trim() then "- #{name}" else ''
+
   _remoteName = signal null
 
   _isEditingName = signal no
