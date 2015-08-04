@@ -383,19 +383,19 @@ H2O.ModelOutput = (_, _go, _model) ->
             renderPlot 'Scoring History - Deviance', no, _.plot (g) ->
               g(
                 g.path(
-                  g.position 'number_of_trees', 'training_deviance'
+                  g.position 'epochs', 'training_deviance'
                   g.strokeColor g.value '#1f77b4'
                 )
                 g.path(
-                  g.position 'number_of_trees', 'validation_deviance'
+                  g.position 'epochs', 'validation_deviance'
                   g.strokeColor g.value '#ff7f0e'
                 )
                 g.point(
-                  g.position 'number_of_trees', 'training_deviance'
+                  g.position 'epochs', 'training_deviance'
                   g.strokeColor g.value '#1f77b4'
                 )
                 g.point(
-                  g.position 'number_of_trees', 'validation_deviance'
+                  g.position 'epochs', 'validation_deviance'
                   g.strokeColor g.value '#ff7f0e'
                 )
                 g.from table
@@ -404,11 +404,11 @@ H2O.ModelOutput = (_, _go, _model) ->
             renderPlot 'Scoring History - Deviance', no, _.plot (g) ->
               g(
                 g.path(
-                  g.position 'number_of_trees', 'training_deviance'
+                  g.position 'epochs', 'training_deviance'
                   g.strokeColor g.value '#1f77b4'
                 )
                 g.point(
-                  g.position 'number_of_trees', 'training_deviance'
+                  g.position 'epochs', 'training_deviance'
                   g.strokeColor g.value '#1f77b4'
                 )
                 g.from table
