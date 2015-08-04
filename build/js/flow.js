@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.49';
+    Flow.Version = '0.3.50';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4524,7 +4524,7 @@
             return doDelete('/3/Frames/' + encodeURIComponent(key), go);
         };
         requestExportFrame = function (key, path, overwrite, go) {
-            return doGet('/3/Frames/' + encodeURIComponent(key) + '/export/' + encodeURIComponent(path) + '/overwrite/' + (overwrite ? 'true' : 'false'), go);
+            return doPost('/3/Frames/' + encodeURIComponent(key) + '/export/' + encodeURIComponent(path) + '/overwrite/' + (overwrite ? 'true' : 'false'), {}, go);
         };
         requestRDDs = function (go) {
             return doGet('/3/RDDs', function (error, result) {
