@@ -185,7 +185,10 @@ H2O.Proxy = (_) ->
     doDelete "/3/Frames/#{encodeURIComponent key}", go
 
   requestExportFrame = (key, path, overwrite, go) ->
-    doPost "/3/Frames/#{encodeURIComponent key}/export/#{encodeURIComponent path}/overwrite/#{if overwrite then 'true' else 'false'}", {}, go
+    params =
+      path: path
+      force: if overwrite then 'true' else 'false'
+    doPost "/3/Frames/#{encodeURIComponent key}/export", params, go
 
   requestRDDs = (go) ->
     doGet '/3/RDDs', (error, result) ->
