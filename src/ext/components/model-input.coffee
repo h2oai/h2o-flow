@@ -442,13 +442,9 @@ H2O.ModelInput = (_, _go, _algo, _opts) ->
       act _algorithm, (builder) ->
         if builder
           algorithm = builder.algo
-          _.requestModelBuilder algorithm, (error, result) ->
-            if error
-              _exception Flow.Failure _, new Flow.Error 'Error fetching model builder', error
-            else
-              parameters = builder.parameters
-              populateFramesAndColumns frameKey, algorithm, parameters, ->
-                _modelForm H2O.ModelBuilderForm _, algorithm, parameters
+          parameters = deepClone builder.parameters
+          populateFramesAndColumns frameKey, algorithm, parameters, ->
+            _modelForm H2O.ModelBuilderForm _, algorithm, parameters
         else
           _modelForm null
 
