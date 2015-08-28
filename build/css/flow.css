@@ -873,3 +873,6 @@ table.flow-form-ruled tr:first-child {
     display: none;
   }
 }
+.intercom-launcher-preview {
+  display: none !important;
+}
