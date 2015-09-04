@@ -811,7 +811,7 @@ H2O.Routines = (_) ->
           m = i * width
           n = m + width
           count = 0
-          for binIndex in [m ... n] when n < bins.length
+          for binIndex in [m ... n] when binIndex < bins.length
             count += bins[binIndex]
 
           intervalData[i] = base + i * interval
