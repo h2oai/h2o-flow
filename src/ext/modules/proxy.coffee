@@ -287,6 +287,16 @@ H2O.Proxy = (_) ->
   requestDeleteModel = (key, go) ->
     doDelete "/3/Models/#{encodeURIComponent key}", go
 
+  requestImportModel = (key, path, overwrite, go) ->
+    opts =
+      model_id: key
+      dir: path
+      force: overwrite
+    doPost "/99/Models.bin/#{encodeURIComponent key}", opts, go
+
+  requestExportModel = (key, path, overwrite, go) ->
+    doGet "/99/Models.bin/#{encodeURIComponent key}?dir=#{encodeURIComponent path}&force=#{overwrite}", go
+
   requestModelBuildersVisibility = (go) ->
     doGet '/3/Configuration/ModelBuilders/visibility', unwrap go, (result) -> result.value
 
@@ -511,6 +521,8 @@ H2O.Proxy = (_) ->
   link _.requestModel, requestModel
   link _.requestPojoPreview, requestPojoPreview
   link _.requestDeleteModel, requestDeleteModel
+  link _.requestImportModel, requestImportModel
+  link _.requestExportModel, requestExportModel
   link _.requestModelBuilder, requestModelBuilder
   link _.requestModelBuilders, requestModelBuilders
   link _.requestModelBuild, requestModelBuild

@@ -31,6 +31,9 @@ _assistance =
   buildModel:
     description: 'Build a model'
     icon: 'cube'
+  importModel:
+    description: 'Import a saved model'
+    icon: 'cube'
   predict:
     description: 'Make a prediction'
     icon: 'bolt'
@@ -1240,6 +1243,32 @@ H2O.Routines = (_) ->
     else
       assist deleteModel
 
+  extendImportModel = (result) ->
+    render_ result, H2O.ImportModelOutput, result
+
+  requestImportModel = (modelKey, path, opts, go) ->
+    _.requestImportModel modelKey, path, (if opts.overwrite then yes else no), (error, result) ->
+      if error then go error else go null, extendImportModel result
+
+  importModel = (modelKey, path, opts) ->
+    if modelKey and path
+      _fork requestImportModel, modelKey, path, opts
+    else
+      assist importModel
+
+  extendExportModel = (result) ->
+    render_ result, H2O.ExportModelOutput, result
+
+  requestExportModel = (modelKey, path, opts, go) ->
+    _.requestExportModel modelKey, path, (if opts.overwrite then yes else no), (error, result) ->
+      if error then go error else go null, extendExportModel result
+
+  exportModel = (modelKey, path, opts) ->
+    if modelKey and path
+      _fork requestExportModel, modelKey, path, opts
+    else
+      assist exportModel
+
   requestDeleteModels = (modelKeys, go) ->
     futures = map modelKeys, (modelKey) ->
       _fork _.requestDeleteModel, modelKey
@@ -1616,6 +1645,10 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.ExportFrameInput, args
         when imputeColumn
           _fork proceed, H2O.ImputeInput, args
+        when importModel
+          _fork proceed, H2O.ImportModelInput, args
+        when exportModel
+          _fork proceed, H2O.ExportModelInput, args
         else
           _fork proceed, H2O.NoAssist, []
 
@@ -1704,6 +1737,8 @@ H2O.Routines = (_) ->
   getModel: getModel
   deleteModels: deleteModels
   deleteModel: deleteModel
+  importModel: importModel
+  exportModel: exportModel
   predict: predict
   getPrediction: getPrediction
   getPredictions: getPredictions
