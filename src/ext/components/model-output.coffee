@@ -604,6 +604,9 @@ H2O.ModelOutput = (_, _go, _model) ->
   downloadPojo = ->
     window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}.java", '_blank'
 
+  exportModel = ->
+    _.insertAndExecuteCell 'cs', "exportModel #{stringify _model.model_id.name}"
+
   deleteModel = ->
     _.confirm 'Are you sure you want to delete this model?', { acceptCaption: 'Delete Model', declineCaption: 'Cancel' }, (accept) ->
       if accept
@@ -624,6 +627,7 @@ H2O.ModelOutput = (_, _go, _model) ->
   downloadPojo: downloadPojo
   pojoPreview: _pojoPreview
   isPojoLoaded: _isPojoLoaded
+  exportModel: exportModel
   deleteModel: deleteModel
   template: 'flow-model-output'
 

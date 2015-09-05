@@ -1254,7 +1254,7 @@ H2O.Routines = (_) ->
     if path and path.length
       _fork requestImportModel, path, opts
     else
-      assist importModel
+      assist importModel, path, opts
 
   extendExportModel = (result) ->
     render_ result, H2O.ExportModelOutput, result
@@ -1267,7 +1267,7 @@ H2O.Routines = (_) ->
     if modelKey and path
       _fork requestExportModel, modelKey, path, opts
     else
-      assist exportModel
+      assist exportModel, modelKey, path, opts
 
   requestDeleteModels = (modelKeys, go) ->
     futures = map modelKeys, (modelKey) ->
