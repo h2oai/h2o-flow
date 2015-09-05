@@ -1246,13 +1246,13 @@ H2O.Routines = (_) ->
   extendImportModel = (result) ->
     render_ result, H2O.ImportModelOutput, result
 
-  requestImportModel = (modelKey, path, opts, go) ->
-    _.requestImportModel modelKey, path, (if opts.overwrite then yes else no), (error, result) ->
+  requestImportModel = (path, opts, go) ->
+    _.requestImportModel path, (if opts.overwrite then yes else no), (error, result) ->
       if error then go error else go null, extendImportModel result
 
-  importModel = (modelKey, path, opts) ->
-    if modelKey and path
-      _fork requestImportModel, modelKey, path, opts
+  importModel = (path, opts) ->
+    if path and path.length
+      _fork requestImportModel, path, opts
     else
       assist importModel
 

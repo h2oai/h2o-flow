@@ -287,12 +287,11 @@ H2O.Proxy = (_) ->
   requestDeleteModel = (key, go) ->
     doDelete "/3/Models/#{encodeURIComponent key}", go
 
-  requestImportModel = (key, path, overwrite, go) ->
+  requestImportModel = (path, overwrite, go) ->
     opts =
-      model_id: key
       dir: path
       force: overwrite
-    doPost "/99/Models.bin/#{encodeURIComponent key}", opts, go
+    doPost "/99/Models.bin/not_in_use", opts, go
 
   requestExportModel = (key, path, overwrite, go) ->
     doGet "/99/Models.bin/#{encodeURIComponent key}?dir=#{encodeURIComponent path}&force=#{overwrite}", go
