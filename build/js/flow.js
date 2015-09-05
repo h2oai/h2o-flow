@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.53';
+    Flow.Version = '0.3.54';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1607,7 +1607,9 @@
                 return createMenuItem('' + builder.algo_full_name + '...', executeCommand('buildModel ' + Flow.Prelude.stringify(builder.algo)));
             }).concat([
                 menuDivider,
-                createMenuItem('List All Models', executeCommand('getModels'))
+                createMenuItem('List All Models', executeCommand('getModels')),
+                createMenuItem('Import Model...', executeCommand('importModel')),
+                createMenuItem('Export Model...', executeCommand('exportModel'))
             ]);
             return [
                 createMenu('Flow', [
@@ -4749,6 +4751,56 @@
     };
 }.call(this));
 (function () {
+    H2O.ExportModelInput = function (_, _go, modelKey, path, opt) {
+        var exportModel, _canExportModel, _models, _overwrite, _path, _selectedModelKey;
+        if (opt == null) {
+            opt = {};
+        }
+        _models = Flow.Dataflow.signal([]);
+        _selectedModelKey = Flow.Dataflow.signal(null);
+        _path = Flow.Dataflow.signal(null);
+        _overwrite = Flow.Dataflow.signal(opt.overwrite ? true : false);
+        _canExportModel = Flow.Dataflow.lift(_selectedModelKey, _path, function (modelKey, path) {
+            return modelKey && path;
+        });
+        exportModel = function () {
+            return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_selectedModelKey()) + ', ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
+        };
+        _.requestModels(function (error, models) {
+            var model;
+            if (error) {
+            } else {
+                _models(function () {
+                    var _i, _len, _results;
+                    _results = [];
+                    for (_i = 0, _len = models.length; _i < _len; _i++) {
+                        model = models[_i];
+                        _results.push(model.model_id.name);
+                    }
+                    return _results;
+                }());
+                return _selectedModelKey(modelKey);
+            }
+        });
+        lodash.defer(_go);
+        return {
+            models: _models,
+            selectedModelKey: _selectedModelKey,
+            path: _path,
+            overwrite: _overwrite,
+            canExportModel: _canExportModel,
+            exportModel: exportModel,
+            template: 'flow-export-model-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ExportModelOutput = function (_, _go, result) {
+        lodash.defer(_go);
+        return { template: 'flow-export-model-output' };
+    };
+}.call(this));
+(function () {
     Flow.FileOpenDialog = function (_, _go) {
         var accept, checkIfNameIsInUse, decline, uploadFile, _canAccept, _file, _form, _overwrite;
         _overwrite = Flow.Dataflow.signal(false);
@@ -4973,7 +5025,7 @@
             return _.insertAndExecuteCell('cs', 'predict frame: ' + Flow.Prelude.stringify(_frame.frame_id.name));
         };
         download = function () {
-            return window.open('/3/DownloadDataset?frame_id=' + encodeURIComponent(_frame.frame_id.name), '_blank');
+            return window.open('/3/DownloadDataset.bin?frame_id=' + encodeURIComponent(_frame.frame_id.name), '_blank');
         };
         exportFrame = function () {
             return _.insertAndExecuteCell('cs', 'exportFrame ' + Flow.Prelude.stringify(_frame.frame_id.name));
@@ -5372,6 +5424,43 @@
             templateOf: function (view) {
                 return view.template;
             }
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ImportModelInput = function (_, _go, path, opt) {
+        var importModel, _canImportModel, _overwrite, _path;
+        if (opt == null) {
+            opt = {};
+        }
+        _path = Flow.Dataflow.signal(path);
+        _overwrite = Flow.Dataflow.signal(opt.overwrite ? true : false);
+        _canImportModel = Flow.Dataflow.lift(_path, function (path) {
+            return path && path.length;
+        });
+        importModel = function () {
+            return _.insertAndExecuteCell('cs', 'importModel ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
+        };
+        lodash.defer(_go);
+        return {
+            path: _path,
+            overwrite: _overwrite,
+            canImportModel: _canImportModel,
+            importModel: importModel,
+            template: 'flow-import-model-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ImportModelOutput = function (_, _go, result) {
+        var viewModel;
+        viewModel = function () {
+            return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(result.models[0].model_id.name));
+        };
+        lodash.defer(_go);
+        return {
+            viewModel: viewModel,
+            template: 'flow-import-model-output'
         };
     };
 }.call(this));
@@ -6533,7 +6622,7 @@
 }.call(this));
 (function () {
     H2O.ModelOutput = function (_, _go, _model) {
-        var cloneModel, confusionMatrix, deleteModel, downloadPojo, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
+        var cloneModel, confusionMatrix, deleteModel, downloadPojo, exportModel, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
         _isExpanded = Flow.Dataflow.signal(false);
         _plots = Flow.Dataflow.signals([]);
         _pojoPreview = Flow.Dataflow.signal(null);
@@ -6983,6 +7072,9 @@
         downloadPojo = function () {
             return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name) + '.java', '_blank');
         };
+        exportModel = function () {
+            return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_model.model_id.name));
+        };
         deleteModel = function () {
             return _.confirm('Are you sure you want to delete this model?', {
                 acceptCaption: 'Delete Model',
@@ -7008,6 +7100,7 @@
             downloadPojo: downloadPojo,
             pojoPreview: _pojoPreview,
             isPojoLoaded: _isPojoLoaded,
+            exportModel: exportModel,
             deleteModel: deleteModel,
             template: 'flow-model-output'
         };
@@ -8327,6 +8420,8 @@
         _.requestModel = Flow.Dataflow.slot();
         _.requestPojoPreview = Flow.Dataflow.slot();
         _.requestDeleteModel = Flow.Dataflow.slot();
+        _.requestImportModel = Flow.Dataflow.slot();
+        _.requestExportModel = Flow.Dataflow.slot();
         _.requestJobs = Flow.Dataflow.slot();
         _.requestJob = Flow.Dataflow.slot();
         _.requestCancelJob = Flow.Dataflow.slot();
@@ -8372,7 +8467,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
+        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -8742,6 +8837,17 @@
         requestDeleteModel = function (key, go) {
             return doDelete('/3/Models/' + encodeURIComponent(key), go);
         };
+        requestImportModel = function (path, overwrite, go) {
+            var opts;
+            opts = {
+                dir: path,
+                force: overwrite
+            };
+            return doPost('/99/Models.bin/not_in_use', opts, go);
+        };
+        requestExportModel = function (key, path, overwrite, go) {
+            return doGet('/99/Models.bin/' + encodeURIComponent(key) + '?dir=' + encodeURIComponent(path) + '&force=' + overwrite, go);
+        };
         requestModelBuildersVisibility = function (go) {
             return doGet('/3/Configuration/ModelBuilders/visibility', unwrap(go, function (result) {
                 return result.value;
@@ -9045,6 +9151,8 @@
         Flow.Dataflow.link(_.requestModel, requestModel);
         Flow.Dataflow.link(_.requestPojoPreview, requestPojoPreview);
         Flow.Dataflow.link(_.requestDeleteModel, requestDeleteModel);
+        Flow.Dataflow.link(_.requestImportModel, requestImportModel);
+        Flow.Dataflow.link(_.requestExportModel, requestExportModel);
         Flow.Dataflow.link(_.requestModelBuilder, requestModelBuilder);
         Flow.Dataflow.link(_.requestModelBuilders, requestModelBuilders);
         Flow.Dataflow.link(_.requestModelBuild, requestModelBuild);
@@ -9122,6 +9230,10 @@
         },
         buildModel: {
             description: 'Build a model',
+            icon: 'cube'
+        },
+        importModel: {
+            description: 'Import a saved model',
             icon: 'cube'
         },
         predict: {
@@ -9379,7 +9491,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGuiForm, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -10267,7 +10379,7 @@
                         n = m + width;
                         count = 0;
                         for (binIndex = _j = m; m <= n ? _j < n : _j > n; binIndex = m <= n ? ++_j : --_j) {
-                            if (n < bins.length) {
+                            if (binIndex < bins.length) {
                                 count += bins[binIndex];
                             }
                         }
@@ -10827,6 +10939,44 @@
                 return assist(deleteModel);
             }
         };
+        extendImportModel = function (result) {
+            return render_(result, H2O.ImportModelOutput, result);
+        };
+        requestImportModel = function (path, opts, go) {
+            return _.requestImportModel(path, opts.overwrite ? true : false, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendImportModel(result));
+                }
+            });
+        };
+        importModel = function (path, opts) {
+            if (path && path.length) {
+                return _fork(requestImportModel, path, opts);
+            } else {
+                return assist(importModel, path, opts);
+            }
+        };
+        extendExportModel = function (result) {
+            return render_(result, H2O.ExportModelOutput, result);
+        };
+        requestExportModel = function (modelKey, path, opts, go) {
+            return _.requestExportModel(modelKey, path, opts.overwrite ? true : false, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendExportModel(result));
+                }
+            });
+        };
+        exportModel = function (modelKey, path, opts) {
+            if (modelKey && path) {
+                return _fork(requestExportModel, modelKey, path, opts);
+            } else {
+                return assist(exportModel, modelKey, path, opts);
+            }
+        };
         requestDeleteModels = function (modelKeys, go) {
             var futures;
             futures = lodash.map(modelKeys, function (modelKey) {
@@ -11348,6 +11498,10 @@
                     return _fork(proceed, H2O.ExportFrameInput, args);
                 case imputeColumn:
                     return _fork(proceed, H2O.ImputeInput, args);
+                case importModel:
+                    return _fork(proceed, H2O.ImportModelInput, args);
+                case exportModel:
+                    return _fork(proceed, H2O.ExportModelInput, args);
                 default:
                     return _fork(proceed, H2O.NoAssist, []);
                 }
@@ -11434,6 +11588,8 @@
             getModel: getModel,
             deleteModels: deleteModels,
             deleteModel: deleteModel,
+            importModel: importModel,
+            exportModel: exportModel,
             predict: predict,
             getPrediction: getPrediction,
             getPredictions: getPredictions,

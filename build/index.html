@@ -1125,6 +1125,8 @@
                       </button>
                       <button type="button" data-bind="click:downloadPojo" class="flow-button"><i class="fa fa-download"></i><span>Download POJO</span>
                       </button>
+                      <button type="button" data-bind="click:exportModel" class="flow-button"><i class="fa fa-save"></i><span>Export</span>
+                      </button>
                       <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
                       </button>
                       <button type="button" data-bind="click:deleteModel" class="flow-button"><i class="fa fa-trash-o"></i><span>Delete</span>
@@ -1481,6 +1483,93 @@
               </button>
         </div>
         <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-import-model-input">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-cube"></i>Import Model
+            </h3>
+        <table class="flow-form">
+          <tr>
+            <th width="1">
+              <label>Path:</label>
+            </th>
+            <td>
+              <input type="text" data-bind="value:path, valueUpdate:'afterkeydown'" class="flow-textbox">
+            </td>
+          </tr>
+          <tr>
+            <th width="1">
+              <label>Overwrite:</label>
+            </th>
+            <td>
+              <input type="checkbox" data-bind="checked:overwrite">
+            </td>
+          </tr>
+          <tr>
+            <th>
+              <label>Actions:</label>
+            </th>
+            <td>
+              <button type="button" data-bind="click:importModel, enable:canImportModel" class="flow-button"><i class="fa fa-cloud-upload"></i><span>Import</span></button>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </script>
+    <script type="text/html" id="flow-import-model-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-save"></i>Model Imported
+            </h3>
+        <blockquote>The specified model was imported successfully.</blockquote>
+        <button type="button" data-bind="click:viewModel" class="flow-button"><i class="fa fa-cube"></i><span>View Model</span></button>
+      </div>
+    </script>
+    <script type="text/html" id="flow-export-model-input">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-cube"></i>Export Model
+            </h3>
+        <table class="flow-form">
+          <tr>
+            <th width="1">
+              <label>Model:</label>
+            </th>
+            <td>
+              <select data-bind="options:models, value:selectedModelKey, optionsCaption:'(Select)'"></select>
+            </td>
+          </tr>
+          <tr>
+            <th width="1">
+              <label>Path:</label>
+            </th>
+            <td>
+              <input type="text" data-bind="value:path, valueUpdate:'afterkeydown'" class="flow-textbox">
+            </td>
+          </tr>
+          <tr>
+            <th width="1">
+              <label>Overwrite:</label>
+            </th>
+            <td>
+              <input type="checkbox" data-bind="checked:overwrite">
+            </td>
+          </tr>
+          <tr>
+            <th>
+              <label>Actions:</label>
+            </th>
+            <td>
+              <button type="button" data-bind="click:exportModel, enable:canExportModel" class="flow-button"><i class="fa fa-save"></i><span>Export</span></button>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </script>
+    <script type="text/html" id="flow-export-model-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-save"></i>Model Exported
+            </h3>
+        <blockquote>The specified model was exported successfully.</blockquote>
       </div>
     </script>
     <script type="text/html" id="flow-frames-output">
