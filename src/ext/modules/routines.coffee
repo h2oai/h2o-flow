@@ -1103,7 +1103,14 @@ H2O.Routines = (_) ->
 
   requestExportFrame = (frameKey, path, opts, go) ->
     _.requestExportFrame frameKey, path, (if opts.overwrite then yes else no), (error, result) ->
-      if error then go error else go null, extendExportFrame result
+      if error
+        go error
+      else
+        _.requestJob result.job.key.name, (error, job) ->
+          if error
+            go error
+          else
+            go null, extendJob job
 
   exportFrame = (frameKey, path, opts={}) ->
     if frameKey and path
