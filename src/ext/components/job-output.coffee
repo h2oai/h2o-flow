@@ -98,6 +98,8 @@ H2O.JobOutput = (_, _go, _job) ->
         _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify _destinationKey}" 
       when 'Model'
         _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}" 
+      when 'Void'
+        alert "This frame was exported to\n#{_job.dest.name}"
 
   cancel = ->
     _.requestCancelJob _key, (error, result) ->
