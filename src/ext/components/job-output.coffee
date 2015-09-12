@@ -32,6 +32,8 @@ H2O.JobOutput = (_, _go, _job) ->
         'Frame'
       when 'Key<Model>'
         'Model'
+      when 'Key<KeyedVoid>'
+        'Void'
       else
         'Unknown'
 
