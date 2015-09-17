@@ -3,7 +3,7 @@ if lightning.settings
   lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace'
   lightning.settings.axisTitleFont = 'bold 11px "Source Code Pro", monospace'
 
-createTempKey = -> Flow.Util.uuid().replace /\-/g, ''
+createTempKey = -> 'flow_' + Flow.Util.uuid().replace /\-/g, ''
 createVector = lightning.createVector
 createFactor = lightning.createFactor
 createList = lightning.createList
@@ -1013,17 +1013,16 @@ H2O.Routines = (_) ->
     if splitRatios.length is splitKeys.length - 1
       splits = computeSplits splitRatios, splitKeys
 
-      frameExpr = JSON.stringify frameKey
       randomVecKey = createTempKey()
 
-      _.requestExec "(gput #{randomVecKey} (h2o.runif #{frameExpr} #-1))", (error, result) ->
+      _.requestExec randomVecKey, "(h2o.runif #{frameKey} -1)", (error, result) ->
         if error
           go error
         else
-          exprs = for part, i in splits
-            g = if i isnt 0 then "(G %#{randomVecKey} ##{part.min})" else null
+          splitFrames = for part, i in splits
+            g = if i isnt 0 then "(>= #{randomVecKey} #{part.min})" else null
 
-            l = if i isnt splits.length - 1 then "(l %#{randomVecKey} ##{part.max})" else null
+            l = if i isnt splits.length - 1 then "(< #{randomVecKey} #{part.max})" else null
 
             sliceExpr = if g and l
               "(& #{g} #{l})"
@@ -1032,10 +1031,11 @@ H2O.Routines = (_) ->
             else
               g
 
-            "(gput #{JSON.stringify part.key} ([ %#{frameExpr} #{sliceExpr} \"null\"))"
+            key: part.key
+            expr: "(rows #{frameKey} #{sliceExpr})"
 
-          futures = map exprs, (expr) ->
-            _fork _.requestExec, expr
+          futures = map splitFrames, (f) ->
+            _fork _.requestExec, f.key, f.expr
 
           Flow.Async.join futures, (error, results) ->
             if error
@@ -1199,11 +1199,11 @@ H2O.Routines = (_) ->
           groupByColumnIndices = null
 
         groupByArg = if groupByColumnIndices
-          "(llist #{groupByColumnIndices.map((a) -> '#' + a).join ' '})"
+          "[#{groupByColumnIndices.join ' '}]"
         else
-          "()"
+          "[]"
 
-        _.requestExec "(h2o.impute %#{JSON.stringify frame} ##{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg} %TRUE)", (error, result) ->
+        _.requestExec frame, "(h2o.impute #{frame} #{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg} TRUE)", (error, result) ->
           if error
             go error
           else
@@ -1220,9 +1220,7 @@ H2O.Routines = (_) ->
         catch columnKeyError
           return go columnKeyError
 
-        target = "([ %#{JSON.stringify frame} \"null\" ##{columnIndex})"
-
-        _.requestExec "(= #{target} (#{method} #{target}))", (error, result) ->
+        _.requestExec frame, "(= #{frame} (#{method} (cols #{frame} #{columnIndex})) #{columnIndex} [0:#{result.rows}])", (error, result) ->
           if error
             go error
           else
