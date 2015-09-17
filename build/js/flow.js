@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.55';
+    Flow.Version = '0.3.56';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4456,8 +4456,11 @@
                 }
             };
         };
-        requestExec = function (ast, go) {
-            return doPost('/99/Rapids', { ast: ast }, function (error, result) {
+        requestExec = function (id, ast, go) {
+            return doPost('/99/Rapids', {
+                id: id,
+                ast: ast
+            }, function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -5016,7 +5019,7 @@
         lightning.settings.axisTitleFont = 'bold 11px "Source Code Pro", monospace';
     }
     createTempKey = function () {
-        return Flow.Util.uuid().replace(/\-/g, '');
+        return 'flow_' + Flow.Util.uuid().replace(/\-/g, '');
     };
     createVector = lightning.createVector;
     createFactor = lightning.createFactor;
@@ -6446,30 +6449,32 @@
             return splits;
         };
         requestSplitFrame = function (frameKey, splitRatios, splitKeys, go) {
-            var frameExpr, randomVecKey, splits;
+            var randomVecKey, splits;
             if (splitRatios.length === splitKeys.length - 1) {
                 splits = computeSplits(splitRatios, splitKeys);
-                frameExpr = JSON.stringify(frameKey);
                 randomVecKey = createTempKey();
-                return _.requestExec('(gput ' + randomVecKey + ' (h2o.runif ' + frameExpr + ' #-1))', function (error, result) {
-                    var exprs, futures, g, i, l, part, sliceExpr;
+                return _.requestExec(randomVecKey, '(h2o.runif ' + frameKey + ' -1)', function (error, result) {
+                    var futures, g, i, l, part, sliceExpr, splitFrames;
                     if (error) {
                         return go(error);
                     } else {
-                        exprs = function () {
+                        splitFrames = function () {
                             var _i, _len, _results;
                             _results = [];
                             for (i = _i = 0, _len = splits.length; _i < _len; i = ++_i) {
                                 part = splits[i];
-                                g = i !== 0 ? '(G %' + randomVecKey + ' #' + part.min + ')' : null;
-                                l = i !== splits.length - 1 ? '(l %' + randomVecKey + ' #' + part.max + ')' : null;
+                                g = i !== 0 ? '(>= ' + randomVecKey + ' ' + part.min + ')' : null;
+                                l = i !== splits.length - 1 ? '(< ' + randomVecKey + ' ' + part.max + ')' : null;
                                 sliceExpr = g && l ? '(& ' + g + ' ' + l + ')' : l ? l : g;
-                                _results.push('(gput ' + JSON.stringify(part.key) + ' ([ %' + frameExpr + ' ' + sliceExpr + ' "null"))');
+                                _results.push({
+                                    key: part.key,
+                                    expr: '(rows ' + frameKey + ' ' + sliceExpr + ')'
+                                });
                             }
                             return _results;
                         }();
-                        futures = lodash.map(exprs, function (expr) {
-                            return _fork(_.requestExec, expr);
+                        futures = lodash.map(splitFrames, function (f) {
+                            return _fork(_.requestExec, f.key, f.expr);
                         });
                         return Flow.Async.join(futures, function (error, results) {
                             if (error) {
@@ -6699,10 +6704,8 @@
                     } else {
                         groupByColumnIndices = null;
                     }
-                    groupByArg = groupByColumnIndices ? '(llist ' + groupByColumnIndices.map(function (a) {
-                        return '#' + a;
-                    }).join(' ') + ')' : '()';
-                    return _.requestExec('(h2o.impute %' + JSON.stringify(frame) + ' #' + columnIndex + ' ' + JSON.stringify(method) + ' ' + JSON.stringify(combineMethod) + ' ' + groupByArg + ' %TRUE)', function (error, result) {
+                    groupByArg = groupByColumnIndices ? '[' + groupByColumnIndices.join(' ') + ']' : '[]';
+                    return _.requestExec(frame, '(h2o.impute ' + frame + ' ' + columnIndex + ' ' + JSON.stringify(method) + ' ' + JSON.stringify(combineMethod) + ' ' + groupByArg + ' TRUE)', function (error, result) {
                         if (error) {
                             return go(error);
                         } else {
@@ -6717,15 +6720,14 @@
             frame = opts.frame, column = opts.column, type = opts.type;
             method = type === 'enum' ? 'as.factor' : 'as.numeric';
             return _.requestFrameSummaryWithoutData(frame, function (error, result) {
-                var columnIndex, columnKeyError, target;
+                var columnIndex, columnKeyError;
                 try {
                     columnIndex = findColumnIndexByColumnLabel(result, column);
                 } catch (_error) {
                     columnKeyError = _error;
                     return go(columnKeyError);
                 }
-                target = '([ %' + JSON.stringify(frame) + ' "null" #' + columnIndex + ')';
-                return _.requestExec('(= ' + target + ' (' + method + ' ' + target + '))', function (error, result) {
+                return _.requestExec(frame, '(= ' + frame + ' (' + method + ' (cols ' + frame + ' ' + columnIndex + ')) ' + columnIndex + ' [0:' + result.rows + '])', function (error, result) {
                     if (error) {
                         return go(error);
                     } else {
