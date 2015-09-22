@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.56';
+    Flow.Version = '0.3.57';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -10312,7 +10312,7 @@
             });
         };
         downloadPojo = function () {
-            return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name) + '.java', '_blank');
+            return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name), '_blank');
         };
         exportModel = function () {
             return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_model.model_id.name));
