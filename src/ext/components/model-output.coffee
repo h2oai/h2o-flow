@@ -602,7 +602,7 @@ H2O.ModelOutput = (_, _go, _model) ->
         _pojoPreview "<pre>#{Flow.Util.highlight result, 'java'}</pre>"
 
   downloadPojo = ->
-    window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}.java", '_blank'
+    window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}", '_blank'
 
   exportModel = ->
     _.insertAndExecuteCell 'cs', "exportModel #{stringify _model.model_id.name}"
