@@ -64,6 +64,12 @@ Flow.Notebook = (_, _renderers) ->
   createCell = (type='cs', input='') ->
     Flow.Cell _, _renderers, type, input
 
+
+  createScalaCell = (input='') ->
+    cell = Flow.ScalaCell _, _renderers, input
+    cell.initiateInterpreter()
+    cell
+
   checkConsistency = ->
     selectionCount = 0
     for cell, i in _cells()
@@ -163,6 +169,12 @@ Flow.Notebook = (_, _renderers) ->
 
   insertNewCellBelow = ->
     insertBelow createCell 'cs'
+
+  insertNewScalaCellAbove = ->
+    insertAbove createScalaCell()
+
+  insertNewScalaCellBelow = ->
+    insertBelow createScalaCell()
 
   insertCellAboveAndRun = (type, input) ->
     cell = insertAbove createCell type, input
@@ -578,6 +590,9 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Toggle Cell Input', toggleInput
         createMenuItem 'Toggle Cell Output', toggleOutput, ['o']
         createMenuItem 'Clear Cell Output', clearCell
+        menuDivider
+        createMenuItem 'Insert Scala Cell Above', insertNewScalaCellAbove
+        createMenuItem 'Insert Scala Cell Below', insertNewScalaCellBelow
       ]
     ,
       createMenu 'Data', [
@@ -832,4 +847,3 @@ Flow.Notebook = (_, _renderers) ->
   about: _about
   dialogs: _dialogs
   templateOf: (view) -> view.template
-

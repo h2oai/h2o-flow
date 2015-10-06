@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.57';
+    Flow.Version = '999.999.999';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -953,7 +953,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createShortcutHint, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createScalaCell, createShortcutHint, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, insertNewScalaCellAbove, insertNewScalaCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
         _localName = Flow.Dataflow.signal('Untitled Flow');
         Flow.Dataflow.react(_localName, function (name) {
             return document.title = 'H2O' + (name && name.trim() ? '- ' + name : '');
@@ -1034,6 +1034,15 @@
                 input = '';
             }
             return Flow.Cell(_, _renderers, type, input);
+        };
+        createScalaCell = function (input) {
+            var cell;
+            if (input == null) {
+                input = '';
+            }
+            cell = Flow.ScalaCell(_, _renderers, input);
+            cell.initiateInterpreter();
+            return cell;
         };
         checkConsistency = function () {
             var cell, i, selectionCount, _i, _len, _ref;
@@ -1156,6 +1165,12 @@
         };
         insertNewCellBelow = function () {
             return insertBelow(createCell('cs'));
+        };
+        insertNewScalaCellAbove = function () {
+            return insertAbove(createScalaCell());
+        };
+        insertNewScalaCellBelow = function () {
+            return insertBelow(createScalaCell());
         };
         insertCellAboveAndRun = function (type, input) {
             var cell;
@@ -1660,7 +1675,10 @@
                     menuDivider,
                     createMenuItem('Toggle Cell Input', toggleInput),
                     createMenuItem('Toggle Cell Output', toggleOutput, ['o']),
-                    createMenuItem('Clear Cell Output', clearCell)
+                    createMenuItem('Clear Cell Output', clearCell),
+                    menuDivider,
+                    createMenuItem('Insert Scala Cell Above', insertNewScalaCellAbove),
+                    createMenuItem('Insert Scala Cell Below', insertNewScalaCellBelow)
                 ]),
                 createMenu('Data', [
                     createMenuItem('Import Files...', executeCommand('importFiles')),
@@ -2150,6 +2168,184 @@
         };
         render.isCode = false;
         return render;
+    };
+}.call(this));
+(function () {
+    Flow.ScalaCell = function (_, _renderers, input) {
+        var activate, clear, clip, execute, initiateInterpreter, navigate, select, self, toggleInput, toggleOutput, _actions, _errors, _guid, _hasError, _hasInput, _hasOutput, _input, _isActive, _isBusy, _isCode, _isInputVisible, _isOutputHidden, _isReady, _isSelected, _outputs, _render, _result, _session_id, _time, _type, _visibleType;
+        if (input == null) {
+            input = '';
+        }
+        _guid = lodash.uniqueId();
+        _type = Flow.Dataflow.signal('cs');
+        _visibleType = Flow.Dataflow.signal('sca');
+        _render = Flow.Dataflow.lift(_type, function (type) {
+            return _renderers[type](_guid);
+        });
+        _isCode = Flow.Dataflow.lift(_render, function (render) {
+            return render.isCode;
+        });
+        _isSelected = Flow.Dataflow.signal(false);
+        _isActive = Flow.Dataflow.signal(false);
+        _hasError = Flow.Dataflow.signal(false);
+        _isBusy = Flow.Dataflow.signal(false);
+        _isReady = Flow.Dataflow.lift(_isBusy, function (isBusy) {
+            return !isBusy;
+        });
+        _time = Flow.Dataflow.signal('');
+        _hasInput = Flow.Dataflow.signal(true);
+        _input = Flow.Dataflow.signal(input);
+        _outputs = Flow.Dataflow.signals([]);
+        _errors = [];
+        _result = Flow.Dataflow.signal(null);
+        _hasOutput = Flow.Dataflow.lift(_outputs, function (outputs) {
+            return outputs.length > 0;
+        });
+        _isInputVisible = Flow.Dataflow.signal(true);
+        _isOutputHidden = Flow.Dataflow.signal(false);
+        _session_id = void 0;
+        _actions = {};
+        Flow.Dataflow.act(_isActive, function (isActive) {
+            if (isActive) {
+                _.selectCell(self);
+                _hasInput(true);
+                if (!_isCode()) {
+                    _outputs([]);
+                }
+            }
+        });
+        Flow.Dataflow.act(_isSelected, function (isSelected) {
+            if (!isSelected) {
+                return _isActive(false);
+            }
+        });
+        select = function () {
+            _.selectCell(self, false);
+            return true;
+        };
+        navigate = function () {
+            _.selectCell(self);
+            return true;
+        };
+        activate = function () {
+            return _isActive(true);
+        };
+        clip = function () {
+            return _.saveClip('user', _type(), _input());
+        };
+        toggleInput = function () {
+            return _isInputVisible(!_isInputVisible());
+        };
+        toggleOutput = function () {
+            return _isOutputHidden(!_isOutputHidden());
+        };
+        clear = function () {
+            _result(null);
+            _outputs([]);
+            _errors.length = 0;
+            _hasError(false);
+            if (!_isCode()) {
+                return _hasInput(true);
+            }
+        };
+        initiateInterpreter = function () {
+            return _.requestScalaIntp(function (error, response) {
+                if (error) {
+                    return _session_id = void 0;
+                } else {
+                    return _session_id = response.session_id;
+                }
+            });
+        };
+        execute = function (go) {
+            var input_final, render, startTime;
+            startTime = Date.now();
+            _time('Started at ' + Flow.Util.formatClockTime(startTime));
+            input = _input().trim();
+            if (!input) {
+                if (go) {
+                    return go(null);
+                } else {
+                    return void 0;
+                }
+            }
+            render = _render();
+            _isBusy(true);
+            clear();
+            input_final = 'runScalaCode ' + _session_id + ', \'' + input + '\'';
+            render(input_final, {
+                data: function (result) {
+                    return _outputs.push(result);
+                },
+                close: function (result) {
+                    return _result(result);
+                },
+                error: function (error) {
+                    _hasError(true);
+                    if (error.name === 'FlowError') {
+                        _outputs.push(Flow.Failure(_, error));
+                    } else {
+                        _outputs.push({
+                            text: JSON.stringify(error, null, 2),
+                            template: 'flow-raw'
+                        });
+                    }
+                    return _errors.push(error);
+                },
+                end: function () {
+                    _hasInput(_isCode());
+                    _isBusy(false);
+                    _time(Flow.Util.formatElapsedTime(Date.now() - startTime));
+                    if (go) {
+                        go(_hasError() ? _errors.slice(0) : null);
+                    }
+                }
+            });
+            return _isActive(false);
+        };
+        return self = {
+            guid: _guid,
+            type: _type,
+            visibleType: _visibleType,
+            isCode: _isCode,
+            isSelected: _isSelected,
+            isActive: _isActive,
+            hasError: _hasError,
+            isBusy: _isBusy,
+            isReady: _isReady,
+            time: _time,
+            input: _input,
+            hasInput: _hasInput,
+            outputs: _outputs,
+            result: _result,
+            hasOutput: _hasOutput,
+            isInputVisible: _isInputVisible,
+            toggleInput: toggleInput,
+            isOutputHidden: _isOutputHidden,
+            toggleOutput: toggleOutput,
+            select: select,
+            navigate: navigate,
+            activate: activate,
+            execute: execute,
+            clear: clear,
+            clip: clip,
+            _actions: _actions,
+            getCursorPosition: function () {
+                return _actions.getCursorPosition();
+            },
+            autoResize: function () {
+                return _actions.autoResize();
+            },
+            scrollIntoView: function (immediate) {
+                return _actions.scrollIntoView(immediate);
+            },
+            templateOf: function (view) {
+                return view.template;
+            },
+            template: 'flow-scala-cell',
+            initiateInterpreter: initiateInterpreter,
+            getSessionId: _session_id
+        };
     };
 }.call(this));
 (function () {
@@ -4271,11 +4467,14 @@
         _.requestHelpIndex = Flow.Dataflow.slot();
         _.requestHelpContent = Flow.Dataflow.slot();
         _.requestExec = Flow.Dataflow.slot();
+        _.requestScalaIntp = Flow.Dataflow.slot();
+        _.requestScalaCode = Flow.Dataflow.slot();
         _.ls = Flow.Dataflow.slot();
         _.inspect = Flow.Dataflow.slot();
         _.plot = Flow.Dataflow.slot();
         _.grid = Flow.Dataflow.slot();
-        return _.enumerate = Flow.Dataflow.slot();
+        _.enumerate = Flow.Dataflow.slot();
+        return _.onSparklingWater = Flow.Dataflow.slot();
     };
 }.call(this));
 (function () {
@@ -4286,7 +4485,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
+        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, onSparklingWater, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4947,6 +5146,45 @@
         requestHelpContent = function (name, go) {
             return download('text', '/flow/help/' + name + '.html', go);
         };
+        requestScalaIntp = function (go) {
+            return doPost('/3/scalaint', {}, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, result);
+                }
+            });
+        };
+        requestScalaCode = function (session_id, code, go) {
+            return doPost('/3/scalaint/' + session_id, { code: code }, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, result);
+                }
+            });
+        };
+        onSparklingWater = function () {
+            var found;
+            found = false;
+            _.requestEndpoints(function (error, response) {
+                var route, _i, _len, _ref, _results;
+                if (!error) {
+                    _ref = response.routes;
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        route = _ref[_i];
+                        if (route.url_pattern === '/3/scalaint') {
+                            _results.push(found = true);
+                        } else {
+                            _results.push(void 0);
+                        }
+                    }
+                    return _results;
+                }
+            });
+            return found;
+        };
         Flow.Dataflow.link(_.requestInspect, requestInspect);
         Flow.Dataflow.link(_.requestCreateFrame, requestCreateFrame);
         Flow.Dataflow.link(_.requestSplitFrame, requestSplitFrame);
@@ -5008,7 +5246,10 @@
         Flow.Dataflow.link(_.requestFlow, requestFlow);
         Flow.Dataflow.link(_.requestHelpIndex, requestHelpIndex);
         Flow.Dataflow.link(_.requestHelpContent, requestHelpContent);
-        return Flow.Dataflow.link(_.requestExec, requestExec);
+        Flow.Dataflow.link(_.requestExec, requestExec);
+        Flow.Dataflow.link(_.requestScalaIntp, requestScalaIntp);
+        Flow.Dataflow.link(_.requestScalaCode, requestScalaCode);
+        return Flow.Dataflow.link(_.onSparklingWater, onSparklingWater);
     };
 }.call(this));
 (function () {
@@ -5313,7 +5554,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendScalaCode, extendScalaIntp, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getScalaIntp, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSplitFrame, requestStackTrace, requestTimeline, runScalaCode, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -7259,6 +7500,38 @@
         getRDDs = function () {
             return _fork(requestRDDs);
         };
+        requestScalaCode = function (session_id, code, go) {
+            return _.requestScalaCode(session_id, code, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendScalaCode(result));
+                }
+            });
+        };
+        extendScalaCode = function (result) {
+            render_(result, H2O.ScalaCodeOutput, result);
+            return result;
+        };
+        runScalaCode = function (session_id, code) {
+            return _fork(requestScalaCode, session_id, code);
+        };
+        requestScalaIntp = function (go) {
+            return _.requestScalaIntp(function (error, session_id) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendScalaIntp(session_id));
+                }
+            });
+        };
+        extendScalaIntp = function (session_id) {
+            render_(session_id, H2O.ScalaIntpOutput, session_id);
+            return session_id;
+        };
+        getScalaIntp = function () {
+            return _fork(requestScalaIntp);
+        };
         requestProfile = function (depth, go) {
             return _.requestProfile(depth, function (error, profile) {
                 if (error) {
@@ -7406,7 +7679,6 @@
             deleteFrames: deleteFrames,
             deleteFrame: deleteFrame,
             exportFrame: exportFrame,
-            getRDDs: getRDDs,
             getColumnSummary: getColumnSummary,
             changeColumnType: changeColumnType,
             imputeColumn: imputeColumn,
@@ -7426,7 +7698,10 @@
             getStackTrace: getStackTrace,
             getLogFile: getLogFile,
             testNetwork: testNetwork,
-            deleteAll: deleteAll
+            deleteAll: deleteAll,
+            getRDDs: getRDDs,
+            getScalaIntp: getScalaIntp,
+            runScalaCode: runScalaCode
         };
     };
 }.call(this));
@@ -11231,6 +11506,40 @@
             rDDViews: _rDDViews,
             hasRDDs: _rDDs.length > 0,
             template: 'flow-rdds-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ScalaCodeOutput = function (_, _go, _result) {
+        var createScalaCodeView, _scalaCodeView;
+        _scalaCodeView = Flow.Dataflow.signal(null);
+        createScalaCodeView = function (result) {
+            return {
+                output: result.output,
+                response: result.response,
+                status: result.status
+            };
+        };
+        _scalaCodeView(createScalaCodeView(_result));
+        lodash.defer(_go);
+        return {
+            scalaCodeView: _scalaCodeView,
+            template: 'flow-scala-code-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ScalaIntpOutput = function (_, _go, _result) {
+        var createScalaIntpView, _scalaIntpView;
+        _scalaIntpView = Flow.Dataflow.signal(null);
+        createScalaIntpView = function (result) {
+            return { session_id: result.session_id };
+        };
+        _scalaIntpView(createScalaIntpView(_result));
+        lodash.defer(_go);
+        return {
+            scalaIntpView: _scalaIntpView,
+            template: 'flow-scala-intp-output'
         };
     };
 }.call(this));

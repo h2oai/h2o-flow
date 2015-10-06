@@ -494,6 +494,31 @@ H2O.Proxy = (_) ->
   requestHelpContent = (name, go) ->
     download 'text', "/flow/help/#{name}.html", go
 
+  requestScalaIntp = (go) ->
+    doPost '/3/scalaint', {}, (error, result) ->
+      if error
+        go error
+      else
+        go null, result
+
+  requestScalaCode = (session_id, code, go) ->
+    doPost "/3/scalaint/#{session_id}", {code: code}, (error, result) ->
+      if error
+        go error
+      else
+        go null, result
+
+  # check if we run on top of sparkling water by checking if there is
+  # endpoint specific for sparkling-water    
+  onSparklingWater = ->
+    found = false
+    _.requestEndpoints (error, response) ->
+      unless error
+        for route in response.routes
+          if route.url_pattern is '/3/scalaint'
+            found = true
+    found
+
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
   link _.requestSplitFrame, requestSplitFrame
@@ -556,5 +581,8 @@ H2O.Proxy = (_) ->
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
   link _.requestExec, requestExec
+  link _.requestScalaIntp, requestScalaIntp
+  link _.requestScalaCode, requestScalaCode
+  link _.onSparklingWater, onSparklingWater
 
 

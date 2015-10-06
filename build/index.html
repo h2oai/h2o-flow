@@ -561,6 +561,35 @@
         </div>
       </div>
     </script>
+    <script type="text/html" id="flow-scala-cell">
+      <div data-bind="click:select, css:{ 'flow-cell-selected':isSelected, 'flow-cell-active':isActive, 'flow-cell-ready':isReady, 'flow-cell-busy':isBusy, 'flow-cell-error':hasError, 'flow-cell-code':isCode }, scrollIntoView:_actions" class="flow-cell">
+        <div data-bind="text:visibleType" class="flow-cell-type"></div>
+        <div data-bind="visible:isInputVisible" class="flow-cell-input">
+          <div data-bind="visible:hasInput, css:{ 'flow-cell-has-output':hasOutput }" class="flow-cell-code">
+            <table style="width:100%">
+              <tbody>
+                <tr>
+                  <td>
+                    <textarea placeholder="Expression..." rows="1" spellcheck="false" data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_actions, autoResize:_actions"></textarea>
+                  </td>
+                  <td class="flow-cell-actions"><i title="Save to clipboard" data-bind="click:clip" class="fa fa-paperclip flow-pointer"></i></td>
+                </tr>
+                <tr>
+                  <td data-bind="text:time" class="flow-cell-time"></td>
+                  <td class="flow-cell-actions"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div data-bind="css:{ 'flow-hide-output': isOutputHidden }" class="flow-cell-output">
+          <!-- ko if:result-->
+          <div data-bind="template:{ name: templateOf, data:result }" class="flow-cell-result"></div>
+          <!-- /ko-->
+          <div data-bind="template: { name: templateOf, foreach:outputs }" class="flow-cell-outputs"></div>
+        </div>
+      </div>
+    </script>
     <script type="text/html" id="flow-alert-dialog">
       <div id="alert-dialog" tabindex="-1" role="dialog" class="modal fade">
         <div class="modal-dialog">
@@ -1667,6 +1696,25 @@
             <!-- /ko-->
           </tbody>
         </table>
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-scala-code-output">
+      <div class="flow-widget">
+        <!-- ko with:scalaCodeView-->
+        <h4 data-bind="text:&quot;Status: &quot;+status"></h4>
+        <h4>Console Output:</h4>
+        <p data-bind="text:output"></p>
+        <h4>Scala Response:</h4>
+        <p data-bind="text:response"></p>
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-scala-intp-output">
+      <div class="flow-widget">
+        <!-- ko with:scalaIntpView-->
+        <h4>Interpreter ID:</h4>
+        <p data-bind="text:session_id"></p>
         <!-- /ko-->
       </div>
     </script>
