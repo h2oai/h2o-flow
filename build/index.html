@@ -1848,6 +1848,15 @@
         </table>
       </div>
     </script>
+    <script type="text/html" id="flow-bind-frames-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-table"></i>Frames Combined
+            </h3>
+        <blockquote>The specified frames were combined successfully.</blockquote>
+            <button type="button" data-bind="click:viewFrame" class="flow-button"><i class="fa fa-table"></i><span>View Frame</span>
+            </button>
+      </div>
+    </script>
     <script type="text/html" id="flow-export-frame-output">
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-save"></i>Frame Exported
@@ -2132,6 +2141,10 @@
         <!-- ko foreach:plots-->
         <h4 data-bind="text:title, collapse:false"></h4>
         <div data-bind="raw:plot" class="flow-plot"></div>
+        <!-- ko if:canCombineWithFrame-->
+            <button type="button" data-bind="click:combineWithFrame" class="flow-button"><i class="fa fa-table"></i><span>Combine predictions with frame</span>
+            </button>
+        <!-- /ko-->
         <!-- /ko-->
       </div>
     </script>
