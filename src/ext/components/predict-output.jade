@@ -14,4 +14,7 @@
   // ko foreach:plots
   h4(data-bind='text:title, collapse:false')
   .flow-plot(data-bind='raw:plot')
+  // ko if:canCombineWithFrame
+  +button('Combine predictions with frame', 'table', 'combineWithFrame')
+  // /ko
   // /ko

@@ -957,6 +957,7 @@ H2O.Routines = (_) ->
       else
         go null, extendFrameSummary frameKey, frame
 
+
   requestColumnSummary = (frameKey, columnName, go) ->
     _.requestColumnSummary frameKey, columnName, (error, frame) ->
       if error
@@ -1008,6 +1009,13 @@ H2O.Routines = (_) ->
 
     console.log splits
     splits
+
+  requestBindFrames = (key, sourceKeys, go) ->
+    _.requestExec key, "(cbind #{sourceKeys.join ' '})", (error, result) ->
+      if error
+        go error
+      else
+        go null, extendBindFrames result
 
   requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
     if splitRatios.length is splitKeys.length - 1
@@ -1074,6 +1082,9 @@ H2O.Routines = (_) ->
       else
         assist getFrame
 
+  bindFrames = (key, sourceKeys) ->
+    _fork requestBindFrames, key, sourceKeys
+
   getFrameSummary = (frameKey) ->
     switch typeOf frameKey
       when 'String'
@@ -1100,6 +1111,9 @@ H2O.Routines = (_) ->
 
   extendExportFrame = (result) ->
     render_ result, H2O.ExportFrameOutput, result
+
+  extendBindFrames = (result) ->
+    render_ result, H2O.BindFramesOutput, result
 
   requestExportFrame = (frameKey, path, opts, go) ->
     _.requestExportFrame frameKey, path, (if opts.overwrite then yes else no), (error, result) ->
@@ -1177,6 +1191,8 @@ H2O.Routines = (_) ->
   findColumnIndicesByColumnLabels = (frame, columnLabels) ->
     for columnLabel in columnLabels
       findColumnIndexByColumnLabel frame, columnLabel
+
+  
 
   requestImputeColumn = (opts, go) ->
     { frame, column, method, combineMethod, groupByColumns } = opts 
@@ -1728,6 +1744,7 @@ H2O.Routines = (_) ->
   splitFrame: splitFrame
   getFrames: getFrames
   getFrame: getFrame
+  bindFrames: bindFrames
   getFrameSummary: getFrameSummary
   getFrameData: getFrameData
   deleteFrames: deleteFrames

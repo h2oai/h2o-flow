@@ -5,8 +5,14 @@ H2O.PredictOutput = (_, _go, prediction) ->
   _plots = signals []
   _canInspect = if prediction.__meta then yes else no
 
-  renderPlot = (title, render) ->
+  renderPlot = (title, prediction, render) ->
     container = signal null
+
+    combineWithFrame = ->
+      predictionsFrameName = prediction.predictions.frame_id.name
+      targetFrameName = "combined-#{predictionsFrameName}"
+
+      _.insertAndExecuteCell 'cs', "bindFrames #{stringify targetFrameName}, [ #{stringify predictionsFrameName}, #{stringify frame.name} ]"
 
     render (error, vis) ->
       if error
@@ -21,13 +27,17 @@ H2O.PredictOutput = (_, _go, prediction) ->
               _.insertAndExecuteCell 'cs', "getModel #{stringify $a.attr 'data-key'}"
         container vis.element
 
-    _plots.push title: title, plot: container
+    _plots.push
+      title: title
+      plot: container
+      combineWithFrame: combineWithFrame
+      canCombineWithFrame: title is 'Prediction'
 
   if prediction
     switch prediction.__meta?.schema_type
       when 'ModelMetricsBinomial'
         if table = _.inspect 'Prediction - Metrics for Thresholds', prediction
-          renderPlot 'ROC Curve', _.plot (g) ->
+          renderPlot 'ROC Curve', prediction, _.plot (g) ->
             g(
               g.path g.position 'fpr', 'tpr'
               g.line(
@@ -42,13 +52,13 @@ H2O.PredictOutput = (_, _go, prediction) ->
     for tableName in _.ls prediction
       if table = _.inspect tableName, prediction
         if table.indices.length > 1
-          renderPlot tableName, _.plot (g) ->
+          renderPlot tableName, prediction, _.plot (g) ->
             g(
               g.select()
               g.from table
             )
         else
-          renderPlot tableName, _.plot (g) ->
+          renderPlot tableName, prediction, _.plot (g) ->
             g(
               g.select 0
               g.from table
