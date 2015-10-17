@@ -50,7 +50,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
     _.insertAndExecuteCell 'cs', "predict frame: #{stringify _frame.frame_id.name}"
 
   download = ->
-    window.open "/3/DownloadDataset.bin?frame_id=#{encodeURIComponent _frame.frame_id.name}", '_blank'
+    window.open "/3/DownloadDataset?frame_id=#{encodeURIComponent _frame.frame_id.name}", '_blank'
 
   exportFrame = ->
     _.insertAndExecuteCell 'cs', "exportFrame #{stringify _frame.frame_id.name}"
