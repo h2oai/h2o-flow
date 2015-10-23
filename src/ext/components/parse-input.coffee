@@ -1,6 +1,6 @@
 MaxItemsPerPage = 15 
 
-parseTypes = map [ 'AUTO', 'ARFF', 'XLS', 'XLSX', 'CSV', 'SVMLight' ], (type) -> type: type, caption: type
+parseTypes = map [ 'AUTO', 'ARFF', 'XLS', 'XLSX', 'CSV', 'SVMLight', 'ORC' ], (type) -> type: type, caption: type
 
 parseDelimiters = do ->
   whitespaceSeparators = [
