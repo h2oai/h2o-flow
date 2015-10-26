@@ -593,7 +593,7 @@ H2O.Routines = (_) ->
           inspections["#{name} - #{v.name}"] = inspectTwoDimTable_ origin, "#{name} - #{v.name}", v
         else
           if isArray v
-            if k is 'cross_validation_models' or k is 'cross_validation_predictions' # megahack
+            if k is 'cross_validation_models' or k is 'cross_validation_predictions' or (name is 'output' and (k is 'weights' or k is 'biases')) # megahack
               inspections[k] = inspectObjectArray_ k, origin, k, v
             else
               inspections[k] = inspectRawArray_ k, origin, k, v
