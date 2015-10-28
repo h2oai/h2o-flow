@@ -172,10 +172,10 @@ H2O.Proxy = (_) ->
 
   requestFrameSummarySlice = (key, searchTerm, offset, count, go) ->
     #TODO send search term
-    doGet "/3/Frames/#{encodeURIComponent key}/summary?column_offset=#{offset}&column_count=#{count}&_exclude_fields=frames/vec_ids,frames/columns/data,frames/columns/domain,frames/columns/histogram_bins,frames/columns/percentiles", unwrap go, (result) -> head result.frames
+    doGet "/3/Frames/#{encodeURIComponent key}/summary?column_offset=#{offset}&column_count=#{count}&_exclude_fields=frames/columns/data,frames/columns/domain,frames/columns/histogram_bins,frames/columns/percentiles", unwrap go, (result) -> head result.frames
 
   requestFrameSummaryWithoutData = (key, go) ->
-    doGet "/3/Frames/#{encodeURIComponent key}/summary?_exclude_fields=frames/chunk_summary,frames/distribution_summary,frames/vec_ids,frames/columns/data,frames/columns/domain,frames/columns/histogram_bins,frames/columns/percentiles", (error, result) ->
+    doGet "/3/Frames/#{encodeURIComponent key}/summary?_exclude_fields=frames/chunk_summary,frames/distribution_summary,frames/columns/data,frames/columns/domain,frames/columns/histogram_bins,frames/columns/percentiles", (error, result) ->
       if error
         go error
       else
