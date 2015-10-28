@@ -3,10 +3,15 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     label(data-bind='text:label')
     span(data-bind='visible:isRequired') *
   td
-    input.flow-textbox(type='text' data-bind='value:text')
+    div(data-bind="visible:isNotGrided")
+      input.flow-textbox(type='text' data-bind='value:text')
+    div(data-bind="visible:isGrided")
+      input.flow-textbox(type='text' data-bind='value:textGrided')
   td
     span(data-bind='text:description')
+  td
+    input(type='checkbox' title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided")
 tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage")
   th &nbsp;
-  td(colspan='2' data-bind='text:message')
+  td(colspan='3' data-bind='text:message')
 

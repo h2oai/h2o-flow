@@ -274,6 +274,9 @@ H2O.Proxy = (_) ->
       else
         go error, result.models
 
+  requestGrid = (key, go) ->
+    doGet "/99/Grids/#{encodeURIComponent key}", go
+
   requestModel = (key, go) ->
     doGet "/3/Models/#{encodeURIComponent key}", (error, result) ->
       if error
@@ -301,14 +304,20 @@ H2O.Proxy = (_) ->
 
   __modelBuilders = null
   __modelBuilderEndpoints = null
+  __gridModelBuilderEndpoints = null
   cacheModelBuilders = (modelBuilders) ->
     modelBuilderEndpoints = {}
+    gridModelBuilderEndpoints = {}
     for modelBuilder in modelBuilders
       modelBuilderEndpoints[modelBuilder.algo] = "/#{modelBuilder.__meta.schema_version}/ModelBuilders/#{modelBuilder.algo}"
+      gridModelBuilderEndpoints[modelBuilder.algo] = "/99/Grid/#{modelBuilder.algo}"
     __modelBuilderEndpoints = modelBuilderEndpoints
+    __gridModelBuilderEndpoints = gridModelBuilderEndpoints
     __modelBuilders = modelBuilders
+
   getModelBuilders = -> __modelBuilders
   getModelBuilderEndpoint = (algo) -> __modelBuilderEndpoints[algo]
+  getGridModelBuilderEndpoint = (algo) -> __gridModelBuilderEndpoints[algo]
 
   requestModelBuilders = (go) ->
     if modelBuilders = getModelBuilders()
@@ -337,7 +346,12 @@ H2O.Proxy = (_) ->
 
   requestModelBuild = (algo, parameters, go) ->
     _.trackEvent 'model', algo
-    doPost getModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
+    if parameters.hyper_parameters
+      # super-hack: nest this object as stringified json
+      parameters.hyper_parameters = stringify parameters.hyper_parameters
+      doPost getGridModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
+    else
+      doPost getModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
 
   requestPredict = (destinationKey, modelKey, frameKey, options, go) ->
     opts = {}
@@ -517,6 +531,7 @@ H2O.Proxy = (_) ->
   link _.requestParseSetupPreview, requestParseSetupPreview
   link _.requestParseFiles, requestParseFiles
   link _.requestModels, requestModels
+  link _.requestGrid, requestGrid
   link _.requestModel, requestModel
   link _.requestPojoPreview, requestPojoPreview
   link _.requestDeleteModel, requestDeleteModel

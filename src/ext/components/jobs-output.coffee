@@ -14,6 +14,8 @@ H2O.JobsOutput = (_, _go, jobs) ->
         'Frame'
       when 'Key<Model>'
         'Model'
+      when 'Key<Grid>'
+        'Grid'
       else
         'Unknown'
 

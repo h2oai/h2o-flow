@@ -28,6 +28,7 @@ H2O.ApplicationContext = (_) ->
   _.requestPrediction = do slot
   _.requestPredictions = do slot
   _.requestModels = do slot
+  _.requestGrid = do slot
   _.requestModel = do slot
   _.requestPojoPreview = do slot
   _.requestDeleteModel = do slot

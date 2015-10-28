@@ -1,0 +1,33 @@
+.flow-widget
+  +subtitle('Grid Search', 'cubes')
+  
+  table.flow-form
+    thead
+      tr
+        th(width='1' style='font-size:inherit')
+          input(type='checkbox' title='Select or deselect all' data-bind="checked:checkAllModels")
+        th(width='1') &nbsp;
+        th Key
+        th.flow-right Actions
+    tbody
+      // ko foreach:modelViews
+      tr
+        td
+          input(type='checkbox' data-bind="checked:isChecked")
+        td
+          i.fa.fa-cube
+        td
+          +link('@key', 'view')
+        td.flow-right 
+          +button('Predict&hellip;', 'bolt', 'predict')
+          //- +button('Clone&hellip;', 'copy', 'clone')
+          +button('Inspect', 'list', 'inspect')
+      // /ko
+  .flow-panel
+    //- +button('Compare selected&hellip;', 'area-chart', 'compareModels', 'canCompareModels')
+    //- +button('Predict using selected models&hellip;', 'bolt', 'predictUsingModels', 'canCompareModels')
+    +button('Inspect', 'list', 'inspect')
+    +button('Delete selected', 'trash', 'deleteModels', 'hasSelectedModels')
+
+
+

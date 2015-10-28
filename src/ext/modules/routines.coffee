@@ -630,6 +630,9 @@ H2O.Routines = (_) ->
     inspect_ model, inspections
     render_ model, H2O.ModelOutput, model
 
+  extendGrid = (grid) ->
+    render_ grid, H2O.GridOutput, grid
+
   extendModels = (models) ->
     inspections = {}
 
@@ -1182,6 +1185,17 @@ H2O.Routines = (_) ->
         _fork requestModel, modelKey
       else
         assist getModel
+
+  requestGrid = (gridKey, go) ->
+    _.requestGrid gridKey, (error, grid) ->
+      if error then go error else go null, extendGrid grid
+
+  getGrid = (gridKey) ->
+    switch typeOf gridKey
+      when 'String'
+        _fork requestGrid, gridKey
+      else
+        assist getGrid
 
   findColumnIndexByColumnLabel = (frame, columnLabel) ->
     for column, i in frame.columns when column.label is columnLabel
@@ -1757,6 +1771,7 @@ H2O.Routines = (_) ->
   buildModel: buildModel
   getModels: getModels
   getModel: getModel
+  getGrid: getGrid
   deleteModels: deleteModels
   deleteModel: deleteModel
   importModel: importModel

@@ -5,6 +5,8 @@ createControl = (kind, parameter) ->
   _message = signal ''
   _hasMessage = lift _message, (message) -> if message then yes else no
   _isVisible = signal yes
+  _isGrided = signal no
+  _isNotGrided = lift _isGrided, (value) -> not value
 
   kind: kind
   name: parameter.name
@@ -17,6 +19,9 @@ createControl = (kind, parameter) ->
   message: _message
   hasMessage: _hasMessage
   isVisible: _isVisible
+  isGridable: parameter.gridable
+  isGrided: _isGrided
+  isNotGrided: _isNotGrided
 
 createTextboxControl = (parameter, type) ->
   isArrayValued = isInt = isReal = no
@@ -35,7 +40,9 @@ createTextboxControl = (parameter, type) ->
   
   _text = signal if isArrayValued then join (parameter.actual_value ? []), ', ' else (parameter.actual_value ? '')
 
-  _value = lift _text, (text) ->
+  _textGrided = signal _text() + ';'
+
+  textToValues = (text) ->
     if isArrayValued
       vals = []
       for value in split text, /\s*,\s*/g
@@ -51,12 +58,26 @@ createTextboxControl = (parameter, type) ->
     else
       text
 
+  _value = lift _text, textToValues
+
+  _valueGrided = lift _textGrided, (text) ->
+    for part in "#{text}".split /\s*;\s*/g
+      if token = part.trim()
+        textToValues token
+
   control = createControl 'textbox', parameter
   control.text = _text
+  control.textGrided = _textGrided
   control.value = _value
+  control.valueGrided = _valueGrided
   control.isArrayValued = isArrayValued
 
   control
+
+createGridableValues = (values, defaultValue) ->
+  map values, (value) ->
+    label: value
+    value: signal true
 
 createDropdownControl = (parameter) ->
   _value = signal parameter.actual_value
@@ -64,6 +85,7 @@ createDropdownControl = (parameter) ->
   control = createControl 'dropdown', parameter
   control.values = signals parameter.values
   control.value = _value
+  control.gridedValues = createGridableValues parameter.values
   control
 
 createListControl = (parameter) ->
@@ -291,22 +313,40 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
           return
 
   collectParameters = (includeUnchangedParameters=no) ->
+    isGrided = no
+
     parameters = {}
+    hyperParameters = {}
     for controls in _controlGroups
       for control in controls
-        value = control.value()
-        if control.isVisible() and (includeUnchangedParameters or control.isRequired or (control.defaultValue isnt value))
+        if control.isGrided()
+          isGrided = yes
           switch control.kind
+            when 'textbox'
+              hyperParameters[control.name] = control.valueGrided()
             when 'dropdown'
-              if value
+              hyperParameters[control.name] = selectedValues = []
+              for item in control.gridedValues
+                if item.value()
+                  selectedValues.push item.label
+            else # checkbox
+              hyperParameters[control.name] = [ true, false ]
+        else
+          value = control.value()
+          if control.isVisible() and (includeUnchangedParameters or control.isRequired or (control.defaultValue isnt value))
+            switch control.kind
+              when 'dropdown'
+                if value
+                  parameters[control.name] = value
+              when 'list'
+                if value.length
+                  selectedValues = for entry in value when entry.isSelected()
+                    entry.value
+                  parameters[control.name] = selectedValues
+              else
                 parameters[control.name] = value
-            when 'list'
-              if value.length
-                selectedValues = for entry in value when entry.isSelected()
-                  entry.value
-                parameters[control.name] = selectedValues
-            else
-              parameters[control.name] = value
+    if isGrided
+      parameters.hyper_parameters = hyperParameters
     parameters
 
   #
@@ -322,6 +362,8 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   performValidations = (checkForErrors, go) ->
     _exception null
     parameters = collectParameters yes
+    delete parameters.hyper_parameters #TODO hack: parameter validation fails with hyper_parameters, so delete it.
+
     _validationFailureMessage ''
 
     _.requestModelInputValidation _algorithm, parameters, (error, modelBuilder) ->

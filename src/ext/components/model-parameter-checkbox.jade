@@ -3,9 +3,13 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     label(data-bind="text:label, attr:{ 'for':clientId }")
     span(data-bind='visible:isRequired') *
   td
-    input(type='checkbox' data-bind="checked:value, attr:{ 'id':clientId }")
+    div(data-bind="visible:isNotGrided")
+      input(type='checkbox' data-bind="checked:value, attr:{ 'id':clientId }")
+    div(data-bind="visible:isGrided") True, False
   td
     span(data-bind='text:description')
+  td
+    input(type='checkbox' title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided")
 tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage")
   th &nbsp;
-  td(colspan='2' data-bind='text:message')
+  td(colspan='3' data-bind='text:message')
