@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.59';
+    Flow.Version = '0.3.60';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4236,6 +4236,7 @@
         _.requestPrediction = Flow.Dataflow.slot();
         _.requestPredictions = Flow.Dataflow.slot();
         _.requestModels = Flow.Dataflow.slot();
+        _.requestGrid = Flow.Dataflow.slot();
         _.requestModel = Flow.Dataflow.slot();
         _.requestPojoPreview = Flow.Dataflow.slot();
         _.requestDeleteModel = Flow.Dataflow.slot();
@@ -4286,7 +4287,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
+        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getGridModelBuilderEndpoint, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestGrid, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __gridModelBuilderEndpoints, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4644,6 +4645,9 @@
                 }
             });
         };
+        requestGrid = function (key, go) {
+            return doGet('/99/Grids/' + encodeURIComponent(key), go);
+        };
         requestModel = function (key, go) {
             return doGet('/3/Models/' + encodeURIComponent(key), function (error, result) {
                 if (error) {
@@ -4677,14 +4681,18 @@
         };
         __modelBuilders = null;
         __modelBuilderEndpoints = null;
+        __gridModelBuilderEndpoints = null;
         cacheModelBuilders = function (modelBuilders) {
-            var modelBuilder, modelBuilderEndpoints, _i, _len;
+            var gridModelBuilderEndpoints, modelBuilder, modelBuilderEndpoints, _i, _len;
             modelBuilderEndpoints = {};
+            gridModelBuilderEndpoints = {};
             for (_i = 0, _len = modelBuilders.length; _i < _len; _i++) {
                 modelBuilder = modelBuilders[_i];
                 modelBuilderEndpoints[modelBuilder.algo] = '/' + modelBuilder.__meta.schema_version + '/ModelBuilders/' + modelBuilder.algo;
+                gridModelBuilderEndpoints[modelBuilder.algo] = '/99/Grid/' + modelBuilder.algo;
             }
             __modelBuilderEndpoints = modelBuilderEndpoints;
+            __gridModelBuilderEndpoints = gridModelBuilderEndpoints;
             return __modelBuilders = modelBuilders;
         };
         getModelBuilders = function () {
@@ -4692,6 +4700,9 @@
         };
         getModelBuilderEndpoint = function (algo) {
             return __modelBuilderEndpoints[algo];
+        };
+        getGridModelBuilderEndpoint = function (algo) {
+            return __gridModelBuilderEndpoints[algo];
         };
         requestModelBuilders = function (go) {
             var modelBuilders;
@@ -4752,7 +4763,12 @@
         };
         requestModelBuild = function (algo, parameters, go) {
             _.trackEvent('model', algo);
-            return doPost(getModelBuilderEndpoint(algo), encodeObjectForPost(parameters), go);
+            if (parameters.hyper_parameters) {
+                parameters.hyper_parameters = Flow.Prelude.stringify(parameters.hyper_parameters);
+                return doPost(getGridModelBuilderEndpoint(algo), encodeObjectForPost(parameters), go);
+            } else {
+                return doPost(getModelBuilderEndpoint(algo), encodeObjectForPost(parameters), go);
+            }
         };
         requestPredict = function (destinationKey, modelKey, frameKey, options, go) {
             var opt, opts;
@@ -4970,6 +4986,7 @@
         Flow.Dataflow.link(_.requestParseSetupPreview, requestParseSetupPreview);
         Flow.Dataflow.link(_.requestParseFiles, requestParseFiles);
         Flow.Dataflow.link(_.requestModels, requestModels);
+        Flow.Dataflow.link(_.requestGrid, requestGrid);
         Flow.Dataflow.link(_.requestModel, requestModel);
         Flow.Dataflow.link(_.requestPojoPreview, requestPojoPreview);
         Flow.Dataflow.link(_.requestDeleteModel, requestDeleteModel);
@@ -5313,7 +5330,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, bindFrames, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, bindFrames, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5829,7 +5846,7 @@
                             inspections['' + name + ' - ' + v.name] = inspectTwoDimTable_(origin, '' + name + ' - ' + v.name, v);
                         } else {
                             if (lodash.isArray(v)) {
-                                if (k === 'cross_validation_models' || k === 'cross_validation_predictions') {
+                                if (k === 'cross_validation_models' || k === 'cross_validation_predictions' || name === 'output' && (k === 'weights' || k === 'biases')) {
                                     inspections[k] = inspectObjectArray_(k, origin, k, v);
                                 } else {
                                     inspections[k] = inspectRawArray_(k, origin, k, v);
@@ -5874,6 +5891,9 @@
             }
             inspect_(model, inspections);
             return render_(model, H2O.ModelOutput, model);
+        };
+        extendGrid = function (grid) {
+            return render_(grid, H2O.GridOutput, grid);
         };
         extendModels = function (models) {
             var algos, inspections, model;
@@ -6674,6 +6694,23 @@
                 return assist(getModel);
             }
         };
+        requestGrid = function (gridKey, go) {
+            return _.requestGrid(gridKey, function (error, grid) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendGrid(grid));
+                }
+            });
+        };
+        getGrid = function (gridKey) {
+            switch (Flow.Prelude.typeOf(gridKey)) {
+            case 'String':
+                return _fork(requestGrid, gridKey);
+            default:
+                return assist(getGrid);
+            }
+        };
         findColumnIndexByColumnLabel = function (frame, columnLabel) {
             var column, i, _i, _len, _ref1;
             _ref1 = frame.columns;
@@ -7429,6 +7466,7 @@
             buildModel: buildModel,
             getModels: getModels,
             getModel: getModel,
+            getGrid: getGrid,
             deleteModels: deleteModels,
             deleteModel: deleteModel,
             importModel: importModel,
@@ -8493,6 +8531,139 @@
     };
 }.call(this));
 (function () {
+    H2O.GridOutput = function (_, _go, _grid) {
+        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspectAll, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _hasSelectedModels, _isCheckingAll, _modelViews;
+        _modelViews = Flow.Dataflow.signal([]);
+        _checkAllModels = Flow.Dataflow.signal(false);
+        _checkedModelCount = Flow.Dataflow.signal(0);
+        _canCompareModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
+            return count > 1;
+        });
+        _hasSelectedModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
+            return count > 0;
+        });
+        _isCheckingAll = false;
+        Flow.Dataflow.react(_checkAllModels, function (checkAll) {
+            var view, views, _i, _len;
+            _isCheckingAll = true;
+            views = _modelViews();
+            for (_i = 0, _len = views.length; _i < _len; _i++) {
+                view = views[_i];
+                view.isChecked(checkAll);
+            }
+            _checkedModelCount(checkAll ? views.length : 0);
+            _isCheckingAll = false;
+        });
+        createModelView = function (model_id) {
+            var cloneModel, inspect, predict, view, _isChecked;
+            _isChecked = Flow.Dataflow.signal(false);
+            Flow.Dataflow.react(_isChecked, function () {
+                var checkedViews, view;
+                if (_isCheckingAll) {
+                    return;
+                }
+                checkedViews = function () {
+                    var _i, _len, _ref, _results;
+                    _ref = _modelViews();
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        view = _ref[_i];
+                        if (view.isChecked()) {
+                            _results.push(view);
+                        }
+                    }
+                    return _results;
+                }();
+                return _checkedModelCount(checkedViews.length);
+            });
+            predict = function () {
+                return _.insertAndExecuteCell('cs', 'predict model: ' + Flow.Prelude.stringify(model_id.name));
+            };
+            cloneModel = function () {
+                return alert('Not implemented');
+                return _.insertAndExecuteCell('cs', 'cloneModel ' + Flow.Prelude.stringify(model_id.name));
+            };
+            view = function () {
+                return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(model_id.name));
+            };
+            inspect = function () {
+                return _.insertAndExecuteCell('cs', 'inspect getModel ' + Flow.Prelude.stringify(model_id.name));
+            };
+            return {
+                key: model_id.name,
+                isChecked: _isChecked,
+                predict: predict,
+                clone: cloneModel,
+                inspect: inspect,
+                view: view
+            };
+        };
+        buildModel = function () {
+            return _.insertAndExecuteCell('cs', 'buildModel');
+        };
+        collectSelectedKeys = function () {
+            var view, _i, _len, _ref, _results;
+            _ref = _modelViews();
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                view = _ref[_i];
+                if (view.isChecked()) {
+                    _results.push(view.key);
+                }
+            }
+            return _results;
+        };
+        compareModels = function () {
+            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
+        };
+        predictUsingModels = function () {
+            return _.insertAndExecuteCell('cs', 'predict models: ' + Flow.Prelude.stringify(collectSelectedKeys()));
+        };
+        deleteModels = function () {
+            return _.confirm('Are you sure you want to delete these models?', {
+                acceptCaption: 'Delete Models',
+                declineCaption: 'Cancel'
+            }, function (accept) {
+                if (accept) {
+                    return _.insertAndExecuteCell('cs', 'deleteModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
+                }
+            });
+        };
+        inspectAll = function () {
+            var allKeys, view;
+            allKeys = function () {
+                var _i, _len, _ref, _results;
+                _ref = _modelViews();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    view = _ref[_i];
+                    _results.push(view.key);
+                }
+                return _results;
+            }();
+            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(allKeys));
+        };
+        initialize = function (grid) {
+            _modelViews(lodash.map(grid.model_ids, createModelView));
+            return lodash.defer(_go);
+        };
+        initialize(_grid);
+        return {
+            modelViews: _modelViews,
+            buildModel: buildModel,
+            compareModels: compareModels,
+            predictUsingModels: predictUsingModels,
+            deleteModels: deleteModels,
+            checkedModelCount: _checkedModelCount,
+            canCompareModels: _canCompareModels,
+            hasSelectedModels: _hasSelectedModels,
+            checkAllModels: _checkAllModels,
+            inspect: inspectAll,
+            template: 'flow-grid-output'
+        };
+    };
+}.call(this));
+(function () {
     H2O.ImportFilesInput = function (_, _go) {
         var createFileItem, createFileItems, createSelectedFileItem, deselectAllFiles, importFiles, importSelectedFiles, listPathHints, processImportResult, selectAllFiles, tryImportFiles, _exception, _hasErrorMessage, _hasImportedFiles, _hasSelectedFiles, _hasUnselectedFiles, _importedFileCount, _importedFiles, _selectedFileCount, _selectedFiles, _selectedFilesDictionary, _specifiedPath;
         _specifiedPath = Flow.Dataflow.signal('');
@@ -8957,6 +9128,8 @@
                 return 'Frame';
             case 'Key<Model>':
                 return 'Model';
+            case 'Key<Grid>':
+                return 'Grid';
             case 'Key<KeyedVoid>':
                 return 'Void';
             default:
@@ -9046,6 +9219,8 @@
                 return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(_destinationKey));
             case 'Model':
                 return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(_destinationKey));
+            case 'Grid':
+                return _.insertAndExecuteCell('cs', 'getGrid ' + Flow.Prelude.stringify(_destinationKey));
             case 'Void':
                 return alert('This frame was exported to\n' + _job.dest.name);
             }
@@ -9112,6 +9287,8 @@
                     return 'Frame';
                 case 'Key<Model>':
                     return 'Model';
+                case 'Key<Grid>':
+                    return 'Grid';
                 default:
                     return 'Unknown';
                 }
@@ -9243,9 +9420,9 @@
     };
 }.call(this));
 (function () {
-    var createCheckboxControl, createControl, createControlFromParameter, createDropdownControl, createListControl, createTextboxControl;
+    var createCheckboxControl, createControl, createControlFromParameter, createDropdownControl, createGridableValues, createListControl, createTextboxControl;
     createControl = function (kind, parameter) {
-        var _hasError, _hasInfo, _hasMessage, _hasWarning, _isVisible, _message;
+        var _hasError, _hasInfo, _hasMessage, _hasWarning, _isGrided, _isNotGrided, _isVisible, _message;
         _hasError = Flow.Dataflow.signal(false);
         _hasWarning = Flow.Dataflow.signal(false);
         _hasInfo = Flow.Dataflow.signal(false);
@@ -9258,6 +9435,10 @@
             }
         });
         _isVisible = Flow.Dataflow.signal(true);
+        _isGrided = Flow.Dataflow.signal(false);
+        _isNotGrided = Flow.Dataflow.lift(_isGrided, function (value) {
+            return !value;
+        });
         return {
             kind: kind,
             name: parameter.name,
@@ -9269,11 +9450,14 @@
             hasInfo: _hasInfo,
             message: _message,
             hasMessage: _hasMessage,
-            isVisible: _isVisible
+            isVisible: _isVisible,
+            isGridable: parameter.gridable,
+            isGrided: _isGrided,
+            isNotGrided: _isNotGrided
         };
     };
     createTextboxControl = function (parameter, type) {
-        var control, isArrayValued, isInt, isReal, _ref, _ref1, _text, _value;
+        var control, isArrayValued, isInt, isReal, textToValues, _ref, _ref1, _text, _textGrided, _value, _valueGrided;
         isArrayValued = isInt = isReal = false;
         switch (type) {
         case 'byte[]':
@@ -9299,7 +9483,8 @@
             isReal = true;
         }
         _text = Flow.Dataflow.signal(isArrayValued ? ((_ref = parameter.actual_value) != null ? _ref : []).join(', ') : (_ref1 = parameter.actual_value) != null ? _ref1 : '');
-        _value = Flow.Dataflow.lift(_text, function (text) {
+        _textGrided = Flow.Dataflow.signal(_text() + ';');
+        textToValues = function (text) {
             var parsed, vals, value, _i, _len, _ref2;
             if (isArrayValued) {
                 vals = [];
@@ -9322,12 +9507,37 @@
             } else {
                 return text;
             }
+        };
+        _value = Flow.Dataflow.lift(_text, textToValues);
+        _valueGrided = Flow.Dataflow.lift(_textGrided, function (text) {
+            var part, token, _i, _len, _ref2, _results;
+            _ref2 = ('' + text).split(/\s*;\s*/g);
+            _results = [];
+            for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+                part = _ref2[_i];
+                if (token = part.trim()) {
+                    _results.push(textToValues(token));
+                } else {
+                    _results.push(void 0);
+                }
+            }
+            return _results;
         });
         control = createControl('textbox', parameter);
         control.text = _text;
+        control.textGrided = _textGrided;
         control.value = _value;
+        control.valueGrided = _valueGrided;
         control.isArrayValued = isArrayValued;
         return control;
+    };
+    createGridableValues = function (values, defaultValue) {
+        return lodash.map(values, function (value) {
+            return {
+                label: value,
+                value: Flow.Dataflow.signal(true)
+            };
+        });
     };
     createDropdownControl = function (parameter) {
         var control, _value;
@@ -9335,6 +9545,7 @@
         control = createControl('dropdown', parameter);
         control.values = Flow.Dataflow.signals(parameter.values);
         control.value = _value;
+        control.gridedValues = createGridableValues(parameter.values);
         return control;
     };
     createListControl = function (parameter) {
@@ -9658,44 +9869,73 @@
             }
         }());
         collectParameters = function (includeUnchangedParameters) {
-            var controls, entry, parameters, selectedValues, value, _l, _len3, _len4, _m;
+            var controls, entry, hyperParameters, isGrided, item, parameters, selectedValues, value, _l, _len3, _len4, _len5, _m, _n, _ref;
             if (includeUnchangedParameters == null) {
                 includeUnchangedParameters = false;
             }
+            isGrided = false;
             parameters = {};
+            hyperParameters = {};
             for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
                 controls = _controlGroups[_l];
                 for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
                     control = controls[_m];
-                    value = control.value();
-                    if (control.isVisible() && (includeUnchangedParameters || control.isRequired || control.defaultValue !== value)) {
+                    if (control.isGrided()) {
+                        isGrided = true;
                         switch (control.kind) {
-                        case 'dropdown':
-                            if (value) {
-                                parameters[control.name] = value;
-                            }
+                        case 'textbox':
+                            hyperParameters[control.name] = control.valueGrided();
                             break;
-                        case 'list':
-                            if (value.length) {
-                                selectedValues = function () {
-                                    var _len5, _n, _results;
-                                    _results = [];
-                                    for (_n = 0, _len5 = value.length; _n < _len5; _n++) {
-                                        entry = value[_n];
-                                        if (entry.isSelected()) {
-                                            _results.push(entry.value);
-                                        }
-                                    }
-                                    return _results;
-                                }();
-                                parameters[control.name] = selectedValues;
+                        case 'dropdown':
+                            hyperParameters[control.name] = selectedValues = [];
+                            _ref = control.gridedValues;
+                            for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
+                                item = _ref[_n];
+                                if (item.value()) {
+                                    selectedValues.push(item.label);
+                                }
                             }
                             break;
                         default:
-                            parameters[control.name] = value;
+                            hyperParameters[control.name] = [
+                                true,
+                                false
+                            ];
+                        }
+                    } else {
+                        value = control.value();
+                        if (control.isVisible() && (includeUnchangedParameters || control.isRequired || control.defaultValue !== value)) {
+                            switch (control.kind) {
+                            case 'dropdown':
+                                if (value) {
+                                    parameters[control.name] = value;
+                                }
+                                break;
+                            case 'list':
+                                if (value.length) {
+                                    selectedValues = function () {
+                                        var _len6, _o, _results;
+                                        _results = [];
+                                        for (_o = 0, _len6 = value.length; _o < _len6; _o++) {
+                                            entry = value[_o];
+                                            if (entry.isSelected()) {
+                                                _results.push(entry.value);
+                                            }
+                                        }
+                                        return _results;
+                                    }();
+                                    parameters[control.name] = selectedValues;
+                                }
+                                break;
+                            default:
+                                parameters[control.name] = value;
+                            }
                         }
                     }
                 }
+            }
+            if (isGrided) {
+                parameters.hyper_parameters = hyperParameters;
             }
             return parameters;
         };
@@ -9703,6 +9943,7 @@
             var parameters;
             _exception(null);
             parameters = collectParameters(true);
+            delete parameters.hyper_parameters;
             _validationFailureMessage('');
             return _.requestModelInputValidation(_algorithm, parameters, function (error, modelBuilder) {
                 var controls, hasErrors, validation, validations, validationsByControlName, _l, _len3, _len4, _len5, _m, _n;
