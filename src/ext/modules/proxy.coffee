@@ -128,8 +128,8 @@ H2O.Proxy = (_) ->
       else
         go null, transform result
 
-  requestExec = (id, ast, go) ->
-    doPost '/99/Rapids', { id:id, ast: ast }, (error, result) ->
+  requestExec = (ast, go) ->
+    doPost '/99/Rapids', { ast: ast }, (error, result) ->
       if error
         go error
       else

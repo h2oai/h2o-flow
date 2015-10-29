@@ -1,6 +1,6 @@
-H2O.BindFramesOutput = (_, _go, result) ->
+H2O.BindFramesOutput = (_, _go, key, result) ->
   viewFrame = ->
-    _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify result.key.name}"
+    _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify key}"
 
   defer _go
 

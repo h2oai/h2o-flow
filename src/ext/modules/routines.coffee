@@ -1014,11 +1014,11 @@ H2O.Routines = (_) ->
     splits
 
   requestBindFrames = (key, sourceKeys, go) ->
-    _.requestExec key, "(cbind #{sourceKeys.join ' '})", (error, result) ->
+    _.requestExec "(tmp= #{key} (cbind #{sourceKeys.join ' '}))", (error, result) ->
       if error
         go error
       else
-        go null, extendBindFrames result
+        go null, extendBindFrames key, result
 
   requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
     if splitRatios.length is splitKeys.length - 1
@@ -1026,7 +1026,7 @@ H2O.Routines = (_) ->
 
       randomVecKey = createTempKey()
 
-      _.requestExec randomVecKey, "(h2o.runif #{frameKey} -1)", (error, result) ->
+      _.requestExec "(tmp= #{randomVecKey} (h2o.runif #{frameKey} -1))", (error, result) ->
         if error
           go error
         else
@@ -1042,11 +1042,10 @@ H2O.Routines = (_) ->
             else
               g
 
-            key: part.key
-            expr: "(rows #{frameKey} #{sliceExpr})"
+            "(tmp= #{part.key} (rows #{frameKey} #{sliceExpr}))"
 
-          futures = map splitFrames, (f) ->
-            _fork _.requestExec, f.key, f.expr
+          futures = map splitFrames, (expr) ->
+            _fork _.requestExec, expr
 
           Flow.Async.join futures, (error, results) ->
             if error
@@ -1115,8 +1114,8 @@ H2O.Routines = (_) ->
   extendExportFrame = (result) ->
     render_ result, H2O.ExportFrameOutput, result
 
-  extendBindFrames = (result) ->
-    render_ result, H2O.BindFramesOutput, result
+  extendBindFrames = (key, result) ->
+    render_ result, H2O.BindFramesOutput, key, result
 
   requestExportFrame = (frameKey, path, opts, go) ->
     _.requestExportFrame frameKey, path, (if opts.overwrite then yes else no), (error, result) ->
@@ -1233,7 +1232,7 @@ H2O.Routines = (_) ->
         else
           "[]"
 
-        _.requestExec frame, "(h2o.impute #{frame} #{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg} TRUE)", (error, result) ->
+        _.requestExec "(tmp= #{frame} (h2o.impute #{frame} #{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg}))", (error, result) ->
           if error
             go error
           else
@@ -1250,7 +1249,7 @@ H2O.Routines = (_) ->
         catch columnKeyError
           return go columnKeyError
 
-        _.requestExec frame, "(= #{frame} (#{method} (cols #{frame} #{columnIndex})) #{columnIndex} [0:#{result.rows}])", (error, result) ->
+        _.requestExec "(tmp= #{frame} (:= #{frame} (#{method} (cols #{frame} #{columnIndex})) #{columnIndex} [0:#{result.rows}]))", (error, result) ->
           if error
             go error
           else
