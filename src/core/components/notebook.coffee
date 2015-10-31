@@ -534,6 +534,7 @@ Flow.Notebook = (_, _renderers) ->
     ).concat [
       menuDivider
       createMenuItem 'List All Models', executeCommand 'getModels'
+      createMenuItem 'List Grid Search Results', executeCommand 'getGrids'
       createMenuItem 'Import Model...', executeCommand 'importModel'
       createMenuItem 'Export Model...', executeCommand 'exportModel'
     ]

@@ -1,0 +1,29 @@
+.flow-widget
+  +subtitle('Grids', 'th')
+  
+  // ko ifnot:hasGrids
+  blockquote Your H<sub>2</sub>O cloud has no grid search results.
+  .flow-panel
+    +button('Build a model&hellip;', 'cube', 'buildModel')
+  // /ko
+
+  // ko if:hasGrids
+  table.flow-form
+    thead
+      tr
+        th(width='1') &nbsp;
+        th Key
+        th Models
+    tbody
+      // ko foreach:gridViews
+      tr
+        td
+          i.fa.fa-th
+        td
+          +link('@key', 'view')
+        td(data-bind="text:size")
+      // /ko
+
+  // /ko
+
+

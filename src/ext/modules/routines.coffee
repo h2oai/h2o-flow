@@ -22,6 +22,9 @@ _assistance =
   getModels:
     description: 'Get a list of models in H<sub>2</sub>O'
     icon: 'cubes'
+  getGrids:
+    description: 'Get a list of grid search results in H<sub>2</sub>O'
+    icon: 'th'
   getPredictions:
     description: 'Get a list of predictions in H<sub>2</sub>O'
     icon: 'bolt'
@@ -633,6 +636,9 @@ H2O.Routines = (_) ->
   extendGrid = (grid) ->
     render_ grid, H2O.GridOutput, grid
 
+  extendGrids = (grids) ->
+    render_ grids, H2O.GridsOutput, grids
+
   extendModels = (models) ->
     inspections = {}
 
@@ -644,7 +650,6 @@ H2O.Routines = (_) ->
     # TODO implement model comparision after 2d table cleanup for model metrics
     #if modelCategories.length is 1
     #  inspections.outputs = inspectOutputsAcrossModels (head modelCategories), models
-    
 
     inspect_ models, inspections
     render_ models, H2O.ModelsOutput, models
@@ -1173,6 +1178,13 @@ H2O.Routines = (_) ->
         _fork requestModels 
     else
       _fork requestModels
+
+  requestGrids = (go) ->
+    _.requestGrids (error, grids) ->
+      if error then go error else go null, extendGrids grids
+
+  getGrids = ->
+    _fork requestGrids
 
   requestModel = (modelKey, go) ->
     _.requestModel modelKey, (error, model) ->
@@ -1768,6 +1780,7 @@ H2O.Routines = (_) ->
   changeColumnType: changeColumnType
   imputeColumn: imputeColumn
   buildModel: buildModel
+  getGrids: getGrids
   getModels: getModels
   getModel: getModel
   getGrid: getGrid
