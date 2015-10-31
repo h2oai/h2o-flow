@@ -1466,6 +1466,40 @@
         </th>
       </tr>
     </script>
+    <script type="text/html" id="flow-grids-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-th"></i>Grids
+            </h3>
+        <!-- ko ifnot:hasGrids-->
+        <blockquote>Your H<sub>2</sub>O cloud has no grid search results.</blockquote>
+        <div class="flow-panel">
+              <button type="button" data-bind="click:buildModel" class="flow-button"><i class="fa fa-cube"></i><span>Build a model&hellip;</span>
+              </button>
+        </div>
+        <!-- /ko-->
+        <!-- ko if:hasGrids-->
+        <table class="flow-form">
+          <thead>
+            <tr>
+              <th width="1">&nbsp;</th>
+              <th>Key</th>
+              <th>Models</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ko foreach:gridViews-->
+            <tr>
+              <td><i class="fa fa-th"></i></td>
+              <td><a href="#" data-bind="text:key, click:view"></a>
+              </td>
+              <td data-bind="text:size"></td>
+            </tr>
+            <!-- /ko-->
+          </tbody>
+        </table>
+        <!-- /ko-->
+      </div>
+    </script>
     <script type="text/html" id="flow-models-output">
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-cubes"></i>Models

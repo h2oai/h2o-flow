@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.62';
+    Flow.Version = '0.3.63';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1608,6 +1608,7 @@
             }).concat([
                 menuDivider,
                 createMenuItem('List All Models', executeCommand('getModels')),
+                createMenuItem('List Grid Search Results', executeCommand('getGrids')),
                 createMenuItem('Import Model...', executeCommand('importModel')),
                 createMenuItem('Export Model...', executeCommand('exportModel'))
             ]);
@@ -4235,6 +4236,7 @@
         _.requestPredict = Flow.Dataflow.slot();
         _.requestPrediction = Flow.Dataflow.slot();
         _.requestPredictions = Flow.Dataflow.slot();
+        _.requestGrids = Flow.Dataflow.slot();
         _.requestModels = Flow.Dataflow.slot();
         _.requestGrid = Flow.Dataflow.slot();
         _.requestModel = Flow.Dataflow.slot();
@@ -4287,7 +4289,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getGridModelBuilderEndpoint, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestGrid, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __gridModelBuilderEndpoints, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
+        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getGridModelBuilderEndpoint, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestGrid, requestGrids, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __gridModelBuilderEndpoints, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4632,6 +4634,15 @@
                 chunk_size: chunkSize
             };
             return doPost('/3/Parse', opts, go);
+        };
+        requestGrids = function (go, opts) {
+            return doGet('/99/Grids', function (error, result) {
+                if (error) {
+                    return go(error, result);
+                } else {
+                    return go(error, result.grids);
+                }
+            });
         };
         requestModels = function (go, opts) {
             return requestWithOpts('/3/Models', opts, function (error, result) {
@@ -4982,6 +4993,7 @@
         Flow.Dataflow.link(_.requestParseSetup, requestParseSetup);
         Flow.Dataflow.link(_.requestParseSetupPreview, requestParseSetupPreview);
         Flow.Dataflow.link(_.requestParseFiles, requestParseFiles);
+        Flow.Dataflow.link(_.requestGrids, requestGrids);
         Flow.Dataflow.link(_.requestModels, requestModels);
         Flow.Dataflow.link(_.requestGrid, requestGrid);
         Flow.Dataflow.link(_.requestModel, requestModel);
@@ -5055,6 +5067,10 @@
         getModels: {
             description: 'Get a list of models in H<sub>2</sub>O',
             icon: 'cubes'
+        },
+        getGrids: {
+            description: 'Get a list of grid search results in H<sub>2</sub>O',
+            icon: 'th'
         },
         getPredictions: {
             description: 'Get a list of predictions in H<sub>2</sub>O',
@@ -5327,7 +5343,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, bindFrames, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var assist, bindFrames, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5891,6 +5907,9 @@
         };
         extendGrid = function (grid) {
             return render_(grid, H2O.GridOutput, grid);
+        };
+        extendGrids = function (grids) {
+            return render_(grids, H2O.GridsOutput, grids);
         };
         extendModels = function (models) {
             var algos, inspections, model;
@@ -6670,6 +6689,18 @@
             } else {
                 return _fork(requestModels);
             }
+        };
+        requestGrids = function (go) {
+            return _.requestGrids(function (error, grids) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendGrids(grids));
+                }
+            });
+        };
+        getGrids = function () {
+            return _fork(requestGrids);
         };
         requestModel = function (modelKey, go) {
             return _.requestModel(modelKey, function (error, model) {
@@ -7458,6 +7489,7 @@
             changeColumnType: changeColumnType,
             imputeColumn: imputeColumn,
             buildModel: buildModel,
+            getGrids: getGrids,
             getModels: getModels,
             getModel: getModel,
             getGrid: getGrid,
@@ -8654,6 +8686,37 @@
             checkAllModels: _checkAllModels,
             inspect: inspectAll,
             template: 'flow-grid-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.GridsOutput = function (_, _go, _grids) {
+        var buildModel, createGridView, initialize, _gridViews;
+        _gridViews = Flow.Dataflow.signal([]);
+        createGridView = function (grid) {
+            var view;
+            view = function () {
+                return _.insertAndExecuteCell('cs', 'getGrid ' + Flow.Prelude.stringify(grid.grid_id.name));
+            };
+            return {
+                key: grid.grid_id.name,
+                size: grid.model_ids.length,
+                view: view
+            };
+        };
+        buildModel = function () {
+            return _.insertAndExecuteCell('cs', 'buildModel');
+        };
+        initialize = function (grids) {
+            _gridViews(lodash.map(grids, createGridView));
+            return lodash.defer(_go);
+        };
+        initialize(_grids);
+        return {
+            gridViews: _gridViews,
+            hasGrids: _grids.length > 0,
+            buildModel: buildModel,
+            template: 'flow-grids-output'
         };
     };
 }.call(this));
