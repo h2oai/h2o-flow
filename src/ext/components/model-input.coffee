@@ -85,7 +85,8 @@ createDropdownControl = (parameter) ->
   control = createControl 'dropdown', parameter
   control.values = signals parameter.values
   control.value = _value
-  control.gridedValues = createGridableValues parameter.values
+  control.gridedValues = lift control.values, (values) ->
+    createGridableValues values
   control
 
 createListControl = (parameter) ->
@@ -326,7 +327,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
               hyperParameters[control.name] = control.valueGrided()
             when 'dropdown'
               hyperParameters[control.name] = selectedValues = []
-              for item in control.gridedValues
+              for item in control.gridedValues()
                 if item.value()
                   selectedValues.push item.label
             else # checkbox
