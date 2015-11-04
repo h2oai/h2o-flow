@@ -286,6 +286,15 @@ H2O.ModelOutput = (_, _go, _model) ->
               g.from table
             )
 
+      if output = _model.output
+        if output.model_category is 'Multinomial'
+          if confusionMatrix = output.training_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.validation_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.cross_validation_metrics?.cm?.table
+            renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+
     when 'deeplearning'
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
         plotter = _.plot (g) ->
