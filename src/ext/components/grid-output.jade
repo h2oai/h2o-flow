@@ -1,6 +1,7 @@
 .flow-widget
   +subtitle('Grid Search', 'cubes')
-  
+
+  // ko if:hasModels
   table.flow-form
     thead
       tr
@@ -30,4 +31,15 @@
     +button('Delete selected', 'trash', 'deleteModels', 'hasSelectedModels')
 
 
+  // /ko
 
+  // ko if:hasErrors
+  // ko foreach:errorViews
+  h4(data-bind='collapse:false, text:title')
+  div
+    p(data-bind="text:detail" style="color:red")
+    p(data-bind="text:params" style="color:red")
+    a.flow-small-caps.flow-small(href='#' data-bind='collapse:true') Stack trace
+    pre(data-bind='text:stacktrace')
+  // /ko
+  // /ko

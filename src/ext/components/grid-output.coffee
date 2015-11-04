@@ -1,6 +1,9 @@
 H2O.GridOutput = (_, _go, _grid) ->
 
   _modelViews = signal []
+  _hasModels = _grid.model_ids.length > 0
+  _errorViews = signal []
+  _hasErrors = _grid.failure_details.length > 0
   _checkAllModels = signal no
   _checkedModelCount = signal 0
   _canCompareModels = lift _checkedModelCount, (count) -> count > 1
@@ -62,7 +65,6 @@ H2O.GridOutput = (_, _go, _grid) ->
       if accept
         _.insertAndExecuteCell 'cs', "deleteModels #{stringify collectSelectedKeys()}"
 
-
   inspectAll = ->
     allKeys = (view.key for view in _modelViews())
     #TODO use table origin
@@ -70,11 +72,20 @@ H2O.GridOutput = (_, _go, _grid) ->
 
   initialize = (grid) ->
     _modelViews map grid.model_ids, createModelView
+    errorViews = for i in [0 ... grid.failure_details.length]
+      title: "Error #{i + 1}"
+      detail: grid.failure_details[i]
+      params: "Parameters: [ #{ grid.failed_raw_params[i].join ', ' } ]"
+      stacktrace: grid.failure_stack_traces[i]
+    _errorViews errorViews
     defer _go
 
   initialize _grid
 
   modelViews: _modelViews
+  hasModels: _hasModels
+  errorViews: _errorViews
+  hasErrors: _hasErrors
   buildModel: buildModel
   compareModels: compareModels
   predictUsingModels: predictUsingModels
