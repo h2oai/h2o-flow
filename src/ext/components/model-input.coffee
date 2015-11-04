@@ -61,9 +61,11 @@ createTextboxControl = (parameter, type) ->
   _value = lift _text, textToValues
 
   _valueGrided = lift _textGrided, (text) ->
+    values = []
     for part in "#{text}".split /\s*;\s*/g
       if token = part.trim()
-        textToValues token
+        push values, textToValues token
+    values
 
   control = createControl 'textbox', parameter
   control.text = _text
