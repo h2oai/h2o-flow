@@ -1015,7 +1015,6 @@ H2O.Routines = (_) ->
 
       sum += part.ratio
 
-    console.log splits
     splits
 
   requestBindFrames = (key, sourceKeys, go) ->
@@ -1031,38 +1030,33 @@ H2O.Routines = (_) ->
 
       randomVecKey = createTempKey()
 
-      _.requestExec "(tmp= #{randomVecKey} (h2o.runif #{frameKey} -1))", (error, result) ->
+      statements = []
+
+      push statements, "(tmp= #{randomVecKey} (h2o.runif #{frameKey} -1))"
+
+      for part, i in splits
+        g = if i isnt 0 then "(>= #{randomVecKey} #{part.min})" else null
+
+        l = if i isnt splits.length - 1 then "(< #{randomVecKey} #{part.max})" else null
+
+        sliceExpr = if g and l
+          "(& #{g} #{l})"
+        else if l
+          l
+        else
+          g
+
+        push statements, "(tmp= #{part.key} (rows #{frameKey} #{sliceExpr}))"
+
+      push statements, "(rm #{randomVecKey})"
+
+      _.requestExec "(, #{statements.join ' '})", (error, result) ->
         if error
           go error
         else
-          splitFrames = for part, i in splits
-            g = if i isnt 0 then "(>= #{randomVecKey} #{part.min})" else null
-
-            l = if i isnt splits.length - 1 then "(< #{randomVecKey} #{part.max})" else null
-
-            sliceExpr = if g and l
-              "(& #{g} #{l})"
-            else if l
-              l
-            else
-              g
-
-            "(tmp= #{part.key} (rows #{frameKey} #{sliceExpr}))"
-
-          futures = map splitFrames, (expr) ->
-            _fork _.requestExec, expr
-
-          Flow.Async.join futures, (error, results) ->
-            if error
-              go error
-            else
-              _.requestDeleteFrame randomVecKey, (error, result) ->
-                if error
-                  go error
-                else
-                  go null, extendSplitFrameResult
-                    keys: splitKeys
-                    ratios: splitRatios
+          go null, extendSplitFrameResult
+            keys: splitKeys
+            ratios: splitRatios
 
     else
       go new Flow.Error 'The number of split ratios should be one less than the number of split keys'
