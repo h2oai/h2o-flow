@@ -1557,6 +1557,7 @@
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-cubes"></i>Grid Search
             </h3>
+        <!-- ko if:hasModels-->
         <table class="flow-form">
           <thead>
             <tr>
@@ -1593,6 +1594,17 @@
               <button type="button" data-bind="click:deleteModels, enable:hasSelectedModels" class="flow-button"><i class="fa fa-trash"></i><span>Delete selected</span>
               </button>
         </div>
+        <!-- /ko-->
+        <!-- ko if:hasErrors-->
+        <!-- ko foreach:errorViews-->
+        <h4 data-bind="collapse:false, text:title"></h4>
+        <div>
+          <p data-bind="text:detail" style="color:red"></p>
+          <p data-bind="text:params" style="color:red"></p><a href="#" data-bind="collapse:true" class="flow-small-caps flow-small">Stack trace</a>
+          <pre data-bind="text:stacktrace"></pre>
+        </div>
+        <!-- /ko-->
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-import-model-input">

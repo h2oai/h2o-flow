@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.63';
+    Flow.Version = '0.3.64';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -6481,7 +6481,6 @@
                 });
                 sum += part.ratio;
             }
-            console.log(splits);
             return splits;
         };
         requestBindFrames = function (key, sourceKeys, go) {
@@ -6494,46 +6493,28 @@
             });
         };
         requestSplitFrame = function (frameKey, splitRatios, splitKeys, go) {
-            var randomVecKey, splits;
+            var g, i, l, part, randomVecKey, sliceExpr, splits, statements, _i, _len;
             if (splitRatios.length === splitKeys.length - 1) {
                 splits = computeSplits(splitRatios, splitKeys);
                 randomVecKey = createTempKey();
-                return _.requestExec('(tmp= ' + randomVecKey + ' (h2o.runif ' + frameKey + ' -1))', function (error, result) {
-                    var futures, g, i, l, part, sliceExpr, splitFrames;
+                statements = [];
+                statements.push('(tmp= ' + randomVecKey + ' (h2o.runif ' + frameKey + ' -1))');
+                for (i = _i = 0, _len = splits.length; _i < _len; i = ++_i) {
+                    part = splits[i];
+                    g = i !== 0 ? '(>= ' + randomVecKey + ' ' + part.min + ')' : null;
+                    l = i !== splits.length - 1 ? '(< ' + randomVecKey + ' ' + part.max + ')' : null;
+                    sliceExpr = g && l ? '(& ' + g + ' ' + l + ')' : l ? l : g;
+                    statements.push('(tmp= ' + part.key + ' (rows ' + frameKey + ' ' + sliceExpr + '))');
+                }
+                statements.push('(rm ' + randomVecKey + ')');
+                return _.requestExec('(, ' + statements.join(' ') + ')', function (error, result) {
                     if (error) {
                         return go(error);
                     } else {
-                        splitFrames = function () {
-                            var _i, _len, _results;
-                            _results = [];
-                            for (i = _i = 0, _len = splits.length; _i < _len; i = ++_i) {
-                                part = splits[i];
-                                g = i !== 0 ? '(>= ' + randomVecKey + ' ' + part.min + ')' : null;
-                                l = i !== splits.length - 1 ? '(< ' + randomVecKey + ' ' + part.max + ')' : null;
-                                sliceExpr = g && l ? '(& ' + g + ' ' + l + ')' : l ? l : g;
-                                _results.push('(tmp= ' + part.key + ' (rows ' + frameKey + ' ' + sliceExpr + '))');
-                            }
-                            return _results;
-                        }();
-                        futures = lodash.map(splitFrames, function (expr) {
-                            return _fork(_.requestExec, expr);
-                        });
-                        return Flow.Async.join(futures, function (error, results) {
-                            if (error) {
-                                return go(error);
-                            } else {
-                                return _.requestDeleteFrame(randomVecKey, function (error, result) {
-                                    if (error) {
-                                        return go(error);
-                                    } else {
-                                        return go(null, extendSplitFrameResult({
-                                            keys: splitKeys,
-                                            ratios: splitRatios
-                                        }));
-                                    }
-                                });
-                            }
-                        });
+                        return go(null, extendSplitFrameResult({
+                            keys: splitKeys,
+                            ratios: splitRatios
+                        }));
                     }
                 });
             } else {
@@ -8558,8 +8539,11 @@
 }.call(this));
 (function () {
     H2O.GridOutput = function (_, _go, _grid) {
-        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspectAll, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _hasSelectedModels, _isCheckingAll, _modelViews;
+        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspectAll, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _errorViews, _hasErrors, _hasModels, _hasSelectedModels, _isCheckingAll, _modelViews;
         _modelViews = Flow.Dataflow.signal([]);
+        _hasModels = _grid.model_ids.length > 0;
+        _errorViews = Flow.Dataflow.signal([]);
+        _hasErrors = _grid.failure_details.length > 0;
         _checkAllModels = Flow.Dataflow.signal(false);
         _checkedModelCount = Flow.Dataflow.signal(0);
         _canCompareModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
@@ -8670,12 +8654,30 @@
             return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(allKeys));
         };
         initialize = function (grid) {
+            var errorViews, i;
             _modelViews(lodash.map(grid.model_ids, createModelView));
+            errorViews = function () {
+                var _i, _ref, _results;
+                _results = [];
+                for (i = _i = 0, _ref = grid.failure_details.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+                    _results.push({
+                        title: 'Error ' + (i + 1),
+                        detail: grid.failure_details[i],
+                        params: 'Parameters: [ ' + grid.failed_raw_params[i].join(', ') + ' ]',
+                        stacktrace: grid.failure_stack_traces[i]
+                    });
+                }
+                return _results;
+            }();
+            _errorViews(errorViews);
             return lodash.defer(_go);
         };
         initialize(_grid);
         return {
             modelViews: _modelViews,
+            hasModels: _hasModels,
+            errorViews: _errorViews,
+            hasErrors: _hasErrors,
             buildModel: buildModel,
             compareModels: compareModels,
             predictUsingModels: predictUsingModels,
@@ -9567,18 +9569,16 @@
         };
         _value = Flow.Dataflow.lift(_text, textToValues);
         _valueGrided = Flow.Dataflow.lift(_textGrided, function (text) {
-            var part, token, _i, _len, _ref2, _results;
+            var part, token, _i, _len, _ref2;
+            lodash.values = [];
             _ref2 = ('' + text).split(/\s*;\s*/g);
-            _results = [];
             for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
                 part = _ref2[_i];
                 if (token = part.trim()) {
-                    _results.push(textToValues(token));
-                } else {
-                    _results.push(void 0);
+                    lodash.values.push(textToValues(token));
                 }
             }
-            return _results;
+            return lodash.values;
         });
         control = createControl('textbox', parameter);
         control.text = _text;
@@ -9602,7 +9602,9 @@
         control = createControl('dropdown', parameter);
         control.values = Flow.Dataflow.signals(parameter.values);
         control.value = _value;
-        control.gridedValues = createGridableValues(parameter.values);
+        control.gridedValues = Flow.Dataflow.lift(control.values, function (values) {
+            return createGridableValues(values);
+        });
         return control;
     };
     createListControl = function (parameter) {
@@ -9945,7 +9947,7 @@
                             break;
                         case 'dropdown':
                             hyperParameters[control.name] = selectedValues = [];
-                            _ref = control.gridedValues;
+                            _ref = control.gridedValues();
                             for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
                                 item = _ref[_n];
                                 if (item.value()) {
@@ -10000,7 +10002,9 @@
             var parameters;
             _exception(null);
             parameters = collectParameters(true);
-            delete parameters.hyper_parameters;
+            if (parameters.hyper_parameters) {
+                return go();
+            }
             _validationFailureMessage('');
             return _.requestModelInputValidation(_algorithm, parameters, function (error, modelBuilder) {
                 var controls, hasErrors, validation, validations, validationsByControlName, _l, _len3, _len4, _len5, _m, _n;
@@ -10191,7 +10195,7 @@
 }.call(this));
 (function () {
     H2O.ModelOutput = function (_, _go, _model) {
-        var cloneModel, confusionMatrix, deleteModel, downloadPojo, exportModel, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
+        var cloneModel, confusionMatrix, deleteModel, downloadPojo, exportModel, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref14, _ref15, _ref16, _ref17, _ref18, _ref19, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
         _isExpanded = Flow.Dataflow.signal(false);
         _plots = Flow.Dataflow.signals([]);
         _pojoPreview = Flow.Dataflow.signal(null);
@@ -10474,6 +10478,19 @@
                     }));
                 }
             }
+            if (output = _model.output) {
+                if (output.model_category === 'Multinomial') {
+                    if (confusionMatrix = (_ref = output.training_metrics) != null ? (_ref1 = _ref.cm) != null ? _ref1.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref2 = output.validation_metrics) != null ? (_ref3 = _ref2.cm) != null ? _ref3.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref4 = output.cross_validation_metrics) != null ? (_ref5 = _ref4.cm) != null ? _ref5.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                }
+            }
             break;
         case 'deeplearning':
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
@@ -10523,13 +10540,13 @@
             }
             if (output = _model.output) {
                 if (output.model_category === 'Multinomial') {
-                    if (confusionMatrix = (_ref = output.training_metrics) != null ? (_ref1 = _ref.cm) != null ? _ref1.table : void 0 : void 0) {
+                    if (confusionMatrix = (_ref6 = output.training_metrics) != null ? (_ref7 = _ref6.cm) != null ? _ref7.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
                     }
-                    if (confusionMatrix = (_ref2 = output.validation_metrics) != null ? (_ref3 = _ref2.cm) != null ? _ref3.table : void 0 : void 0) {
+                    if (confusionMatrix = (_ref8 = output.validation_metrics) != null ? (_ref9 = _ref8.cm) != null ? _ref9.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
                     }
-                    if (confusionMatrix = (_ref4 = output.cross_validation_metrics) != null ? (_ref5 = _ref4.cm) != null ? _ref5.table : void 0 : void 0) {
+                    if (confusionMatrix = (_ref10 = output.cross_validation_metrics) != null ? (_ref11 = _ref10.cm) != null ? _ref11.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
                     }
                 }
@@ -10584,25 +10601,25 @@
             }
             if (output = _model.output) {
                 if (output.model_category === 'Multinomial') {
-                    if (confusionMatrix = (_ref6 = output.training_metrics) != null ? (_ref7 = _ref6.cm) != null ? _ref7.table : void 0 : void 0) {
+                    if (confusionMatrix = (_ref12 = output.training_metrics) != null ? (_ref13 = _ref12.cm) != null ? _ref13.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
                     }
-                    if (confusionMatrix = (_ref8 = output.validation_metrics) != null ? (_ref9 = _ref8.cm) != null ? _ref9.table : void 0 : void 0) {
+                    if (confusionMatrix = (_ref14 = output.validation_metrics) != null ? (_ref15 = _ref14.cm) != null ? _ref15.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
                     }
-                    if (confusionMatrix = (_ref10 = output.cross_validation_metrics) != null ? (_ref11 = _ref10.cm) != null ? _ref11.table : void 0 : void 0) {
+                    if (confusionMatrix = (_ref16 = output.cross_validation_metrics) != null ? (_ref17 = _ref16.cm) != null ? _ref17.table : void 0 : void 0) {
                         renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
                     }
                 }
             }
         }
-        _ref12 = _.ls(_model);
-        for (_i = 0, _len = _ref12.length; _i < _len; _i++) {
-            tableName = _ref12[_i];
+        _ref18 = _.ls(_model);
+        for (_i = 0, _len = _ref18.length; _i < _len; _i++) {
+            tableName = _ref18[_i];
             if (!(tableName !== 'parameters')) {
                 continue;
             }
-            if (output = ((_ref13 = _model.output) != null ? _ref13.model_category : void 0) === 'Multinomial') {
+            if (output = ((_ref19 = _model.output) != null ? _ref19.model_category : void 0) === 'Multinomial') {
                 if (0 === tableName.indexOf('output - training_metrics - cm')) {
                     continue;
                 } else if (0 === tableName.indexOf('output - validation_metrics - cm')) {
