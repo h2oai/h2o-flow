@@ -365,7 +365,9 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   performValidations = (checkForErrors, go) ->
     _exception null
     parameters = collectParameters yes
-    delete parameters.hyper_parameters #TODO hack: parameter validation fails with hyper_parameters, so delete it.
+
+    if parameters.hyper_parameters
+      return go() # parameter validation fails with hyper_parameters, so skip.
 
     _validationFailureMessage ''
 
