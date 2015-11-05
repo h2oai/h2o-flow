@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.3.64';
+    Flow.Version = '0.4';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -6484,7 +6484,7 @@
             return splits;
         };
         requestBindFrames = function (key, sourceKeys, go) {
-            return _.requestExec('(tmp= ' + key + ' (cbind ' + sourceKeys.join(' ') + '))', function (error, result) {
+            return _.requestExec('(assign ' + key + ' (cbind ' + sourceKeys.join(' ') + '))', function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -6504,7 +6504,7 @@
                     g = i !== 0 ? '(>= ' + randomVecKey + ' ' + part.min + ')' : null;
                     l = i !== splits.length - 1 ? '(< ' + randomVecKey + ' ' + part.max + ')' : null;
                     sliceExpr = g && l ? '(& ' + g + ' ' + l + ')' : l ? l : g;
-                    statements.push('(tmp= ' + part.key + ' (rows ' + frameKey + ' ' + sliceExpr + '))');
+                    statements.push('(assign ' + part.key + ' (rows ' + frameKey + ' ' + sliceExpr + '))');
                 }
                 statements.push('(rm ' + randomVecKey + ')');
                 return _.requestExec('(, ' + statements.join(' ') + ')', function (error, result) {
@@ -6763,7 +6763,7 @@
                         groupByColumnIndices = null;
                     }
                     groupByArg = groupByColumnIndices ? '[' + groupByColumnIndices.join(' ') + ']' : '[]';
-                    return _.requestExec('(tmp= ' + frame + ' (h2o.impute ' + frame + ' ' + columnIndex + ' ' + JSON.stringify(method) + ' ' + JSON.stringify(combineMethod) + ' ' + groupByArg + '))', function (error, result) {
+                    return _.requestExec('(assign ' + frame + ' (h2o.impute ' + frame + ' ' + columnIndex + ' ' + JSON.stringify(method) + ' ' + JSON.stringify(combineMethod) + ' ' + groupByArg + '))', function (error, result) {
                         if (error) {
                             return go(error);
                         } else {
@@ -6785,7 +6785,7 @@
                     columnKeyError = _error;
                     return go(columnKeyError);
                 }
-                return _.requestExec('(tmp= ' + frame + ' (:= ' + frame + ' (' + method + ' (cols ' + frame + ' ' + columnIndex + ')) ' + columnIndex + ' [0:' + result.rows + ']))', function (error, result) {
+                return _.requestExec('(:= ' + frame + ' (' + method + ' (cols ' + frame + ' ' + columnIndex + ')) ' + columnIndex + ' [0:' + result.rows + '])', function (error, result) {
                     if (error) {
                         return go(error);
                     } else {
