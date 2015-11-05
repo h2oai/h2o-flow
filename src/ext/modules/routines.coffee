@@ -1018,7 +1018,7 @@ H2O.Routines = (_) ->
     splits
 
   requestBindFrames = (key, sourceKeys, go) ->
-    _.requestExec "(tmp= #{key} (cbind #{sourceKeys.join ' '}))", (error, result) ->
+    _.requestExec "(assign #{key} (cbind #{sourceKeys.join ' '}))", (error, result) ->
       if error
         go error
       else
@@ -1046,7 +1046,7 @@ H2O.Routines = (_) ->
         else
           g
 
-        push statements, "(tmp= #{part.key} (rows #{frameKey} #{sliceExpr}))"
+        push statements, "(assign #{part.key} (rows #{frameKey} #{sliceExpr}))"
 
       push statements, "(rm #{randomVecKey})"
 
@@ -1238,7 +1238,7 @@ H2O.Routines = (_) ->
         else
           "[]"
 
-        _.requestExec "(tmp= #{frame} (h2o.impute #{frame} #{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg}))", (error, result) ->
+        _.requestExec "(assign #{frame} (h2o.impute #{frame} #{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg}))", (error, result) ->
           if error
             go error
           else
@@ -1255,7 +1255,7 @@ H2O.Routines = (_) ->
         catch columnKeyError
           return go columnKeyError
 
-        _.requestExec "(tmp= #{frame} (:= #{frame} (#{method} (cols #{frame} #{columnIndex})) #{columnIndex} [0:#{result.rows}]))", (error, result) ->
+        _.requestExec "(:= #{frame} (#{method} (cols #{frame} #{columnIndex})) #{columnIndex} [0:#{result.rows}])", (error, result) ->
           if error
             go error
           else
