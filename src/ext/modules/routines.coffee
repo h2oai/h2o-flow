@@ -1255,7 +1255,7 @@ H2O.Routines = (_) ->
         catch columnKeyError
           return go columnKeyError
 
-        _.requestExec "(:= #{frame} (#{method} (cols #{frame} #{columnIndex})) #{columnIndex} [0:#{result.rows}])", (error, result) ->
+        _.requestExec "(assign #{frame} (:= #{frame} (#{method} (cols #{frame} #{columnIndex})) #{columnIndex} [0:#{result.rows}]))", (error, result) ->
           if error
             go error
           else
