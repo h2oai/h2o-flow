@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.0';
+    Flow.Version = '0.4.1';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -6785,7 +6785,7 @@
                     columnKeyError = _error;
                     return go(columnKeyError);
                 }
-                return _.requestExec('(:= ' + frame + ' (' + method + ' (cols ' + frame + ' ' + columnIndex + ')) ' + columnIndex + ' [0:' + result.rows + '])', function (error, result) {
+                return _.requestExec('(assign ' + frame + ' (:= ' + frame + ' (' + method + ' (cols ' + frame + ' ' + columnIndex + ')) ' + columnIndex + ' [0:' + result.rows + ']))', function (error, result) {
                     if (error) {
                         return go(error);
                     } else {
