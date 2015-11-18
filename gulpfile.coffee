@@ -63,12 +63,15 @@ config =
       'lib/knockoutjs/dist/knockout.debug.js'
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
       'lib/diecut/diecut.js'
-      'vendor/h2oai/lightning.min.js'
+      'vendor/h2oai/lightning.min.js',
+      'lib/codemirror/lib/codemirror.js'
+      'lib/codemirror/mode/clike.js'
     ]
     css: [
       'lib/fontawesome/css/font-awesome.css'
       'lib/highlightjs/styles/tomorrow.css'
       'lib/bootstrap/dist/css/bootstrap.css'
+      'lib/codemirror/lib/codemirror.css'
     ]
     cssmap: [
       'lib/bootstrap/dist/css/bootstrap.css.map'

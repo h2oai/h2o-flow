@@ -184,4 +184,36 @@ ko.bindingHandlers.file =
       $file.change -> file @files[0]
     return
 
+ko.bindingHandlers.codemirror =
+    init:  (element, valueAccessor, allBindingsAccessor) ->
+        typed = false
+        options = $.extend valueAccessor(), {
+            onChange: (cm) ->
+                    typed = true
+                    allBindingsAccessor().value(cm.getValue())
+                    typed = false
+        }
 
+        editor = CodeMirror.fromTextArea element, options
+        editor.setSize(200, 100);
+        editor.on 'change', (cm) ->
+          value = ko.unwrap(valueAccessor()).value
+          if ko.isObservable(value)
+            value cm.getValue()
+          else
+            ko.unwrap(valueAccessor()).value = cm.getValue()
+
+        element.editor = editor
+        editor.setValue(allBindingsAccessor().value())
+        editor.refresh()
+        wrapperElement = $(editor.getWrapperElement()) 
+
+        ko.utils.domNodeDisposal.addDisposeCallback element, -> 
+            wrapperElement.remove()
+    
+        allBindingsAccessor().value.subscribe (newValue) ->
+            if !typed
+                editor.setValue(newValue)
+                editor.refresh()
+
+  

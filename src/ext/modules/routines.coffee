@@ -1602,6 +1602,34 @@ H2O.Routines = (_) ->
   getRDDs = ->
     _fork requestRDDs
 
+  requestScalaCode = (session_id, code, go) ->
+    _.requestScalaCode session_id, code,  (error, result) ->
+      if error
+        go error
+      else
+        go null, extendScalaCode result
+
+  extendScalaCode = (result) ->
+    render_ result, H2O.ScalaCodeOutput, result
+    result
+
+  runScalaCode = (session_id, code) ->
+    _fork requestScalaCode, session_id, code
+
+  requestScalaIntp = (go) ->
+    _.requestScalaIntp (error, session_id) ->
+      if error
+        go error
+      else
+        go null, extendScalaIntp session_id
+
+  extendScalaIntp = (session_id) ->
+    render_ session_id, H2O.ScalaIntpOutput, session_id
+    session_id
+
+  getScalaIntp = ->
+    _fork requestScalaIntp
+
   requestProfile = (depth, go) ->
     _.requestProfile depth, (error, profile) ->
       if error
@@ -1733,7 +1761,6 @@ H2O.Routines = (_) ->
   deleteFrames: deleteFrames
   deleteFrame: deleteFrame
   exportFrame: exportFrame
-  getRDDs: getRDDs
   getColumnSummary: getColumnSummary
   changeColumnType: changeColumnType
   imputeColumn: imputeColumn
@@ -1754,4 +1781,8 @@ H2O.Routines = (_) ->
   getLogFile: getLogFile
   testNetwork: testNetwork
   deleteAll: deleteAll
-
+  #
+  # Sparkling-Water
+  getRDDs: getRDDs
+  getScalaIntp: getScalaIntp
+  runScalaCode: runScalaCode

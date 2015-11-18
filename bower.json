@@ -49,6 +49,7 @@
     "stacktrace-js": "~0.6.2",
     "node-uuid": "~1.4.1",
     "diecut": "~0.0.1",
-    "highlightjs": "~8.5.0"
+    "highlightjs": "~8.5.0",
+    "codemirror": "~5.8.0"
   }
 }

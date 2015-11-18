@@ -1,0 +1,21 @@
+.flow-cell(data-bind="click:select, css:{ 'flow-cell-selected':isSelected, 'flow-cell-active':isActive, 'flow-cell-ready':isReady, 'flow-cell-busy':isBusy, 'flow-cell-error':hasError, 'flow-cell-code':isCode }, scrollIntoView:_actions")
+    .flow-cell-type(data-bind="text:visibleType")
+    .flow-cell-input(data-bind="visible:isInputVisible")
+        .flow-cell-code(data-bind="visible:hasInput, css:{ 'flow-cell-has-output':hasOutput }")
+            table(style='width:100%')
+                tbody
+                    tr
+                        td
+                            textarea( placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_actions, autoResize:_actions, codemirror: {value:input, readOnly: false, lineNumbers: true, mode: 'scala', theme: 'flow',indentWithTabs: false }")
+                        td.flow-cell-actions
+                            i.fa.fa-paperclip.flow-pointer(title='Save to clipboard' data-bind='click:clip')
+                    tr
+                        td.flow-cell-time(data-bind='text:time')
+                        td.flow-cell-actions
+
+    .flow-cell-output(data-bind="css:{ 'flow-hide-output': isOutputHidden }")
+        // ko if:result
+        .flow-cell-result(data-bind='template:{ name: templateOf, data:result }')
+        // /ko
+        .flow-cell-outputs(data-bind='template: { name: templateOf, foreach:outputs }')
+

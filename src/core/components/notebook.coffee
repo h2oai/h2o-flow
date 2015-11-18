@@ -36,6 +36,17 @@ Flow.Notebook = (_, _renderers) ->
   _sidebar = Flow.Sidebar _, _cells
   _about = Flow.About _
   _dialogs = Flow.Dialogs _
+  _intp_id = undefined
+
+  #initialize the interpreter when the notebook is creted
+  #one interpreter is shared by all scala cells
+  _initializeInterpreter = ->
+    _.requestScalaIntp (error,response) ->
+      if error
+        # Handle the error
+        _intp_id = undefined
+      else
+        _intp_id = response.session_id
 
   serialize = ->
     cells = for cell in _cells()
@@ -63,6 +74,11 @@ Flow.Notebook = (_, _renderers) ->
 
   createCell = (type='cs', input='') ->
     Flow.Cell _, _renderers, type, input
+
+
+  createScalaCell = (input='') ->
+    cell = Flow.ScalaCell _, _renderers, _intp_id, input
+    cell
 
   checkConsistency = ->
     selectionCount = 0
@@ -163,6 +179,12 @@ Flow.Notebook = (_, _renderers) ->
 
   insertNewCellBelow = ->
     insertBelow createCell 'cs'
+
+  insertNewScalaCellAbove = ->
+    insertAbove createScalaCell()
+
+  insertNewScalaCellBelow = ->
+    insertBelow createScalaCell()
 
   insertCellAboveAndRun = (type, input) ->
     cell = insertAbove createCell type, input
@@ -578,6 +600,9 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Toggle Cell Input', toggleInput
         createMenuItem 'Toggle Cell Output', toggleOutput, ['o']
         createMenuItem 'Clear Cell Output', clearCell
+        menuDivider
+        createMenuItem 'Insert Scala Cell Above', insertNewScalaCellAbove
+        createMenuItem 'Insert Scala Cell Below', insertNewScalaCellBelow
       ]
     ,
       createMenu 'Data', [
@@ -805,6 +830,7 @@ Flow.Notebook = (_, _renderers) ->
     do (executeCommand 'assist')
 
     _.setDirty() #TODO setPristine() when autosave is implemented.
+    _initializeInterpreter()
 
   link _.ready, initialize
 
@@ -832,4 +858,3 @@ Flow.Notebook = (_, _renderers) ->
   about: _about
   dialogs: _dialogs
   templateOf: (view) -> view.template
-
