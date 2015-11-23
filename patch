@@ -1,0 +1,25 @@
+diff --git a/src/ext/components/model-output.coffee b/src/ext/components/model-output.coffee
+index a4a2aa5..f7ff908 100644
+--- a/src/ext/components/model-output.coffee
++++ b/src/ext/components/model-output.coffee
+@@ -423,6 +423,20 @@ H2O.ModelOutput = (_, _go, _model) ->
+                 g.from table
+               )
+ 
++      if table = _.inspect 'output - Training Metrics - Gains/Lift Table', _model
++          renderPlot 'Training Metrics - Gains/Lift Table', no, _.plot (g) ->
++            g(
++              g.path(
++                g.position 'cumulative_data_fraction', 'cumulative_lift'
++                g.strokeColor g.value '#1f77b4'
++              )
++              g.point(
++                g.position 'cumulative_data_fraction', 'cumulative_capture_rate'
++                g.strokeColor g.value '#1f77b4'
++              )
++              g.from table
++            )
++
+       if output = _model.output
+         if output.model_category is 'Multinomial'
+           if confusionMatrix = output.training_metrics?.cm?.table

@@ -1,276 +1,3 @@
-//     uuid.js
-//
-//     Copyright (c) 2010-2012 Robert Kieffer
-//     MIT License - http://opensource.org/licenses/mit-license.php
-
-/*global window, require, define */
-(function(_window) {
-  'use strict';
-
-  // Unique ID creation requires a high quality random # generator.  We feature
-  // detect to determine the best RNG source, normalizing to a function that
-  // returns 128-bits of randomness, since that's what's usually required
-  var _rng, _mathRNG, _nodeRNG, _whatwgRNG, _previousRoot;
-
-  function setupBrowser() {
-    // Allow for MSIE11 msCrypto
-    var _crypto = _window.crypto || _window.msCrypto;
-
-    if (!_rng && _crypto && _crypto.getRandomValues) {
-      // WHATWG crypto-based RNG - http://wiki.whatwg.org/wiki/Crypto
-      //
-      // Moderately fast, high quality
-      try {
-        var _rnds8 = new Uint8Array(16);
-        _whatwgRNG = _rng = function whatwgRNG() {
-          _crypto.getRandomValues(_rnds8);
-          return _rnds8;
-        };
-        _rng();
-      } catch(e) {}
-    }
-
-    if (!_rng) {
-      // Math.random()-based (RNG)
-      //
-      // If all else fails, use Math.random().  It's fast, but is of unspecified
-      // quality.
-      var  _rnds = new Array(16);
-      _mathRNG = _rng = function() {
-        for (var i = 0, r; i < 16; i++) {
-          if ((i & 0x03) === 0) { r = Math.random() * 0x100000000; }
-          _rnds[i] = r >>> ((i & 0x03) << 3) & 0xff;
-        }
-
-        return _rnds;
-      };
-      if ('undefined' !== typeof console && console.warn) {
-        console.warn("[SECURITY] node-uuid: crypto not usable, falling back to insecure Math.random()");
-      }
-    }
-  }
-
-  function setupNode() {
-    // Node.js crypto-based RNG - http://nodejs.org/docs/v0.6.2/api/crypto.html
-    //
-    // Moderately fast, high quality
-    if ('function' === typeof require) {
-      try {
-        var _rb = require('crypto').randomBytes;
-        _nodeRNG = _rng = _rb && function() {return _rb(16);};
-        _rng();
-      } catch(e) {}
-    }
-  }
-
-  if (_window) {
-    setupBrowser();
-  } else {
-    setupNode();
-  }
-
-  // Buffer class to use
-  var BufferClass = ('function' === typeof Buffer) ? Buffer : Array;
-
-  // Maps for number <-> hex string conversion
-  var _byteToHex = [];
-  var _hexToByte = {};
-  for (var i = 0; i < 256; i++) {
-    _byteToHex[i] = (i + 0x100).toString(16).substr(1);
-    _hexToByte[_byteToHex[i]] = i;
-  }
-
-  // **`parse()` - Parse a UUID into it's component bytes**
-  function parse(s, buf, offset) {
-    var i = (buf && offset) || 0, ii = 0;
-
-    buf = buf || [];
-    s.toLowerCase().replace(/[0-9a-f]{2}/g, function(oct) {
-      if (ii < 16) { // Don't overflow!
-        buf[i + ii++] = _hexToByte[oct];
-      }
-    });
-
-    // Zero out remaining bytes if string was short
-    while (ii < 16) {
-      buf[i + ii++] = 0;
-    }
-
-    return buf;
-  }
-
-  // **`unparse()` - Convert UUID byte array (ala parse()) into a string**
-  function unparse(buf, offset) {
-    var i = offset || 0, bth = _byteToHex;
-    return  bth[buf[i++]] + bth[buf[i++]] +
-            bth[buf[i++]] + bth[buf[i++]] + '-' +
-            bth[buf[i++]] + bth[buf[i++]] + '-' +
-            bth[buf[i++]] + bth[buf[i++]] + '-' +
-            bth[buf[i++]] + bth[buf[i++]] + '-' +
-            bth[buf[i++]] + bth[buf[i++]] +
-            bth[buf[i++]] + bth[buf[i++]] +
-            bth[buf[i++]] + bth[buf[i++]];
-  }
-
-  // **`v1()` - Generate time-based UUID**
-  //
-  // Inspired by https://github.com/LiosK/UUID.js
-  // and http://docs.python.org/library/uuid.html
-
-  // random #'s we need to init node and clockseq
-  var _seedBytes = _rng();
-
-  // Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
-  var _nodeId = [
-    _seedBytes[0] | 0x01,
-    _seedBytes[1], _seedBytes[2], _seedBytes[3], _seedBytes[4], _seedBytes[5]
-  ];
-
-  // Per 4.2.2, randomize (14 bit) clockseq
-  var _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
-
-  // Previous uuid creation time
-  var _lastMSecs = 0, _lastNSecs = 0;
-
-  // See https://github.com/broofa/node-uuid for API details
-  function v1(options, buf, offset) {
-    var i = buf && offset || 0;
-    var b = buf || [];
-
-    options = options || {};
-
-    var clockseq = (options.clockseq != null) ? options.clockseq : _clockseq;
-
-    // UUID timestamps are 100 nano-second units since the Gregorian epoch,
-    // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
-    // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
-    // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
-    var msecs = (options.msecs != null) ? options.msecs : new Date().getTime();
-
-    // Per 4.2.1.2, use count of uuid's generated during the current clock
-    // cycle to simulate higher resolution clock
-    var nsecs = (options.nsecs != null) ? options.nsecs : _lastNSecs + 1;
-
-    // Time since last uuid creation (in msecs)
-    var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
-
-    // Per 4.2.1.2, Bump clockseq on clock regression
-    if (dt < 0 && options.clockseq == null) {
-      clockseq = clockseq + 1 & 0x3fff;
-    }
-
-    // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
-    // time interval
-    if ((dt < 0 || msecs > _lastMSecs) && options.nsecs == null) {
-      nsecs = 0;
-    }
-
-    // Per 4.2.1.2 Throw error if too many uuids are requested
-    if (nsecs >= 10000) {
-      throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
-    }
-
-    _lastMSecs = msecs;
-    _lastNSecs = nsecs;
-    _clockseq = clockseq;
-
-    // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
-    msecs += 12219292800000;
-
-    // `time_low`
-    var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
-    b[i++] = tl >>> 24 & 0xff;
-    b[i++] = tl >>> 16 & 0xff;
-    b[i++] = tl >>> 8 & 0xff;
-    b[i++] = tl & 0xff;
-
-    // `time_mid`
-    var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
-    b[i++] = tmh >>> 8 & 0xff;
-    b[i++] = tmh & 0xff;
-
-    // `time_high_and_version`
-    b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
-    b[i++] = tmh >>> 16 & 0xff;
-
-    // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
-    b[i++] = clockseq >>> 8 | 0x80;
-
-    // `clock_seq_low`
-    b[i++] = clockseq & 0xff;
-
-    // `node`
-    var node = options.node || _nodeId;
-    for (var n = 0; n < 6; n++) {
-      b[i + n] = node[n];
-    }
-
-    return buf ? buf : unparse(b);
-  }
-
-  // **`v4()` - Generate random UUID**
-
-  // See https://github.com/broofa/node-uuid for API details
-  function v4(options, buf, offset) {
-    // Deprecated - 'format' argument, as supported in v1.2
-    var i = buf && offset || 0;
-
-    if (typeof(options) === 'string') {
-      buf = (options === 'binary') ? new BufferClass(16) : null;
-      options = null;
-    }
-    options = options || {};
-
-    var rnds = options.random || (options.rng || _rng)();
-
-    // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
-    rnds[6] = (rnds[6] & 0x0f) | 0x40;
-    rnds[8] = (rnds[8] & 0x3f) | 0x80;
-
-    // Copy bytes to buffer, if provided
-    if (buf) {
-      for (var ii = 0; ii < 16; ii++) {
-        buf[i + ii] = rnds[ii];
-      }
-    }
-
-    return buf || unparse(rnds);
-  }
-
-  // Export public API
-  var uuid = v4;
-  uuid.v1 = v1;
-  uuid.v4 = v4;
-  uuid.parse = parse;
-  uuid.unparse = unparse;
-  uuid.BufferClass = BufferClass;
-  uuid._rng = _rng;
-  uuid._mathRNG = _mathRNG;
-  uuid._nodeRNG = _nodeRNG;
-  uuid._whatwgRNG = _whatwgRNG;
-
-  if (('undefined' !== typeof module) && module.exports) {
-    // Publish as node.js module
-    module.exports = uuid;
-  } else if (typeof define === 'function' && define.amd) {
-    // Publish as AMD module
-    define(function() {return uuid;});
-
-
-  } else {
-    // Publish as global (in browsers)
-    _previousRoot = _window.uuid;
-
-    // **`noConflict()` - (browser only) to reset global 'uuid' var**
-    uuid.noConflict = function() {
-      _window.uuid = _previousRoot;
-      return uuid;
-    };
-
-    _window.uuid = uuid;
-  }
-})('undefined' !== typeof window ? window : null);
-
 // Domain Public by Eric Wendelin http://www.eriwen.com/ (2008)
 //                  Luke Smith http://lucassmith.name/ (2008)
 //                  Loic Dachary <loic@dachary.org> (2008)
@@ -10199,12 +9926,6 @@ return jQuery;
 	};
 });
 
-//! moment.js
-//! version : 2.6.0
-//! authors : Tim Wood, Iskren Chernev, Moment.js contributors
-//! license : MIT
-//! momentjs.com
-(function(a){function b(){return{empty:!1,unusedTokens:[],unusedInput:[],overflow:-2,charsLeftOver:0,nullInput:!1,invalidMonth:null,invalidFormat:!1,userInvalidated:!1,iso:!1}}function c(a,b){function c(){ib.suppressDeprecationWarnings===!1&&"undefined"!=typeof console&&console.warn&&console.warn("Deprecation warning: "+a)}var d=!0;return i(function(){return d&&(c(),d=!1),b.apply(this,arguments)},b)}function d(a,b){return function(c){return l(a.call(this,c),b)}}function e(a,b){return function(c){return this.lang().ordinal(a.call(this,c),b)}}function f(){}function g(a){y(a),i(this,a)}function h(a){var b=r(a),c=b.year||0,d=b.quarter||0,e=b.month||0,f=b.week||0,g=b.day||0,h=b.hour||0,i=b.minute||0,j=b.second||0,k=b.millisecond||0;this._milliseconds=+k+1e3*j+6e4*i+36e5*h,this._days=+g+7*f,this._months=+e+3*d+12*c,this._data={},this._bubble()}function i(a,b){for(var c in b)b.hasOwnProperty(c)&&(a[c]=b[c]);return b.hasOwnProperty("toString")&&(a.toString=b.toString),b.hasOwnProperty("valueOf")&&(a.valueOf=b.valueOf),a}function j(a){var b,c={};for(b in a)a.hasOwnProperty(b)&&wb.hasOwnProperty(b)&&(c[b]=a[b]);return c}function k(a){return 0>a?Math.ceil(a):Math.floor(a)}function l(a,b,c){for(var d=""+Math.abs(a),e=a>=0;d.length<b;)d="0"+d;return(e?c?"+":"":"-")+d}function m(a,b,c,d){var e=b._milliseconds,f=b._days,g=b._months;d=null==d?!0:d,e&&a._d.setTime(+a._d+e*c),f&&db(a,"Date",cb(a,"Date")+f*c),g&&bb(a,cb(a,"Month")+g*c),d&&ib.updateOffset(a,f||g)}function n(a){return"[object Array]"===Object.prototype.toString.call(a)}function o(a){return"[object Date]"===Object.prototype.toString.call(a)||a instanceof Date}function p(a,b,c){var d,e=Math.min(a.length,b.length),f=Math.abs(a.length-b.length),g=0;for(d=0;e>d;d++)(c&&a[d]!==b[d]||!c&&t(a[d])!==t(b[d]))&&g++;return g+f}function q(a){if(a){var b=a.toLowerCase().replace(/(.)s$/,"$1");a=Zb[a]||$b[b]||b}return a}function r(a){var b,c,d={};for(c in a)a.hasOwnProperty(c)&&(b=q(c),b&&(d[b]=a[c]));return d}function s(b){var c,d;if(0===b.indexOf("week"))c=7,d="day";else{if(0!==b.indexOf("month"))return;c=12,d="month"}ib[b]=function(e,f){var g,h,i=ib.fn._lang[b],j=[];if("number"==typeof e&&(f=e,e=a),h=function(a){var b=ib().utc().set(d,a);return i.call(ib.fn._lang,b,e||"")},null!=f)return h(f);for(g=0;c>g;g++)j.push(h(g));return j}}function t(a){var b=+a,c=0;return 0!==b&&isFinite(b)&&(c=b>=0?Math.floor(b):Math.ceil(b)),c}function u(a,b){return new Date(Date.UTC(a,b+1,0)).getUTCDate()}function v(a,b,c){return $(ib([a,11,31+b-c]),b,c).week}function w(a){return x(a)?366:365}function x(a){return a%4===0&&a%100!==0||a%400===0}function y(a){var b;a._a&&-2===a._pf.overflow&&(b=a._a[pb]<0||a._a[pb]>11?pb:a._a[qb]<1||a._a[qb]>u(a._a[ob],a._a[pb])?qb:a._a[rb]<0||a._a[rb]>23?rb:a._a[sb]<0||a._a[sb]>59?sb:a._a[tb]<0||a._a[tb]>59?tb:a._a[ub]<0||a._a[ub]>999?ub:-1,a._pf._overflowDayOfYear&&(ob>b||b>qb)&&(b=qb),a._pf.overflow=b)}function z(a){return null==a._isValid&&(a._isValid=!isNaN(a._d.getTime())&&a._pf.overflow<0&&!a._pf.empty&&!a._pf.invalidMonth&&!a._pf.nullInput&&!a._pf.invalidFormat&&!a._pf.userInvalidated,a._strict&&(a._isValid=a._isValid&&0===a._pf.charsLeftOver&&0===a._pf.unusedTokens.length)),a._isValid}function A(a){return a?a.toLowerCase().replace("_","-"):a}function B(a,b){return b._isUTC?ib(a).zone(b._offset||0):ib(a).local()}function C(a,b){return b.abbr=a,vb[a]||(vb[a]=new f),vb[a].set(b),vb[a]}function D(a){delete vb[a]}function E(a){var b,c,d,e,f=0,g=function(a){if(!vb[a]&&xb)try{require("./lang/"+a)}catch(b){}return vb[a]};if(!a)return ib.fn._lang;if(!n(a)){if(c=g(a))return c;a=[a]}for(;f<a.length;){for(e=A(a[f]).split("-"),b=e.length,d=A(a[f+1]),d=d?d.split("-"):null;b>0;){if(c=g(e.slice(0,b).join("-")))return c;if(d&&d.length>=b&&p(e,d,!0)>=b-1)break;b--}f++}return ib.fn._lang}function F(a){return a.match(/\[[\s\S]/)?a.replace(/^\[|\]$/g,""):a.replace(/\\/g,"")}function G(a){var b,c,d=a.match(Bb);for(b=0,c=d.length;c>b;b++)d[b]=cc[d[b]]?cc[d[b]]:F(d[b]);return function(e){var f="";for(b=0;c>b;b++)f+=d[b]instanceof Function?d[b].call(e,a):d[b];return f}}function H(a,b){return a.isValid()?(b=I(b,a.lang()),_b[b]||(_b[b]=G(b)),_b[b](a)):a.lang().invalidDate()}function I(a,b){function c(a){return b.longDateFormat(a)||a}var d=5;for(Cb.lastIndex=0;d>=0&&Cb.test(a);)a=a.replace(Cb,c),Cb.lastIndex=0,d-=1;return a}function J(a,b){var c,d=b._strict;switch(a){case"Q":return Nb;case"DDDD":return Pb;case"YYYY":case"GGGG":case"gggg":return d?Qb:Fb;case"Y":case"G":case"g":return Sb;case"YYYYYY":case"YYYYY":case"GGGGG":case"ggggg":return d?Rb:Gb;case"S":if(d)return Nb;case"SS":if(d)return Ob;case"SSS":if(d)return Pb;case"DDD":return Eb;case"MMM":case"MMMM":case"dd":case"ddd":case"dddd":return Ib;case"a":case"A":return E(b._l)._meridiemParse;case"X":return Lb;case"Z":case"ZZ":return Jb;case"T":return Kb;case"SSSS":return Hb;case"MM":case"DD":case"YY":case"GG":case"gg":case"HH":case"hh":case"mm":case"ss":case"ww":case"WW":return d?Ob:Db;case"M":case"D":case"d":case"H":case"h":case"m":case"s":case"w":case"W":case"e":case"E":return Db;case"Do":return Mb;default:return c=new RegExp(R(Q(a.replace("\\","")),"i"))}}function K(a){a=a||"";var b=a.match(Jb)||[],c=b[b.length-1]||[],d=(c+"").match(Xb)||["-",0,0],e=+(60*d[1])+t(d[2]);return"+"===d[0]?-e:e}function L(a,b,c){var d,e=c._a;switch(a){case"Q":null!=b&&(e[pb]=3*(t(b)-1));break;case"M":case"MM":null!=b&&(e[pb]=t(b)-1);break;case"MMM":case"MMMM":d=E(c._l).monthsParse(b),null!=d?e[pb]=d:c._pf.invalidMonth=b;break;case"D":case"DD":null!=b&&(e[qb]=t(b));break;case"Do":null!=b&&(e[qb]=t(parseInt(b,10)));break;case"DDD":case"DDDD":null!=b&&(c._dayOfYear=t(b));break;case"YY":e[ob]=ib.parseTwoDigitYear(b);break;case"YYYY":case"YYYYY":case"YYYYYY":e[ob]=t(b);break;case"a":case"A":c._isPm=E(c._l).isPM(b);break;case"H":case"HH":case"h":case"hh":e[rb]=t(b);break;case"m":case"mm":e[sb]=t(b);break;case"s":case"ss":e[tb]=t(b);break;case"S":case"SS":case"SSS":case"SSSS":e[ub]=t(1e3*("0."+b));break;case"X":c._d=new Date(1e3*parseFloat(b));break;case"Z":case"ZZ":c._useUTC=!0,c._tzm=K(b);break;case"w":case"ww":case"W":case"WW":case"d":case"dd":case"ddd":case"dddd":case"e":case"E":a=a.substr(0,1);case"gg":case"gggg":case"GG":case"GGGG":case"GGGGG":a=a.substr(0,2),b&&(c._w=c._w||{},c._w[a]=b)}}function M(a){var b,c,d,e,f,g,h,i,j,k,l=[];if(!a._d){for(d=O(a),a._w&&null==a._a[qb]&&null==a._a[pb]&&(f=function(b){var c=parseInt(b,10);return b?b.length<3?c>68?1900+c:2e3+c:c:null==a._a[ob]?ib().weekYear():a._a[ob]},g=a._w,null!=g.GG||null!=g.W||null!=g.E?h=_(f(g.GG),g.W||1,g.E,4,1):(i=E(a._l),j=null!=g.d?X(g.d,i):null!=g.e?parseInt(g.e,10)+i._week.dow:0,k=parseInt(g.w,10)||1,null!=g.d&&j<i._week.dow&&k++,h=_(f(g.gg),k,j,i._week.doy,i._week.dow)),a._a[ob]=h.year,a._dayOfYear=h.dayOfYear),a._dayOfYear&&(e=null==a._a[ob]?d[ob]:a._a[ob],a._dayOfYear>w(e)&&(a._pf._overflowDayOfYear=!0),c=W(e,0,a._dayOfYear),a._a[pb]=c.getUTCMonth(),a._a[qb]=c.getUTCDate()),b=0;3>b&&null==a._a[b];++b)a._a[b]=l[b]=d[b];for(;7>b;b++)a._a[b]=l[b]=null==a._a[b]?2===b?1:0:a._a[b];l[rb]+=t((a._tzm||0)/60),l[sb]+=t((a._tzm||0)%60),a._d=(a._useUTC?W:V).apply(null,l)}}function N(a){var b;a._d||(b=r(a._i),a._a=[b.year,b.month,b.day,b.hour,b.minute,b.second,b.millisecond],M(a))}function O(a){var b=new Date;return a._useUTC?[b.getUTCFullYear(),b.getUTCMonth(),b.getUTCDate()]:[b.getFullYear(),b.getMonth(),b.getDate()]}function P(a){a._a=[],a._pf.empty=!0;var b,c,d,e,f,g=E(a._l),h=""+a._i,i=h.length,j=0;for(d=I(a._f,g).match(Bb)||[],b=0;b<d.length;b++)e=d[b],c=(h.match(J(e,a))||[])[0],c&&(f=h.substr(0,h.indexOf(c)),f.length>0&&a._pf.unusedInput.push(f),h=h.slice(h.indexOf(c)+c.length),j+=c.length),cc[e]?(c?a._pf.empty=!1:a._pf.unusedTokens.push(e),L(e,c,a)):a._strict&&!c&&a._pf.unusedTokens.push(e);a._pf.charsLeftOver=i-j,h.length>0&&a._pf.unusedInput.push(h),a._isPm&&a._a[rb]<12&&(a._a[rb]+=12),a._isPm===!1&&12===a._a[rb]&&(a._a[rb]=0),M(a),y(a)}function Q(a){return a.replace(/\\(\[)|\\(\])|\[([^\]\[]*)\]|\\(.)/g,function(a,b,c,d,e){return b||c||d||e})}function R(a){return a.replace(/[-\/\\^$*+?.()|[\]{}]/g,"\\$&")}function S(a){var c,d,e,f,g;if(0===a._f.length)return a._pf.invalidFormat=!0,void(a._d=new Date(0/0));for(f=0;f<a._f.length;f++)g=0,c=i({},a),c._pf=b(),c._f=a._f[f],P(c),z(c)&&(g+=c._pf.charsLeftOver,g+=10*c._pf.unusedTokens.length,c._pf.score=g,(null==e||e>g)&&(e=g,d=c));i(a,d||c)}function T(a){var b,c,d=a._i,e=Tb.exec(d);if(e){for(a._pf.iso=!0,b=0,c=Vb.length;c>b;b++)if(Vb[b][1].exec(d)){a._f=Vb[b][0]+(e[6]||" ");break}for(b=0,c=Wb.length;c>b;b++)if(Wb[b][1].exec(d)){a._f+=Wb[b][0];break}d.match(Jb)&&(a._f+="Z"),P(a)}else ib.createFromInputFallback(a)}function U(b){var c=b._i,d=yb.exec(c);c===a?b._d=new Date:d?b._d=new Date(+d[1]):"string"==typeof c?T(b):n(c)?(b._a=c.slice(0),M(b)):o(c)?b._d=new Date(+c):"object"==typeof c?N(b):"number"==typeof c?b._d=new Date(c):ib.createFromInputFallback(b)}function V(a,b,c,d,e,f,g){var h=new Date(a,b,c,d,e,f,g);return 1970>a&&h.setFullYear(a),h}function W(a){var b=new Date(Date.UTC.apply(null,arguments));return 1970>a&&b.setUTCFullYear(a),b}function X(a,b){if("string"==typeof a)if(isNaN(a)){if(a=b.weekdaysParse(a),"number"!=typeof a)return null}else a=parseInt(a,10);return a}function Y(a,b,c,d,e){return e.relativeTime(b||1,!!c,a,d)}function Z(a,b,c){var d=nb(Math.abs(a)/1e3),e=nb(d/60),f=nb(e/60),g=nb(f/24),h=nb(g/365),i=45>d&&["s",d]||1===e&&["m"]||45>e&&["mm",e]||1===f&&["h"]||22>f&&["hh",f]||1===g&&["d"]||25>=g&&["dd",g]||45>=g&&["M"]||345>g&&["MM",nb(g/30)]||1===h&&["y"]||["yy",h];return i[2]=b,i[3]=a>0,i[4]=c,Y.apply({},i)}function $(a,b,c){var d,e=c-b,f=c-a.day();return f>e&&(f-=7),e-7>f&&(f+=7),d=ib(a).add("d",f),{week:Math.ceil(d.dayOfYear()/7),year:d.year()}}function _(a,b,c,d,e){var f,g,h=W(a,0,1).getUTCDay();return c=null!=c?c:e,f=e-h+(h>d?7:0)-(e>h?7:0),g=7*(b-1)+(c-e)+f+1,{year:g>0?a:a-1,dayOfYear:g>0?g:w(a-1)+g}}function ab(b){var c=b._i,d=b._f;return null===c||d===a&&""===c?ib.invalid({nullInput:!0}):("string"==typeof c&&(b._i=c=E().preparse(c)),ib.isMoment(c)?(b=j(c),b._d=new Date(+c._d)):d?n(d)?S(b):P(b):U(b),new g(b))}function bb(a,b){var c;return"string"==typeof b&&(b=a.lang().monthsParse(b),"number"!=typeof b)?a:(c=Math.min(a.date(),u(a.year(),b)),a._d["set"+(a._isUTC?"UTC":"")+"Month"](b,c),a)}function cb(a,b){return a._d["get"+(a._isUTC?"UTC":"")+b]()}function db(a,b,c){return"Month"===b?bb(a,c):a._d["set"+(a._isUTC?"UTC":"")+b](c)}function eb(a,b){return function(c){return null!=c?(db(this,a,c),ib.updateOffset(this,b),this):cb(this,a)}}function fb(a){ib.duration.fn[a]=function(){return this._data[a]}}function gb(a,b){ib.duration.fn["as"+a]=function(){return+this/b}}function hb(a){"undefined"==typeof ender&&(jb=mb.moment,mb.moment=a?c("Accessing Moment through the global scope is deprecated, and will be removed in an upcoming release.",ib):ib)}for(var ib,jb,kb,lb="2.6.0",mb="undefined"!=typeof global?global:this,nb=Math.round,ob=0,pb=1,qb=2,rb=3,sb=4,tb=5,ub=6,vb={},wb={_isAMomentObject:null,_i:null,_f:null,_l:null,_strict:null,_isUTC:null,_offset:null,_pf:null,_lang:null},xb="undefined"!=typeof module&&module.exports,yb=/^\/?Date\((\-?\d+)/i,zb=/(\-)?(?:(\d*)\.)?(\d+)\:(\d+)(?:\:(\d+)\.?(\d{3})?)?/,Ab=/^(-)?P(?:(?:([0-9,.]*)Y)?(?:([0-9,.]*)M)?(?:([0-9,.]*)D)?(?:T(?:([0-9,.]*)H)?(?:([0-9,.]*)M)?(?:([0-9,.]*)S)?)?|([0-9,.]*)W)$/,Bb=/(\[[^\[]*\])|(\\)?(Mo|MM?M?M?|Do|DDDo|DD?D?D?|ddd?d?|do?|w[o|w]?|W[o|W]?|Q|YYYYYY|YYYYY|YYYY|YY|gg(ggg?)?|GG(GGG?)?|e|E|a|A|hh?|HH?|mm?|ss?|S{1,4}|X|zz?|ZZ?|.)/g,Cb=/(\[[^\[]*\])|(\\)?(LT|LL?L?L?|l{1,4})/g,Db=/\d\d?/,Eb=/\d{1,3}/,Fb=/\d{1,4}/,Gb=/[+\-]?\d{1,6}/,Hb=/\d+/,Ib=/[0-9]*['a-z\u00A0-\u05FF\u0700-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+|[\u0600-\u06FF\/]+(\s*?[\u0600-\u06FF]+){1,2}/i,Jb=/Z|[\+\-]\d\d:?\d\d/gi,Kb=/T/i,Lb=/[\+\-]?\d+(\.\d{1,3})?/,Mb=/\d{1,2}/,Nb=/\d/,Ob=/\d\d/,Pb=/\d{3}/,Qb=/\d{4}/,Rb=/[+-]?\d{6}/,Sb=/[+-]?\d+/,Tb=/^\s*(?:[+-]\d{6}|\d{4})-(?:(\d\d-\d\d)|(W\d\d$)|(W\d\d-\d)|(\d\d\d))((T| )(\d\d(:\d\d(:\d\d(\.\d+)?)?)?)?([\+\-]\d\d(?::?\d\d)?|\s*Z)?)?$/,Ub="YYYY-MM-DDTHH:mm:ssZ",Vb=[["YYYYYY-MM-DD",/[+-]\d{6}-\d{2}-\d{2}/],["YYYY-MM-DD",/\d{4}-\d{2}-\d{2}/],["GGGG-[W]WW-E",/\d{4}-W\d{2}-\d/],["GGGG-[W]WW",/\d{4}-W\d{2}/],["YYYY-DDD",/\d{4}-\d{3}/]],Wb=[["HH:mm:ss.SSSS",/(T| )\d\d:\d\d:\d\d\.\d+/],["HH:mm:ss",/(T| )\d\d:\d\d:\d\d/],["HH:mm",/(T| )\d\d:\d\d/],["HH",/(T| )\d\d/]],Xb=/([\+\-]|\d\d)/gi,Yb=("Date|Hours|Minutes|Seconds|Milliseconds".split("|"),{Milliseconds:1,Seconds:1e3,Minutes:6e4,Hours:36e5,Days:864e5,Months:2592e6,Years:31536e6}),Zb={ms:"millisecond",s:"second",m:"minute",h:"hour",d:"day",D:"date",w:"week",W:"isoWeek",M:"month",Q:"quarter",y:"year",DDD:"dayOfYear",e:"weekday",E:"isoWeekday",gg:"weekYear",GG:"isoWeekYear"},$b={dayofyear:"dayOfYear",isoweekday:"isoWeekday",isoweek:"isoWeek",weekyear:"weekYear",isoweekyear:"isoWeekYear"},_b={},ac="DDD w W M D d".split(" "),bc="M D H h m s w W".split(" "),cc={M:function(){return this.month()+1},MMM:function(a){return this.lang().monthsShort(this,a)},MMMM:function(a){return this.lang().months(this,a)},D:function(){return this.date()},DDD:function(){return this.dayOfYear()},d:function(){return this.day()},dd:function(a){return this.lang().weekdaysMin(this,a)},ddd:function(a){return this.lang().weekdaysShort(this,a)},dddd:function(a){return this.lang().weekdays(this,a)},w:function(){return this.week()},W:function(){return this.isoWeek()},YY:function(){return l(this.year()%100,2)},YYYY:function(){return l(this.year(),4)},YYYYY:function(){return l(this.year(),5)},YYYYYY:function(){var a=this.year(),b=a>=0?"+":"-";return b+l(Math.abs(a),6)},gg:function(){return l(this.weekYear()%100,2)},gggg:function(){return l(this.weekYear(),4)},ggggg:function(){return l(this.weekYear(),5)},GG:function(){return l(this.isoWeekYear()%100,2)},GGGG:function(){return l(this.isoWeekYear(),4)},GGGGG:function(){return l(this.isoWeekYear(),5)},e:function(){return this.weekday()},E:function(){return this.isoWeekday()},a:function(){return this.lang().meridiem(this.hours(),this.minutes(),!0)},A:function(){return this.lang().meridiem(this.hours(),this.minutes(),!1)},H:function(){return this.hours()},h:function(){return this.hours()%12||12},m:function(){return this.minutes()},s:function(){return this.seconds()},S:function(){return t(this.milliseconds()/100)},SS:function(){return l(t(this.milliseconds()/10),2)},SSS:function(){return l(this.milliseconds(),3)},SSSS:function(){return l(this.milliseconds(),3)},Z:function(){var a=-this.zone(),b="+";return 0>a&&(a=-a,b="-"),b+l(t(a/60),2)+":"+l(t(a)%60,2)},ZZ:function(){var a=-this.zone(),b="+";return 0>a&&(a=-a,b="-"),b+l(t(a/60),2)+l(t(a)%60,2)},z:function(){return this.zoneAbbr()},zz:function(){return this.zoneName()},X:function(){return this.unix()},Q:function(){return this.quarter()}},dc=["months","monthsShort","weekdays","weekdaysShort","weekdaysMin"];ac.length;)kb=ac.pop(),cc[kb+"o"]=e(cc[kb],kb);for(;bc.length;)kb=bc.pop(),cc[kb+kb]=d(cc[kb],2);for(cc.DDDD=d(cc.DDD,3),i(f.prototype,{set:function(a){var b,c;for(c in a)b=a[c],"function"==typeof b?this[c]=b:this["_"+c]=b},_months:"January_February_March_April_May_June_July_August_September_October_November_December".split("_"),months:function(a){return this._months[a.month()]},_monthsShort:"Jan_Feb_Mar_Apr_May_Jun_Jul_Aug_Sep_Oct_Nov_Dec".split("_"),monthsShort:function(a){return this._monthsShort[a.month()]},monthsParse:function(a){var b,c,d;for(this._monthsParse||(this._monthsParse=[]),b=0;12>b;b++)if(this._monthsParse[b]||(c=ib.utc([2e3,b]),d="^"+this.months(c,"")+"|^"+this.monthsShort(c,""),this._monthsParse[b]=new RegExp(d.replace(".",""),"i")),this._monthsParse[b].test(a))return b},_weekdays:"Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),weekdays:function(a){return this._weekdays[a.day()]},_weekdaysShort:"Sun_Mon_Tue_Wed_Thu_Fri_Sat".split("_"),weekdaysShort:function(a){return this._weekdaysShort[a.day()]},_weekdaysMin:"Su_Mo_Tu_We_Th_Fr_Sa".split("_"),weekdaysMin:function(a){return this._weekdaysMin[a.day()]},weekdaysParse:function(a){var b,c,d;for(this._weekdaysParse||(this._weekdaysParse=[]),b=0;7>b;b++)if(this._weekdaysParse[b]||(c=ib([2e3,1]).day(b),d="^"+this.weekdays(c,"")+"|^"+this.weekdaysShort(c,"")+"|^"+this.weekdaysMin(c,""),this._weekdaysParse[b]=new RegExp(d.replace(".",""),"i")),this._weekdaysParse[b].test(a))return b},_longDateFormat:{LT:"h:mm A",L:"MM/DD/YYYY",LL:"MMMM D YYYY",LLL:"MMMM D YYYY LT",LLLL:"dddd, MMMM D YYYY LT"},longDateFormat:function(a){var b=this._longDateFormat[a];return!b&&this._longDateFormat[a.toUpperCase()]&&(b=this._longDateFormat[a.toUpperCase()].replace(/MMMM|MM|DD|dddd/g,function(a){return a.slice(1)}),this._longDateFormat[a]=b),b},isPM:function(a){return"p"===(a+"").toLowerCase().charAt(0)},_meridiemParse:/[ap]\.?m?\.?/i,meridiem:function(a,b,c){return a>11?c?"pm":"PM":c?"am":"AM"},_calendar:{sameDay:"[Today at] LT",nextDay:"[Tomorrow at] LT",nextWeek:"dddd [at] LT",lastDay:"[Yesterday at] LT",lastWeek:"[Last] dddd [at] LT",sameElse:"L"},calendar:function(a,b){var c=this._calendar[a];return"function"==typeof c?c.apply(b):c},_relativeTime:{future:"in %s",past:"%s ago",s:"a few seconds",m:"a minute",mm:"%d minutes",h:"an hour",hh:"%d hours",d:"a day",dd:"%d days",M:"a month",MM:"%d months",y:"a year",yy:"%d years"},relativeTime:function(a,b,c,d){var e=this._relativeTime[c];return"function"==typeof e?e(a,b,c,d):e.replace(/%d/i,a)},pastFuture:function(a,b){var c=this._relativeTime[a>0?"future":"past"];return"function"==typeof c?c(b):c.replace(/%s/i,b)},ordinal:function(a){return this._ordinal.replace("%d",a)},_ordinal:"%d",preparse:function(a){return a},postformat:function(a){return a},week:function(a){return $(a,this._week.dow,this._week.doy).week},_week:{dow:0,doy:6},_invalidDate:"Invalid date",invalidDate:function(){return this._invalidDate}}),ib=function(c,d,e,f){var g;return"boolean"==typeof e&&(f=e,e=a),g={},g._isAMomentObject=!0,g._i=c,g._f=d,g._l=e,g._strict=f,g._isUTC=!1,g._pf=b(),ab(g)},ib.suppressDeprecationWarnings=!1,ib.createFromInputFallback=c("moment construction falls back to js Date. This is discouraged and will be removed in upcoming major release. Please refer to https://github.com/moment/moment/issues/1407 for more info.",function(a){a._d=new Date(a._i)}),ib.utc=function(c,d,e,f){var g;return"boolean"==typeof e&&(f=e,e=a),g={},g._isAMomentObject=!0,g._useUTC=!0,g._isUTC=!0,g._l=e,g._i=c,g._f=d,g._strict=f,g._pf=b(),ab(g).utc()},ib.unix=function(a){return ib(1e3*a)},ib.duration=function(a,b){var c,d,e,f=a,g=null;return ib.isDuration(a)?f={ms:a._milliseconds,d:a._days,M:a._months}:"number"==typeof a?(f={},b?f[b]=a:f.milliseconds=a):(g=zb.exec(a))?(c="-"===g[1]?-1:1,f={y:0,d:t(g[qb])*c,h:t(g[rb])*c,m:t(g[sb])*c,s:t(g[tb])*c,ms:t(g[ub])*c}):(g=Ab.exec(a))&&(c="-"===g[1]?-1:1,e=function(a){var b=a&&parseFloat(a.replace(",","."));return(isNaN(b)?0:b)*c},f={y:e(g[2]),M:e(g[3]),d:e(g[4]),h:e(g[5]),m:e(g[6]),s:e(g[7]),w:e(g[8])}),d=new h(f),ib.isDuration(a)&&a.hasOwnProperty("_lang")&&(d._lang=a._lang),d},ib.version=lb,ib.defaultFormat=Ub,ib.momentProperties=wb,ib.updateOffset=function(){},ib.lang=function(a,b){var c;return a?(b?C(A(a),b):null===b?(D(a),a="en"):vb[a]||E(a),c=ib.duration.fn._lang=ib.fn._lang=E(a),c._abbr):ib.fn._lang._abbr},ib.langData=function(a){return a&&a._lang&&a._lang._abbr&&(a=a._lang._abbr),E(a)},ib.isMoment=function(a){return a instanceof g||null!=a&&a.hasOwnProperty("_isAMomentObject")},ib.isDuration=function(a){return a instanceof h},kb=dc.length-1;kb>=0;--kb)s(dc[kb]);ib.normalizeUnits=function(a){return q(a)},ib.invalid=function(a){var b=ib.utc(0/0);return null!=a?i(b._pf,a):b._pf.userInvalidated=!0,b},ib.parseZone=function(){return ib.apply(null,arguments).parseZone()},ib.parseTwoDigitYear=function(a){return t(a)+(t(a)>68?1900:2e3)},i(ib.fn=g.prototype,{clone:function(){return ib(this)},valueOf:function(){return+this._d+6e4*(this._offset||0)},unix:function(){return Math.floor(+this/1e3)},toString:function(){return this.clone().lang("en").format("ddd MMM DD YYYY HH:mm:ss [GMT]ZZ")},toDate:function(){return this._offset?new Date(+this):this._d},toISOString:function(){var a=ib(this).utc();return 0<a.year()&&a.year()<=9999?H(a,"YYYY-MM-DD[T]HH:mm:ss.SSS[Z]"):H(a,"YYYYYY-MM-DD[T]HH:mm:ss.SSS[Z]")},toArray:function(){var a=this;return[a.year(),a.month(),a.date(),a.hours(),a.minutes(),a.seconds(),a.milliseconds()]},isValid:function(){return z(this)},isDSTShifted:function(){return this._a?this.isValid()&&p(this._a,(this._isUTC?ib.utc(this._a):ib(this._a)).toArray())>0:!1},parsingFlags:function(){return i({},this._pf)},invalidAt:function(){return this._pf.overflow},utc:function(){return this.zone(0)},local:function(){return this.zone(0),this._isUTC=!1,this},format:function(a){var b=H(this,a||ib.defaultFormat);return this.lang().postformat(b)},add:function(a,b){var c;return c="string"==typeof a?ib.duration(+b,a):ib.duration(a,b),m(this,c,1),this},subtract:function(a,b){var c;return c="string"==typeof a?ib.duration(+b,a):ib.duration(a,b),m(this,c,-1),this},diff:function(a,b,c){var d,e,f=B(a,this),g=6e4*(this.zone()-f.zone());return b=q(b),"year"===b||"month"===b?(d=432e5*(this.daysInMonth()+f.daysInMonth()),e=12*(this.year()-f.year())+(this.month()-f.month()),e+=(this-ib(this).startOf("month")-(f-ib(f).startOf("month")))/d,e-=6e4*(this.zone()-ib(this).startOf("month").zone()-(f.zone()-ib(f).startOf("month").zone()))/d,"year"===b&&(e/=12)):(d=this-f,e="second"===b?d/1e3:"minute"===b?d/6e4:"hour"===b?d/36e5:"day"===b?(d-g)/864e5:"week"===b?(d-g)/6048e5:d),c?e:k(e)},from:function(a,b){return ib.duration(this.diff(a)).lang(this.lang()._abbr).humanize(!b)},fromNow:function(a){return this.from(ib(),a)},calendar:function(){var a=B(ib(),this).startOf("day"),b=this.diff(a,"days",!0),c=-6>b?"sameElse":-1>b?"lastWeek":0>b?"lastDay":1>b?"sameDay":2>b?"nextDay":7>b?"nextWeek":"sameElse";return this.format(this.lang().calendar(c,this))},isLeapYear:function(){return x(this.year())},isDST:function(){return this.zone()<this.clone().month(0).zone()||this.zone()<this.clone().month(5).zone()},day:function(a){var b=this._isUTC?this._d.getUTCDay():this._d.getDay();return null!=a?(a=X(a,this.lang()),this.add({d:a-b})):b},month:eb("Month",!0),startOf:function(a){switch(a=q(a)){case"year":this.month(0);case"quarter":case"month":this.date(1);case"week":case"isoWeek":case"day":this.hours(0);case"hour":this.minutes(0);case"minute":this.seconds(0);case"second":this.milliseconds(0)}return"week"===a?this.weekday(0):"isoWeek"===a&&this.isoWeekday(1),"quarter"===a&&this.month(3*Math.floor(this.month()/3)),this},endOf:function(a){return a=q(a),this.startOf(a).add("isoWeek"===a?"week":a,1).subtract("ms",1)},isAfter:function(a,b){return b="undefined"!=typeof b?b:"millisecond",+this.clone().startOf(b)>+ib(a).startOf(b)},isBefore:function(a,b){return b="undefined"!=typeof b?b:"millisecond",+this.clone().startOf(b)<+ib(a).startOf(b)},isSame:function(a,b){return b=b||"ms",+this.clone().startOf(b)===+B(a,this).startOf(b)},min:function(a){return a=ib.apply(null,arguments),this>a?this:a},max:function(a){return a=ib.apply(null,arguments),a>this?this:a},zone:function(a,b){var c=this._offset||0;return null==a?this._isUTC?c:this._d.getTimezoneOffset():("string"==typeof a&&(a=K(a)),Math.abs(a)<16&&(a=60*a),this._offset=a,this._isUTC=!0,c!==a&&(!b||this._changeInProgress?m(this,ib.duration(c-a,"m"),1,!1):this._changeInProgress||(this._changeInProgress=!0,ib.updateOffset(this,!0),this._changeInProgress=null)),this)},zoneAbbr:function(){return this._isUTC?"UTC":""},zoneName:function(){return this._isUTC?"Coordinated Universal Time":""},parseZone:function(){return this._tzm?this.zone(this._tzm):"string"==typeof this._i&&this.zone(this._i),this},hasAlignedHourOffset:function(a){return a=a?ib(a).zone():0,(this.zone()-a)%60===0},daysInMonth:function(){return u(this.year(),this.month())},dayOfYear:function(a){var b=nb((ib(this).startOf("day")-ib(this).startOf("year"))/864e5)+1;return null==a?b:this.add("d",a-b)},quarter:function(a){return null==a?Math.ceil((this.month()+1)/3):this.month(3*(a-1)+this.month()%3)},weekYear:function(a){var b=$(this,this.lang()._week.dow,this.lang()._week.doy).year;return null==a?b:this.add("y",a-b)},isoWeekYear:function(a){var b=$(this,1,4).year;return null==a?b:this.add("y",a-b)},week:function(a){var b=this.lang().week(this);return null==a?b:this.add("d",7*(a-b))},isoWeek:function(a){var b=$(this,1,4).week;return null==a?b:this.add("d",7*(a-b))},weekday:function(a){var b=(this.day()+7-this.lang()._week.dow)%7;return null==a?b:this.add("d",a-b)},isoWeekday:function(a){return null==a?this.day()||7:this.day(this.day()%7?a:a-7)},isoWeeksInYear:function(){return v(this.year(),1,4)},weeksInYear:function(){var a=this._lang._week;return v(this.year(),a.dow,a.doy)},get:function(a){return a=q(a),this[a]()},set:function(a,b){return a=q(a),"function"==typeof this[a]&&this[a](b),this},lang:function(b){return b===a?this._lang:(this._lang=E(b),this)}}),ib.fn.millisecond=ib.fn.milliseconds=eb("Milliseconds",!1),ib.fn.second=ib.fn.seconds=eb("Seconds",!1),ib.fn.minute=ib.fn.minutes=eb("Minutes",!1),ib.fn.hour=ib.fn.hours=eb("Hours",!0),ib.fn.date=eb("Date",!0),ib.fn.dates=c("dates accessor is deprecated. Use date instead.",eb("Date",!0)),ib.fn.year=eb("FullYear",!0),ib.fn.years=c("years accessor is deprecated. Use year instead.",eb("FullYear",!0)),ib.fn.days=ib.fn.day,ib.fn.months=ib.fn.month,ib.fn.weeks=ib.fn.week,ib.fn.isoWeeks=ib.fn.isoWeek,ib.fn.quarters=ib.fn.quarter,ib.fn.toJSON=ib.fn.toISOString,i(ib.duration.fn=h.prototype,{_bubble:function(){var a,b,c,d,e=this._milliseconds,f=this._days,g=this._months,h=this._data;h.milliseconds=e%1e3,a=k(e/1e3),h.seconds=a%60,b=k(a/60),h.minutes=b%60,c=k(b/60),h.hours=c%24,f+=k(c/24),h.days=f%30,g+=k(f/30),h.months=g%12,d=k(g/12),h.years=d},weeks:function(){return k(this.days()/7)},valueOf:function(){return this._milliseconds+864e5*this._days+this._months%12*2592e6+31536e6*t(this._months/12)},humanize:function(a){var b=+this,c=Z(b,!a,this.lang());return a&&(c=this.lang().pastFuture(b,c)),this.lang().postformat(c)},add:function(a,b){var c=ib.duration(a,b);return this._milliseconds+=c._milliseconds,this._days+=c._days,this._months+=c._months,this._bubble(),this},subtract:function(a,b){var c=ib.duration(a,b);return this._milliseconds-=c._milliseconds,this._days-=c._days,this._months-=c._months,this._bubble(),this},get:function(a){return a=q(a),this[a.toLowerCase()+"s"]()},as:function(a){return a=q(a),this["as"+a.charAt(0).toUpperCase()+a.slice(1)+"s"]()},lang:ib.fn.lang,toIsoString:function(){var a=Math.abs(this.years()),b=Math.abs(this.months()),c=Math.abs(this.days()),d=Math.abs(this.hours()),e=Math.abs(this.minutes()),f=Math.abs(this.seconds()+this.milliseconds()/1e3);return this.asSeconds()?(this.asSeconds()<0?"-":"")+"P"+(a?a+"Y":"")+(b?b+"M":"")+(c?c+"D":"")+(d||e||f?"T":"")+(d?d+"H":"")+(e?e+"M":"")+(f?f+"S":""):"P0D"}});for(kb in Yb)Yb.hasOwnProperty(kb)&&(gb(kb,Yb[kb]),fb(kb.toLowerCase()));gb("Weeks",6048e5),ib.duration.fn.asMonths=function(){return(+this-31536e6*this.years())/2592e6+12*this.years()},ib.lang("en",{ordinal:function(a){var b=a%10,c=1===t(a%100/10)?"th":1===b?"st":2===b?"nd":3===b?"rd":"th";return a+c}}),xb?module.exports=ib:"function"==typeof define&&define.amd?(define("moment",function(a,b,c){return c.config&&c.config()&&c.config().noGlobal===!0&&(mb.moment=jb),ib}),hb(!0)):hb()}).call(this);
 /*global define:false */
 /**
  * Copyright 2013 Craig Campbell
@@ -21776,7 +21497,7 @@ parseStatement: true, parseSourceElement: true */
       var cwd = '/';
       return {
         title: 'browser',
-        version: 'v0.10.33',
+        version: 'v0.10.26',
         browser: true,
         env: {},
         argv: [],
@@ -21837,16 +21558,14 @@ parseStatement: true, parseSourceElement: true */
         GeneratorExpression: 'GeneratorExpression',
         Identifier: 'Identifier',
         IfStatement: 'IfStatement',
-        ImportDeclaration: 'ImportDeclaration',
-        ImportDefaultSpecifier: 'ImportDefaultSpecifier',
-        ImportNamespaceSpecifier: 'ImportNamespaceSpecifier',
         ImportSpecifier: 'ImportSpecifier',
+        ImportDeclaration: 'ImportDeclaration',
         Literal: 'Literal',
         LabeledStatement: 'LabeledStatement',
         LogicalExpression: 'LogicalExpression',
         MemberExpression: 'MemberExpression',
         MethodDefinition: 'MethodDefinition',
-        ModuleSpecifier: 'ModuleSpecifier',
+        ModuleDeclaration: 'ModuleDeclaration',
         NewExpression: 'NewExpression',
         ObjectExpression: 'ObjectExpression',
         ObjectPattern: 'ObjectPattern',
@@ -21872,10 +21591,69 @@ parseStatement: true, parseSourceElement: true */
         YieldExpression: 'YieldExpression'
       };
       function isExpression(node) {
-        return CodeGenerator.Expression.hasOwnProperty(node.type);
+        switch (node.type) {
+        case Syntax.AssignmentExpression:
+        case Syntax.ArrayExpression:
+        case Syntax.ArrayPattern:
+        case Syntax.BinaryExpression:
+        case Syntax.CallExpression:
+        case Syntax.ConditionalExpression:
+        case Syntax.ClassExpression:
+        case Syntax.ExportBatchSpecifier:
+        case Syntax.ExportSpecifier:
+        case Syntax.FunctionExpression:
+        case Syntax.Identifier:
+        case Syntax.ImportSpecifier:
+        case Syntax.Literal:
+        case Syntax.LogicalExpression:
+        case Syntax.MemberExpression:
+        case Syntax.MethodDefinition:
+        case Syntax.NewExpression:
+        case Syntax.ObjectExpression:
+        case Syntax.ObjectPattern:
+        case Syntax.Property:
+        case Syntax.SequenceExpression:
+        case Syntax.ThisExpression:
+        case Syntax.UnaryExpression:
+        case Syntax.UpdateExpression:
+        case Syntax.YieldExpression:
+          return true;
+        }
+        return false;
       }
       function isStatement(node) {
-        return CodeGenerator.Statement.hasOwnProperty(node.type);
+        switch (node.type) {
+        case Syntax.BlockStatement:
+        case Syntax.BreakStatement:
+        case Syntax.CatchClause:
+        case Syntax.ContinueStatement:
+        case Syntax.ClassDeclaration:
+        case Syntax.ClassBody:
+        case Syntax.DirectiveStatement:
+        case Syntax.DoWhileStatement:
+        case Syntax.DebuggerStatement:
+        case Syntax.EmptyStatement:
+        case Syntax.ExpressionStatement:
+        case Syntax.ForStatement:
+        case Syntax.ForInStatement:
+        case Syntax.ForOfStatement:
+        case Syntax.FunctionDeclaration:
+        case Syntax.IfStatement:
+        case Syntax.LabeledStatement:
+        case Syntax.ModuleDeclaration:
+        case Syntax.Program:
+        case Syntax.ReturnStatement:
+        case Syntax.SwitchStatement:
+        case Syntax.SwitchCase:
+        case Syntax.ThrowStatement:
+        case Syntax.TryStatement:
+        case Syntax.VariableDeclaration:
+        case Syntax.VariableDeclarator:
+        case Syntax.WhileStatement:
+        case Syntax.WithStatement:
+          return true;
+        }
+        return false;
       }
       Precedence = {
         Sequence: 0,
@@ -21928,9 +21706,6 @@ parseStatement: true, parseSourceElement: true */
         '%': Precedence.Multiplicative,
         '/': Precedence.Multiplicative
       };
-      var F_ALLOW_IN = 1, F_ALLOW_CALL = 1 << 1, F_ALLOW_UNPARATH_NEW = 1 << 2, F_FUNC_BODY = 1 << 3, F_DIRECTIVE_CTX = 1 << 4, F_SEMICOLON_OPT = 1 << 5;
-      var E_FTT = F_ALLOW_CALL | F_ALLOW_UNPARATH_NEW, E_TTF = F_ALLOW_IN | F_ALLOW_CALL, E_TTT = F_ALLOW_IN | F_ALLOW_CALL | F_ALLOW_UNPARATH_NEW, E_TFF = F_ALLOW_IN, E_FFT = F_ALLOW_UNPARATH_NEW, E_TFT = F_ALLOW_IN | F_ALLOW_UNPARATH_NEW;
-      var S_TFFF = F_ALLOW_IN, S_TFFT = F_ALLOW_IN | F_SEMICOLON_OPT, S_FFFF = 0, S_TFTF = F_ALLOW_IN | F_DIRECTIVE_CTX, S_TTFF = F_ALLOW_IN | F_FUNC_BODY;
       function getDefaultOptions() {
         return {
           indent: null,
@@ -21988,15 +21763,6 @@ parseStatement: true, parseSourceElement: true */
       function endsWithLineTerminator(str) {
         var len = str.length;
         return len && esutils.code.isLineTerminator(str.charCodeAt(len - 1));
-      }
-      function merge(target, override) {
-        var key;
-        for (key in override) {
-          if (override.hasOwnProperty(key)) {
-            target[key] = override[key];
-          }
-        }
-        return target;
       }
       function updateDeeply(target, override) {
         var key, val;
@@ -22112,44 +21878,54 @@ parseStatement: true, parseSourceElement: true */
         return result;
       }
       function escapeAllowedCharacter(code, next) {
-        var hex;
-        if (code === 8) {
-          return '\\b';
+        var hex, result = '\\';
+        switch (code) {
+        case 8:
+          result += 'b';
+          break;
+        case 12:
+          result += 'f';
+          break;
+        case 9:
+          result += 't';
+          break;
+        default:
+          hex = code.toString(16).toUpperCase();
+          if (json || code > 255) {
+            result += 'u' + '0000'.slice(hex.length) + hex;
+          } else if (code === 0 && !esutils.code.isDecimalDigit(next)) {
+            result += '0';
+          } else if (code === 11) {
+            result += 'x0B';
+          } else {
+            result += 'x' + '00'.slice(hex.length) + hex;
+          }
+          break;
         }
-        if (code === 12) {
-          return '\\f';
-        }
-        if (code === 9) {
-          return '\\t';
-        }
-        hex = code.toString(16).toUpperCase();
-        if (json || code > 255) {
-          return '\\u' + '0000'.slice(hex.length) + hex;
-        } else if (code === 0 && !esutils.code.isDecimalDigit(next)) {
-          return '\\0';
-        } else if (code === 11) {
-          return '\\x0B';
-        } else {
-          return '\\x' + '00'.slice(hex.length) + hex;
-        }
+        return result;
       }
       function escapeDisallowedCharacter(code) {
-        if (code === 92) {
-          return '\\\\';
+        var result = '\\';
+        switch (code) {
+        case 92:
+          result += '\\';
+          break;
+        case 10:
+          result += 'n';
+          break;
+        case 13:
+          result += 'r';
+          break;
+        case 8232:
+          result += 'u2028';
+          break;
+        case 8233:
+          result += 'u2029';
+          break;
+        default:
+          throw new Error('Incorrectly classified character');
         }
-        if (code === 10) {
-          return '\\n';
-        }
-        if (code === 13) {
-          return '\\r';
-        }
-        if (code === 8232) {
-          return '\\u2028';
-        }
-        if (code === 8233) {
-          return '\\u2029';
-        }
-        throw new Error('Incorrectly classified character');
+        return result;
       }
       function escapeDirective(str) {
         var i, iz, code, quote;
@@ -22271,11 +22047,12 @@ parseStatement: true, parseSourceElement: true */
         ];
       }
       function withIndent(fn) {
-        var previousBase;
+        var previousBase, result;
         previousBase = base;
         base += indent;
-        fn(base);
+        result = fn.call(this, base);
         base = previousBase;
+        return result;
       }
       function calculateSpaces(str) {
         var i;
@@ -22403,35 +22180,13 @@ parseStatement: true, parseSourceElement: true */
         }
         return text;
       }
-      function generateVerbatimString(string) {
-        var i, iz, result;
-        result = string.split(/\r\n|\n/);
-        for (i = 1, iz = result.length; i < iz; i++) {
-          result[i] = newline + base + result[i];
-        }
-        return result;
-      }
-      function generateVerbatim(expr, precedence) {
-        var verbatim, result, prec;
-        verbatim = expr[extra.verbatim];
-        if (typeof verbatim === 'string') {
-          result = parenthesize(generateVerbatimString(verbatim), Precedence.Sequence, precedence);
-        } else {
-          result = generateVerbatimString(verbatim.content);
-          prec = verbatim.precedence != null ? verbatim.precedence : Precedence.Sequence;
-          result = parenthesize(result, prec, precedence);
-        }
-        return toSourceNodeWhenNeeded(result, expr);
-      }
-      function CodeGenerator() {
-      }
-      CodeGenerator.prototype.maybeBlock = function (stmt, flags) {
-        var result, noLeadingComment, that = this;
+      function maybeBlock(stmt, semicolonOptional, functionBody) {
+        var result, noLeadingComment;
         noLeadingComment = !extra.comment || !stmt.leadingComments;
         if (stmt.type === Syntax.BlockStatement && noLeadingComment) {
           return [
             space,
-            this.generateStatement(stmt, flags)
+            generateStatement(stmt, { functionBody: functionBody })
           ];
         }
         if (stmt.type === Syntax.EmptyStatement && noLeadingComment) {
@@ -22440,12 +22195,15 @@ parseStatement: true, parseSourceElement: true */
         withIndent(function () {
           result = [
             newline,
-            addIndent(that.generateStatement(stmt, flags))
+            addIndent(generateStatement(stmt, {
+              semicolonOptional: semicolonOptional,
+              functionBody: functionBody
+            }))
           ];
         });
         return result;
-      };
-      CodeGenerator.prototype.maybeBlockSuffix = function (stmt, result) {
+      }
+      function maybeBlockSuffix(stmt, result) {
         var ends = endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString());
         if (stmt.type === Syntax.BlockStatement && (!extra.comment || !stmt.leadingComments) && !ends) {
           return [
@@ -22464,17 +22222,44 @@ parseStatement: true, parseSourceElement: true */
           newline,
           base
         ];
-      };
+      }
+      function generateVerbatimString(string) {
+        var i, iz, result;
+        result = string.split(/\r\n|\n/);
+        for (i = 1, iz = result.length; i < iz; i++) {
+          result[i] = newline + base + result[i];
+        }
+        return result;
+      }
+      function generateVerbatim(expr, option) {
+        var verbatim, result, prec;
+        verbatim = expr[extra.verbatim];
+        if (typeof verbatim === 'string') {
+          result = parenthesize(generateVerbatimString(verbatim), Precedence.Sequence, option.precedence);
+        } else {
+          result = generateVerbatimString(verbatim.content);
+          prec = verbatim.precedence != null ? verbatim.precedence : Precedence.Sequence;
+          result = parenthesize(result, prec, option.precedence);
+        }
+        return toSourceNodeWhenNeeded(result, expr);
+      }
       function generateIdentifier(node) {
         return toSourceNodeWhenNeeded(node.name, node);
       }
-      CodeGenerator.prototype.generatePattern = function (node, precedence, flags) {
+      function generatePattern(node, options) {
+        var result;
         if (node.type === Syntax.Identifier) {
-          return generateIdentifier(node);
+          result = generateIdentifier(node);
+        } else {
+          result = generateExpression(node, {
+            precedence: options.precedence,
+            allowIn: options.allowIn,
+            allowCall: true
+          });
         }
-        return this.generateExpression(node, precedence, flags);
-      };
-      CodeGenerator.prototype.generateFunctionParams = function (node) {
+        return result;
+      }
+      function generateFunctionParams(node) {
         var i, iz, result, hasDefault;
         hasDefault = false;
         if (node.type === Syntax.ArrowFunctionExpression && !node.rest && (!node.defaults || node.defaults.length === 0) && node.params.length === 1 && node.params[0].type === Syntax.Identifier) {
@@ -22486,9 +22271,17 @@ parseStatement: true, parseSourceElement: true */
           }
           for (i = 0, iz = node.params.length; i < iz; ++i) {
             if (hasDefault && node.defaults[i]) {
-              result.push(this.generateAssignment(node.params[i], node.defaults[i], '=', Precedence.Assignment, E_TTT));
+              result.push(generateAssignment(node.params[i], node.defaults[i], '=', {
+                precedence: Precedence.Assignment,
+                allowIn: true,
+                allowCall: true
+              }));
             } else {
-              result.push(this.generatePattern(node.params[i], Precedence.Assignment, E_TTT));
+              result.push(generatePattern(node.params[i], {
+                precedence: Precedence.Assignment,
+                allowIn: true,
+                allowCall: true
+              }));
             }
             if (i + 1 < iz) {
               result.push(',' + space);
@@ -22499,22 +22292,30 @@ parseStatement: true, parseSourceElement: true */
               result.push(',' + space);
             }
             result.push('...');
-            result.push(generateIdentifier(node.rest));
+            result.push(generateIdentifier(node.rest, {
+              precedence: Precedence.Assignment,
+              allowIn: true,
+              allowCall: true
+            }));
           }
           result.push(')');
         }
         return result;
-      };
-      CodeGenerator.prototype.generateFunctionBody = function (node) {
+      }
+      function generateFunctionBody(node) {
         var result, expr;
-        result = this.generateFunctionParams(node);
+        result = generateFunctionParams(node);
         if (node.type === Syntax.ArrowFunctionExpression) {
           result.push(space);
           result.push('=>');
         }
         if (node.expression) {
           result.push(space);
-          expr = this.generateExpression(node.body, Precedence.Assignment, E_TTT);
+          expr = generateExpression(node.body, {
+            precedence: Precedence.Assignment,
+            allowIn: true,
+            allowCall: true
+          });
           if (expr.toString().charAt(0) === '{') {
             expr = [
               '(',
@@ -22524,623 +22325,215 @@ parseStatement: true, parseSourceElement: true */
           }
           result.push(expr);
         } else {
-          result.push(this.maybeBlock(node.body, S_TTFF));
+          result.push(maybeBlock(node.body, false, true));
         }
         return result;
-      };
-      CodeGenerator.prototype.generateIterationForStatement = function (operator, stmt, flags) {
-        var result = ['for' + space + '('], that = this;
+      }
+      function generateIterationForStatement(operator, stmt, semicolonIsNotNeeded) {
+        var result = ['for' + space + '('];
         withIndent(function () {
           if (stmt.left.type === Syntax.VariableDeclaration) {
             withIndent(function () {
               result.push(stmt.left.kind + noEmptySpace());
-              result.push(that.generateStatement(stmt.left.declarations[0], S_FFFF));
+              result.push(generateStatement(stmt.left.declarations[0], { allowIn: false }));
             });
           } else {
-            result.push(that.generateExpression(stmt.left, Precedence.Call, E_TTT));
+            result.push(generateExpression(stmt.left, {
+              precedence: Precedence.Call,
+              allowIn: true,
+              allowCall: true
+            }));
           }
           result = join(result, operator);
           result = [
-            join(result, that.generateExpression(stmt.right, Precedence.Sequence, E_TTT)),
+            join(result, generateExpression(stmt.right, {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: true
+            })),
             ')'
           ];
         });
-        result.push(this.maybeBlock(stmt.body, flags));
+        result.push(maybeBlock(stmt.body, semicolonIsNotNeeded));
         return result;
-      };
-      CodeGenerator.prototype.generatePropertyKey = function (expr, computed) {
+      }
+      function generateVariableDeclaration(stmt, semicolon, allowIn) {
+        var result, i, iz, node;
+        result = [stmt.kind];
+        function block() {
+          node = stmt.declarations[0];
+          if (extra.comment && node.leadingComments) {
+            result.push('\n');
+            result.push(addIndent(generateStatement(node, { allowIn: allowIn })));
+          } else {
+            result.push(noEmptySpace());
+            result.push(generateStatement(node, { allowIn: allowIn }));
+          }
+          for (i = 1, iz = stmt.declarations.length; i < iz; ++i) {
+            node = stmt.declarations[i];
+            if (extra.comment && node.leadingComments) {
+              result.push(',' + newline);
+              result.push(addIndent(generateStatement(node, { allowIn: allowIn })));
+            } else {
+              result.push(',' + space);
+              result.push(generateStatement(node, { allowIn: allowIn }));
+            }
+          }
+        }
+        if (stmt.declarations.length > 1) {
+          withIndent(block);
+        } else {
+          block();
+        }
+        result.push(semicolon);
+        return result;
+      }
+      function generateClassBody(classBody) {
+        var result = [
+            '{',
+            newline
+          ];
+        withIndent(function (indent) {
+          var i, iz;
+          for (i = 0, iz = classBody.body.length; i < iz; ++i) {
+            result.push(indent);
+            result.push(generateExpression(classBody.body[i], {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: true,
+              type: Syntax.Property
+            }));
+            if (i + 1 < iz) {
+              result.push(newline);
+            }
+          }
+        });
+        if (!endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString())) {
+          result.push(newline);
+        }
+        result.push(base);
+        result.push('}');
+        return result;
+      }
+      function generateLiteral(expr) {
+        var raw;
+        if (expr.hasOwnProperty('raw') && parse && extra.raw) {
+          try {
+            raw = parse(expr.raw).body[0].expression;
+            if (raw.type === Syntax.Literal) {
+              if (raw.value === expr.value) {
+                return expr.raw;
+              }
+            }
+          } catch (e) {
+          }
+        }
+        if (expr.value === null) {
+          return 'null';
+        }
+        if (typeof expr.value === 'string') {
+          return escapeString(expr.value);
+        }
+        if (typeof expr.value === 'number') {
+          return generateNumber(expr.value);
+        }
+        if (typeof expr.value === 'boolean') {
+          return expr.value ? 'true' : 'false';
+        }
+        return generateRegExp(expr.value);
+      }
+      function generatePropertyKey(expr, computed, option) {
         var result = [];
         if (computed) {
           result.push('[');
         }
-        result.push(this.generateExpression(expr, Precedence.Sequence, E_TTT));
+        result.push(generateExpression(expr, option));
         if (computed) {
           result.push(']');
         }
         return result;
-      };
-      CodeGenerator.prototype.generateAssignment = function (left, right, operator, precedence, flags) {
-        if (Precedence.Assignment < precedence) {
-          flags |= F_ALLOW_IN;
-        }
+      }
+      function generateAssignment(left, right, operator, option) {
+        var allowIn, precedence;
+        precedence = option.precedence;
+        allowIn = option.allowIn || Precedence.Assignment < precedence;
         return parenthesize([
-          this.generateExpression(left, Precedence.Call, flags),
+          generateExpression(left, {
+            precedence: Precedence.Call,
+            allowIn: allowIn,
+            allowCall: true
+          }),
           space + operator + space,
-          this.generateExpression(right, Precedence.Assignment, flags)
+          generateExpression(right, {
+            precedence: Precedence.Assignment,
+            allowIn: allowIn,
+            allowCall: true
+          })
         ], Precedence.Assignment, precedence);
-      };
-      CodeGenerator.prototype.semicolon = function (flags) {
-        if (!semicolons && flags & F_SEMICOLON_OPT) {
-          return '';
+      }
+      function generateExpression(expr, option) {
+        var result, precedence, type, currentPrecedence, i, len, fragment, multiline, leftCharCode, leftSource, rightCharCode, allowIn, allowCall, allowUnparenthesizedNew, property, isGenerator;
+        precedence = option.precedence;
+        allowIn = option.allowIn;
+        allowCall = option.allowCall;
+        type = expr.type || option.type;
+        if (extra.verbatim && expr.hasOwnProperty(extra.verbatim)) {
+          return generateVerbatim(expr, option);
         }
-        return ';';
-      };
-      CodeGenerator.Statement = {
-        BlockStatement: function (stmt, flags) {
-          var result = [
-              '{',
-              newline
-            ], that = this;
-          withIndent(function () {
-            var i, iz, fragment, bodyFlags;
-            bodyFlags = S_TFFF;
-            if (flags & F_FUNC_BODY) {
-              bodyFlags |= F_DIRECTIVE_CTX;
-            }
-            for (i = 0, iz = stmt.body.length; i < iz; ++i) {
-              if (i === iz - 1) {
-                bodyFlags |= F_SEMICOLON_OPT;
-              }
-              fragment = addIndent(that.generateStatement(stmt.body[i], bodyFlags));
-              result.push(fragment);
-              if (!endsWithLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
-                result.push(newline);
-              }
-            }
-          });
-          result.push(addIndent('}'));
-          return result;
-        },
-        BreakStatement: function (stmt, flags) {
-          if (stmt.label) {
-            return 'break ' + stmt.label.name + this.semicolon(flags);
-          }
-          return 'break' + this.semicolon(flags);
-        },
-        ContinueStatement: function (stmt, flags) {
-          if (stmt.label) {
-            return 'continue ' + stmt.label.name + this.semicolon(flags);
-          }
-          return 'continue' + this.semicolon(flags);
-        },
-        ClassBody: function (stmt, flags) {
-          var result = [
-              '{',
-              newline
-            ], that = this;
-          withIndent(function (indent) {
-            var i, iz;
-            for (i = 0, iz = stmt.body.length; i < iz; ++i) {
-              result.push(indent);
-              result.push(that.generateExpression(stmt.body[i], Precedence.Sequence, E_TTT));
-              if (i + 1 < iz) {
-                result.push(newline);
-              }
-            }
-          });
-          if (!endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString())) {
-            result.push(newline);
-          }
-          result.push(base);
-          result.push('}');
-          return result;
-        },
-        ClassDeclaration: function (stmt, flags) {
-          var result, fragment;
-          result = ['class ' + stmt.id.name];
-          if (stmt.superClass) {
-            fragment = join('extends', this.generateExpression(stmt.superClass, Precedence.Assignment, E_TTT));
-            result = join(result, fragment);
-          }
-          result.push(space);
-          result.push(this.generateStatement(stmt.body, S_TFFT));
-          return result;
-        },
-        DirectiveStatement: function (stmt, flags) {
-          if (extra.raw && stmt.raw) {
-            return stmt.raw + this.semicolon(flags);
-          }
-          return escapeDirective(stmt.directive) + this.semicolon(flags);
-        },
-        DoWhileStatement: function (stmt, flags) {
-          var result = join('do', this.maybeBlock(stmt.body, S_TFFF));
-          result = this.maybeBlockSuffix(stmt.body, result);
-          return join(result, [
-            'while' + space + '(',
-            this.generateExpression(stmt.test, Precedence.Sequence, E_TTT),
-            ')' + this.semicolon(flags)
-          ]);
-        },
-        CatchClause: function (stmt, flags) {
-          var result, that = this;
-          withIndent(function () {
-            var guard;
-            result = [
-              'catch' + space + '(',
-              that.generateExpression(stmt.param, Precedence.Sequence, E_TTT),
-              ')'
-            ];
-            if (stmt.guard) {
-              guard = that.generateExpression(stmt.guard, Precedence.Sequence, E_TTT);
-              result.splice(2, 0, ' if ', guard);
-            }
-          });
-          result.push(this.maybeBlock(stmt.body, S_TFFF));
-          return result;
-        },
-        DebuggerStatement: function (stmt, flags) {
-          return 'debugger' + this.semicolon(flags);
-        },
-        EmptyStatement: function (stmt, flags) {
-          return ';';
-        },
-        ExportDeclaration: function (stmt, flags) {
-          var result = ['export'], bodyFlags, that = this;
-          bodyFlags = flags & F_SEMICOLON_OPT ? S_TFFT : S_TFFF;
-          if (stmt['default']) {
-            result = join(result, 'default');
-            if (isStatement(stmt.declaration)) {
-              result = join(result, this.generateStatement(stmt.declaration, bodyFlags));
-            } else {
-              result = join(result, this.generateExpression(stmt.declaration, Precedence.Assignment, E_TTT) + this.semicolon(flags));
-            }
-            return result;
-          }
-          if (stmt.declaration) {
-            return join(result, this.generateStatement(stmt.declaration, bodyFlags));
-          }
-          if (stmt.specifiers) {
-            if (stmt.specifiers.length === 0) {
-              result = join(result, '{' + space + '}');
-            } else if (stmt.specifiers[0].type === Syntax.ExportBatchSpecifier) {
-              result = join(result, this.generateExpression(stmt.specifiers[0], Precedence.Sequence, E_TTT));
-            } else {
-              result = join(result, '{');
-              withIndent(function (indent) {
-                var i, iz;
-                result.push(newline);
-                for (i = 0, iz = stmt.specifiers.length; i < iz; ++i) {
-                  result.push(indent);
-                  result.push(that.generateExpression(stmt.specifiers[i], Precedence.Sequence, E_TTT));
-                  if (i + 1 < iz) {
-                    result.push(',' + newline);
-                  }
-                }
-              });
-              if (!endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString())) {
-                result.push(newline);
-              }
-              result.push(base + '}');
-            }
-            if (stmt.source) {
-              result = join(result, [
-                'from' + space,
-                this.generateExpression(stmt.source, Precedence.Sequence, E_TTT),
-                this.semicolon(flags)
-              ]);
-            } else {
-              result.push(this.semicolon(flags));
-            }
-          }
-          return result;
-        },
-        ExpressionStatement: function (stmt, flags) {
-          var result, fragment;
-          result = [this.generateExpression(stmt.expression, Precedence.Sequence, E_TTT)];
-          fragment = toSourceNodeWhenNeeded(result).toString();
-          if (fragment.charAt(0) === '{' || fragment.slice(0, 5) === 'class' && ' {'.indexOf(fragment.charAt(5)) >= 0 || fragment.slice(0, 8) === 'function' && '* ('.indexOf(fragment.charAt(8)) >= 0 || directive && flags & F_DIRECTIVE_CTX && stmt.expression.type === Syntax.Literal && typeof stmt.expression.value === 'string') {
-            result = [
-              '(',
-              result,
-              ')' + this.semicolon(flags)
-            ];
-          } else {
-            result.push(this.semicolon(flags));
-          }
-          return result;
-        },
-        ImportDeclaration: function (stmt, flags) {
-          var result, cursor, that = this;
-          if (stmt.specifiers.length === 0) {
-            return [
-              'import',
-              space,
-              this.generateExpression(stmt.source, Precedence.Sequence, E_TTT),
-              this.semicolon(flags)
-            ];
-          }
-          result = ['import'];
-          cursor = 0;
-          if (stmt.specifiers[cursor].type === Syntax.ImportDefaultSpecifier) {
-            result = join(result, [this.generateExpression(stmt.specifiers[cursor], Precedence.Sequence, E_TTT)]);
-            ++cursor;
-          }
-          if (stmt.specifiers[cursor]) {
-            if (cursor !== 0) {
-              result.push(',');
-            }
-            if (stmt.specifiers[cursor].type === Syntax.ImportNamespaceSpecifier) {
-              result = join(result, [
-                space,
-                this.generateExpression(stmt.specifiers[cursor], Precedence.Sequence, E_TTT)
-              ]);
-            } else {
-              result.push(space + '{');
-              if (stmt.specifiers.length - cursor === 1) {
-                result.push(space);
-                result.push(this.generateExpression(stmt.specifiers[cursor], Precedence.Sequence, E_TTT));
-                result.push(space + '}' + space);
-              } else {
-                withIndent(function (indent) {
-                  var i, iz;
-                  result.push(newline);
-                  for (i = cursor, iz = stmt.specifiers.length; i < iz; ++i) {
-                    result.push(indent);
-                    result.push(that.generateExpression(stmt.specifiers[i], Precedence.Sequence, E_TTT));
-                    if (i + 1 < iz) {
-                      result.push(',' + newline);
-                    }
-                  }
-                });
-                if (!endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString())) {
-                  result.push(newline);
-                }
-                result.push(base + '}' + space);
-              }
-            }
-          }
-          result = join(result, [
-            'from' + space,
-            this.generateExpression(stmt.source, Precedence.Sequence, E_TTT),
-            this.semicolon(flags)
-          ]);
-          return result;
-        },
-        VariableDeclarator: function (stmt, flags) {
-          var itemFlags = flags & F_ALLOW_IN ? E_TTT : E_FTT;
-          if (stmt.init) {
-            return [
-              this.generateExpression(stmt.id, Precedence.Assignment, itemFlags),
-              space,
-              '=',
-              space,
-              this.generateExpression(stmt.init, Precedence.Assignment, itemFlags)
-            ];
-          }
-          return this.generatePattern(stmt.id, Precedence.Assignment, itemFlags);
-        },
-        VariableDeclaration: function (stmt, flags) {
-          var result, i, iz, node, bodyFlags, that = this;
-          result = [stmt.kind];
-          bodyFlags = flags & F_ALLOW_IN ? S_TFFF : S_FFFF;
-          function block() {
-            node = stmt.declarations[0];
-            if (extra.comment && node.leadingComments) {
-              result.push('\n');
-              result.push(addIndent(that.generateStatement(node, bodyFlags)));
-            } else {
-              result.push(noEmptySpace());
-              result.push(that.generateStatement(node, bodyFlags));
-            }
-            for (i = 1, iz = stmt.declarations.length; i < iz; ++i) {
-              node = stmt.declarations[i];
-              if (extra.comment && node.leadingComments) {
-                result.push(',' + newline);
-                result.push(addIndent(that.generateStatement(node, bodyFlags)));
-              } else {
-                result.push(',' + space);
-                result.push(that.generateStatement(node, bodyFlags));
-              }
-            }
-          }
-          if (stmt.declarations.length > 1) {
-            withIndent(block);
-          } else {
-            block();
-          }
-          result.push(this.semicolon(flags));
-          return result;
-        },
-        ThrowStatement: function (stmt, flags) {
-          return [
-            join('throw', this.generateExpression(stmt.argument, Precedence.Sequence, E_TTT)),
-            this.semicolon(flags)
-          ];
-        },
-        TryStatement: function (stmt, flags) {
-          var result, i, iz, guardedHandlers;
-          result = [
-            'try',
-            this.maybeBlock(stmt.block, S_TFFF)
-          ];
-          result = this.maybeBlockSuffix(stmt.block, result);
-          if (stmt.handlers) {
-            for (i = 0, iz = stmt.handlers.length; i < iz; ++i) {
-              result = join(result, this.generateStatement(stmt.handlers[i], S_TFFF));
-              if (stmt.finalizer || i + 1 !== iz) {
-                result = this.maybeBlockSuffix(stmt.handlers[i].body, result);
-              }
-            }
-          } else {
-            guardedHandlers = stmt.guardedHandlers || [];
-            for (i = 0, iz = guardedHandlers.length; i < iz; ++i) {
-              result = join(result, this.generateStatement(guardedHandlers[i], S_TFFF));
-              if (stmt.finalizer || i + 1 !== iz) {
-                result = this.maybeBlockSuffix(guardedHandlers[i].body, result);
-              }
-            }
-            if (stmt.handler) {
-              if (isArray(stmt.handler)) {
-                for (i = 0, iz = stmt.handler.length; i < iz; ++i) {
-                  result = join(result, this.generateStatement(stmt.handler[i], S_TFFF));
-                  if (stmt.finalizer || i + 1 !== iz) {
-                    result = this.maybeBlockSuffix(stmt.handler[i].body, result);
-                  }
-                }
-              } else {
-                result = join(result, this.generateStatement(stmt.handler, S_TFFF));
-                if (stmt.finalizer) {
-                  result = this.maybeBlockSuffix(stmt.handler.body, result);
-                }
-              }
-            }
-          }
-          if (stmt.finalizer) {
-            result = join(result, [
-              'finally',
-              this.maybeBlock(stmt.finalizer, S_TFFF)
-            ]);
-          }
-          return result;
-        },
-        SwitchStatement: function (stmt, flags) {
-          var result, fragment, i, iz, bodyFlags, that = this;
-          withIndent(function () {
-            result = [
-              'switch' + space + '(',
-              that.generateExpression(stmt.discriminant, Precedence.Sequence, E_TTT),
-              ')' + space + '{' + newline
-            ];
-          });
-          if (stmt.cases) {
-            bodyFlags = S_TFFF;
-            for (i = 0, iz = stmt.cases.length; i < iz; ++i) {
-              if (i === iz - 1) {
-                bodyFlags |= F_SEMICOLON_OPT;
-              }
-              fragment = addIndent(this.generateStatement(stmt.cases[i], bodyFlags));
-              result.push(fragment);
-              if (!endsWithLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
-                result.push(newline);
-              }
-            }
-          }
-          result.push(addIndent('}'));
-          return result;
-        },
-        SwitchCase: function (stmt, flags) {
-          var result, fragment, i, iz, bodyFlags, that = this;
-          withIndent(function () {
-            if (stmt.test) {
-              result = [
-                join('case', that.generateExpression(stmt.test, Precedence.Sequence, E_TTT)),
-                ':'
-              ];
-            } else {
-              result = ['default:'];
-            }
-            i = 0;
-            iz = stmt.consequent.length;
-            if (iz && stmt.consequent[0].type === Syntax.BlockStatement) {
-              fragment = that.maybeBlock(stmt.consequent[0], S_TFFF);
-              result.push(fragment);
-              i = 1;
-            }
-            if (i !== iz && !endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString())) {
-              result.push(newline);
-            }
-            bodyFlags = S_TFFF;
-            for (; i < iz; ++i) {
-              if (i === iz - 1 && flags & F_SEMICOLON_OPT) {
-                bodyFlags |= F_SEMICOLON_OPT;
-              }
-              fragment = addIndent(that.generateStatement(stmt.consequent[i], bodyFlags));
-              result.push(fragment);
-              if (i + 1 !== iz && !endsWithLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
-                result.push(newline);
-              }
-            }
-          });
-          return result;
-        },
-        IfStatement: function (stmt, flags) {
-          var result, bodyFlags, semicolonOptional, that = this;
-          withIndent(function () {
-            result = [
-              'if' + space + '(',
-              that.generateExpression(stmt.test, Precedence.Sequence, E_TTT),
-              ')'
-            ];
-          });
-          semicolonOptional = flags & F_SEMICOLON_OPT;
-          bodyFlags = S_TFFF;
-          if (semicolonOptional) {
-            bodyFlags |= F_SEMICOLON_OPT;
-          }
-          if (stmt.alternate) {
-            result.push(this.maybeBlock(stmt.consequent, S_TFFF));
-            result = this.maybeBlockSuffix(stmt.consequent, result);
-            if (stmt.alternate.type === Syntax.IfStatement) {
-              result = join(result, [
-                'else ',
-                this.generateStatement(stmt.alternate, bodyFlags)
-              ]);
-            } else {
-              result = join(result, join('else', this.maybeBlock(stmt.alternate, bodyFlags)));
-            }
-          } else {
-            result.push(this.maybeBlock(stmt.consequent, bodyFlags));
-          }
-          return result;
-        },
-        ForStatement: function (stmt, flags) {
-          var result, that = this;
-          withIndent(function () {
-            result = ['for' + space + '('];
-            if (stmt.init) {
-              if (stmt.init.type === Syntax.VariableDeclaration) {
-                result.push(that.generateStatement(stmt.init, S_FFFF));
-              } else {
-                result.push(that.generateExpression(stmt.init, Precedence.Sequence, E_FTT));
-                result.push(';');
-              }
-            } else {
-              result.push(';');
-            }
-            if (stmt.test) {
-              result.push(space);
-              result.push(that.generateExpression(stmt.test, Precedence.Sequence, E_TTT));
-              result.push(';');
-            } else {
-              result.push(';');
-            }
-            if (stmt.update) {
-              result.push(space);
-              result.push(that.generateExpression(stmt.update, Precedence.Sequence, E_TTT));
-              result.push(')');
-            } else {
-              result.push(')');
-            }
-          });
-          result.push(this.maybeBlock(stmt.body, flags & F_SEMICOLON_OPT ? S_TFFT : S_TFFF));
-          return result;
-        },
-        ForInStatement: function (stmt, flags) {
-          return this.generateIterationForStatement('in', stmt, flags & F_SEMICOLON_OPT ? S_TFFT : S_TFFF);
-        },
-        ForOfStatement: function (stmt, flags) {
-          return this.generateIterationForStatement('of', stmt, flags & F_SEMICOLON_OPT ? S_TFFT : S_TFFF);
-        },
-        LabeledStatement: function (stmt, flags) {
-          return [
-            stmt.label.name + ':',
-            this.maybeBlock(stmt.body, flags & F_SEMICOLON_OPT ? S_TFFT : S_TFFF)
-          ];
-        },
-        Program: function (stmt, flags) {
-          var result, fragment, i, iz, bodyFlags;
-          iz = stmt.body.length;
-          result = [safeConcatenation && iz > 0 ? '\n' : ''];
-          bodyFlags = S_TFTF;
-          for (i = 0; i < iz; ++i) {
-            if (!safeConcatenation && i === iz - 1) {
-              bodyFlags |= F_SEMICOLON_OPT;
-            }
-            fragment = addIndent(this.generateStatement(stmt.body[i], bodyFlags));
-            result.push(fragment);
-            if (i + 1 < iz && !endsWithLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
-              result.push(newline);
-            }
-          }
-          return result;
-        },
-        FunctionDeclaration: function (stmt, flags) {
-          var isGenerator = stmt.generator && !extra.moz.starlessGenerator;
-          return [
-            isGenerator ? 'function*' : 'function',
-            isGenerator ? space : noEmptySpace(),
-            generateIdentifier(stmt.id),
-            this.generateFunctionBody(stmt)
-          ];
-        },
-        ReturnStatement: function (stmt, flags) {
-          if (stmt.argument) {
-            return [
-              join('return', this.generateExpression(stmt.argument, Precedence.Sequence, E_TTT)),
-              this.semicolon(flags)
-            ];
-          }
-          return ['return' + this.semicolon(flags)];
-        },
-        WhileStatement: function (stmt, flags) {
-          var result, that = this;
-          withIndent(function () {
-            result = [
-              'while' + space + '(',
-              that.generateExpression(stmt.test, Precedence.Sequence, E_TTT),
-              ')'
-            ];
-          });
-          result.push(this.maybeBlock(stmt.body, flags & F_SEMICOLON_OPT ? S_TFFT : S_TFFF));
-          return result;
-        },
-        WithStatement: function (stmt, flags) {
-          var result, that = this;
-          withIndent(function () {
-            result = [
-              'with' + space + '(',
-              that.generateExpression(stmt.object, Precedence.Sequence, E_TTT),
-              ')'
-            ];
-          });
-          result.push(this.maybeBlock(stmt.body, flags & F_SEMICOLON_OPT ? S_TFFT : S_TFFF));
-          return result;
-        }
-      };
-      merge(CodeGenerator.prototype, CodeGenerator.Statement);
-      CodeGenerator.Expression = {
-        SequenceExpression: function (expr, precedence, flags) {
-          var result, i, iz;
-          if (Precedence.Sequence < precedence) {
-            flags |= F_ALLOW_IN;
-          }
+        switch (type) {
+        case Syntax.SequenceExpression:
           result = [];
-          for (i = 0, iz = expr.expressions.length; i < iz; ++i) {
-            result.push(this.generateExpression(expr.expressions[i], Precedence.Assignment, flags));
-            if (i + 1 < iz) {
+          allowIn |= Precedence.Sequence < precedence;
+          for (i = 0, len = expr.expressions.length; i < len; ++i) {
+            result.push(generateExpression(expr.expressions[i], {
+              precedence: Precedence.Assignment,
+              allowIn: allowIn,
+              allowCall: true
+            }));
+            if (i + 1 < len) {
               result.push(',' + space);
             }
           }
-          return parenthesize(result, Precedence.Sequence, precedence);
-        },
-        AssignmentExpression: function (expr, precedence, flags) {
-          return this.generateAssignment(expr.left, expr.right, expr.operator, precedence, flags);
-        },
-        ArrowFunctionExpression: function (expr, precedence, flags) {
-          return parenthesize(this.generateFunctionBody(expr), Precedence.ArrowFunction, precedence);
-        },
-        ConditionalExpression: function (expr, precedence, flags) {
-          if (Precedence.Conditional < precedence) {
-            flags |= F_ALLOW_IN;
-          }
-          return parenthesize([
-            this.generateExpression(expr.test, Precedence.LogicalOR, flags),
+          result = parenthesize(result, Precedence.Sequence, precedence);
+          break;
+        case Syntax.AssignmentExpression:
+          result = generateAssignment(expr.left, expr.right, expr.operator, option);
+          break;
+        case Syntax.ArrowFunctionExpression:
+          allowIn |= Precedence.ArrowFunction < precedence;
+          result = parenthesize(generateFunctionBody(expr), Precedence.ArrowFunction, precedence);
+          break;
+        case Syntax.ConditionalExpression:
+          allowIn |= Precedence.Conditional < precedence;
+          result = parenthesize([
+            generateExpression(expr.test, {
+              precedence: Precedence.LogicalOR,
+              allowIn: allowIn,
+              allowCall: true
+            }),
             space + '?' + space,
-            this.generateExpression(expr.consequent, Precedence.Assignment, flags),
+            generateExpression(expr.consequent, {
+              precedence: Precedence.Assignment,
+              allowIn: allowIn,
+              allowCall: true
+            }),
             space + ':' + space,
-            this.generateExpression(expr.alternate, Precedence.Assignment, flags)
+            generateExpression(expr.alternate, {
+              precedence: Precedence.Assignment,
+              allowIn: allowIn,
+              allowCall: true
+            })
           ], Precedence.Conditional, precedence);
-        },
-        LogicalExpression: function (expr, precedence, flags) {
-          return this.BinaryExpression(expr, precedence, flags);
-        },
-        BinaryExpression: function (expr, precedence, flags) {
-          var result, currentPrecedence, fragment, leftSource;
+          break;
+        case Syntax.LogicalExpression:
+        case Syntax.BinaryExpression:
           currentPrecedence = BinaryPrecedence[expr.operator];
-          if (currentPrecedence < precedence) {
-            flags |= F_ALLOW_IN;
-          }
-          fragment = this.generateExpression(expr.left, currentPrecedence, flags);
+          allowIn |= currentPrecedence < precedence;
+          fragment = generateExpression(expr.left, {
+            precedence: currentPrecedence,
+            allowIn: allowIn,
+            allowCall: true
+          });
           leftSource = fragment.toString();
           if (leftSource.charCodeAt(leftSource.length - 1) === 47 && esutils.code.isIdentifierPart(expr.operator.charCodeAt(0))) {
             result = [
@@ -23151,65 +22544,95 @@ parseStatement: true, parseSourceElement: true */
           } else {
             result = join(fragment, expr.operator);
           }
-          fragment = this.generateExpression(expr.right, currentPrecedence + 1, flags);
+          fragment = generateExpression(expr.right, {
+            precedence: currentPrecedence + 1,
+            allowIn: allowIn,
+            allowCall: true
+          });
           if (expr.operator === '/' && fragment.toString().charAt(0) === '/' || expr.operator.slice(-1) === '<' && fragment.toString().slice(0, 3) === '!--') {
             result.push(noEmptySpace());
             result.push(fragment);
           } else {
             result = join(result, fragment);
           }
-          if (expr.operator === 'in' && !(flags & F_ALLOW_IN)) {
-            return [
+          if (expr.operator === 'in' && !allowIn) {
+            result = [
               '(',
               result,
               ')'
             ];
+          } else {
+            result = parenthesize(result, currentPrecedence, precedence);
           }
-          return parenthesize(result, currentPrecedence, precedence);
-        },
-        CallExpression: function (expr, precedence, flags) {
-          var result, i, iz;
-          result = [this.generateExpression(expr.callee, Precedence.Call, E_TTF)];
+          break;
+        case Syntax.CallExpression:
+          result = [generateExpression(expr.callee, {
+              precedence: Precedence.Call,
+              allowIn: true,
+              allowCall: true,
+              allowUnparenthesizedNew: false
+            })];
           result.push('(');
-          for (i = 0, iz = expr['arguments'].length; i < iz; ++i) {
-            result.push(this.generateExpression(expr['arguments'][i], Precedence.Assignment, E_TTT));
-            if (i + 1 < iz) {
+          for (i = 0, len = expr['arguments'].length; i < len; ++i) {
+            result.push(generateExpression(expr['arguments'][i], {
+              precedence: Precedence.Assignment,
+              allowIn: true,
+              allowCall: true
+            }));
+            if (i + 1 < len) {
               result.push(',' + space);
             }
           }
           result.push(')');
-          if (!(flags & F_ALLOW_CALL)) {
-            return [
+          if (!allowCall) {
+            result = [
               '(',
               result,
               ')'
             ];
+          } else {
+            result = parenthesize(result, Precedence.Call, precedence);
           }
-          return parenthesize(result, Precedence.Call, precedence);
-        },
-        NewExpression: function (expr, precedence, flags) {
-          var result, length, i, iz, itemFlags;
-          length = expr['arguments'].length;
-          itemFlags = flags & F_ALLOW_UNPARATH_NEW && !parentheses && length === 0 ? E_TFT : E_TFF;
-          result = join('new', this.generateExpression(expr.callee, Precedence.New, itemFlags));
-          if (!(flags & F_ALLOW_UNPARATH_NEW) || parentheses || length > 0) {
+          break;
+        case Syntax.NewExpression:
+          len = expr['arguments'].length;
+          allowUnparenthesizedNew = option.allowUnparenthesizedNew === undefined || option.allowUnparenthesizedNew;
+          result = join('new', generateExpression(expr.callee, {
+            precedence: Precedence.New,
+            allowIn: true,
+            allowCall: false,
+            allowUnparenthesizedNew: allowUnparenthesizedNew && !parentheses && len === 0
+          }));
+          if (!allowUnparenthesizedNew || parentheses || len > 0) {
             result.push('(');
-            for (i = 0, iz = length; i < iz; ++i) {
-              result.push(this.generateExpression(expr['arguments'][i], Precedence.Assignment, E_TTT));
-              if (i + 1 < iz) {
+            for (i = 0; i < len; ++i) {
+              result.push(generateExpression(expr['arguments'][i], {
+                precedence: Precedence.Assignment,
+                allowIn: true,
+                allowCall: true
+              }));
+              if (i + 1 < len) {
                 result.push(',' + space);
               }
             }
             result.push(')');
           }
-          return parenthesize(result, Precedence.New, precedence);
-        },
-        MemberExpression: function (expr, precedence, flags) {
-          var result, fragment;
-          result = [this.generateExpression(expr.object, Precedence.Call, flags & F_ALLOW_CALL ? E_TTF : E_TFF)];
+          result = parenthesize(result, Precedence.New, precedence);
+          break;
+        case Syntax.MemberExpression:
+          result = [generateExpression(expr.object, {
+              precedence: Precedence.Call,
+              allowIn: true,
+              allowCall: allowCall,
+              allowUnparenthesizedNew: false
+            })];
           if (expr.computed) {
             result.push('[');
-            result.push(this.generateExpression(expr.property, Precedence.Sequence, flags & F_ALLOW_CALL ? E_TTT : E_TFT));
+            result.push(generateExpression(expr.property, {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: allowCall
+            }));
             result.push(']');
           } else {
             if (expr.object.type === Syntax.Literal && typeof expr.object.value === 'number') {
@@ -23221,11 +22644,14 @@ parseStatement: true, parseSourceElement: true */
             result.push('.');
             result.push(generateIdentifier(expr.property));
           }
-          return parenthesize(result, Precedence.Member, precedence);
-        },
-        UnaryExpression: function (expr, precedence, flags) {
-          var result, fragment, rightCharCode, leftSource, leftCharCode;
-          fragment = this.generateExpression(expr.argument, Precedence.Unary, E_TTT);
+          result = parenthesize(result, Precedence.Member, precedence);
+          break;
+        case Syntax.UnaryExpression:
+          fragment = generateExpression(expr.argument, {
+            precedence: Precedence.Unary,
+            allowIn: true,
+            allowCall: true
+          });
           if (space === '') {
             result = join(expr.operator, fragment);
           } else {
@@ -23244,59 +22670,69 @@ parseStatement: true, parseSourceElement: true */
               }
             }
           }
-          return parenthesize(result, Precedence.Unary, precedence);
-        },
-        YieldExpression: function (expr, precedence, flags) {
-          var result;
+          result = parenthesize(result, Precedence.Unary, precedence);
+          break;
+        case Syntax.YieldExpression:
           if (expr.delegate) {
             result = 'yield*';
           } else {
             result = 'yield';
           }
           if (expr.argument) {
-            result = join(result, this.generateExpression(expr.argument, Precedence.Yield, E_TTT));
+            result = join(result, generateExpression(expr.argument, {
+              precedence: Precedence.Yield,
+              allowIn: true,
+              allowCall: true
+            }));
           }
-          return parenthesize(result, Precedence.Yield, precedence);
-        },
-        UpdateExpression: function (expr, precedence, flags) {
+          result = parenthesize(result, Precedence.Yield, precedence);
+          break;
+        case Syntax.UpdateExpression:
           if (expr.prefix) {
-            return parenthesize([
+            result = parenthesize([
               expr.operator,
-              this.generateExpression(expr.argument, Precedence.Unary, E_TTT)
+              generateExpression(expr.argument, {
+                precedence: Precedence.Unary,
+                allowIn: true,
+                allowCall: true
+              })
             ], Precedence.Unary, precedence);
+          } else {
+            result = parenthesize([
+              generateExpression(expr.argument, {
+                precedence: Precedence.Postfix,
+                allowIn: true,
+                allowCall: true
+              }),
+              expr.operator
+            ], Precedence.Postfix, precedence);
           }
-          return parenthesize([
-            this.generateExpression(expr.argument, Precedence.Postfix, E_TTT),
-            expr.operator
-          ], Precedence.Postfix, precedence);
-        },
-        FunctionExpression: function (expr, precedence, flags) {
-          var result, isGenerator;
+          break;
+        case Syntax.FunctionExpression:
           isGenerator = expr.generator && !extra.moz.starlessGenerator;
           result = isGenerator ? 'function*' : 'function';
           if (expr.id) {
-            return [
+            result = [
               result,
               isGenerator ? space : noEmptySpace(),
               generateIdentifier(expr.id),
-              this.generateFunctionBody(expr)
+              generateFunctionBody(expr)
+            ];
+          } else {
+            result = [
+              result + space,
+              generateFunctionBody(expr)
             ];
           }
-          return [
-            result + space,
-            this.generateFunctionBody(expr)
-          ];
-        },
-        ExportBatchSpecifier: function (expr, precedence, flags) {
-          return '*';
-        },
-        ArrayPattern: function (expr, precedence, flags) {
-          return this.ArrayExpression(expr, precedence, flags);
-        },
-        ArrayExpression: function (expr, precedence, flags) {
-          var result, multiline, that = this;
+          break;
+        case Syntax.ExportBatchSpecifier:
+          result = '*';
+          break;
+        case Syntax.ArrayPattern:
+        case Syntax.ArrayExpression:
           if (!expr.elements.length) {
-            return '[]';
+            result = '[]';
+            break;
           }
           multiline = expr.elements.length > 1;
           result = [
@@ -23304,20 +22740,23 @@ parseStatement: true, parseSourceElement: true */
             multiline ? newline : ''
           ];
           withIndent(function (indent) {
-            var i, iz;
-            for (i = 0, iz = expr.elements.length; i < iz; ++i) {
+            for (i = 0, len = expr.elements.length; i < len; ++i) {
               if (!expr.elements[i]) {
                 if (multiline) {
                   result.push(indent);
                 }
-                if (i + 1 === iz) {
+                if (i + 1 === len) {
                   result.push(',');
                 }
               } else {
                 result.push(multiline ? indent : '');
-                result.push(that.generateExpression(expr.elements[i], Precedence.Assignment, E_TTT));
+                result.push(generateExpression(expr.elements[i], {
+                  precedence: Precedence.Assignment,
+                  allowIn: true,
+                  allowCall: true
+                }));
               }
-              if (i + 1 < iz) {
+              if (i + 1 < len) {
                 result.push(',' + (multiline ? newline : space));
               }
             }
@@ -23327,24 +22766,30 @@ parseStatement: true, parseSourceElement: true */
           }
           result.push(multiline ? base : '');
           result.push(']');
-          return result;
-        },
-        ClassExpression: function (expr, precedence, flags) {
-          var result, fragment;
+          break;
+        case Syntax.ClassExpression:
           result = ['class'];
           if (expr.id) {
-            result = join(result, this.generateExpression(expr.id, Precedence.Sequence, E_TTT));
+            result = join(result, generateExpression(expr.id, {
+              allowIn: true,
+              allowCall: true
+            }));
           }
           if (expr.superClass) {
-            fragment = join('extends', this.generateExpression(expr.superClass, Precedence.Assignment, E_TTT));
+            fragment = join('extends', generateExpression(expr.superClass, {
+              precedence: Precedence.Assignment,
+              allowIn: true,
+              allowCall: true
+            }));
             result = join(result, fragment);
           }
           result.push(space);
-          result.push(this.generateStatement(expr.body, S_TFFT));
-          return result;
-        },
-        MethodDefinition: function (expr, precedence, flags) {
-          var result, fragment;
+          result.push(generateStatement(expr.body, {
+            semicolonOptional: true,
+            directiveContext: false
+          }));
+          break;
+        case Syntax.MethodDefinition:
           if (expr['static']) {
             result = ['static' + space];
           } else {
@@ -23352,13 +22797,21 @@ parseStatement: true, parseSourceElement: true */
           }
           if (expr.kind === 'get' || expr.kind === 'set') {
             result = join(result, [
-              join(expr.kind, this.generatePropertyKey(expr.key, expr.computed)),
-              this.generateFunctionBody(expr.value)
+              join(expr.kind, generatePropertyKey(expr.key, expr.computed, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              })),
+              generateFunctionBody(expr.value)
             ]);
           } else {
             fragment = [
-              this.generatePropertyKey(expr.key, expr.computed),
-              this.generateFunctionBody(expr.value)
+              generatePropertyKey(expr.key, expr.computed, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }),
+              generateFunctionBody(expr.value)
             ];
             if (expr.value.generator) {
               result.push('*');
@@ -23367,58 +22820,81 @@ parseStatement: true, parseSourceElement: true */
               result = join(result, fragment);
             }
           }
-          return result;
-        },
-        Property: function (expr, precedence, flags) {
-          var result;
+          break;
+        case Syntax.Property:
           if (expr.kind === 'get' || expr.kind === 'set') {
-            return [
+            result = [
               expr.kind,
               noEmptySpace(),
-              this.generatePropertyKey(expr.key, expr.computed),
-              this.generateFunctionBody(expr.value)
+              generatePropertyKey(expr.key, expr.computed, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }),
+              generateFunctionBody(expr.value)
             ];
-          }
-          if (expr.shorthand) {
-            return this.generatePropertyKey(expr.key, expr.computed);
-          }
-          if (expr.method) {
-            result = [];
-            if (expr.value.generator) {
-              result.push('*');
+          } else {
+            if (expr.shorthand) {
+              result = generatePropertyKey(expr.key, expr.computed, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              });
+            } else if (expr.method) {
+              result = [];
+              if (expr.value.generator) {
+                result.push('*');
+              }
+              result.push(generatePropertyKey(expr.key, expr.computed, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }));
+              result.push(generateFunctionBody(expr.value));
+            } else {
+              result = [
+                generatePropertyKey(expr.key, expr.computed, {
+                  precedence: Precedence.Sequence,
+                  allowIn: true,
+                  allowCall: true
+                }),
+                ':' + space,
+                generateExpression(expr.value, {
+                  precedence: Precedence.Assignment,
+                  allowIn: true,
+                  allowCall: true
+                })
+              ];
             }
-            result.push(this.generatePropertyKey(expr.key, expr.computed));
-            result.push(this.generateFunctionBody(expr.value));
-            return result;
           }
-          return [
-            this.generatePropertyKey(expr.key, expr.computed),
-            ':' + space,
-            this.generateExpression(expr.value, Precedence.Assignment, E_TTT)
-          ];
-        },
-        ObjectExpression: function (expr, precedence, flags) {
-          var multiline, result, fragment, that = this;
+          break;
+        case Syntax.ObjectExpression:
           if (!expr.properties.length) {
-            return '{}';
+            result = '{}';
+            break;
           }
           multiline = expr.properties.length > 1;
           withIndent(function () {
-            fragment = that.generateExpression(expr.properties[0], Precedence.Sequence, E_TTT);
+            fragment = generateExpression(expr.properties[0], {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: true,
+              type: Syntax.Property
+            });
           });
           if (!multiline) {
             if (!hasLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
-              return [
+              result = [
                 '{',
                 space,
                 fragment,
                 space,
                 '}'
               ];
+              break;
             }
           }
           withIndent(function (indent) {
-            var i, iz;
             result = [
               '{',
               newline,
@@ -23427,10 +22903,15 @@ parseStatement: true, parseSourceElement: true */
             ];
             if (multiline) {
               result.push(',' + newline);
-              for (i = 1, iz = expr.properties.length; i < iz; ++i) {
+              for (i = 1, len = expr.properties.length; i < len; ++i) {
                 result.push(indent);
-                result.push(that.generateExpression(expr.properties[i], Precedence.Sequence, E_TTT));
-                if (i + 1 < iz) {
+                result.push(generateExpression(expr.properties[i], {
+                  precedence: Precedence.Sequence,
+                  allowIn: true,
+                  allowCall: true,
+                  type: Syntax.Property
+                }));
+                if (i + 1 < len) {
                   result.push(',' + newline);
                 }
               }
@@ -23441,12 +22922,11 @@ parseStatement: true, parseSourceElement: true */
           }
           result.push(base);
           result.push('}');
-          return result;
-        },
-        ObjectPattern: function (expr, precedence, flags) {
-          var result, i, iz, multiline, property, that = this;
+          break;
+        case Syntax.ObjectPattern:
           if (!expr.properties.length) {
-            return '{}';
+            result = '{}';
+            break;
           }
           multiline = false;
           if (expr.properties.length === 1) {
@@ -23455,7 +22935,7 @@ parseStatement: true, parseSourceElement: true */
               multiline = true;
             }
           } else {
-            for (i = 0, iz = expr.properties.length; i < iz; ++i) {
+            for (i = 0, len = expr.properties.length; i < len; ++i) {
               property = expr.properties[i];
               if (!property.shorthand) {
                 multiline = true;
@@ -23468,11 +22948,14 @@ parseStatement: true, parseSourceElement: true */
             multiline ? newline : ''
           ];
           withIndent(function (indent) {
-            var i, iz;
-            for (i = 0, iz = expr.properties.length; i < iz; ++i) {
+            for (i = 0, len = expr.properties.length; i < len; ++i) {
               result.push(multiline ? indent : '');
-              result.push(that.generateExpression(expr.properties[i], Precedence.Sequence, E_TTT));
-              if (i + 1 < iz) {
+              result.push(generateExpression(expr.properties[i], {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }));
+              if (i + 1 < len) {
                 result.push(',' + (multiline ? newline : space));
               }
             }
@@ -23482,75 +22965,42 @@ parseStatement: true, parseSourceElement: true */
           }
           result.push(multiline ? base : '');
           result.push('}');
-          return result;
-        },
-        ThisExpression: function (expr, precedence, flags) {
-          return 'this';
-        },
-        Identifier: function (expr, precedence, flags) {
-          return generateIdentifier(expr);
-        },
-        ImportDefaultSpecifier: function (expr, precedence, flags) {
-          return generateIdentifier(expr.id);
-        },
-        ImportNamespaceSpecifier: function (expr, precedence, flags) {
-          var result = ['*'];
-          if (expr.id) {
-            result.push(space + 'as' + noEmptySpace() + generateIdentifier(expr.id));
-          }
-          return result;
-        },
-        ImportSpecifier: function (expr, precedence, flags) {
-          return this.ExportSpecifier(expr, precedence, flags);
-        },
-        ExportSpecifier: function (expr, precedence, flags) {
-          var result = [expr.id.name];
+          break;
+        case Syntax.ThisExpression:
+          result = 'this';
+          break;
+        case Syntax.Identifier:
+          result = generateIdentifier(expr);
+          break;
+        case Syntax.ImportSpecifier:
+        case Syntax.ExportSpecifier:
+          result = [expr.id.name];
           if (expr.name) {
-            result.push(noEmptySpace() + 'as' + noEmptySpace() + generateIdentifier(expr.name));
+            result.push(noEmptySpace() + 'as' + noEmptySpace() + expr.name.name);
           }
-          return result;
-        },
-        Literal: function (expr, precedence, flags) {
-          var raw;
-          if (expr.hasOwnProperty('raw') && parse && extra.raw) {
-            try {
-              raw = parse(expr.raw).body[0].expression;
-              if (raw.type === Syntax.Literal) {
-                if (raw.value === expr.value) {
-                  return expr.raw;
-                }
-              }
-            } catch (e) {
-            }
-          }
-          if (expr.value === null) {
-            return 'null';
-          }
-          if (typeof expr.value === 'string') {
-            return escapeString(expr.value);
-          }
-          if (typeof expr.value === 'number') {
-            return generateNumber(expr.value);
-          }
-          if (typeof expr.value === 'boolean') {
-            return expr.value ? 'true' : 'false';
-          }
-          return generateRegExp(expr.value);
-        },
-        GeneratorExpression: function (expr, precedence, flags) {
-          return this.ComprehensionExpression(expr, precedence, flags);
-        },
-        ComprehensionExpression: function (expr, precedence, flags) {
-          var result, i, iz, fragment, that = this;
-          result = expr.type === Syntax.GeneratorExpression ? ['('] : ['['];
+          break;
+        case Syntax.Literal:
+          result = generateLiteral(expr);
+          break;
+        case Syntax.GeneratorExpression:
+        case Syntax.ComprehensionExpression:
+          result = type === Syntax.GeneratorExpression ? ['('] : ['['];
           if (extra.moz.comprehensionExpressionStartsWithAssignment) {
-            fragment = this.generateExpression(expr.body, Precedence.Assignment, E_TTT);
+            fragment = generateExpression(expr.body, {
+              precedence: Precedence.Assignment,
+              allowIn: true,
+              allowCall: true
+            });
             result.push(fragment);
           }
           if (expr.blocks) {
             withIndent(function () {
-              for (i = 0, iz = expr.blocks.length; i < iz; ++i) {
-                fragment = that.generateExpression(expr.blocks[i], Precedence.Sequence, E_TTT);
+              for (i = 0, len = expr.blocks.length; i < len; ++i) {
+                fragment = generateExpression(expr.blocks[i], {
+                  precedence: Precedence.Sequence,
+                  allowIn: true,
+                  allowCall: true
+                });
                 if (i > 0 || extra.moz.comprehensionExpressionStartsWithAssignment) {
                   result = join(result, fragment);
                 } else {
@@ -23561,7 +23011,11 @@ parseStatement: true, parseSourceElement: true */
           }
           if (expr.filter) {
             result = join(result, 'if' + space);
-            fragment = this.generateExpression(expr.filter, Precedence.Sequence, E_TTT);
+            fragment = generateExpression(expr.filter, {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: true
+            });
             result = join(result, [
               '(',
               fragment,
@@ -23569,85 +23023,643 @@ parseStatement: true, parseSourceElement: true */
             ]);
           }
           if (!extra.moz.comprehensionExpressionStartsWithAssignment) {
-            fragment = this.generateExpression(expr.body, Precedence.Assignment, E_TTT);
+            fragment = generateExpression(expr.body, {
+              precedence: Precedence.Assignment,
+              allowIn: true,
+              allowCall: true
+            });
             result = join(result, fragment);
           }
-          result.push(expr.type === Syntax.GeneratorExpression ? ')' : ']');
-          return result;
-        },
-        ComprehensionBlock: function (expr, precedence, flags) {
-          var fragment;
+          result.push(type === Syntax.GeneratorExpression ? ')' : ']');
+          break;
+        case Syntax.ComprehensionBlock:
           if (expr.left.type === Syntax.VariableDeclaration) {
             fragment = [
               expr.left.kind,
               noEmptySpace(),
-              this.generateStatement(expr.left.declarations[0], S_FFFF)
+              generateStatement(expr.left.declarations[0], { allowIn: false })
             ];
           } else {
-            fragment = this.generateExpression(expr.left, Precedence.Call, E_TTT);
+            fragment = generateExpression(expr.left, {
+              precedence: Precedence.Call,
+              allowIn: true,
+              allowCall: true
+            });
           }
           fragment = join(fragment, expr.of ? 'of' : 'in');
-          fragment = join(fragment, this.generateExpression(expr.right, Precedence.Sequence, E_TTT));
-          return [
+          fragment = join(fragment, generateExpression(expr.right, {
+            precedence: Precedence.Sequence,
+            allowIn: true,
+            allowCall: true
+          }));
+          result = [
             'for' + space + '(',
             fragment,
             ')'
           ];
-        },
-        SpreadElement: function (expr, precedence, flags) {
-          return [
+          break;
+        case Syntax.SpreadElement:
+          result = [
             '...',
-            this.generateExpression(expr.argument, Precedence.Assignment, E_TTT)
+            generateExpression(expr.argument, {
+              precedence: Precedence.Assignment,
+              allowIn: true,
+              allowCall: true
+            })
           ];
-        },
-        TaggedTemplateExpression: function (expr, precedence, flags) {
-          var itemFlags = E_TTF;
-          if (!(flags & F_ALLOW_CALL)) {
-            itemFlags = E_TFF;
-          }
-          var result = [
-              this.generateExpression(expr.tag, Precedence.Call, itemFlags),
-              this.generateExpression(expr.quasi, Precedence.Primary, E_FFT)
-            ];
-          return parenthesize(result, Precedence.TaggedTemplate, precedence);
-        },
-        TemplateElement: function (expr, precedence, flags) {
-          return expr.value.raw;
-        },
-        TemplateLiteral: function (expr, precedence, flags) {
-          var result, i, iz;
+          break;
+        case Syntax.TaggedTemplateExpression:
+          result = [
+            generateExpression(expr.tag, {
+              precedence: Precedence.Call,
+              allowIn: true,
+              allowCall: allowCall,
+              allowUnparenthesizedNew: false
+            }),
+            generateExpression(expr.quasi, { precedence: Precedence.Primary })
+          ];
+          result = parenthesize(result, Precedence.TaggedTemplate, precedence);
+          break;
+        case Syntax.TemplateElement:
+          result = expr.value.raw;
+          break;
+        case Syntax.TemplateLiteral:
           result = ['`'];
-          for (i = 0, iz = expr.quasis.length; i < iz; ++i) {
-            result.push(this.generateExpression(expr.quasis[i], Precedence.Primary, E_TTT));
-            if (i + 1 < iz) {
+          for (i = 0, len = expr.quasis.length; i < len; ++i) {
+            result.push(generateExpression(expr.quasis[i], {
+              precedence: Precedence.Primary,
+              allowIn: true,
+              allowCall: true
+            }));
+            if (i + 1 < len) {
               result.push('${' + space);
-              result.push(this.generateExpression(expr.expressions[i], Precedence.Sequence, E_TTT));
+              result.push(generateExpression(expr.expressions[i], {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }));
               result.push(space + '}');
             }
           }
           result.push('`');
-          return result;
-        },
-        ModuleSpecifier: function (expr, precedence, flags) {
-          return this.Literal(expr, precedence, flags);
+          break;
+        default:
+          throw new Error('Unknown expression type: ' + expr.type);
         }
-      };
-      merge(CodeGenerator.prototype, CodeGenerator.Expression);
-      CodeGenerator.prototype.generateExpression = function (expr, precedence, flags) {
-        var result, type;
-        type = expr.type || Syntax.Property;
-        if (extra.verbatim && expr.hasOwnProperty(extra.verbatim)) {
-          return generateVerbatim(expr, precedence);
-        }
-        result = this[type](expr, precedence, flags);
         if (extra.comment) {
           result = addComments(expr, result);
         }
         return toSourceNodeWhenNeeded(result, expr);
-      };
-      CodeGenerator.prototype.generateStatement = function (stmt, flags) {
-        var result, fragment;
-        result = this[stmt.type](stmt, flags);
+      }
+      function generateImportDeclaration(stmt, semicolon) {
+        var result, namedStart;
+        if (stmt.specifiers.length === 0) {
+          return [
+            'import',
+            space,
+            generateLiteral(stmt.source),
+            semicolon
+          ];
+        }
+        result = ['import'];
+        namedStart = 0;
+        if (stmt.specifiers[0]['default']) {
+          result = join(result, [stmt.specifiers[0].id.name]);
+          ++namedStart;
+        }
+        if (stmt.specifiers[namedStart]) {
+          if (namedStart !== 0) {
+            result.push(',');
+          }
+          result.push(space + '{');
+          if (stmt.specifiers.length - namedStart === 1) {
+            result.push(space);
+            result.push(generateExpression(stmt.specifiers[namedStart], {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: true
+            }));
+            result.push(space + '}' + space);
+          } else {
+            withIndent(function (indent) {
+              var i, iz;
+              result.push(newline);
+              for (i = namedStart, iz = stmt.specifiers.length; i < iz; ++i) {
+                result.push(indent);
+                result.push(generateExpression(stmt.specifiers[i], {
+                  precedence: Precedence.Sequence,
+                  allowIn: true,
+                  allowCall: true
+                }));
+                if (i + 1 < iz) {
+                  result.push(',' + newline);
+                }
+              }
+            });
+            if (!endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString())) {
+              result.push(newline);
+            }
+            result.push(base + '}' + space);
+          }
+        }
+        result = join(result, [
+          'from' + space,
+          generateLiteral(stmt.source),
+          semicolon
+        ]);
+        return result;
+      }
+      function generateStatement(stmt, option) {
+        var i, len, result, allowIn, functionBody, directiveContext, fragment, semicolon, isGenerator, guardedHandlers;
+        allowIn = true;
+        semicolon = ';';
+        functionBody = false;
+        directiveContext = false;
+        if (option) {
+          allowIn = option.allowIn === undefined || option.allowIn;
+          if (!semicolons && option.semicolonOptional === true) {
+            semicolon = '';
+          }
+          functionBody = option.functionBody;
+          directiveContext = option.directiveContext;
+        }
+        switch (stmt.type) {
+        case Syntax.BlockStatement:
+          result = [
+            '{',
+            newline
+          ];
+          withIndent(function () {
+            for (i = 0, len = stmt.body.length; i < len; ++i) {
+              fragment = addIndent(generateStatement(stmt.body[i], {
+                semicolonOptional: i === len - 1,
+                directiveContext: functionBody
+              }));
+              result.push(fragment);
+              if (!endsWithLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
+                result.push(newline);
+              }
+            }
+          });
+          result.push(addIndent('}'));
+          break;
+        case Syntax.BreakStatement:
+          if (stmt.label) {
+            result = 'break ' + stmt.label.name + semicolon;
+          } else {
+            result = 'break' + semicolon;
+          }
+          break;
+        case Syntax.ContinueStatement:
+          if (stmt.label) {
+            result = 'continue ' + stmt.label.name + semicolon;
+          } else {
+            result = 'continue' + semicolon;
+          }
+          break;
+        case Syntax.ClassBody:
+          result = generateClassBody(stmt);
+          break;
+        case Syntax.ClassDeclaration:
+          result = ['class ' + stmt.id.name];
+          if (stmt.superClass) {
+            fragment = join('extends', generateExpression(stmt.superClass, {
+              precedence: Precedence.Assignment,
+              allowIn: true,
+              allowCall: true
+            }));
+            result = join(result, fragment);
+          }
+          result.push(space);
+          result.push(generateStatement(stmt.body, {
+            semicolonOptional: true,
+            directiveContext: false
+          }));
+          break;
+        case Syntax.DirectiveStatement:
+          if (extra.raw && stmt.raw) {
+            result = stmt.raw + semicolon;
+          } else {
+            result = escapeDirective(stmt.directive) + semicolon;
+          }
+          break;
+        case Syntax.DoWhileStatement:
+          result = join('do', maybeBlock(stmt.body));
+          result = maybeBlockSuffix(stmt.body, result);
+          result = join(result, [
+            'while' + space + '(',
+            generateExpression(stmt.test, {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: true
+            }),
+            ')' + semicolon
+          ]);
+          break;
+        case Syntax.CatchClause:
+          withIndent(function () {
+            var guard;
+            result = [
+              'catch' + space + '(',
+              generateExpression(stmt.param, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }),
+              ')'
+            ];
+            if (stmt.guard) {
+              guard = generateExpression(stmt.guard, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              });
+              result.splice(2, 0, ' if ', guard);
+            }
+          });
+          result.push(maybeBlock(stmt.body));
+          break;
+        case Syntax.DebuggerStatement:
+          result = 'debugger' + semicolon;
+          break;
+        case Syntax.EmptyStatement:
+          result = ';';
+          break;
+        case Syntax.ExportDeclaration:
+          result = ['export'];
+          if (stmt['default']) {
+            result = join(result, 'default');
+            result = join(result, generateExpression(stmt.declaration, {
+              precedence: Precedence.Assignment,
+              allowIn: true,
+              allowCall: true
+            }) + semicolon);
+            break;
+          }
+          if (stmt.specifiers) {
+            if (stmt.specifiers.length === 0) {
+              result = join(result, '{' + space + '}');
+            } else if (stmt.specifiers[0].type === Syntax.ExportBatchSpecifier) {
+              result = join(result, generateExpression(stmt.specifiers[0], {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }));
+            } else {
+              result = join(result, '{');
+              withIndent(function (indent) {
+                var i, iz;
+                result.push(newline);
+                for (i = 0, iz = stmt.specifiers.length; i < iz; ++i) {
+                  result.push(indent);
+                  result.push(generateExpression(stmt.specifiers[i], {
+                    precedence: Precedence.Sequence,
+                    allowIn: true,
+                    allowCall: true
+                  }));
+                  if (i + 1 < iz) {
+                    result.push(',' + newline);
+                  }
+                }
+              });
+              if (!endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString())) {
+                result.push(newline);
+              }
+              result.push(base + '}');
+            }
+            if (stmt.source) {
+              result = join(result, [
+                'from' + space,
+                generateLiteral(stmt.source),
+                semicolon
+              ]);
+            } else {
+              result.push(semicolon);
+            }
+            break;
+          }
+          if (stmt.declaration) {
+            result = join(result, generateStatement(stmt.declaration, { semicolonOptional: semicolon === '' }));
+          }
+          break;
+        case Syntax.ExpressionStatement:
+          result = [generateExpression(stmt.expression, {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: true
+            })];
+          fragment = toSourceNodeWhenNeeded(result).toString();
+          if (fragment.charAt(0) === '{' || fragment.slice(0, 5) === 'class' && ' {'.indexOf(fragment.charAt(5)) >= 0 || fragment.slice(0, 8) === 'function' && '* ('.indexOf(fragment.charAt(8)) >= 0 || directive && directiveContext && stmt.expression.type === Syntax.Literal && typeof stmt.expression.value === 'string') {
+            result = [
+              '(',
+              result,
+              ')' + semicolon
+            ];
+          } else {
+            result.push(semicolon);
+          }
+          break;
+        case Syntax.ImportDeclaration:
+          result = generateImportDeclaration(stmt, semicolon);
+          break;
+        case Syntax.VariableDeclarator:
+          if (stmt.init) {
+            result = [
+              generateExpression(stmt.id, {
+                precedence: Precedence.Assignment,
+                allowIn: allowIn,
+                allowCall: true
+              }),
+              space,
+              '=',
+              space,
+              generateExpression(stmt.init, {
+                precedence: Precedence.Assignment,
+                allowIn: allowIn,
+                allowCall: true
+              })
+            ];
+          } else {
+            result = generatePattern(stmt.id, {
+              precedence: Precedence.Assignment,
+              allowIn: allowIn
+            });
+          }
+          break;
+        case Syntax.VariableDeclaration:
+          result = generateVariableDeclaration(stmt, semicolon, allowIn);
+          break;
+        case Syntax.ThrowStatement:
+          result = [
+            join('throw', generateExpression(stmt.argument, {
+              precedence: Precedence.Sequence,
+              allowIn: true,
+              allowCall: true
+            })),
+            semicolon
+          ];
+          break;
+        case Syntax.TryStatement:
+          result = [
+            'try',
+            maybeBlock(stmt.block)
+          ];
+          result = maybeBlockSuffix(stmt.block, result);
+          if (stmt.handlers) {
+            for (i = 0, len = stmt.handlers.length; i < len; ++i) {
+              result = join(result, generateStatement(stmt.handlers[i]));
+              if (stmt.finalizer || i + 1 !== len) {
+                result = maybeBlockSuffix(stmt.handlers[i].body, result);
+              }
+            }
+          } else {
+            guardedHandlers = stmt.guardedHandlers || [];
+            for (i = 0, len = guardedHandlers.length; i < len; ++i) {
+              result = join(result, generateStatement(guardedHandlers[i]));
+              if (stmt.finalizer || i + 1 !== len) {
+                result = maybeBlockSuffix(guardedHandlers[i].body, result);
+              }
+            }
+            if (stmt.handler) {
+              if (isArray(stmt.handler)) {
+                for (i = 0, len = stmt.handler.length; i < len; ++i) {
+                  result = join(result, generateStatement(stmt.handler[i]));
+                  if (stmt.finalizer || i + 1 !== len) {
+                    result = maybeBlockSuffix(stmt.handler[i].body, result);
+                  }
+                }
+              } else {
+                result = join(result, generateStatement(stmt.handler));
+                if (stmt.finalizer) {
+                  result = maybeBlockSuffix(stmt.handler.body, result);
+                }
+              }
+            }
+          }
+          if (stmt.finalizer) {
+            result = join(result, [
+              'finally',
+              maybeBlock(stmt.finalizer)
+            ]);
+          }
+          break;
+        case Syntax.SwitchStatement:
+          withIndent(function () {
+            result = [
+              'switch' + space + '(',
+              generateExpression(stmt.discriminant, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }),
+              ')' + space + '{' + newline
+            ];
+          });
+          if (stmt.cases) {
+            for (i = 0, len = stmt.cases.length; i < len; ++i) {
+              fragment = addIndent(generateStatement(stmt.cases[i], { semicolonOptional: i === len - 1 }));
+              result.push(fragment);
+              if (!endsWithLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
+                result.push(newline);
+              }
+            }
+          }
+          result.push(addIndent('}'));
+          break;
+        case Syntax.SwitchCase:
+          withIndent(function () {
+            if (stmt.test) {
+              result = [
+                join('case', generateExpression(stmt.test, {
+                  precedence: Precedence.Sequence,
+                  allowIn: true,
+                  allowCall: true
+                })),
+                ':'
+              ];
+            } else {
+              result = ['default:'];
+            }
+            i = 0;
+            len = stmt.consequent.length;
+            if (len && stmt.consequent[0].type === Syntax.BlockStatement) {
+              fragment = maybeBlock(stmt.consequent[0]);
+              result.push(fragment);
+              i = 1;
+            }
+            if (i !== len && !endsWithLineTerminator(toSourceNodeWhenNeeded(result).toString())) {
+              result.push(newline);
+            }
+            for (; i < len; ++i) {
+              fragment = addIndent(generateStatement(stmt.consequent[i], { semicolonOptional: i === len - 1 && semicolon === '' }));
+              result.push(fragment);
+              if (i + 1 !== len && !endsWithLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
+                result.push(newline);
+              }
+            }
+          });
+          break;
+        case Syntax.IfStatement:
+          withIndent(function () {
+            result = [
+              'if' + space + '(',
+              generateExpression(stmt.test, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }),
+              ')'
+            ];
+          });
+          if (stmt.alternate) {
+            result.push(maybeBlock(stmt.consequent));
+            result = maybeBlockSuffix(stmt.consequent, result);
+            if (stmt.alternate.type === Syntax.IfStatement) {
+              result = join(result, [
+                'else ',
+                generateStatement(stmt.alternate, { semicolonOptional: semicolon === '' })
+              ]);
+            } else {
+              result = join(result, join('else', maybeBlock(stmt.alternate, semicolon === '')));
+            }
+          } else {
+            result.push(maybeBlock(stmt.consequent, semicolon === ''));
+          }
+          break;
+        case Syntax.ForStatement:
+          withIndent(function () {
+            result = ['for' + space + '('];
+            if (stmt.init) {
+              if (stmt.init.type === Syntax.VariableDeclaration) {
+                result.push(generateStatement(stmt.init, { allowIn: false }));
+              } else {
+                result.push(generateExpression(stmt.init, {
+                  precedence: Precedence.Sequence,
+                  allowIn: false,
+                  allowCall: true
+                }));
+                result.push(';');
+              }
+            } else {
+              result.push(';');
+            }
+            if (stmt.test) {
+              result.push(space);
+              result.push(generateExpression(stmt.test, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }));
+              result.push(';');
+            } else {
+              result.push(';');
+            }
+            if (stmt.update) {
+              result.push(space);
+              result.push(generateExpression(stmt.update, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }));
+              result.push(')');
+            } else {
+              result.push(')');
+            }
+          });
+          result.push(maybeBlock(stmt.body, semicolon === ''));
+          break;
+        case Syntax.ForInStatement:
+          result = generateIterationForStatement('in', stmt, semicolon === '');
+          break;
+        case Syntax.ForOfStatement:
+          result = generateIterationForStatement('of', stmt, semicolon === '');
+          break;
+        case Syntax.LabeledStatement:
+          result = [
+            stmt.label.name + ':',
+            maybeBlock(stmt.body, semicolon === '')
+          ];
+          break;
+        case Syntax.ModuleDeclaration:
+          result = [
+            'module',
+            noEmptySpace(),
+            stmt.id.name,
+            noEmptySpace(),
+            'from',
+            space,
+            generateLiteral(stmt.source),
+            semicolon
+          ];
+          break;
+        case Syntax.Program:
+          len = stmt.body.length;
+          result = [safeConcatenation && len > 0 ? '\n' : ''];
+          for (i = 0; i < len; ++i) {
+            fragment = addIndent(generateStatement(stmt.body[i], {
+              semicolonOptional: !safeConcatenation && i === len - 1,
+              directiveContext: true
+            }));
+            result.push(fragment);
+            if (i + 1 < len && !endsWithLineTerminator(toSourceNodeWhenNeeded(fragment).toString())) {
+              result.push(newline);
+            }
+          }
+          break;
+        case Syntax.FunctionDeclaration:
+          isGenerator = stmt.generator && !extra.moz.starlessGenerator;
+          result = [
+            isGenerator ? 'function*' : 'function',
+            isGenerator ? space : noEmptySpace(),
+            generateIdentifier(stmt.id),
+            generateFunctionBody(stmt)
+          ];
+          break;
+        case Syntax.ReturnStatement:
+          if (stmt.argument) {
+            result = [
+              join('return', generateExpression(stmt.argument, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              })),
+              semicolon
+            ];
+          } else {
+            result = ['return' + semicolon];
+          }
+          break;
+        case Syntax.WhileStatement:
+          withIndent(function () {
+            result = [
+              'while' + space + '(',
+              generateExpression(stmt.test, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }),
+              ')'
+            ];
+          });
+          result.push(maybeBlock(stmt.body, semicolon === ''));
+          break;
+        case Syntax.WithStatement:
+          withIndent(function () {
+            result = [
+              'with' + space + '(',
+              generateExpression(stmt.object, {
+                precedence: Precedence.Sequence,
+                allowIn: true,
+                allowCall: true
+              }),
+              ')'
+            ];
+          });
+          result.push(maybeBlock(stmt.body, semicolon === ''));
+          break;
+        default:
+          throw new Error('Unknown statement type: ' + stmt.type);
+        }
         if (extra.comment) {
           result = addComments(stmt, result);
         }
@@ -23656,15 +23668,17 @@ parseStatement: true, parseSourceElement: true */
           result = sourceMap ? toSourceNodeWhenNeeded(result).replaceRight(/\s+$/, '') : fragment.replace(/\s+$/, '');
         }
         return toSourceNodeWhenNeeded(result, stmt);
-      };
+      }
       function generateInternal(node) {
-        var codegen;
-        codegen = new CodeGenerator;
         if (isStatement(node)) {
-          return codegen.generateStatement(node, S_TFFF);
+          return generateStatement(node);
         }
         if (isExpression(node)) {
-          return codegen.generateExpression(node, Precedence.Sequence, E_TTT);
+          return generateExpression(node, {
+            precedence: Precedence.Sequence,
+            allowIn: true,
+            allowCall: true
+          });
         }
         throw new Error('Unknown node type: ' + node.type);
       }
@@ -23760,21 +23774,13 @@ parseStatement: true, parseSourceElement: true */
     module.exports = {
       'name': 'escodegen',
       'description': 'ECMAScript code generator',
-      'homepage': 'http://github.com/estools/escodegen',
+      'homepage': 'http://github.com/Constellation/escodegen',
       'main': 'escodegen.js',
       'bin': {
         'esgenerate': './bin/esgenerate.js',
         'escodegen': './bin/escodegen.js'
       },
-      'files': [
-        'LICENSE.BSD',
-        'LICENSE.source-map',
-        'README.md',
-        'bin',
-        'escodegen.js',
-        'package.json'
-      ],
-      'version': '1.4.4-dev',
+      'version': '1.4.1',
       'engines': { 'node': '>=0.10.0' },
       'maintainers': [{
           'name': 'Yusuke Suzuki',
@@ -23783,29 +23789,30 @@ parseStatement: true, parseSourceElement: true */
         }],
       'repository': {
         'type': 'git',
-        'url': 'http://github.com/estools/escodegen.git'
+        'url': 'http://github.com/Constellation/escodegen.git'
       },
       'dependencies': {
-        'estraverse': '^1.9.0',
-        'esutils': '^1.1.6',
-        'esprima': '^1.2.2',
-        'optionator': '^0.5.0'
+        'estraverse': '^1.5.1',
+        'esutils': '^1.1.4',
+        'esprima': '^1.2.2'
       },
-      'optionalDependencies': { 'source-map': '~0.1.40' },
+      'optionalDependencies': { 'source-map': '~0.1.37' },
       'devDependencies': {
         'esprima-moz': '*',
-        'semver': '^4.1.0',
-        'bluebird': '^2.3.11',
-        'chai': '^1.10.0',
-        'gulp-mocha': '^2.0.0',
-        'gulp-eslint': '^0.2.0',
-        'gulp': '^3.8.10',
+        'semver': '^3.0.1',
+        'bluebird': '^2.2.2',
+        'jshint-stylish': '^0.4.0',
+        'chai': '^1.9.1',
+        'gulp-mocha': '^1.0.0',
+        'gulp-eslint': '^0.1.8',
+        'gulp': '^3.8.6',
         'bower-registry-client': '^0.2.1',
+        'gulp-jshint': '^1.8.0',
         'commonjs-everywhere': '^0.9.7'
       },
       'licenses': [{
           'type': 'BSD',
-          'url': 'http://github.com/estools/escodegen/raw/master/LICENSE.BSD'
+          'url': 'http://github.com/Constellation/escodegen/raw/master/LICENSE.BSD'
         }],
       'scripts': {
         'test': 'gulp travis',
@@ -24559,7 +24566,7 @@ parseStatement: true, parseSourceElement: true */
             this._sourcesContents = {};
           }
           this._sourcesContents[util.toSetString(source)] = aSourceContent;
-        } else if (this._sourcesContents) {
+        } else {
           delete this._sourcesContents[util.toSetString(source)];
           if (Object.keys(this._sourcesContents).length === 0) {
             this._sourcesContents = null;
@@ -24596,7 +24603,7 @@ parseStatement: true, parseSourceElement: true */
               }
               mapping.originalLine = original.line;
               mapping.originalColumn = original.column;
-              if (original.name != null) {
+              if (original.name != null && mapping.name != null) {
                 mapping.name = original.name;
               }
             }
@@ -24798,7 +24805,7 @@ parseStatement: true, parseSourceElement: true */
         } while (vlq > 0);
         return encoded;
       };
-      exports.decode = function base64VLQ_decode(aStr, aOutParam) {
+      exports.decode = function base64VLQ_decode(aStr) {
         var i = 0;
         var strLen = aStr.length;
         var result = 0;
@@ -24814,8 +24821,10 @@ parseStatement: true, parseSourceElement: true */
           result = result + (digit << shift);
           shift += VLQ_BASE_SHIFT;
         } while (continuation);
-        aOutParam.value = fromVLQSigned(result);
-        aOutParam.rest = aStr.slice(i);
+        return {
+          value: fromVLQSigned(result),
+          rest: aStr.slice(i)
+        };
       };
     });
   });
@@ -24868,7 +24877,6 @@ parseStatement: true, parseSourceElement: true */
         if (version != this._version) {
           throw new Error('Unsupported version: ' + version);
         }
-        sources = sources.map(util.normalize);
         this._names = ArraySet.fromArray(names, true);
         this._sources = ArraySet.fromArray(sources, true);
         this.sourceRoot = sourceRoot;
@@ -24917,10 +24925,6 @@ parseStatement: true, parseSourceElement: true */
           return this.__originalMappings;
         }
       });
-      SourceMapConsumer.prototype._nextCharIsMappingSeparator = function SourceMapConsumer_nextCharIsMappingSeparator(aStr) {
-        var c = aStr.charAt(0);
-        return c === ';' || c === ',';
-      };
       SourceMapConsumer.prototype._parseMappings = function SourceMapConsumer_parseMappings(aStr, aSourceRoot) {
         var generatedLine = 1;
         var previousGeneratedColumn = 0;
@@ -24928,9 +24932,10 @@ parseStatement: true, parseSourceElement: true */
         var previousOriginalColumn = 0;
         var previousSource = 0;
         var previousName = 0;
+        var mappingSeparator = /^[,;]/;
         var str = aStr;
-        var temp = {};
         var mapping;
+        var temp;
         while (str.length > 0) {
           if (str.charAt(0) === ';') {
             generatedLine++;
@@ -24941,32 +24946,32 @@ parseStatement: true, parseSourceElement: true */
           } else {
             mapping = {};
             mapping.generatedLine = generatedLine;
-            base64VLQ.decode(str, temp);
+            temp = base64VLQ.decode(str);
             mapping.generatedColumn = previousGeneratedColumn + temp.value;
             previousGeneratedColumn = mapping.generatedColumn;
             str = temp.rest;
-            if (str.length > 0 && !this._nextCharIsMappingSeparator(str)) {
-              base64VLQ.decode(str, temp);
+            if (str.length > 0 && !mappingSeparator.test(str.charAt(0))) {
+              temp = base64VLQ.decode(str);
               mapping.source = this._sources.at(previousSource + temp.value);
               previousSource += temp.value;
               str = temp.rest;
-              if (str.length === 0 || this._nextCharIsMappingSeparator(str)) {
+              if (str.length === 0 || mappingSeparator.test(str.charAt(0))) {
                 throw new Error('Found a source, but no line and column');
               }
-              base64VLQ.decode(str, temp);
+              temp = base64VLQ.decode(str);
               mapping.originalLine = previousOriginalLine + temp.value;
               previousOriginalLine = mapping.originalLine;
               mapping.originalLine += 1;
               str = temp.rest;
-              if (str.length === 0 || this._nextCharIsMappingSeparator(str)) {
+              if (str.length === 0 || mappingSeparator.test(str.charAt(0))) {
                 throw new Error('Found a source and line, but no column');
               }
-              base64VLQ.decode(str, temp);
+              temp = base64VLQ.decode(str);
               mapping.originalColumn = previousOriginalColumn + temp.value;
               previousOriginalColumn = mapping.originalColumn;
               str = temp.rest;
-              if (str.length > 0 && !this._nextCharIsMappingSeparator(str)) {
-                base64VLQ.decode(str, temp);
+              if (str.length > 0 && !mappingSeparator.test(str.charAt(0))) {
+                temp = base64VLQ.decode(str);
                 mapping.name = this._names.at(previousName + temp.value);
                 previousName += temp.value;
                 str = temp.rest;
@@ -24990,39 +24995,23 @@ parseStatement: true, parseSourceElement: true */
         }
         return binarySearch.search(aNeedle, aMappings, aComparator);
       };
-      SourceMapConsumer.prototype.computeColumnSpans = function SourceMapConsumer_computeColumnSpans() {
-        for (var index = 0; index < this._generatedMappings.length; ++index) {
-          var mapping = this._generatedMappings[index];
-          if (index + 1 < this._generatedMappings.length) {
-            var nextMapping = this._generatedMappings[index + 1];
-            if (mapping.generatedLine === nextMapping.generatedLine) {
-              mapping.lastGeneratedColumn = nextMapping.generatedColumn - 1;
-              continue;
-            }
-          }
-          mapping.lastGeneratedColumn = Infinity;
-        }
-      };
       SourceMapConsumer.prototype.originalPositionFor = function SourceMapConsumer_originalPositionFor(aArgs) {
         var needle = {
             generatedLine: util.getArg(aArgs, 'line'),
             generatedColumn: util.getArg(aArgs, 'column')
           };
-        var index = this._findMapping(needle, this._generatedMappings, 'generatedLine', 'generatedColumn', util.compareByGeneratedPositions);
-        if (index >= 0) {
-          var mapping = this._generatedMappings[index];
-          if (mapping.generatedLine === needle.generatedLine) {
-            var source = util.getArg(mapping, 'source', null);
-            if (source != null && this.sourceRoot != null) {
-              source = util.join(this.sourceRoot, source);
-            }
-            return {
-              source: source,
-              line: util.getArg(mapping, 'originalLine', null),
-              column: util.getArg(mapping, 'originalColumn', null),
-              name: util.getArg(mapping, 'name', null)
-            };
+        var mapping = this._findMapping(needle, this._generatedMappings, 'generatedLine', 'generatedColumn', util.compareByGeneratedPositions);
+        if (mapping && mapping.generatedLine === needle.generatedLine) {
+          var source = util.getArg(mapping, 'source', null);
+          if (source != null && this.sourceRoot != null) {
+            source = util.join(this.sourceRoot, source);
           }
+          return {
+            source: source,
+            line: util.getArg(mapping, 'originalLine', null),
+            column: util.getArg(mapping, 'originalColumn', null),
+            name: util.getArg(mapping, 'name', null)
+          };
         }
         return {
           source: null,
@@ -25062,44 +25051,17 @@ parseStatement: true, parseSourceElement: true */
         if (this.sourceRoot != null) {
           needle.source = util.relative(this.sourceRoot, needle.source);
         }
-        var index = this._findMapping(needle, this._originalMappings, 'originalLine', 'originalColumn', util.compareByOriginalPositions);
-        if (index >= 0) {
-          var mapping = this._originalMappings[index];
+        var mapping = this._findMapping(needle, this._originalMappings, 'originalLine', 'originalColumn', util.compareByOriginalPositions);
+        if (mapping) {
           return {
             line: util.getArg(mapping, 'generatedLine', null),
-            column: util.getArg(mapping, 'generatedColumn', null),
-            lastColumn: util.getArg(mapping, 'lastGeneratedColumn', null)
+            column: util.getArg(mapping, 'generatedColumn', null)
           };
         }
         return {
           line: null,
-          column: null,
-          lastColumn: null
+          column: null
         };
-      };
-      SourceMapConsumer.prototype.allGeneratedPositionsFor = function SourceMapConsumer_allGeneratedPositionsFor(aArgs) {
-        var needle = {
-            source: util.getArg(aArgs, 'source'),
-            originalLine: util.getArg(aArgs, 'line'),
-            originalColumn: Infinity
-          };
-        if (this.sourceRoot != null) {
-          needle.source = util.relative(this.sourceRoot, needle.source);
-        }
-        var mappings = [];
-        var index = this._findMapping(needle, this._originalMappings, 'originalLine', 'originalColumn', util.compareByOriginalPositions);
-        if (index >= 0) {
-          var mapping = this._originalMappings[index];
-          while (mapping && mapping.originalLine === needle.originalLine) {
-            mappings.push({
-              line: util.getArg(mapping, 'generatedLine', null),
-              column: util.getArg(mapping, 'generatedColumn', null),
-              lastColumn: util.getArg(mapping, 'lastGeneratedColumn', null)
-            });
-            mapping = this._originalMappings[--index];
-          }
-        }
-        return mappings.reverse();
       };
       SourceMapConsumer.GENERATED_ORDER = 1;
       SourceMapConsumer.ORIGINAL_ORDER = 2;
@@ -25145,24 +25107,21 @@ parseStatement: true, parseSourceElement: true */
         var mid = Math.floor((aHigh - aLow) / 2) + aLow;
         var cmp = aCompare(aNeedle, aHaystack[mid], true);
         if (cmp === 0) {
-          return mid;
+          return aHaystack[mid];
         } else if (cmp > 0) {
           if (aHigh - mid > 1) {
             return recursiveSearch(mid, aHigh, aNeedle, aHaystack, aCompare);
           }
-          return mid;
+          return aHaystack[mid];
         } else {
           if (mid - aLow > 1) {
             return recursiveSearch(aLow, mid, aNeedle, aHaystack, aCompare);
           }
-          return aLow < 0 ? -1 : aLow;
+          return aLow < 0 ? null : aHaystack[aLow];
         }
       }
       exports.search = function search(aNeedle, aHaystack, aCompare) {
-        if (aHaystack.length === 0) {
-          return -1;
-        }
-        return recursiveSearch(-1, aHaystack.length, aNeedle, aHaystack, aCompare);
+        return aHaystack.length > 0 ? recursiveSearch(-1, aHaystack.length, aNeedle, aHaystack, aCompare) : null;
       };
     });
   });
@@ -25271,7 +25230,7 @@ parseStatement: true, parseSourceElement: true */
   require.define('/node_modules/esutils/lib/code.js', function (module, exports, __dirname, __filename) {
     (function () {
       'use strict';
-      var Regex, NON_ASCII_WHITESPACES;
+      var Regex;
       Regex = {
         NonAsciiIdentifierStart: new RegExp('[\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u0527\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u08A0\u08A2-\u08AC\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0977\u0979-\u097F\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C33\u0C35-\u0C39\u0C3D\u0C58\u0C59\u0C60\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D60\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F4\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F0\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191C\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19C1-\u19C7\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2E2F\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FCC\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA697\uA6A0-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA78E\uA790-\uA793\uA7A0-\uA7AA\uA7F8-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA80-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uABC0-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]'),
         NonAsciiIdentifierPart: new RegExp('[\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0300-\u0374\u0376\u0377\u037A-\u037D\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u0483-\u0487\u048A-\u0527\u0531-\u0556\u0559\u0561-\u0587\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA\u05F0-\u05F2\u0610-\u061A\u0620-\u0669\u066E-\u06D3\u06D5-\u06DC\u06DF-\u06E8\u06EA-\u06FC\u06FF\u0710-\u074A\u074D-\u07B1\u07C0-\u07F5\u07FA\u0800-\u082D\u0840-\u085B\u08A0\u08A2-\u08AC\u08E4-\u08FE\u0900-\u0963\u0966-\u096F\u0971-\u0977\u0979-\u097F\u0981-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BC-\u09C4\u09C7\u09C8\u09CB-\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09E6-\u09F1\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A59-\u0A5C\u0A5E\u0A66-\u0A75\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABC-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AD0\u0AE0-\u0AE3\u0AE6-\u0AEF\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3C-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B66-\u0B6F\u0B71\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD0\u0BD7\u0BE6-\u0BEF\u0C01-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C33\u0C35-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C58\u0C59\u0C60-\u0C63\u0C66-\u0C6F\u0C82\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBC-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CE6-\u0CEF\u0CF1\u0CF2\u0D02\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D-\u0D44\u0D46-\u0D48\u0D4A-\u0D4E\u0D57\u0D60-\u0D63\u0D66-\u0D6F\u0D7A-\u0D7F\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E01-\u0E3A\u0E40-\u0E4E\u0E50-\u0E59\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0EC8-\u0ECD\u0ED0-\u0ED9\u0EDC-\u0EDF\u0F00\u0F18\u0F19\u0F20-\u0F29\u0F35\u0F37\u0F39\u0F3E-\u0F47\u0F49-\u0F6C\u0F71-\u0F84\u0F86-\u0F97\u0F99-\u0FBC\u0FC6\u1000-\u1049\u1050-\u109D\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135D-\u135F\u1380-\u138F\u13A0-\u13F4\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F0\u1700-\u170C\u170E-\u1714\u1720-\u1734\u1740-\u1753\u1760-\u176C\u176E-\u1770\u1772\u1773\u1780-\u17D3\u17D7\u17DC\u17DD\u17E0-\u17E9\u180B-\u180D\u1810-\u1819\u1820-\u1877\u1880-\u18AA\u18B0-\u18F5\u1900-\u191C\u1920-\u192B\u1930-\u193B\u1946-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u19D0-\u19D9\u1A00-\u1A1B\u1A20-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AA7\u1B00-\u1B4B\u1B50-\u1B59\u1B6B-\u1B73\u1B80-\u1BF3\u1C00-\u1C37\u1C40-\u1C49\u1C4D-\u1C7D\u1CD0-\u1CD2\u1CD4-\u1CF6\u1D00-\u1DE6\u1DFC-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u200C\u200D\u203F\u2040\u2054\u2071\u207F\u2090-\u209C\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D7F-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2DE0-\u2DFF\u2E2F\u3005-\u3007\u3021-\u302F\u3031-\u3035\u3038-\u303C\u3041-\u3096\u3099\u309A\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FCC\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA62B\uA640-\uA66F\uA674-\uA67D\uA67F-\uA697\uA69F-\uA6F1\uA717-\uA71F\uA722-\uA788\uA78B-\uA78E\uA790-\uA793\uA7A0-\uA7AA\uA7F8-\uA827\uA840-\uA873\uA880-\uA8C4\uA8D0-\uA8D9\uA8E0-\uA8F7\uA8FB\uA900-\uA92D\uA930-\uA953\uA960-\uA97C\uA980-\uA9C0\uA9CF-\uA9D9\uAA00-\uAA36\uAA40-\uAA4D\uAA50-\uAA59\uAA60-\uAA76\uAA7A\uAA7B\uAA80-\uAAC2\uAADB-\uAADD\uAAE0-\uAAEF\uAAF2-\uAAF6\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uABC0-\uABEA\uABEC\uABED\uABF0-\uABF9\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE00-\uFE0F\uFE20-\uFE26\uFE33\uFE34\uFE4D-\uFE4F\uFE70-\uFE74\uFE76-\uFEFC\uFF10-\uFF19\uFF21-\uFF3A\uFF3F\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]')
@@ -25285,36 +25244,35 @@ parseStatement: true, parseSourceElement: true */
       function isOctalDigit(ch) {
         return ch >= 48 && ch <= 55;
       }
-      NON_ASCII_WHITESPACES = [
-        5760,
-        6158,
-        8192,
-        8193,
-        8194,
-        8195,
-        8196,
-        8197,
-        8198,
-        8199,
-        8200,
-        8201,
-        8202,
-        8239,
-        8287,
-        12288,
-        65279
-      ];
       function isWhiteSpace(ch) {
-        return ch === 32 || ch === 9 || ch === 11 || ch === 12 || ch === 160 || ch >= 5760 && NON_ASCII_WHITESPACES.indexOf(ch) >= 0;
+        return ch === 32 || ch === 9 || ch === 11 || ch === 12 || ch === 160 || ch >= 5760 && [
+          5760,
+          6158,
+          8192,
+          8193,
+          8194,
+          8195,
+          8196,
+          8197,
+          8198,
+          8199,
+          8200,
+          8201,
+          8202,
+          8239,
+          8287,
+          12288,
+          65279
+        ].indexOf(ch) >= 0;
       }
       function isLineTerminator(ch) {
         return ch === 10 || ch === 13 || ch === 8232 || ch === 8233;
       }
       function isIdentifierStart(ch) {
-        return ch >= 97 && ch <= 122 || ch >= 65 && ch <= 90 || ch === 36 || ch === 95 || ch === 92 || ch >= 128 && Regex.NonAsciiIdentifierStart.test(String.fromCharCode(ch));
+        return ch === 36 || ch === 95 || ch >= 65 && ch <= 90 || ch >= 97 && ch <= 122 || ch === 92 || ch >= 128 && Regex.NonAsciiIdentifierStart.test(String.fromCharCode(ch));
       }
       function isIdentifierPart(ch) {
-        return ch >= 97 && ch <= 122 || ch >= 65 && ch <= 90 || ch >= 48 && ch <= 57 || ch === 36 || ch === 95 || ch === 92 || ch >= 128 && Regex.NonAsciiIdentifierPart.test(String.fromCharCode(ch));
+        return ch === 36 || ch === 95 || ch >= 65 && ch <= 90 || ch >= 97 && ch <= 122 || ch >= 48 && ch <= 57 || ch === 92 || ch >= 128 && Regex.NonAsciiIdentifierPart.test(String.fromCharCode(ch));
       }
       module.exports = {
         isDecimalDigit: isDecimalDigit,
@@ -25455,7 +25413,58 @@ parseStatement: true, parseSourceElement: true */
       }
     }(this, function (exports) {
       'use strict';
-      var Syntax, isArray, VisitorOption, VisitorKeys, objectCreate, objectKeys, BREAK, SKIP, REMOVE;
+      var Syntax, isArray, VisitorOption, VisitorKeys, BREAK, SKIP;
+      Syntax = {
+        AssignmentExpression: 'AssignmentExpression',
+        ArrayExpression: 'ArrayExpression',
+        ArrayPattern: 'ArrayPattern',
+        ArrowFunctionExpression: 'ArrowFunctionExpression',
+        BlockStatement: 'BlockStatement',
+        BinaryExpression: 'BinaryExpression',
+        BreakStatement: 'BreakStatement',
+        CallExpression: 'CallExpression',
+        CatchClause: 'CatchClause',
+        ClassBody: 'ClassBody',
+        ClassDeclaration: 'ClassDeclaration',
+        ClassExpression: 'ClassExpression',
+        ConditionalExpression: 'ConditionalExpression',
+        ContinueStatement: 'ContinueStatement',
+        DebuggerStatement: 'DebuggerStatement',
+        DirectiveStatement: 'DirectiveStatement',
+        DoWhileStatement: 'DoWhileStatement',
+        EmptyStatement: 'EmptyStatement',
+        ExpressionStatement: 'ExpressionStatement',
+        ForStatement: 'ForStatement',
+        ForInStatement: 'ForInStatement',
+        FunctionDeclaration: 'FunctionDeclaration',
+        FunctionExpression: 'FunctionExpression',
+        Identifier: 'Identifier',
+        IfStatement: 'IfStatement',
+        Literal: 'Literal',
+        LabeledStatement: 'LabeledStatement',
+        LogicalExpression: 'LogicalExpression',
+        MemberExpression: 'MemberExpression',
+        MethodDefinition: 'MethodDefinition',
+        NewExpression: 'NewExpression',
+        ObjectExpression: 'ObjectExpression',
+        ObjectPattern: 'ObjectPattern',
+        Program: 'Program',
+        Property: 'Property',
+        ReturnStatement: 'ReturnStatement',
+        SequenceExpression: 'SequenceExpression',
+        SwitchStatement: 'SwitchStatement',
+        SwitchCase: 'SwitchCase',
+        ThisExpression: 'ThisExpression',
+        ThrowStatement: 'ThrowStatement',
+        TryStatement: 'TryStatement',
+        UnaryExpression: 'UnaryExpression',
+        UpdateExpression: 'UpdateExpression',
+        VariableDeclaration: 'VariableDeclaration',
+        VariableDeclarator: 'VariableDeclarator',
+        WhileStatement: 'WhileStatement',
+        WithStatement: 'WithStatement',
+        YieldExpression: 'YieldExpression'
+      };
       function ignoreJSHintError() {
       }
       isArray = Array.isArray;
@@ -25521,95 +25530,6 @@ parseStatement: true, parseSourceElement: true */
         return i;
       }
       ignoreJSHintError(lowerBound);
-      objectCreate = Object.create || function () {
-        function F() {
-        }
-        return function (o) {
-          F.prototype = o;
-          return new F;
-        };
-      }();
-      objectKeys = Object.keys || function (o) {
-        var keys = [], key;
-        for (key in o) {
-          keys.push(key);
-        }
-        return keys;
-      };
-      function extend(to, from) {
-        objectKeys(from).forEach(function (key) {
-          to[key] = from[key];
-        });
-        return to;
-      }
-      Syntax = {
-        AssignmentExpression: 'AssignmentExpression',
-        ArrayExpression: 'ArrayExpression',
-        ArrayPattern: 'ArrayPattern',
-        ArrowFunctionExpression: 'ArrowFunctionExpression',
-        AwaitExpression: 'AwaitExpression',
-        BlockStatement: 'BlockStatement',
-        BinaryExpression: 'BinaryExpression',
-        BreakStatement: 'BreakStatement',
-        CallExpression: 'CallExpression',
-        CatchClause: 'CatchClause',
-        ClassBody: 'ClassBody',
-        ClassDeclaration: 'ClassDeclaration',
-        ClassExpression: 'ClassExpression',
-        ComprehensionBlock: 'ComprehensionBlock',
-        ComprehensionExpression: 'ComprehensionExpression',
-        ConditionalExpression: 'ConditionalExpression',
-        ContinueStatement: 'ContinueStatement',
-        DebuggerStatement: 'DebuggerStatement',
-        DirectiveStatement: 'DirectiveStatement',
-        DoWhileStatement: 'DoWhileStatement',
-        EmptyStatement: 'EmptyStatement',
-        ExportBatchSpecifier: 'ExportBatchSpecifier',
-        ExportDeclaration: 'ExportDeclaration',
-        ExportSpecifier: 'ExportSpecifier',
-        ExpressionStatement: 'ExpressionStatement',
-        ForStatement: 'ForStatement',
-        ForInStatement: 'ForInStatement',
-        ForOfStatement: 'ForOfStatement',
-        FunctionDeclaration: 'FunctionDeclaration',
-        FunctionExpression: 'FunctionExpression',
-        GeneratorExpression: 'GeneratorExpression',
-        Identifier: 'Identifier',
-        IfStatement: 'IfStatement',
-        ImportDeclaration: 'ImportDeclaration',
-        ImportDefaultSpecifier: 'ImportDefaultSpecifier',
-        ImportNamespaceSpecifier: 'ImportNamespaceSpecifier',
-        ImportSpecifier: 'ImportSpecifier',
-        Literal: 'Literal',
-        LabeledStatement: 'LabeledStatement',
-        LogicalExpression: 'LogicalExpression',
-        MemberExpression: 'MemberExpression',
-        MethodDefinition: 'MethodDefinition',
-        ModuleSpecifier: 'ModuleSpecifier',
-        NewExpression: 'NewExpression',
-        ObjectExpression: 'ObjectExpression',
-        ObjectPattern: 'ObjectPattern',
-        Program: 'Program',
-        Property: 'Property',
-        ReturnStatement: 'ReturnStatement',
-        SequenceExpression: 'SequenceExpression',
-        SpreadElement: 'SpreadElement',
-        SwitchStatement: 'SwitchStatement',
-        SwitchCase: 'SwitchCase',
-        TaggedTemplateExpression: 'TaggedTemplateExpression',
-        TemplateElement: 'TemplateElement',
-        TemplateLiteral: 'TemplateLiteral',
-        ThisExpression: 'ThisExpression',
-        ThrowStatement: 'ThrowStatement',
-        TryStatement: 'TryStatement',
-        UnaryExpression: 'UnaryExpression',
-        UpdateExpression: 'UpdateExpression',
-        VariableDeclaration: 'VariableDeclaration',
-        VariableDeclarator: 'VariableDeclarator',
-        WhileStatement: 'WhileStatement',
-        WithStatement: 'WithStatement',
-        YieldExpression: 'YieldExpression'
-      };
       VisitorKeys = {
         AssignmentExpression: [
           'left',
@@ -25623,7 +25543,6 @@ parseStatement: true, parseSourceElement: true */
           'rest',
           'body'
         ],
-        AwaitExpression: ['argument'],
         BlockStatement: ['body'],
         BinaryExpression: [
           'left',
@@ -25649,15 +25568,6 @@ parseStatement: true, parseSourceElement: true */
           'body',
           'superClass'
         ],
-        ComprehensionBlock: [
-          'left',
-          'right'
-        ],
-        ComprehensionExpression: [
-          'blocks',
-          'filter',
-          'body'
-        ],
         ConditionalExpression: [
           'test',
           'consequent',
@@ -25671,16 +25581,6 @@ parseStatement: true, parseSourceElement: true */
           'test'
         ],
         EmptyStatement: [],
-        ExportBatchSpecifier: [],
-        ExportDeclaration: [
-          'declaration',
-          'specifiers',
-          'source'
-        ],
-        ExportSpecifier: [
-          'id',
-          'name'
-        ],
         ExpressionStatement: ['expression'],
         ForStatement: [
           'init',
@@ -25712,26 +25612,11 @@ parseStatement: true, parseSourceElement: true */
           'rest',
           'body'
         ],
-        GeneratorExpression: [
-          'blocks',
-          'filter',
-          'body'
-        ],
         Identifier: [],
         IfStatement: [
           'test',
           'consequent',
           'alternate'
-        ],
-        ImportDeclaration: [
-          'specifiers',
-          'source'
-        ],
-        ImportDefaultSpecifier: ['id'],
-        ImportNamespaceSpecifier: ['id'],
-        ImportSpecifier: [
-          'id',
-          'name'
         ],
         Literal: [],
         LabeledStatement: [
@@ -25750,7 +25635,6 @@ parseStatement: true, parseSourceElement: true */
           'key',
           'value'
         ],
-        ModuleSpecifier: [],
         NewExpression: [
           'callee',
           'arguments'
@@ -25764,7 +25648,6 @@ parseStatement: true, parseSourceElement: true */
         ],
         ReturnStatement: ['argument'],
         SequenceExpression: ['expressions'],
-        SpreadElement: ['argument'],
         SwitchStatement: [
           'discriminant',
           'cases'
@@ -25772,15 +25655,6 @@ parseStatement: true, parseSourceElement: true */
         SwitchCase: [
           'test',
           'consequent'
-        ],
-        TaggedTemplateExpression: [
-          'tag',
-          'quasi'
-        ],
-        TemplateElement: [],
-        TemplateLiteral: [
-          'quasis',
-          'expressions'
         ],
         ThisExpression: [],
         ThrowStatement: ['argument'],
@@ -25810,11 +25684,9 @@ parseStatement: true, parseSourceElement: true */
       };
       BREAK = {};
       SKIP = {};
-      REMOVE = {};
       VisitorOption = {
         Break: BREAK,
-        Skip: SKIP,
-        Remove: REMOVE
+        Skip: SKIP
       };
       function Reference(parent, key) {
         this.parent = parent;
@@ -25822,15 +25694,6 @@ parseStatement: true, parseSourceElement: true */
       }
       Reference.prototype.replace = function replace(node) {
         this.parent[this.key] = node;
-      };
-      Reference.prototype.remove = function remove() {
-        if (isArray(this.parent)) {
-          this.parent.splice(this.key, 1);
-          return true;
-        } else {
-          this.replace(null);
-          return false;
-        }
       };
       function Element(node, path, wrap, ref) {
         this.node = node;
@@ -25861,10 +25724,6 @@ parseStatement: true, parseSourceElement: true */
         }
         addToPath(result, this.__current.path);
         return result;
-      };
-      Controller.prototype.type = function () {
-        var node = this.current();
-        return node.type || this.__current.wrap;
       };
       Controller.prototype.parents = function parents() {
         var i, iz, result;
@@ -25898,9 +25757,6 @@ parseStatement: true, parseSourceElement: true */
       Controller.prototype['break'] = function () {
         this.notify(BREAK);
       };
-      Controller.prototype.remove = function () {
-        this.notify(REMOVE);
-      };
       Controller.prototype.__initialize = function (root, visitor) {
         this.visitor = visitor;
         this.root = root;
@@ -25908,21 +25764,7 @@ parseStatement: true, parseSourceElement: true */
         this.__leavelist = [];
         this.__current = null;
         this.__state = null;
-        this.__fallback = visitor.fallback === 'iteration';
-        this.__keys = VisitorKeys;
-        if (visitor.keys) {
-          this.__keys = extend(objectCreate(this.__keys), visitor.keys);
-        }
       };
-      function isNode(node) {
-        if (node == null) {
-          return false;
-        }
-        return typeof node === 'object' && typeof node.type === 'string';
-      }
-      function isProperty(nodeType, key) {
-        return (nodeType === Syntax.ObjectExpression || nodeType === Syntax.ObjectPattern) && 'properties' === key;
-      }
       Controller.prototype.traverse = function traverse(root, visitor) {
         var worklist, leavelist, element, node, nodeType, ret, key, current, current2, candidates, candidate, sentinel;
         this.__initialize(root, visitor);
@@ -25953,14 +25795,7 @@ parseStatement: true, parseSourceElement: true */
             }
             node = element.node;
             nodeType = element.wrap || node.type;
-            candidates = this.__keys[nodeType];
-            if (!candidates) {
-              if (this.__fallback) {
-                candidates = objectKeys(node);
-              } else {
-                throw new Error('Unknown node type ' + nodeType + '.');
-              }
-            }
+            candidates = VisitorKeys[nodeType];
             current = candidates.length;
             while ((current -= 1) >= 0) {
               key = candidates[current];
@@ -25968,52 +25803,33 @@ parseStatement: true, parseSourceElement: true */
               if (!candidate) {
                 continue;
               }
-              if (isArray(candidate)) {
-                current2 = candidate.length;
-                while ((current2 -= 1) >= 0) {
-                  if (!candidate[current2]) {
-                    continue;
-                  }
-                  if (isProperty(nodeType, candidates[current])) {
-                    element = new Element(candidate[current2], [
-                      key,
-                      current2
-                    ], 'Property', null);
-                  } else if (isNode(candidate[current2])) {
-                    element = new Element(candidate[current2], [
-                      key,
-                      current2
-                    ], null, null);
-                  } else {
-                    continue;
-                  }
-                  worklist.push(element);
-                }
-              } else if (isNode(candidate)) {
+              if (!isArray(candidate)) {
                 worklist.push(new Element(candidate, key, null, null));
+                continue;
+              }
+              current2 = candidate.length;
+              while ((current2 -= 1) >= 0) {
+                if (!candidate[current2]) {
+                  continue;
+                }
+                if ((nodeType === Syntax.ObjectExpression || nodeType === Syntax.ObjectPattern) && 'properties' === candidates[current]) {
+                  element = new Element(candidate[current2], [
+                    key,
+                    current2
+                  ], 'Property', null);
+                } else {
+                  element = new Element(candidate[current2], [
+                    key,
+                    current2
+                  ], null, null);
+                }
+                worklist.push(element);
               }
             }
           }
         }
       };
       Controller.prototype.replace = function replace(root, visitor) {
-        function removeElem(element) {
-          var i, key, nextElem, parent;
-          if (element.ref.remove()) {
-            key = element.ref.key;
-            parent = element.ref.parent;
-            i = worklist.length;
-            while (i--) {
-              nextElem = worklist[i];
-              if (nextElem.ref && nextElem.ref.parent === parent) {
-                if (nextElem.ref.key < key) {
-                  break;
-                }
-                --nextElem.ref.key;
-              }
-            }
-          }
-        }
         var worklist, leavelist, node, nodeType, target, element, current, current2, candidates, candidate, sentinel, outer, key;
         this.__initialize(root, visitor);
         sentinel = {};
@@ -26028,11 +25844,8 @@ parseStatement: true, parseSourceElement: true */
           if (element === sentinel) {
             element = leavelist.pop();
             target = this.__execute(visitor.leave, element);
-            if (target !== undefined && target !== BREAK && target !== SKIP && target !== REMOVE) {
+            if (target !== undefined && target !== BREAK && target !== SKIP) {
               element.ref.replace(target);
-            }
-            if (this.__state === REMOVE || target === REMOVE) {
-              removeElem(element);
             }
             if (this.__state === BREAK || target === BREAK) {
               return outer.root;
@@ -26040,13 +25853,9 @@ parseStatement: true, parseSourceElement: true */
             continue;
           }
           target = this.__execute(visitor.enter, element);
-          if (target !== undefined && target !== BREAK && target !== SKIP && target !== REMOVE) {
+          if (target !== undefined && target !== BREAK && target !== SKIP) {
             element.ref.replace(target);
             element.node = target;
-          }
-          if (this.__state === REMOVE || target === REMOVE) {
-            removeElem(element);
-            element.node = null;
           }
           if (this.__state === BREAK || target === BREAK) {
             return outer.root;
@@ -26061,14 +25870,7 @@ parseStatement: true, parseSourceElement: true */
             continue;
           }
           nodeType = element.wrap || node.type;
-          candidates = this.__keys[nodeType];
-          if (!candidates) {
-            if (this.__fallback) {
-              candidates = objectKeys(node);
-            } else {
-              throw new Error('Unknown node type ' + nodeType + '.');
-            }
-          }
+          candidates = VisitorKeys[nodeType];
           current = candidates.length;
           while ((current -= 1) >= 0) {
             key = candidates[current];
@@ -26076,29 +25878,27 @@ parseStatement: true, parseSourceElement: true */
             if (!candidate) {
               continue;
             }
-            if (isArray(candidate)) {
-              current2 = candidate.length;
-              while ((current2 -= 1) >= 0) {
-                if (!candidate[current2]) {
-                  continue;
-                }
-                if (isProperty(nodeType, candidates[current])) {
-                  element = new Element(candidate[current2], [
-                    key,
-                    current2
-                  ], 'Property', new Reference(candidate, current2));
-                } else if (isNode(candidate[current2])) {
-                  element = new Element(candidate[current2], [
-                    key,
-                    current2
-                  ], null, new Reference(candidate, current2));
-                } else {
-                  continue;
-                }
-                worklist.push(element);
-              }
-            } else if (isNode(candidate)) {
+            if (!isArray(candidate)) {
               worklist.push(new Element(candidate, key, null, new Reference(node, key)));
+              continue;
+            }
+            current2 = candidate.length;
+            while ((current2 -= 1) >= 0) {
+              if (!candidate[current2]) {
+                continue;
+              }
+              if (nodeType === Syntax.ObjectExpression && 'properties' === candidates[current]) {
+                element = new Element(candidate[current2], [
+                  key,
+                  current2
+                ], 'Property', new Reference(candidate, current2));
+              } else {
+                element = new Element(candidate[current2], [
+                  key,
+                  current2
+                ], null, new Reference(candidate, current2));
+              }
+              worklist.push(element);
             }
           }
         }
@@ -26208,7 +26008,7 @@ parseStatement: true, parseSourceElement: true */
         });
         return tree;
       }
-      exports.version = '1.8.1-dev';
+      exports.version = '1.5.1-dev';
       exports.Syntax = Syntax;
       exports.traverse = traverse;
       exports.replace = replace;
@@ -28347,84 +28147,6 @@ if (typeof jQuery === 'undefined') { throw new Error('Bootstrap\'s JavaScript re
   })
 
 }(jQuery);
-
-(function() {
-  var $;
-
-  $ = jQuery;
-
-  $.bootstrapGrowl = function(message, options) {
-    var $alert, css, offsetAmount;
-    options = $.extend({}, $.bootstrapGrowl.default_options, options);
-    $alert = $("<div>");
-    $alert.attr("class", "bootstrap-growl alert");
-    if (options.type) {
-      $alert.addClass("alert-" + options.type);
-    }
-    if (options.allow_dismiss) {
-      $alert.addClass("alert-dismissible");
-      $alert.append("<button  class=\"close\" data-dismiss=\"alert\" type=\"button\"><span aria-hidden=\"true\">&times;</span><span class=\"sr-only\">Close</span></button>");
-    }
-    $alert.append(message);
-    if (options.top_offset) {
-      options.offset = {
-        from: "top",
-        amount: options.top_offset
-      };
-    }
-    offsetAmount = options.offset.amount;
-    $(".bootstrap-growl").each(function() {
-      return offsetAmount = Math.max(offsetAmount, parseInt($(this).css(options.offset.from)) + $(this).outerHeight() + options.stackup_spacing);
-    });
-    css = {
-      "position": (options.ele === "body" ? "fixed" : "absolute"),
-      "margin": 0,
-      "z-index": "9999",
-      "display": "none"
-    };
-    css[options.offset.from] = offsetAmount + "px";
-    $alert.css(css);
-    if (options.width !== "auto") {
-      $alert.css("width", options.width + "px");
-    }
-    $(options.ele).append($alert);
-    switch (options.align) {
-      case "center":
-        $alert.css({
-          "left": "50%",
-          "margin-left": "-" + ($alert.outerWidth() / 2) + "px"
-        });
-        break;
-      case "left":
-        $alert.css("left", "20px");
-        break;
-      default:
-        $alert.css("right", "20px");
-    }
-    $alert.fadeIn();
-    if (options.delay > 0) {
-      $alert.delay(options.delay).fadeOut(function() {
-        return $(this).alert("close");
-      });
-    }
-    return $alert;
-  };
-
-  $.bootstrapGrowl.default_options = {
-    ele: "body",
-    type: "info",
-    offset: {
-      from: "top",
-      amount: 20
-    },
-    align: "right",
-    width: 250,
-    delay: 4000,
-    allow_dismiss: true,
-    stackup_spacing: 10
-  };
-
-}).call(this);
 
 !function() {
   var d3 = {
@@ -37659,1870 +37381,7261 @@ if (typeof jQuery === 'undefined') { throw new Error('Bootstrap\'s JavaScript re
   if (typeof define === "function" && define.amd) define(d3); else if (typeof module === "object" && module.exports) module.exports = d3;
   this.d3 = d3;
 }();
-// Generated by CoffeeScript 1.6.2
-/** echo  * @license echo  * while read i do echo  *  done echo
-*/
+// Define module using Universal Module Definition pattern
+// https://github.com/umdjs/umd/blob/master/amdWeb.js
 
+(function (factory) {
+  if (typeof define === 'function' && define.amd) {
+    // Support AMD. Register as an anonymous module.
+    // NOTE: List all dependencies in AMD style
+    define(['d3', 'topojson'], factory);
+  } else {
+    // No AMD. Set module as a global variable
+    // NOTE: Pass dependencies to factory function
+    // (assume that both d3 and topojson are also global.)
+    var tj = (typeof topojson === 'undefined') ? null : topojson;
+    vg = factory(d3, tj);
+  }
+}(
+//NOTE: The dependencies are passed to this function
+function (d3, topojson) {
+//---------------------------------------------------
+// BEGIN code for this module
+//---------------------------------------------------
 
-(function() {
-  var Color, K, PITHIRD, TWOPI, X, Y, Z, bezier, brewer, chroma, clip_rgb, colors, cos, css2rgb, hex2rgb, hsi2rgb, hsl2rgb, hsv2rgb, lab2lch, lab2rgb, lab_xyz, lch2lab, lch2rgb, limit, luminance, luminance_x, rgb2hex, rgb2hsi, rgb2hsl, rgb2hsv, rgb2lab, rgb2lch, rgb_xyz, root, type, unpack, xyz_lab, xyz_rgb, _ref;
+  var vg = {
+    version:  "1.4.2", // semantic versioning
+    d3:       d3,      // stash d3 for use in property functions
+    topojson: topojson // stash topojson similarly
+  };
+// type checking functions
+var toString = Object.prototype.toString;
 
-  chroma = function(x, y, z, m) {
-    return new Color(x, y, z, m);
+vg.isObject = function(obj) {
+  return obj === Object(obj);
+};
+
+vg.isFunction = function(obj) {
+  return toString.call(obj) == '[object Function]';
+};
+
+vg.isString = function(obj) {
+  return toString.call(obj) == '[object String]';
+};
+  
+vg.isArray = Array.isArray || function(obj) {
+  return toString.call(obj) == '[object Array]';
+};
+
+vg.isNumber = function(obj) {
+  return toString.call(obj) == '[object Number]';
+};
+
+vg.isBoolean = function(obj) {
+  return toString.call(obj) == '[object Boolean]';
+};
+
+vg.isTree = function(obj) {
+  return obj && obj.__vgtree__;
+};
+
+vg.tree = function(obj, children) {
+  var d = [obj];
+  d.__vgtree__ = true;
+  d.children = children || "children";
+  return d;
+};
+
+vg.number = function(s) { return +s; };
+
+vg.boolean = function(s) { return !!s; };
+
+// utility functions
+
+vg.identity = function(x) { return x; };
+
+vg.true = function() { return true; };
+
+vg.extend = function(obj) {
+  for (var x, name, i=1, len=arguments.length; i<len; ++i) {
+    x = arguments[i];
+    for (name in x) { obj[name] = x[name]; }
+  }
+  return obj;
+};
+
+vg.duplicate = function(obj) {
+  return JSON.parse(JSON.stringify(obj));
+};
+
+vg.field = function(f) {
+  return f.split("\\.")
+    .map(function(d) { return d.split("."); })
+    .reduce(function(a, b) {
+      if (a.length) { a[a.length-1] += "." + b.shift(); }
+      a.push.apply(a, b);
+      return a;
+    }, []);
+};
+
+vg.accessor = function(f) {
+  var s;
+  return (vg.isFunction(f) || f==null)
+    ? f : vg.isString(f) && (s=vg.field(f)).length > 1
+    ? function(x) { return s.reduce(function(x,f) { return x[f]; }, x); }
+    : function(x) { return x[f]; };
+};
+
+vg.comparator = function(sort) {
+  var sign = [];
+  if (sort === undefined) sort = [];
+  sort = vg.array(sort).map(function(f) {
+    var s = 1;
+    if      (f[0] === "-") { s = -1; f = f.slice(1); }
+    else if (f[0] === "+") { s = +1; f = f.slice(1); }
+    sign.push(s);
+    return vg.accessor(f);
+  });
+  return function(a,b) {
+    var i, n, f, x, y;
+    for (i=0, n=sort.length; i<n; ++i) {
+      f = sort[i]; x = f(a); y = f(b);
+      if (x < y) return -1 * sign[i];
+      if (x > y) return sign[i];
+    }
+    return 0;
+  };
+};
+
+vg.cmp = function(a, b) { return a<b ? -1 : a>b ? 1 : 0; };
+
+vg.numcmp = function(a, b) { return a - b; };
+
+vg.array = function(x) {
+  return x != null ? (vg.isArray(x) ? x : [x]) : [];
+};
+
+vg.values = function(x) {
+  return (vg.isObject(x) && !vg.isArray(x) && x.values) ? x.values : x;
+};
+
+vg.str = function(x) {
+  return vg.isArray(x) ? "[" + x.map(vg.str) + "]"
+    : vg.isObject(x) ? JSON.stringify(x)
+    : vg.isString(x) ? ("'"+vg_escape_str(x)+"'") : x;
+};
+
+var escape_str_re = /(^|[^\\])'/g;
+
+function vg_escape_str(x) {
+  return x.replace(escape_str_re, "$1\\'");
+}
+
+vg.keys = function(x) {
+  var keys = [];
+  for (var key in x) keys.push(key);
+  return keys;
+};
+
+vg.unique = function(data, f, results) {
+  if (!vg.isArray(data) || data.length==0) return [];
+  f = f || vg.identity;
+  results = results || [];
+  for (var v, i=0, n=data.length; i<n; ++i) {
+    v = f(data[i]);
+    if (results.indexOf(v) < 0) results.push(v);
+  }
+  return results;
+};
+
+vg.minIndex = function(data, f) {
+  if (!vg.isArray(data) || data.length==0) return -1;
+  f = f || vg.identity;
+  var idx = 0, min = f(data[0]), v = min;
+  for (var i=1, n=data.length; i<n; ++i) {
+    v = f(data[i]);
+    if (v < min) { min = v; idx = i; }
+  }
+  return idx;
+};
+
+vg.maxIndex = function(data, f) {
+  if (!vg.isArray(data) || data.length==0) return -1;
+  f = f || vg.identity;
+  var idx = 0, max = f(data[0]), v = max;
+  for (var i=1, n=data.length; i<n; ++i) {
+    v = f(data[i]);
+    if (v > max) { max = v; idx = i; }
+  }
+  return idx;
+};
+
+vg.truncate = function(s, length, pos, word, ellipsis) {
+  var len = s.length;
+  if (len <= length) return s;
+  ellipsis = ellipsis || "...";
+  var l = Math.max(0, length - ellipsis.length);
+
+  switch (pos) {
+    case "left":
+      return ellipsis + (word ? vg_truncateOnWord(s,l,1) : s.slice(len-l));
+    case "middle":
+    case "center":
+      var l1 = Math.ceil(l/2), l2 = Math.floor(l/2);
+      return (word ? vg_truncateOnWord(s,l1) : s.slice(0,l1)) + ellipsis
+        + (word ? vg_truncateOnWord(s,l2,1) : s.slice(len-l2));
+    default:
+      return (word ? vg_truncateOnWord(s,l) : s.slice(0,l)) + ellipsis;
+  }
+}
+
+function vg_truncateOnWord(s, len, rev) {
+  var cnt = 0, tok = s.split(vg_truncate_word_re);
+  if (rev) {
+    s = (tok = tok.reverse())
+      .filter(function(w) { cnt += w.length; return cnt <= len; })
+      .reverse();
+  } else {
+    s = tok.filter(function(w) { cnt += w.length; return cnt <= len; });
+  }
+  return s.length ? s.join("").trim() : tok[0].slice(0, len);
+}
+
+var vg_truncate_word_re = /([\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u2028\u2029\u3000\uFEFF])/;
+
+// Logging
+
+function vg_write(msg) {
+  vg.config.isNode
+    ? process.stderr.write(msg + "\n")
+    : console.log(msg);
+}
+
+vg.log = function(msg) {
+  vg_write("[Vega Log] " + msg);
+};
+
+vg.error = function(msg) {
+  msg = "[Vega Err] " + msg;
+  vg_write(msg);
+  if (typeof alert !== "undefined") alert(msg);
+};vg.config = {};
+
+// are we running in node.js?
+// via timetler.com/2012/10/13/environment-detection-in-javascript/
+vg.config.isNode = typeof exports !== 'undefined' && this.exports !== exports;
+
+// Allows domain restriction when using data loading via XHR.
+// To enable, set it to a list of allowed domains
+// e.g., ['wikipedia.org', 'eff.org']
+vg.config.domainWhiteList = false;
+
+// If true, disable potentially unsafe transforms (filter, formula)
+// involving possible JavaScript injection attacks.
+vg.config.safeMode = false;
+
+// base url for loading external data files
+// used only for server-side operation
+vg.config.baseURL = "";
+
+// version and namepsaces for exported svg
+vg.config.svgNamespace =
+  'version="1.1" xmlns="http://www.w3.org/2000/svg" ' +
+  'xmlns:xlink="http://www.w3.org/1999/xlink"';
+
+// inset padding for automatic padding calculation
+vg.config.autopadInset = 5;
+
+// extensible scale lookup table
+// all d3.scale.* instances also supported
+vg.config.scale = {
+  time: d3.time.scale,
+  utc:  d3.time.scale.utc
+};
+
+// default rendering settings
+vg.config.render = {
+  lineWidth: 1,
+  lineCap:   "butt",
+  font:      "sans-serif",
+  fontSize:  11
+};
+
+// default axis properties
+vg.config.axis = {
+  orient: "bottom",
+  ticks: 10,
+  padding: 3,
+  axisColor: "#000",
+  gridColor: "#d8d8d8",
+  tickColor: "#000",
+  tickLabelColor: "#000",
+  axisWidth: 1,
+  tickWidth: 1,
+  tickSize: 6,
+  tickLabelFontSize: 11,
+  tickLabelFont: "sans-serif",
+  titleColor: "#000",
+  titleFont: "sans-serif",
+  titleFontSize: 11,
+  titleFontWeight: "bold",
+  titleOffset: 35
+};
+
+// default legend properties
+vg.config.legend = {
+  orient: "right",
+  offset: 10,
+  padding: 3,
+  gradientStrokeColor: "#888",
+  gradientStrokeWidth: 1,
+  gradientHeight: 16,
+  gradientWidth: 100,
+  labelColor: "#000",
+  labelFontSize: 10,
+  labelFont: "sans-serif",
+  labelAlign: "left",
+  labelBaseline: "middle",
+  labelOffset: 8,
+  symbolShape: "circle",
+  symbolSize: 50,
+  symbolColor: "#888",
+  symbolStrokeWidth: 1,
+  titleColor: "#000",
+  titleFont: "sans-serif",
+  titleFontSize: 11,
+  titleFontWeight: "bold"
+};
+
+// default color values
+vg.config.color = {
+  rgb: [128, 128, 128],
+  lab: [50, 0, 0],
+  hcl: [0, 0, 50],
+  hsl: [0, 0, 0.5]
+};
+
+// default scale ranges
+vg.config.range = {
+  category10: [
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf"
+  ],
+  category20: [
+    "#1f77b4",
+    "#aec7e8",
+    "#ff7f0e",
+    "#ffbb78",
+    "#2ca02c",
+    "#98df8a",
+    "#d62728",
+    "#ff9896",
+    "#9467bd",
+    "#c5b0d5",
+    "#8c564b",
+    "#c49c94",
+    "#e377c2",
+    "#f7b6d2",
+    "#7f7f7f",
+    "#c7c7c7",
+    "#bcbd22",
+    "#dbdb8d",
+    "#17becf",
+    "#9edae5"
+  ],
+  shapes: [
+    "circle",
+    "cross",
+    "diamond",
+    "square",
+    "triangle-down",
+    "triangle-up"
+  ]
+};vg.Bounds = (function() {
+  var bounds = function(b) {
+    this.clear();
+    if (b) this.union(b);
+  };
+  
+  var prototype = bounds.prototype;
+  
+  prototype.clear = function() {
+    this.x1 = +Number.MAX_VALUE;
+    this.y1 = +Number.MAX_VALUE;
+    this.x2 = -Number.MAX_VALUE;
+    this.y2 = -Number.MAX_VALUE;
+    return this;
+  };
+  
+  prototype.set = function(x1, y1, x2, y2) {
+    this.x1 = x1;
+    this.y1 = y1;
+    this.x2 = x2;
+    this.y2 = y2;
+    return this;
   };
 
-  if ((typeof module !== "undefined" && module !== null) && (module.exports != null)) {
-    module.exports = chroma;
+  prototype.add = function(x, y) {
+    if (x < this.x1) this.x1 = x;
+    if (y < this.y1) this.y1 = y;
+    if (x > this.x2) this.x2 = x;
+    if (y > this.y2) this.y2 = y;
+    return this;
+  };
+
+  prototype.expand = function(d) {
+    this.x1 -= d;
+    this.y1 -= d;
+    this.x2 += d;
+    this.y2 += d;
+    return this;
+  };
+  
+  prototype.round = function() {
+    this.x1 = Math.floor(this.x1);
+    this.y1 = Math.floor(this.y1);
+    this.x2 = Math.ceil(this.x2);
+    this.y2 = Math.ceil(this.y2);
+    return this;
+  };
+
+  prototype.translate = function(dx, dy) {
+    this.x1 += dx;
+    this.x2 += dx;
+    this.y1 += dy;
+    this.y2 += dy;
+    return this;
+  };
+  
+  prototype.rotate = function(angle, x, y) {
+    var cos = Math.cos(angle),
+        sin = Math.sin(angle),
+        cx = x - x*cos + y*sin,
+        cy = y - x*sin - y*cos,
+        x1 = this.x1, x2 = this.x2,
+        y1 = this.y1, y2 = this.y2;
+
+    return this.clear()
+      .add(cos*x1 - sin*y1 + cx,  sin*x1 + cos*y1 + cy)
+      .add(cos*x1 - sin*y2 + cx,  sin*x1 + cos*y2 + cy)
+      .add(cos*x2 - sin*y1 + cx,  sin*x2 + cos*y1 + cy)
+      .add(cos*x2 - sin*y2 + cx,  sin*x2 + cos*y2 + cy);
   }
 
-  if (typeof define === 'function' && define.amd) {
-    define([], function() {
-      return chroma;
+  prototype.union = function(b) {
+    if (b.x1 < this.x1) this.x1 = b.x1;
+    if (b.y1 < this.y1) this.y1 = b.y1;
+    if (b.x2 > this.x2) this.x2 = b.x2;
+    if (b.y2 > this.y2) this.y2 = b.y2;
+    return this;
+  };
+
+  prototype.encloses = function(b) {
+    return b && (
+      this.x1 <= b.x1 &&
+      this.x2 >= b.x2 &&
+      this.y1 <= b.y1 &&
+      this.y2 >= b.y2
+    );
+  };
+
+  prototype.intersects = function(b) {
+    return b && !(
+      this.x2 < b.x1 ||
+      this.x1 > b.x2 ||
+      this.y2 < b.y1 ||
+      this.y1 > b.y2
+    );
+  };
+
+  prototype.contains = function(x, y) {
+    return !(
+      x < this.x1 ||
+      x > this.x2 ||
+      y < this.y1 ||
+      y > this.y2
+    );
+  };
+
+  prototype.width = function() {
+    return this.x2 - this.x1;
+  };
+
+  prototype.height = function() {
+    return this.y2 - this.y1;
+  };
+
+  return bounds;
+})();vg.Gradient = (function() {
+
+  function gradient(type) {
+    this.id = "grad_" + (vg_gradient_id++);
+    this.type = type || "linear";
+    this.stops = [];
+    this.x1 = 0;
+    this.x2 = 1;
+    this.y1 = 0;
+    this.y2 = 0;
+  };
+
+  var prototype = gradient.prototype;
+
+  prototype.stop = function(offset, color) {
+    this.stops.push({
+      offset: offset,
+      color: color
+    });
+    return this;
+  };
+  
+  return gradient;
+})();
+
+var vg_gradient_id = 0;vg.canvas = {};vg.canvas.path = (function() {
+
+  // Path parsing and rendering code taken from fabric.js -- Thanks!
+  var cmdLength = { m:2, l:2, h:1, v:1, c:6, s:4, q:4, t:2, a:7 },
+      re = [/([MLHVCSQTAZmlhvcsqtaz])/g, /###/, /(\d)-/g, /\s|,|###/];
+
+  function parse(path) {
+    var result = [],
+        currentPath,
+        chunks,
+        parsed;
+
+    // First, break path into command sequence
+    path = path.slice().replace(re[0], '###$1').split(re[1]).slice(1);
+
+    // Next, parse each command in turn
+    for (var i=0, j, chunksParsed, len=path.length; i<len; i++) {
+      currentPath = path[i];
+      chunks = currentPath.slice(1).trim().replace(re[2],'$1###-').split(re[3]);
+      chunksParsed = [currentPath.charAt(0)];
+
+      for (var j = 0, jlen = chunks.length; j < jlen; j++) {
+        parsed = parseFloat(chunks[j]);
+        if (!isNaN(parsed)) {
+          chunksParsed.push(parsed);
+        }
+      }
+
+      var command = chunksParsed[0].toLowerCase(),
+          commandLength = cmdLength[command];
+
+      if (chunksParsed.length - 1 > commandLength) {
+        for (var k = 1, klen = chunksParsed.length; k < klen; k += commandLength) {
+          result.push([ chunksParsed[0] ].concat(chunksParsed.slice(k, k + commandLength)));
+        }
+      }
+      else {
+        result.push(chunksParsed);
+      }
+    }
+
+    return result;
+  }
+
+  function drawArc(g, x, y, coords, bounds, l, t) {
+    var rx = coords[0];
+    var ry = coords[1];
+    var rot = coords[2];
+    var large = coords[3];
+    var sweep = coords[4];
+    var ex = coords[5];
+    var ey = coords[6];
+    var segs = arcToSegments(ex, ey, rx, ry, large, sweep, rot, x, y);
+    for (var i=0; i<segs.length; i++) {
+      var bez = segmentToBezier.apply(null, segs[i]);
+      g.bezierCurveTo.apply(g, bez);
+      bounds.add(bez[0]-l, bez[1]-t);
+      bounds.add(bez[2]-l, bez[3]-t);
+      bounds.add(bez[4]-l, bez[5]-t);
+    }
+  }
+
+  function boundArc(x, y, coords, bounds) {
+    var rx = coords[0];
+    var ry = coords[1];
+    var rot = coords[2];
+    var large = coords[3];
+    var sweep = coords[4];
+    var ex = coords[5];
+    var ey = coords[6];
+    var segs = arcToSegments(ex, ey, rx, ry, large, sweep, rot, x, y);
+    for (var i=0; i<segs.length; i++) {
+      var bez = segmentToBezier.apply(null, segs[i]);
+      bounds.add(bez[0], bez[1]);
+      bounds.add(bez[2], bez[3]);
+      bounds.add(bez[4], bez[5]);
+    }
+  }
+
+  var arcToSegmentsCache = { },
+      segmentToBezierCache = { },
+      join = Array.prototype.join,
+      argsStr;
+
+  // Copied from Inkscape svgtopdf, thanks!
+  function arcToSegments(x, y, rx, ry, large, sweep, rotateX, ox, oy) {
+    argsStr = join.call(arguments);
+    if (arcToSegmentsCache[argsStr]) {
+      return arcToSegmentsCache[argsStr];
+    }
+
+    var th = rotateX * (Math.PI/180);
+    var sin_th = Math.sin(th);
+    var cos_th = Math.cos(th);
+    rx = Math.abs(rx);
+    ry = Math.abs(ry);
+    var px = cos_th * (ox - x) * 0.5 + sin_th * (oy - y) * 0.5;
+    var py = cos_th * (oy - y) * 0.5 - sin_th * (ox - x) * 0.5;
+    var pl = (px*px) / (rx*rx) + (py*py) / (ry*ry);
+    if (pl > 1) {
+      pl = Math.sqrt(pl);
+      rx *= pl;
+      ry *= pl;
+    }
+
+    var a00 = cos_th / rx;
+    var a01 = sin_th / rx;
+    var a10 = (-sin_th) / ry;
+    var a11 = (cos_th) / ry;
+    var x0 = a00 * ox + a01 * oy;
+    var y0 = a10 * ox + a11 * oy;
+    var x1 = a00 * x + a01 * y;
+    var y1 = a10 * x + a11 * y;
+
+    var d = (x1-x0) * (x1-x0) + (y1-y0) * (y1-y0);
+    var sfactor_sq = 1 / d - 0.25;
+    if (sfactor_sq < 0) sfactor_sq = 0;
+    var sfactor = Math.sqrt(sfactor_sq);
+    if (sweep == large) sfactor = -sfactor;
+    var xc = 0.5 * (x0 + x1) - sfactor * (y1-y0);
+    var yc = 0.5 * (y0 + y1) + sfactor * (x1-x0);
+
+    var th0 = Math.atan2(y0-yc, x0-xc);
+    var th1 = Math.atan2(y1-yc, x1-xc);
+
+    var th_arc = th1-th0;
+    if (th_arc < 0 && sweep == 1){
+      th_arc += 2*Math.PI;
+    } else if (th_arc > 0 && sweep == 0) {
+      th_arc -= 2 * Math.PI;
+    }
+
+    var segments = Math.ceil(Math.abs(th_arc / (Math.PI * 0.5 + 0.001)));
+    var result = [];
+    for (var i=0; i<segments; i++) {
+      var th2 = th0 + i * th_arc / segments;
+      var th3 = th0 + (i+1) * th_arc / segments;
+      result[i] = [xc, yc, th2, th3, rx, ry, sin_th, cos_th];
+    }
+
+    return (arcToSegmentsCache[argsStr] = result);
+  }
+
+  function segmentToBezier(cx, cy, th0, th1, rx, ry, sin_th, cos_th) {
+    argsStr = join.call(arguments);
+    if (segmentToBezierCache[argsStr]) {
+      return segmentToBezierCache[argsStr];
+    }
+
+    var a00 = cos_th * rx;
+    var a01 = -sin_th * ry;
+    var a10 = sin_th * rx;
+    var a11 = cos_th * ry;
+
+    var cos_th0 = Math.cos(th0);
+    var sin_th0 = Math.sin(th0);
+    var cos_th1 = Math.cos(th1);
+    var sin_th1 = Math.sin(th1);
+
+    var th_half = 0.5 * (th1 - th0);
+    var sin_th_h2 = Math.sin(th_half * 0.5);
+    var t = (8/3) * sin_th_h2 * sin_th_h2 / Math.sin(th_half);
+    var x1 = cx + cos_th0 - t * sin_th0;
+    var y1 = cy + sin_th0 + t * cos_th0;
+    var x3 = cx + cos_th1;
+    var y3 = cy + sin_th1;
+    var x2 = x3 + t * sin_th1;
+    var y2 = y3 - t * cos_th1;
+
+    return (segmentToBezierCache[argsStr] = [
+      a00 * x1 + a01 * y1,  a10 * x1 + a11 * y1,
+      a00 * x2 + a01 * y2,  a10 * x2 + a11 * y2,
+      a00 * x3 + a01 * y3,  a10 * x3 + a11 * y3
+    ]);
+  }
+
+  function render(g, path, l, t) {
+    var current, // current instruction
+        previous = null,
+        x = 0, // current x
+        y = 0, // current y
+        controlX = 0, // current control point x
+        controlY = 0, // current control point y
+        tempX,
+        tempY,
+        tempControlX,
+        tempControlY,
+        bounds = new vg.Bounds();
+    if (l == undefined) l = 0;
+    if (t == undefined) t = 0;
+
+    g.beginPath();
+  
+    for (var i=0, len=path.length; i<len; ++i) {
+      current = path[i];
+
+      switch (current[0]) { // first letter
+
+        case 'l': // lineto, relative
+          x += current[1];
+          y += current[2];
+          g.lineTo(x + l, y + t);
+          bounds.add(x, y);
+          break;
+
+        case 'L': // lineto, absolute
+          x = current[1];
+          y = current[2];
+          g.lineTo(x + l, y + t);
+          bounds.add(x, y);
+          break;
+
+        case 'h': // horizontal lineto, relative
+          x += current[1];
+          g.lineTo(x + l, y + t);
+          bounds.add(x, y);
+          break;
+
+        case 'H': // horizontal lineto, absolute
+          x = current[1];
+          g.lineTo(x + l, y + t);
+          bounds.add(x, y);
+          break;
+
+        case 'v': // vertical lineto, relative
+          y += current[1];
+          g.lineTo(x + l, y + t);
+          bounds.add(x, y);
+          break;
+
+        case 'V': // verical lineto, absolute
+          y = current[1];
+          g.lineTo(x + l, y + t);
+          bounds.add(x, y);
+          break;
+
+        case 'm': // moveTo, relative
+          x += current[1];
+          y += current[2];
+          g.moveTo(x + l, y + t);
+          bounds.add(x, y);
+          break;
+
+        case 'M': // moveTo, absolute
+          x = current[1];
+          y = current[2];
+          g.moveTo(x + l, y + t);
+          bounds.add(x, y);
+          break;
+
+        case 'c': // bezierCurveTo, relative
+          tempX = x + current[5];
+          tempY = y + current[6];
+          controlX = x + current[3];
+          controlY = y + current[4];
+          g.bezierCurveTo(
+            x + current[1] + l, // x1
+            y + current[2] + t, // y1
+            controlX + l, // x2
+            controlY + t, // y2
+            tempX + l,
+            tempY + t
+          );
+          bounds.add(x + current[1], y + current[2]);
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          x = tempX;
+          y = tempY;
+          break;
+
+        case 'C': // bezierCurveTo, absolute
+          x = current[5];
+          y = current[6];
+          controlX = current[3];
+          controlY = current[4];
+          g.bezierCurveTo(
+            current[1] + l,
+            current[2] + t,
+            controlX + l,
+            controlY + t,
+            x + l,
+            y + t
+          );
+          bounds.add(current[1], current[2]);
+          bounds.add(controlX, controlY);
+          bounds.add(x, y);
+          break;
+
+        case 's': // shorthand cubic bezierCurveTo, relative
+          // transform to absolute x,y
+          tempX = x + current[3];
+          tempY = y + current[4];
+          // calculate reflection of previous control points
+          controlX = 2 * x - controlX;
+          controlY = 2 * y - controlY;
+          g.bezierCurveTo(
+            controlX + l,
+            controlY + t,
+            x + current[1] + l,
+            y + current[2] + t,
+            tempX + l,
+            tempY + t
+          );
+          bounds.add(controlX, controlY);
+          bounds.add(x + current[1], y + current[2]);
+          bounds.add(tempX, tempY);
+
+          // set control point to 2nd one of this command
+          // "... the first control point is assumed to be the reflection of the second control point on the previous command relative to the current point."
+          controlX = x + current[1];
+          controlY = y + current[2];
+
+          x = tempX;
+          y = tempY;
+          break;
+
+        case 'S': // shorthand cubic bezierCurveTo, absolute
+          tempX = current[3];
+          tempY = current[4];
+          // calculate reflection of previous control points
+          controlX = 2*x - controlX;
+          controlY = 2*y - controlY;
+          g.bezierCurveTo(
+            controlX + l,
+            controlY + t,
+            current[1] + l,
+            current[2] + t,
+            tempX + l,
+            tempY + t
+          );
+          x = tempX;
+          y = tempY;
+          bounds.add(current[1], current[2]);
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          // set control point to 2nd one of this command
+          // "... the first control point is assumed to be the reflection of the second control point on the previous command relative to the current point."
+          controlX = current[1];
+          controlY = current[2];
+
+          break;
+
+        case 'q': // quadraticCurveTo, relative
+          // transform to absolute x,y
+          tempX = x + current[3];
+          tempY = y + current[4];
+
+          controlX = x + current[1];
+          controlY = y + current[2];
+
+          g.quadraticCurveTo(
+            controlX + l,
+            controlY + t,
+            tempX + l,
+            tempY + t
+          );
+          x = tempX;
+          y = tempY;
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          break;
+
+        case 'Q': // quadraticCurveTo, absolute
+          tempX = current[3];
+          tempY = current[4];
+
+          g.quadraticCurveTo(
+            current[1] + l,
+            current[2] + t,
+            tempX + l,
+            tempY + t
+          );
+          x = tempX;
+          y = tempY;
+          controlX = current[1];
+          controlY = current[2];
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          break;
+
+        case 't': // shorthand quadraticCurveTo, relative
+
+          // transform to absolute x,y
+          tempX = x + current[1];
+          tempY = y + current[2];
+
+          if (previous[0].match(/[QqTt]/) === null) {
+            // If there is no previous command or if the previous command was not a Q, q, T or t,
+            // assume the control point is coincident with the current point
+            controlX = x;
+            controlY = y;
+          }
+          else if (previous[0] === 't') {
+            // calculate reflection of previous control points for t
+            controlX = 2 * x - tempControlX;
+            controlY = 2 * y - tempControlY;
+          }
+          else if (previous[0] === 'q') {
+            // calculate reflection of previous control points for q
+            controlX = 2 * x - controlX;
+            controlY = 2 * y - controlY;
+          }
+
+          tempControlX = controlX;
+          tempControlY = controlY;
+
+          g.quadraticCurveTo(
+            controlX + l,
+            controlY + t,
+            tempX + l,
+            tempY + t
+          );
+          x = tempX;
+          y = tempY;
+          controlX = x + current[1];
+          controlY = y + current[2];
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          break;
+
+        case 'T':
+          tempX = current[1];
+          tempY = current[2];
+
+          // calculate reflection of previous control points
+          controlX = 2 * x - controlX;
+          controlY = 2 * y - controlY;
+          g.quadraticCurveTo(
+            controlX + l,
+            controlY + t,
+            tempX + l,
+            tempY + t
+          );
+          x = tempX;
+          y = tempY;
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          break;
+
+        case 'a':
+          drawArc(g, x + l, y + t, [
+            current[1],
+            current[2],
+            current[3],
+            current[4],
+            current[5],
+            current[6] + x + l,
+            current[7] + y + t
+          ], bounds, l, t);
+          x += current[6];
+          y += current[7];
+          break;
+
+        case 'A':
+          drawArc(g, x + l, y + t, [
+            current[1],
+            current[2],
+            current[3],
+            current[4],
+            current[5],
+            current[6] + l,
+            current[7] + t
+          ], bounds, l, t);
+          x = current[6];
+          y = current[7];
+          break;
+
+        case 'z':
+        case 'Z':
+          g.closePath();
+          break;
+      }
+      previous = current;
+    }
+    return bounds.translate(l, t);
+  }
+
+  function bounds(path, bounds) {
+    var current, // current instruction
+        previous = null,
+        x = 0, // current x
+        y = 0, // current y
+        controlX = 0, // current control point x
+        controlY = 0, // current control point y
+        tempX,
+        tempY,
+        tempControlX,
+        tempControlY;
+
+    for (var i=0, len=path.length; i<len; ++i) {
+      current = path[i];
+
+      switch (current[0]) { // first letter
+
+        case 'l': // lineto, relative
+          x += current[1];
+          y += current[2];
+          bounds.add(x, y);
+          break;
+
+        case 'L': // lineto, absolute
+          x = current[1];
+          y = current[2];
+          bounds.add(x, y);
+          break;
+
+        case 'h': // horizontal lineto, relative
+          x += current[1];
+          bounds.add(x, y);
+          break;
+
+        case 'H': // horizontal lineto, absolute
+          x = current[1];
+          bounds.add(x, y);
+          break;
+
+        case 'v': // vertical lineto, relative
+          y += current[1];
+          bounds.add(x, y);
+          break;
+
+        case 'V': // verical lineto, absolute
+          y = current[1];
+          bounds.add(x, y);
+          break;
+
+        case 'm': // moveTo, relative
+          x += current[1];
+          y += current[2];
+          bounds.add(x, y);
+          break;
+
+        case 'M': // moveTo, absolute
+          x = current[1];
+          y = current[2];
+          bounds.add(x, y);
+          break;
+
+        case 'c': // bezierCurveTo, relative
+          tempX = x + current[5];
+          tempY = y + current[6];
+          controlX = x + current[3];
+          controlY = y + current[4];
+          bounds.add(x + current[1], y + current[2]);
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          x = tempX;
+          y = tempY;
+          break;
+
+        case 'C': // bezierCurveTo, absolute
+          x = current[5];
+          y = current[6];
+          controlX = current[3];
+          controlY = current[4];
+          bounds.add(current[1], current[2]);
+          bounds.add(controlX, controlY);
+          bounds.add(x, y);
+          break;
+
+        case 's': // shorthand cubic bezierCurveTo, relative
+          // transform to absolute x,y
+          tempX = x + current[3];
+          tempY = y + current[4];
+          // calculate reflection of previous control points
+          controlX = 2 * x - controlX;
+          controlY = 2 * y - controlY;
+          bounds.add(controlX, controlY);
+          bounds.add(x + current[1], y + current[2]);
+          bounds.add(tempX, tempY);
+
+          // set control point to 2nd one of this command
+          // "... the first control point is assumed to be the reflection of the second control point on the previous command relative to the current point."
+          controlX = x + current[1];
+          controlY = y + current[2];
+
+          x = tempX;
+          y = tempY;
+          break;
+
+        case 'S': // shorthand cubic bezierCurveTo, absolute
+          tempX = current[3];
+          tempY = current[4];
+          // calculate reflection of previous control points
+          controlX = 2*x - controlX;
+          controlY = 2*y - controlY;
+          x = tempX;
+          y = tempY;
+          bounds.add(current[1], current[2]);
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          // set control point to 2nd one of this command
+          // "... the first control point is assumed to be the reflection of the second control point on the previous command relative to the current point."
+          controlX = current[1];
+          controlY = current[2];
+
+          break;
+
+        case 'q': // quadraticCurveTo, relative
+          // transform to absolute x,y
+          tempX = x + current[3];
+          tempY = y + current[4];
+
+          controlX = x + current[1];
+          controlY = y + current[2];
+
+          x = tempX;
+          y = tempY;
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          break;
+
+        case 'Q': // quadraticCurveTo, absolute
+          tempX = current[3];
+          tempY = current[4];
+
+          x = tempX;
+          y = tempY;
+          controlX = current[1];
+          controlY = current[2];
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          break;
+
+        case 't': // shorthand quadraticCurveTo, relative
+
+          // transform to absolute x,y
+          tempX = x + current[1];
+          tempY = y + current[2];
+
+          if (previous[0].match(/[QqTt]/) === null) {
+            // If there is no previous command or if the previous command was not a Q, q, T or t,
+            // assume the control point is coincident with the current point
+            controlX = x;
+            controlY = y;
+          }
+          else if (previous[0] === 't') {
+            // calculate reflection of previous control points for t
+            controlX = 2 * x - tempControlX;
+            controlY = 2 * y - tempControlY;
+          }
+          else if (previous[0] === 'q') {
+            // calculate reflection of previous control points for q
+            controlX = 2 * x - controlX;
+            controlY = 2 * y - controlY;
+          }
+
+          tempControlX = controlX;
+          tempControlY = controlY;
+
+          x = tempX;
+          y = tempY;
+          controlX = x + current[1];
+          controlY = y + current[2];
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          break;
+
+        case 'T':
+          tempX = current[1];
+          tempY = current[2];
+
+          // calculate reflection of previous control points
+          controlX = 2 * x - controlX;
+          controlY = 2 * y - controlY;
+
+          x = tempX;
+          y = tempY;
+          bounds.add(controlX, controlY);
+          bounds.add(tempX, tempY);
+          break;
+
+        case 'a':
+          boundArc(x, y, [
+            current[1],
+            current[2],
+            current[3],
+            current[4],
+            current[5],
+            current[6] + x,
+            current[7] + y
+          ], bounds);
+          x += current[6];
+          y += current[7];
+          break;
+
+        case 'A':
+          boundArc(x, y, [
+            current[1],
+            current[2],
+            current[3],
+            current[4],
+            current[5],
+            current[6],
+            current[7]
+          ], bounds);
+          x = current[6];
+          y = current[7];
+          break;
+
+        case 'z':
+        case 'Z':
+          break;
+      }
+      previous = current;
+    }
+    return bounds;
+  }
+  
+  function area(items) {
+    var o = items[0];
+    var area = d3.svg.area()
+      .x(function(d) { return d.x; })
+      .y1(function(d) { return d.y; })
+      .y0(function(d) { return d.y + d.height; });
+    if (o.interpolate) area.interpolate(o.interpolate);
+    if (o.tension != null) area.tension(o.tension);
+    return area(items);
+  }
+
+  function line(items) {
+    var o = items[0];
+    var line = d3.svg.line()
+     .x(function(d) { return d.x; })
+     .y(function(d) { return d.y; });
+    if (o.interpolate) line.interpolate(o.interpolate);
+    if (o.tension != null) line.tension(o.tension);
+    return line(items);
+  }
+  
+  return {
+    parse:  parse,
+    render: render,
+    bounds: bounds,
+    area:   area,
+    line:   line
+  };
+  
+})();vg.canvas.marks = (function() {
+
+  var parsePath = vg.canvas.path.parse,
+      renderPath = vg.canvas.path.render,
+      halfpi = Math.PI / 2,
+      sqrt3 = Math.sqrt(3),
+      tan30 = Math.tan(30 * Math.PI / 180),
+      tmpBounds = new vg.Bounds();
+
+  // path generators
+
+  function arcPath(g, o) {
+    var x = o.x || 0,
+        y = o.y || 0,
+        ir = o.innerRadius || 0,
+        or = o.outerRadius || 0,
+        sa = (o.startAngle || 0) - Math.PI/2,
+        ea = (o.endAngle || 0) - Math.PI/2;
+    g.beginPath();
+    if (ir === 0) g.moveTo(x, y);
+    else g.arc(x, y, ir, sa, ea, 0);
+    g.arc(x, y, or, ea, sa, 1);
+    g.closePath();
+  }
+
+  function areaPath(g, items) {
+    var o = items[0],
+        m = o.mark,
+        p = m.pathCache || (m.pathCache = parsePath(vg.canvas.path.area(items)));
+    renderPath(g, p);
+  }
+
+  function linePath(g, items) {
+    var o = items[0],
+        m = o.mark,
+        p = m.pathCache || (m.pathCache = parsePath(vg.canvas.path.line(items)));
+    renderPath(g, p);
+  }
+
+  function pathPath(g, o) {
+    if (o.path == null) return;
+    var p = o.pathCache || (o.pathCache = parsePath(o.path));
+    return renderPath(g, p, o.x, o.y);
+  }
+
+  function symbolPath(g, o) {
+    g.beginPath();
+    var size = o.size != null ? o.size : 100,
+        x = o.x, y = o.y, r, t, rx, ry;
+
+    if (o.shape == null || o.shape === "circle") {
+      r = Math.sqrt(size/Math.PI);
+      g.arc(x, y, r, 0, 2*Math.PI, 0);
+      g.closePath();
+      return;
+    }
+
+    switch (o.shape) {
+      case "cross":
+        r = Math.sqrt(size / 5) / 2;
+        t = 3*r;
+        g.moveTo(x-t, y-r);
+        g.lineTo(x-r, y-r);
+        g.lineTo(x-r, y-t);
+        g.lineTo(x+r, y-t);
+        g.lineTo(x+r, y-r);
+        g.lineTo(x+t, y-r);
+        g.lineTo(x+t, y+r);
+        g.lineTo(x+r, y+r);
+        g.lineTo(x+r, y+t);
+        g.lineTo(x-r, y+t);
+        g.lineTo(x-r, y+r);
+        g.lineTo(x-t, y+r);
+        break;
+
+      case "diamond":
+        ry = Math.sqrt(size / (2 * tan30));
+        rx = ry * tan30;
+        g.moveTo(x, y-ry);
+        g.lineTo(x+rx, y);
+        g.lineTo(x, y+ry);
+        g.lineTo(x-rx, y);
+        break;
+
+      case "square":
+        t = Math.sqrt(size);
+        r = t / 2;
+        g.rect(x-r, y-r, t, t);
+        break;
+
+      case "triangle-down":
+        rx = Math.sqrt(size / sqrt3);
+        ry = rx * sqrt3 / 2;
+        g.moveTo(x, y+ry);
+        g.lineTo(x+rx, y-ry);
+        g.lineTo(x-rx, y-ry);
+        break;
+
+      case "triangle-up":
+        rx = Math.sqrt(size / sqrt3);
+        ry = rx * sqrt3 / 2;
+        g.moveTo(x, y-ry);
+        g.lineTo(x+rx, y+ry);
+        g.lineTo(x-rx, y+ry);
+    }
+    g.closePath();
+  }
+
+  function lineStroke(g, items) {
+    var o = items[0],
+        lw = o.strokeWidth,
+        lc = o.strokeCap;
+    g.lineWidth = lw != null ? lw : vg.config.render.lineWidth;
+    g.lineCap   = lc != null ? lc : vg.config.render.lineCap;
+    linePath(g, items);
+  }
+
+  function ruleStroke(g, o) {
+    var x1 = o.x || 0,
+        y1 = o.y || 0,
+        x2 = o.x2 != null ? o.x2 : x1,
+        y2 = o.y2 != null ? o.y2 : y1,
+        lw = o.strokeWidth,
+        lc = o.strokeCap;
+
+    g.lineWidth = lw != null ? lw : vg.config.render.lineWidth;
+    g.lineCap   = lc != null ? lc : vg.config.render.lineCap;
+    g.beginPath();
+    g.moveTo(x1, y1);
+    g.lineTo(x2, y2);
+  }
+
+  // drawing functions
+
+  function drawPathOne(path, g, o, items) {
+    var fill = o.fill, stroke = o.stroke, opac, lc, lw;
+
+    path(g, items);
+
+    opac = o.opacity == null ? 1 : o.opacity;
+    if (opac == 0 || !fill && !stroke) return;
+
+    if (fill) {
+      g.globalAlpha = opac * (o.fillOpacity==null ? 1 : o.fillOpacity);
+      g.fillStyle = color(g, o, fill);
+      g.fill();
+    }
+
+    if (stroke) {
+      lw = (lw = o.strokeWidth) != null ? lw : vg.config.render.lineWidth;
+      if (lw > 0) {
+        g.globalAlpha = opac * (o.strokeOpacity==null ? 1 : o.strokeOpacity);
+        g.strokeStyle = color(g, o, stroke);
+        g.lineWidth = lw;
+        g.lineCap = (lc = o.strokeCap) != null ? lc : vg.config.render.lineCap;
+        g.vgLineDash(o.strokeDash || null);
+        g.vgLineDashOffset(o.strokeDashOffset || 0);
+        g.stroke();
+      }
+    }
+  }
+
+  function drawPathAll(path, g, scene, bounds) {
+    var i, len, item;
+    for (i=0, len=scene.items.length; i<len; ++i) {
+      item = scene.items[i];
+      if (bounds && !bounds.intersects(item.bounds))
+        continue; // bounds check
+      drawPathOne(path, g, item, item);
+    }
+  }
+
+  function drawRect(g, scene, bounds) {
+    if (!scene.items.length) return;
+    var items = scene.items,
+        o, fill, stroke, opac, lc, lw, x, y, w, h;
+
+    for (var i=0, len=items.length; i<len; ++i) {
+      o = items[i];
+      if (bounds && !bounds.intersects(o.bounds))
+        continue; // bounds check
+
+      x = o.x || 0;
+      y = o.y || 0;
+      w = o.width || 0;
+      h = o.height || 0;
+
+      opac = o.opacity == null ? 1 : o.opacity;
+      if (opac == 0) continue;
+
+      if (fill = o.fill) {
+        g.globalAlpha = opac * (o.fillOpacity==null ? 1 : o.fillOpacity);
+        g.fillStyle = color(g, o, fill);
+        g.fillRect(x, y, w, h);
+      }
+
+      if (stroke = o.stroke) {
+        lw = (lw = o.strokeWidth) != null ? lw : vg.config.render.lineWidth;
+        if (lw > 0) {
+          g.globalAlpha = opac * (o.strokeOpacity==null ? 1 : o.strokeOpacity);
+          g.strokeStyle = color(g, o, stroke);
+          g.lineWidth = lw;
+          g.lineCap = (lc = o.strokeCap) != null ? lc : vg.config.render.lineCap;
+          g.vgLineDash(o.strokeDash || null);
+          g.vgLineDashOffset(o.strokeDashOffset || 0);
+          g.strokeRect(x, y, w, h);
+        }
+      }
+    }
+  }
+
+  function drawRule(g, scene, bounds) {
+    if (!scene.items.length) return;
+    var items = scene.items,
+        o, stroke, opac, lc, lw, x1, y1, x2, y2;
+
+    for (var i=0, len=items.length; i<len; ++i) {
+      o = items[i];
+      if (bounds && !bounds.intersects(o.bounds))
+        continue; // bounds check
+
+      x1 = o.x || 0;
+      y1 = o.y || 0;
+      x2 = o.x2 != null ? o.x2 : x1;
+      y2 = o.y2 != null ? o.y2 : y1;
+
+      opac = o.opacity == null ? 1 : o.opacity;
+      if (opac == 0) continue;
+      
+      if (stroke = o.stroke) {
+        lw = (lw = o.strokeWidth) != null ? lw : vg.config.render.lineWidth;
+        if (lw > 0) {
+          g.globalAlpha = opac * (o.strokeOpacity==null ? 1 : o.strokeOpacity);
+          g.strokeStyle = color(g, o, stroke);
+          g.lineWidth = lw;
+          g.lineCap = (lc = o.strokeCap) != null ? lc : vg.config.render.lineCap;
+          g.vgLineDash(o.strokeDash || null);
+          g.vgLineDashOffset(o.strokeDashOffset || 0);
+          g.beginPath();
+          g.moveTo(x1, y1);
+          g.lineTo(x2, y2);
+          g.stroke();
+        }
+      }
+    }
+  }
+
+  function drawImage(g, scene, bounds) {
+    if (!scene.items.length) return;
+    var renderer = this,
+        items = scene.items, o;
+
+    for (var i=0, len=items.length; i<len; ++i) {
+      o = items[i];
+      if (bounds && !bounds.intersects(o.bounds))
+        continue; // bounds check
+
+      if (!(o.image && o.image.url === o.url)) {
+        o.image = renderer.loadImage(o.url);
+        o.image.url = o.url;
+      }
+
+      var x, y, w, h, opac;
+      w = o.width || (o.image && o.image.width) || 0;
+      h = o.height || (o.image && o.image.height) || 0;
+      x = (o.x||0) - (o.align === "center"
+        ? w/2 : (o.align === "right" ? w : 0));
+      y = (o.y||0) - (o.baseline === "middle"
+        ? h/2 : (o.baseline === "bottom" ? h : 0));
+
+      if (o.image.loaded) {
+        g.globalAlpha = (opac = o.opacity) != null ? opac : 1;
+        g.drawImage(o.image, x, y, w, h);
+      }
+    }
+  }
+
+  function drawText(g, scene, bounds) {
+    if (!scene.items.length) return;
+    var items = scene.items,
+        o, fill, stroke, opac, lw, x, y, r, t;
+
+    for (var i=0, len=items.length; i<len; ++i) {
+      o = items[i];
+      if (bounds && !bounds.intersects(o.bounds))
+        continue; // bounds check
+
+      g.font = vg.scene.fontString(o);
+      g.textAlign = o.align || "left";
+      g.textBaseline = o.baseline || "alphabetic";
+
+      opac = o.opacity == null ? 1 : o.opacity;
+      if (opac == 0) continue;
+
+      x = o.x || 0;
+      y = o.y || 0;
+      if (r = o.radius) {
+        t = (o.theta || 0) - Math.PI/2;
+        x += r * Math.cos(t);
+        y += r * Math.sin(t);
+      }
+
+      if (o.angle) {
+        g.save();
+        g.translate(x, y);
+        g.rotate(o.angle * Math.PI/180);
+        x = o.dx || 0;
+        y = o.dy || 0;
+      } else {
+        x += (o.dx || 0);
+        y += (o.dy || 0);
+      }
+
+      if (fill = o.fill) {
+        g.globalAlpha = opac * (o.fillOpacity==null ? 1 : o.fillOpacity);
+        g.fillStyle = color(g, o, fill);
+        g.fillText(o.text, x, y);
+      }
+
+      if (stroke = o.stroke) {
+        lw = (lw = o.strokeWidth) != null ? lw : 1;
+        if (lw > 0) {
+          g.globalAlpha = opac * (o.strokeOpacity==null ? 1 : o.strokeOpacity);
+          g.strokeStyle = color(o, stroke);
+          g.lineWidth = lw;
+          g.strokeText(o.text, x, y);
+        }
+      }
+
+      if (o.angle) g.restore();
+    }
+  }
+
+  function drawAll(pathFunc) {
+    return function(g, scene, bounds) {
+      drawPathAll(pathFunc, g, scene, bounds);
+    }
+  }
+
+  function drawOne(pathFunc) {
+    return function(g, scene, bounds) {
+      if (!scene.items.length) return;
+      if (bounds && !bounds.intersects(scene.items[0].bounds))
+        return; // bounds check
+      drawPathOne(pathFunc, g, scene.items[0], scene.items);
+    }
+  }
+
+  function drawGroup(g, scene, bounds) {
+    if (!scene.items.length) return;
+    var items = scene.items, group, axes, legends,
+        renderer = this, gx, gy, gb, i, n, j, m;
+
+    drawRect(g, scene, bounds);
+
+    for (i=0, n=items.length; i<n; ++i) {
+      group = items[i];
+      axes = group.axisItems || [];
+      legends = group.legendItems || [];
+      gx = group.x || 0;
+      gy = group.y || 0;
+
+      // render group contents
+      g.save();
+      g.translate(gx, gy);
+      if (group.clip) {
+        g.beginPath();
+        g.rect(0, 0, group.width || 0, group.height || 0);
+        g.clip();
+      }
+      
+      if (bounds) bounds.translate(-gx, -gy);
+      
+      for (j=0, m=axes.length; j<m; ++j) {
+        if (axes[j].def.layer === "back") {
+          renderer.draw(g, axes[j], bounds);
+        }
+      }
+      for (j=0, m=group.items.length; j<m; ++j) {
+        renderer.draw(g, group.items[j], bounds);
+      }
+      for (j=0, m=axes.length; j<m; ++j) {
+        if (axes[j].def.layer !== "back") {
+          renderer.draw(g, axes[j], bounds);
+        }
+      }
+      for (j=0, m=legends.length; j<m; ++j) {
+        renderer.draw(g, legends[j], bounds);
+      }
+      
+      if (bounds) bounds.translate(gx, gy);
+      g.restore();
+    }    
+  }
+
+  function color(g, o, value) {
+    return (value.id)
+      ? gradient(g, value, o.bounds)
+      : value;
+  }
+
+  function gradient(g, p, b) {
+    var w = b.width(),
+        h = b.height(),
+        x1 = b.x1 + p.x1 * w,
+        y1 = b.y1 + p.y1 * h,
+        x2 = b.x1 + p.x2 * w,
+        y2 = b.y1 + p.y2 * h,
+        grad = g.createLinearGradient(x1, y1, x2, y2),
+        stop = p.stops,
+        i, n;
+
+    for (i=0, n=stop.length; i<n; ++i) {
+      grad.addColorStop(stop[i].offset, stop[i].color);
+    }
+    return grad;
+  }
+
+  // hit testing
+
+  function pickGroup(g, scene, x, y, gx, gy) {
+    if (scene.items.length === 0 ||
+        scene.bounds && !scene.bounds.contains(gx, gy)) {
+      return false;
+    }
+    var items = scene.items, subscene, group, hit, dx, dy,
+        handler = this, i, j;
+
+    for (i=items.length; --i>=0;) {
+      group = items[i];
+      dx = group.x || 0;
+      dy = group.y || 0;
+
+      g.save();
+      g.translate(dx, dy);
+      for (j=group.items.length; --j >= 0;) {
+        subscene = group.items[j];
+        if (subscene.interactive === false) continue;
+        hit = handler.pick(subscene, x, y, gx-dx, gy-dy);
+        if (hit) {
+          g.restore();
+          return hit;
+        }
+      }
+      g.restore();
+    }
+
+    return scene.interactive
+      ? pickAll(hitTests.group, g, scene, x, y, gx, gy)
+      : false;
+  }
+
+  function pickAll(test, g, scene, x, y, gx, gy) {
+    if (!scene.items.length) return false;
+    var o, b, i;
+
+    if (g._ratio !== 1) {
+      x *= g._ratio;
+      y *= g._ratio;
+    }
+
+    for (i=scene.items.length; --i >= 0;) {
+      o = scene.items[i]; b = o.bounds;
+      // first hit test against bounding box
+      if ((b && !b.contains(gx, gy)) || !b) continue;
+      // if in bounding box, perform more careful test
+      if (test(g, o, x, y, gx, gy)) return o;
+    }
+    return false;
+  }
+
+  function pickArea(g, scene, x, y, gx, gy) {
+    if (!scene.items.length) return false;
+    var items = scene.items,
+        o, b, i, di, dd, od, dx, dy;
+
+    b = items[0].bounds;
+    if (b && !b.contains(gx, gy)) return false;
+    if (g._ratio !== 1) {
+      x *= g._ratio;
+      y *= g._ratio;
+    }
+    if (!hitTests.area(g, items, x, y)) return false;
+    return items[0];
+  }
+
+  function pickLine(g, scene, x, y, gx, gy) {
+    if (!scene.items.length) return false;
+    var items = scene.items,
+        o, b, i, di, dd, od, dx, dy;
+
+    b = items[0].bounds;
+    if (b && !b.contains(gx, gy)) return false;
+    if (g._ratio !== 1) {
+      x *= g._ratio;
+      y *= g._ratio;
+    }
+    if (!hitTests.line(g, items, x, y)) return false;
+    return items[0];
+  }
+
+  function pick(test) {
+    return function (g, scene, x, y, gx, gy) {
+      return pickAll(test, g, scene, x, y, gx, gy);
+    };
+  }
+
+  function textHit(g, o, x, y, gx, gy) {
+    if (!o.fontSize) return false;
+    if (!o.angle) return true; // bounds sufficient if no rotation
+
+    var b = vg.scene.bounds.text(o, tmpBounds, true),
+        a = -o.angle * Math.PI / 180,
+        cos = Math.cos(a),
+        sin = Math.sin(a),
+        x = o.x,
+        y = o.y,
+        px = cos*gx - sin*gy + (x - x*cos + y*sin),
+        py = sin*gx + cos*gy + (y - x*sin - y*cos);
+
+    return b.contains(px, py);
+  }
+
+  var hitTests = {
+    text:   textHit,
+    rect:   function(g,o,x,y) { return true; }, // bounds test is sufficient
+    image:  function(g,o,x,y) { return true; }, // bounds test is sufficient
+    group:  function(g,o,x,y) { return o.fill || o.stroke; },
+    rule:   function(g,o,x,y) {
+              if (!g.isPointInStroke) return false;
+              ruleStroke(g,o); return g.isPointInStroke(x,y);
+            },
+    line:   function(g,s,x,y) {
+              if (!g.isPointInStroke) return false;
+              lineStroke(g,s); return g.isPointInStroke(x,y);
+            },
+    arc:    function(g,o,x,y) { arcPath(g,o);  return g.isPointInPath(x,y); },
+    area:   function(g,s,x,y) { areaPath(g,s); return g.isPointInPath(x,y); },
+    path:   function(g,o,x,y) { pathPath(g,o); return g.isPointInPath(x,y); },
+    symbol: function(g,o,x,y) { symbolPath(g,o); return g.isPointInPath(x,y); }
+  };
+
+  return {
+    draw: {
+      group:   drawGroup,
+      area:    drawOne(areaPath),
+      line:    drawOne(linePath),
+      arc:     drawAll(arcPath),
+      path:    drawAll(pathPath),
+      symbol:  drawAll(symbolPath),
+      rect:    drawRect,
+      rule:    drawRule,
+      text:    drawText,
+      image:   drawImage,
+      drawOne: drawOne, // expose for extensibility
+      drawAll: drawAll  // expose for extensibility
+    },
+    pick: {
+      group:   pickGroup,
+      area:    pickArea,
+      line:    pickLine,
+      arc:     pick(hitTests.arc),
+      path:    pick(hitTests.path),
+      symbol:  pick(hitTests.symbol),
+      rect:    pick(hitTests.rect),
+      rule:    pick(hitTests.rule),
+      text:    pick(hitTests.text),
+      image:   pick(hitTests.image),
+      pickAll: pickAll  // expose for extensibility
+    }
+  };
+
+})();vg.canvas.Renderer = (function() {  
+  var renderer = function() {
+    this._ctx = null;
+    this._el = null;
+    this._imgload = 0;
+  };
+  
+  var prototype = renderer.prototype;
+  
+  prototype.initialize = function(el, width, height, pad) {
+    this._el = el;
+    
+    if (!el) return this; // early exit if no DOM element
+
+    // select canvas element
+    var canvas = d3.select(el)
+      .selectAll("canvas.marks")
+      .data([1]);
+    
+    // create new canvas element if needed
+    canvas.enter()
+      .append("canvas")
+      .attr("class", "marks");
+    
+    // remove extraneous canvas if needed
+    canvas.exit().remove();
+    
+    return this.resize(width, height, pad);
+  };
+  
+  prototype.resize = function(width, height, pad) {
+    this._width = width;
+    this._height = height;
+    this._padding = pad;
+    
+    if (this._el) {
+      var canvas = d3.select(this._el).select("canvas.marks");
+
+      // initialize canvas attributes
+      canvas
+        .attr("width", width + pad.left + pad.right)
+        .attr("height", height + pad.top + pad.bottom);
+
+      // get the canvas graphics context
+      var s;
+      this._ctx = canvas.node().getContext("2d");
+      this._ctx._ratio = (s = scaleCanvas(canvas.node(), this._ctx) || 1);
+      this._ctx.setTransform(s, 0, 0, s, s*pad.left, s*pad.top);
+    }
+    
+    initializeLineDash(this._ctx);
+    return this;
+  };
+  
+  function scaleCanvas(canvas, ctx) {
+    // get canvas pixel data
+    var devicePixelRatio = window.devicePixelRatio || 1,
+        backingStoreRatio = (
+          ctx.webkitBackingStorePixelRatio ||
+          ctx.mozBackingStorePixelRatio ||
+          ctx.msBackingStorePixelRatio ||
+          ctx.oBackingStorePixelRatio ||
+          ctx.backingStorePixelRatio) || 1,
+        ratio = devicePixelRatio / backingStoreRatio;
+
+    if (devicePixelRatio !== backingStoreRatio) {
+      var w = canvas.width, h = canvas.height;
+      // set actual and visible canvas size
+      canvas.setAttribute("width", w * ratio);
+      canvas.setAttribute("height", h * ratio);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+    }
+    return ratio;
+  }
+
+  function initializeLineDash(ctx) {
+    if (ctx.vgLineDash) return; // already set
+
+    var NODASH = [];
+    if (ctx.setLineDash) {
+      ctx.vgLineDash = function(dash) { this.setLineDash(dash || NODASH); };
+      ctx.vgLineDashOffset = function(off) { this.lineDashOffset = off; };
+    } else if (ctx.webkitLineDash !== undefined) {
+    	ctx.vgLineDash = function(dash) { this.webkitLineDash = dash || NODASH; };
+      ctx.vgLineDashOffset = function(off) { this.webkitLineDashOffset = off; };
+    } else if (ctx.mozDash !== undefined) {
+      ctx.vgLineDash = function(dash) { this.mozDash = dash; };
+      ctx.vgLineDashOffset = function(off) { /* unsupported */ };
+    } else {
+      ctx.vgLineDash = function(dash) { /* unsupported */ };
+      ctx.vgLineDashOffset = function(off) { /* unsupported */ };
+    }
+  }
+  
+  prototype.context = function(ctx) {
+    if (ctx) { this._ctx = ctx; return this; }
+    else return this._ctx;
+  };
+  
+  prototype.element = function() {
+    return this._el;
+  };
+  
+  prototype.pendingImages = function() {
+    return this._imgload;
+  };
+
+  function translatedBounds(item, bounds) {
+    var b = new vg.Bounds(bounds);
+    while ((item = item.mark.group) != null) {
+      b.translate(item.x || 0, item.y || 0);
+    }
+    return b;
+  }
+    
+  function getBounds(items) {
+    return !items ? null :
+      vg.array(items).reduce(function(b, item) {
+        return b.union(translatedBounds(item, item.bounds))
+                .union(translatedBounds(item, item['bounds:prev']));
+      }, new vg.Bounds());  
+  }
+  
+  function setBounds(g, bounds) {
+    var bbox = null;
+    if (bounds) {
+      bbox = (new vg.Bounds(bounds)).round();
+      g.beginPath();
+      g.rect(bbox.x1, bbox.y1, bbox.width(), bbox.height());
+      g.clip();
+    }
+    return bbox;
+  }
+  
+  prototype.render = function(scene, items) {
+    var g = this._ctx,
+        pad = this._padding,
+        w = this._width + pad.left + pad.right,
+        h = this._height + pad.top + pad.bottom,
+        bb = null, bb2;
+
+    // setup
+    this._scene = scene;
+    g.save();
+    bb = setBounds(g, getBounds(items));
+    g.clearRect(-pad.left, -pad.top, w, h);
+
+    // render
+    this.draw(g, scene, bb);
+
+    // render again to handle possible bounds change
+    if (items) {
+      g.restore();
+      g.save();
+      bb2 = setBounds(g, getBounds(items));
+      if (!bb.encloses(bb2)) {
+        g.clearRect(-pad.left, -pad.top, w, h);
+        this.draw(g, scene, bb2);
+      }
+    }
+    
+    // takedown
+    g.restore();
+    this._scene = null;
+  };
+  
+  prototype.draw = function(ctx, scene, bounds) {
+    var marktype = scene.marktype,
+        renderer = vg.canvas.marks.draw[marktype];
+    renderer.call(this, ctx, scene, bounds);
+  };
+  
+  prototype.renderAsync = function(scene) {
+    // TODO make safe for multiple scene rendering?
+    var renderer = this;
+    if (renderer._async_id) {
+      clearTimeout(renderer._async_id);
+    }
+    renderer._async_id = setTimeout(function() {
+      renderer.render(scene);
+      delete renderer._async_id;
+    }, 50);
+  };
+  
+  prototype.loadImage = function(uri) {
+    var renderer = this,
+        scene = renderer._scene,
+        image = null, url;
+
+    renderer._imgload += 1;
+    if (vg.config.isNode) {
+      image = new (require("canvas").Image)();
+      vg.data.load(uri, function(err, data) {
+        if (err) { vg.error(err); return; }
+        image.src = data;
+        image.loaded = true;
+        renderer._imgload -= 1;
+      });
+    } else {
+      image = new Image();
+      url = vg.config.baseURL + uri;
+      image.onload = function() {
+        vg.log("LOAD IMAGE: "+url);
+        image.loaded = true;
+        renderer._imgload -= 1;
+        renderer.renderAsync(scene);
+      };
+      image.src = url;
+    }
+
+    return image;
+  };
+  
+  return renderer;
+})();vg.canvas.Handler = (function() {
+  var handler = function(el, model) {
+    this._active = null;
+    this._handlers = {};
+    if (el) this.initialize(el);
+    if (model) this.model(model);
+  };
+  
+  var prototype = handler.prototype;
+
+  prototype.initialize = function(el, pad, obj) {
+    this._el = d3.select(el).node();
+    this._canvas = d3.select(el).select("canvas.marks").node();
+    this._padding = pad;
+    this._obj = obj || null;
+    
+    // add event listeners
+    var canvas = this._canvas, that = this;
+    events.forEach(function(type) {
+      canvas.addEventListener(type, function(evt) {
+        prototype[type].call(that, evt);
+      });
+    });
+    
+    return this;
+  };
+  
+  prototype.padding = function(pad) {
+    this._padding = pad;
+    return this;
+  };
+  
+  prototype.model = function(model) {
+    if (!arguments.length) return this._model;
+    this._model = model;
+    return this;
+  };
+
+  prototype.handlers = function() {
+    var h = this._handlers;
+    return vg.keys(h).reduce(function(a, k) {
+      return h[k].reduce(function(a, x) { return (a.push(x), a); }, a);
+    }, []);
+  };
+
+  // setup events
+  var events = [
+    "mousedown",
+    "mouseup",
+    "click",
+    "dblclick",
+    "wheel",
+    "keydown",
+    "keypress",
+    "keyup",
+    "mousewheel"
+  ];
+  events.forEach(function(type) {
+    prototype[type] = function(evt) {
+      this.fire(type, evt);
+    };
+  });
+  events.push("mousemove");
+  events.push("mouseout");
+
+  function eventName(name) {
+    var i = name.indexOf(".");
+    return i < 0 ? name : name.slice(0,i);
+  }
+
+  prototype.mousemove = function(evt) {
+    var pad = this._padding,
+        b = evt.target.getBoundingClientRect(),
+        x = evt.clientX - b.left,
+        y = evt.clientY - b.top,
+        a = this._active,
+        p = this.pick(this._model.scene(), x, y, x-pad.left, y-pad.top);
+
+    if (p === a) {
+      this.fire("mousemove", evt);
+      return;
+    } else if (a) {
+      this.fire("mouseout", evt);
+    }
+    this._active = p;
+    if (p) {
+      this.fire("mouseover", evt);
+    }
+  };
+  
+  prototype.mouseout = function(evt) {
+    if (this._active) {
+      this.fire("mouseout", evt);
+    }
+    this._active = null;
+  };
+
+  // to keep firefox happy
+  prototype.DOMMouseScroll = function(evt) {
+    this.fire("mousewheel", evt);
+  };
+
+  // fire an event
+  prototype.fire = function(type, evt) {
+    var a = this._active,
+        h = this._handlers[type];
+    if (a && h) {
+      for (var i=0, len=h.length; i<len; ++i) {
+        h[i].handler.call(this._obj, evt, a);
+      }
+    }
+  };
+
+  // add an event handler
+  prototype.on = function(type, handler) {
+    var name = eventName(type),
+        h = this._handlers;
+    h = h[name] || (h[name] = []);
+    h.push({
+      type: type,
+      handler: handler
+    });
+    return this;
+  };
+
+  // remove an event handler
+  prototype.off = function(type, handler) {
+    var name = eventName(type),
+        h = this._handlers[name];
+    if (!h) return;
+    for (var i=h.length; --i>=0;) {
+      if (h[i].type !== type) continue;
+      if (!handler || h[i].handler === handler) h.splice(i, 1);
+    }
+    return this;
+  };
+  
+  // retrieve the current canvas context
+  prototype.context = function() {
+    return this._canvas.getContext("2d");
+  };
+  
+  // find the scenegraph item at the current mouse position
+  // x, y -- the absolute x, y mouse coordinates on the canvas element
+  // gx, gy -- the relative coordinates within the current group
+  prototype.pick = function(scene, x, y, gx, gy) {
+    var g = this.context(),
+        marktype = scene.marktype,
+        picker = vg.canvas.marks.pick[marktype];
+    return picker.call(this, g, scene, x, y, gx, gy);
+  };
+
+  return handler;
+})();vg.svg = {};vg.svg.marks = (function() {
+
+  function x(o)     { return o.x || 0; }
+  function y(o)     { return o.y || 0; }
+  function yh(o)    { return o.y + o.height || 0; }
+  function key(o)   { return o.key; }
+  function size(o)  { return o.size==null ? 100 : o.size; }
+  function shape(o) { return o.shape || "circle"; }
+      
+  var arc_path    = d3.svg.arc(),
+      area_path   = d3.svg.area().x(x).y1(y).y0(yh),
+      line_path   = d3.svg.line().x(x).y(y),
+      symbol_path = d3.svg.symbol().type(shape).size(size);
+  
+  var mark_id = 0,
+      clip_id = 0;
+  
+  var textAlign = {
+    "left":   "start",
+    "center": "middle",
+    "right":  "end"
+  };
+  
+  var styles = {
+    "fill":             "fill",
+    "fillOpacity":      "fill-opacity",
+    "stroke":           "stroke",
+    "strokeWidth":      "stroke-width",
+    "strokeOpacity":    "stroke-opacity",
+    "strokeCap":        "stroke-linecap",
+    "strokeDash":       "stroke-dasharray",
+    "strokeDashOffset": "stroke-dashoffset",
+    "opacity":          "opacity"
+  };
+  var styleProps = vg.keys(styles);
+
+  function style(d) {
+    var i, n, prop, name, value,
+        o = d.mark ? d : d.length ? d[0] : null;
+    if (o === null) return;
+
+    for (i=0, n=styleProps.length; i<n; ++i) {
+      prop = styleProps[i];
+      name = styles[prop];
+      value = o[prop];
+
+      if (value == null) {
+        if (name === "fill") this.style.setProperty(name, "none", null);
+        else this.style.removeProperty(name);
+      } else {
+        if (value.id) {
+          // ensure definition is included
+          vg.svg._cur._defs.gradient[value.id] = value;
+          value = "url(#" + value.id + ")";
+        }
+        this.style.setProperty(name, value+"", null);
+      }
+    }
+  }
+  
+  function arc(o) {
+    var x = o.x || 0,
+        y = o.y || 0;
+    this.setAttribute("transform", "translate("+x+","+y+")");
+    this.setAttribute("d", arc_path(o));
+  }
+  
+  function area(items) {
+    if (!items.length) return;
+    var o = items[0];
+    area_path
+      .interpolate(o.interpolate || "linear")
+      .tension(o.tension == null ? 0.7 : o.tension);
+    this.setAttribute("d", area_path(items));
+  }
+  
+  function line(items) {
+    if (!items.length) return;
+    var o = items[0];
+    line_path
+      .interpolate(o.interpolate || "linear")
+      .tension(o.tension == null ? 0.7 : o.tension);
+    this.setAttribute("d", line_path(items));
+  }
+  
+  function path(o) {
+    var x = o.x || 0,
+        y = o.y || 0;
+    this.setAttribute("transform", "translate("+x+","+y+")");
+    if (o.path != null) this.setAttribute("d", o.path);
+  }
+
+  function rect(o) {
+    this.setAttribute("x", o.x || 0);
+    this.setAttribute("y", o.y || 0);
+    this.setAttribute("width", o.width || 0);
+    this.setAttribute("height", o.height || 0);
+  }
+
+  function rule(o) {
+    var x1 = o.x || 0,
+        y1 = o.y || 0;
+    this.setAttribute("x1", x1);
+    this.setAttribute("y1", y1);
+    this.setAttribute("x2", o.x2 != null ? o.x2 : x1);
+    this.setAttribute("y2", o.y2 != null ? o.y2 : y1);
+  }
+  
+  function symbol(o) {
+    var x = o.x || 0,
+        y = o.y || 0;
+    this.setAttribute("transform", "translate("+x+","+y+")");
+    this.setAttribute("d", symbol_path(o));
+  }
+  
+  function image(o) {
+    var w = o.width || (o.image && o.image.width) || 0,
+        h = o.height || (o.image && o.image.height) || 0,
+        x = o.x - (o.align === "center"
+          ? w/2 : (o.align === "right" ? w : 0)),
+        y = o.y - (o.baseline === "middle"
+          ? h/2 : (o.baseline === "bottom" ? h : 0)),
+        url = vg.config.baseURL + o.url;
+    
+    this.setAttributeNS("http://www.w3.org/1999/xlink", "href", url);
+    this.setAttribute("x", x);
+    this.setAttribute("y", y);
+    this.setAttribute("width", w);
+    this.setAttribute("height", h);
+  }
+    
+  function fontString(o) {
+    return (o.fontStyle ? o.fontStyle + " " : "")
+      + (o.fontVariant ? o.fontVariant + " " : "")
+      + (o.fontWeight ? o.fontWeight + " " : "")
+      + (o.fontSize != null ? o.fontSize : vg.config.render.fontSize) + "px "
+      + (o.font || vg.config.render.font);
+  }
+  
+  function text(o) {
+    var x = o.x || 0,
+        y = o.y || 0,
+        dx = o.dx || 0,
+        dy = o.dy || 0,
+        a = o.angle || 0,
+        r = o.radius || 0,
+        align = textAlign[o.align || "left"],
+        base = o.baseline==="top" ? ".9em"
+             : o.baseline==="middle" ? ".35em" : 0;
+
+    if (r) {
+      var t = (o.theta || 0) - Math.PI/2;
+      x += r * Math.cos(t);
+      y += r * Math.sin(t);
+    }
+
+    this.setAttribute("x", x + dx);
+    this.setAttribute("y", y + dy);
+    this.setAttribute("text-anchor", align);
+    
+    if (a) this.setAttribute("transform", "rotate("+a+" "+x+","+y+")");
+    else this.removeAttribute("transform");
+    
+    if (base) this.setAttribute("dy", base);
+    else this.removeAttribute("dy");
+    
+    this.textContent = o.text;
+    this.style.setProperty("font", fontString(o), null);
+  }
+  
+  function group(o) {
+    var x = o.x || 0,
+        y = o.y || 0;
+    this.setAttribute("transform", "translate("+x+","+y+")");
+
+    if (o.clip) {
+      var c = {width: o.width || 0, height: o.height || 0},
+          id = o.clip_id || (o.clip_id = "clip" + clip_id++);
+      vg.svg._cur._defs.clipping[id] = c;
+      this.setAttribute("clip-path", "url(#"+id+")");
+    }
+  }
+
+  function group_bg(o) {
+    var w = o.width || 0,
+        h = o.height || 0;
+    this.setAttribute("width", w);
+    this.setAttribute("height", h);
+  }
+
+  function cssClass(def) {
+    var cls = "type-" + def.type;
+    if (def.name) cls += " " + def.name;
+    return cls;
+  }
+
+  function draw(tag, attr, nest) {
+    return function(g, scene, index) {
+      drawMark(g, scene, index, "mark_", tag, attr, nest);
+    };
+  }
+  
+  function drawMark(g, scene, index, prefix, tag, attr, nest) {
+    var data = nest ? [scene.items] : scene.items,
+        evts = scene.interactive===false ? "none" : null,
+        grps = g.node().childNodes,
+        notG = (tag !== "g"),
+        p = (p = grps[index+1]) // +1 to skip group background rect
+          ? d3.select(p)
+          : g.append("g")
+             .attr("id", "g"+(++mark_id))
+             .attr("class", cssClass(scene.def));
+
+    var id = p.attr("id"),
+        s = "#" + id + " > " + tag,
+        m = p.selectAll(s).data(data),
+        e = m.enter().append(tag);
+
+    if (notG) {
+      p.style("pointer-events", evts);
+      e.each(function(d) {
+        if (d.mark) d._svg = this;
+        else if (d.length) d[0]._svg = this;
+      });
+    } else {
+      e.append("rect").attr("class","background").style("pointer-events",evts);
+    }
+    
+    m.exit().remove();
+    m.each(attr);
+    if (notG) m.each(style);
+    else p.selectAll(s+" > rect.background").each(group_bg).each(style);
+    
+    return p;
+  }
+
+  function drawGroup(g, scene, index, prefix) {    
+    var p = drawMark(g, scene, index, prefix || "group_", "g", group),
+        c = p.node().childNodes, n = c.length, i, j, m;
+    
+    for (i=0; i<n; ++i) {
+      var items = c[i].__data__.items,
+          legends = c[i].__data__.legendItems || [],
+          axes = c[i].__data__.axisItems || [],
+          sel = d3.select(c[i]),
+          idx = 0;
+
+      for (j=0, m=axes.length; j<m; ++j) {
+        if (axes[j].def.layer === "back") {
+          drawGroup.call(this, sel, axes[j], idx++, "axis_");
+        }
+      }
+      for (j=0, m=items.length; j<m; ++j) {
+        this.draw(sel, items[j], idx++);
+      }
+      for (j=0, m=axes.length; j<m; ++j) {
+        if (axes[j].def.layer !== "back") {
+          drawGroup.call(this, sel, axes[j], idx++, "axis_");
+        }
+      }
+      for (j=0, m=legends.length; j<m; ++j) {
+        drawGroup.call(this, sel, legends[j], idx++, "legend_");
+      }
+    }
+  }
+
+  return {
+    update: {
+      group:   rect,
+      area:    area,
+      line:    line,
+      arc:     arc,
+      path:    path,
+      symbol:  symbol,
+      rect:    rect,
+      rule:    rule,
+      text:    text,
+      image:   image
+    },
+    nested: {
+      "area": true,
+      "line": true
+    },
+    style: style,
+    draw: {
+      group:   drawGroup,
+      area:    draw("path", area, true),
+      line:    draw("path", line, true),
+      arc:     draw("path", arc),
+      path:    draw("path", path),
+      symbol:  draw("path", symbol),
+      rect:    draw("rect", rect),
+      rule:    draw("line", rule),
+      text:    draw("text", text),
+      image:   draw("image", image),
+      draw:    draw // expose for extensibility
+    }
+  };
+  
+})();vg.svg.Renderer = (function() {  
+  var renderer = function() {
+    this._svg = null;
+    this._ctx = null;
+    this._el = null;
+    this._defs = {
+      gradient: {},
+      clipping: {}
+    };
+  };
+  
+  var prototype = renderer.prototype;
+  
+  prototype.initialize = function(el, width, height, pad) {
+    this._el = el;
+
+    // remove any existing svg element
+    d3.select(el).select("svg.marks").remove();
+
+    // create svg element and initialize attributes
+    this._svg = d3.select(el)
+      .append("svg")
+      .attr("class", "marks");
+    
+    // set the svg root group
+    this._ctx = this._svg.append("g");
+    
+    return this.resize(width, height, pad);
+  };
+  
+  prototype.resize = function(width, height, pad) {
+    this._width = width;
+    this._height = height;
+    this._padding = pad;
+    
+    this._svg
+      .attr("width", width + pad.left + pad.right)
+      .attr("height", height + pad.top + pad.bottom);
+      
+    this._ctx
+      .attr("transform", "translate("+pad.left+","+pad.top+")");
+
+    return this;
+  };
+  
+  prototype.context = function() {
+    return this._ctx;
+  };
+  
+  prototype.element = function() {
+    return this._el;
+  };
+
+  prototype.updateDefs = function() {
+    var svg = this._svg,
+        all = this._defs,
+        dgrad = vg.keys(all.gradient),
+        dclip = vg.keys(all.clipping),
+        defs = svg.select("defs"), grad, clip;
+  
+    // get or create svg defs block
+    if (dgrad.length===0 && dclip.length==0) { defs.remove(); return; }
+    if (defs.empty()) defs = svg.insert("defs", ":first-child");
+    
+    grad = defs.selectAll("linearGradient").data(dgrad, vg.identity);
+    grad.enter().append("linearGradient").attr("id", vg.identity);
+    grad.exit().remove();
+    grad.each(function(id) {
+      var def = all.gradient[id],
+          grd = d3.select(this);
+  
+      // set gradient coordinates
+      grd.attr({x1: def.x1, x2: def.x2, y1: def.y1, y2: def.y2});
+  
+      // set gradient stops
+      stop = grd.selectAll("stop").data(def.stops);
+      stop.enter().append("stop");
+      stop.exit().remove();
+      stop.attr("offset", function(d) { return d.offset; })
+          .attr("stop-color", function(d) { return d.color; });
+    });
+    
+    clip = defs.selectAll("clipPath").data(dclip, vg.identity);
+    clip.enter().append("clipPath").attr("id", vg.identity);
+    clip.exit().remove();
+    clip.each(function(id) {
+      var def = all.clipping[id],
+          cr = d3.select(this).selectAll("rect").data([1]);
+      cr.enter().append("rect");
+      cr.attr("x", 0)
+        .attr("y", 0)
+        .attr("width", def.width)
+        .attr("height", def.height);
+    });
+  };
+  
+  prototype.render = function(scene, items) {
+    vg.svg._cur = this;
+
+    if (items) {
+      this.renderItems(vg.array(items));
+    } else {
+      this.draw(this._ctx, scene, -1);
+    }
+    this.updateDefs();
+
+   delete vg.svg._cur;
+  };
+  
+  prototype.renderItems = function(items) {
+    var item, node, type, nest, i, n,
+        marks = vg.svg.marks;
+
+    for (i=0, n=items.length; i<n; ++i) {
+      item = items[i];
+      node = item._svg;
+      type = item.mark.marktype;
+
+      item = marks.nested[type] ? item.mark.items : item;
+      marks.update[type].call(node, item);
+      marks.style.call(node, item);
+    }
+  }
+  
+  prototype.draw = function(ctx, scene, index) {
+    var marktype = scene.marktype,
+        renderer = vg.svg.marks.draw[marktype];
+    renderer.call(this, ctx, scene, index);
+  };
+  
+  return renderer;
+})();vg.svg.Handler = (function() {
+  var handler = function(el, model) {
+    this._active = null;
+    this._handlers = {};
+    if (el) this.initialize(el);
+    if (model) this.model(model);
+  };
+  
+  function svgHandler(handler) {
+    var that = this;
+    return function(evt) {
+      var target = evt.target,
+          item = target.__data__;
+      if (item) {
+        item = item.mark ? item : item[0];
+        handler.call(that._obj, evt, item);
+      }
+    };
+  }
+  
+  function eventName(name) {
+    var i = name.indexOf(".");
+    return i < 0 ? name : name.slice(0,i);
+  }
+  
+  var prototype = handler.prototype;
+
+  prototype.initialize = function(el, pad, obj) {
+    this._el = d3.select(el).node();
+    this._svg = d3.select(el).select("svg.marks").node();
+    this._padding = pad;
+    this._obj = obj || null;
+    return this;
+  };
+  
+  prototype.padding = function(pad) {
+    this._padding = pad;
+    return this;
+  };
+  
+  prototype.model = function(model) {
+    if (!arguments.length) return this._model;
+    this._model = model;
+    return this;
+  };
+  
+  prototype.handlers = function() {
+    var h = this._handlers;
+    return vg.keys(h).reduce(function(a, k) {
+      return h[k].reduce(function(a, x) { return (a.push(x), a); }, a);
+    }, []);
+  };
+
+  // add an event handler
+  prototype.on = function(type, handler) {
+    var name = eventName(type),
+        h = this._handlers,
+        dom = d3.select(this._svg).node();
+        
+    var x = {
+      type: type,
+      handler: handler,
+      svg: svgHandler.call(this, handler)
+    };
+    h = h[name] || (h[name] = []);
+    h.push(x);
+
+    dom.addEventListener(name, x.svg);
+    return this;
+  };
+
+  // remove an event handler
+  prototype.off = function(type, handler) {
+    var name = eventName(type),
+        h = this._handlers[name],
+        dom = d3.select(this._svg).node();
+    if (!h) return;
+    for (var i=h.length; --i>=0;) {
+      if (h[i].type !== type) continue;
+      if (!handler || h[i].handler === handler) {
+        dom.removeEventListener(name, h[i].svg);
+        h.splice(i, 1);
+      }
+    }
+    return this;
+  };
+
+  return handler;
+})();vg.data = {};
+
+vg.data.ingestAll = function(data) {
+  return vg.isTree(data)
+    ? vg_make_tree(vg.data.ingestTree(data[0], data.children))
+    : data.map(vg.data.ingest);
+};
+
+vg.data.ingest = function(datum, index) {
+  return {
+    data: datum,
+    index: index
+  };
+};
+
+vg.data.ingestTree = function(node, children, index) {
+  var d = vg.data.ingest(node, index || 0),
+      c = node[children], n, i;
+  if (c && (n = c.length)) {
+    d.values = Array(n);
+    for (i=0; i<n; ++i) {
+      d.values[i] = vg.data.ingestTree(c[i], children, i);
+    }
+  }
+  return d;
+};
+
+function vg_make_tree(d) {
+  d.__vgtree__ = true;
+  d.nodes = function() { return vg_tree_nodes(this, []); };
+  return d;
+}
+
+function vg_tree_nodes(root, nodes) {
+  var c = root.values,
+      n = c ? c.length : 0, i;
+  nodes.push(root);
+  for (i=0; i<n; ++i) { vg_tree_nodes(c[i], nodes); }
+  return nodes;
+}
+
+function vg_data_duplicate(d) {
+  var x=d, i, n;
+  if (vg.isArray(d)) {
+    x = [];
+    for (i=0, n=d.length; i<n; ++i) {
+      x.push(vg_data_duplicate(d[i]));
+    }
+  } else if (vg.isObject(d)) {
+    x = {};
+    for (i in d) {
+      x[i] = vg_data_duplicate(d[i]);
+    }
+  }
+  return x;
+}
+
+vg.data.mapper = function(func) {
+  return function(data) {
+    data.forEach(func);
+    return data;
+  }
+};
+
+vg.data.size = function(size, group) {
+  size = vg.isArray(size) ? size : [0, size];
+  size = size.map(function(d) {
+    return (typeof d === 'string') ? group[d] : d;
+  });
+  return size;
+};vg.data.load = function(uri, callback) {
+  var url = vg_load_hasProtocol(uri) ? uri : vg.config.baseURL + uri;
+  if (vg.config.isNode) {
+    // in node.js, consult url and select file or http
+    var get = vg_load_isFile(url) ? vg_load_file : vg_load_http;
+    get(url, callback);
+  } else {
+    // in browser, use xhr
+    vg_load_xhr(url, callback);
+  }  
+};
+
+var vg_load_protocolRE = /^[A-Za-z]+\:\/\//;
+var vg_load_fileProtocol = "file://";
+
+function vg_load_hasProtocol(url) {
+  return vg_load_protocolRE.test(url);
+}
+
+function vg_load_isFile(url) {
+  return url.indexOf(vg_load_fileProtocol) === 0;
+}
+
+function vg_load_xhr(url, callback) {
+  vg.log("LOAD: " + url);
+  if (!vg_url_check(url)) {
+    vg.error("URL is not whitelisted: " + url);
+    return;
+  }
+  d3.xhr(url, function(err, resp) {
+    if (resp) resp = resp.responseText;
+    callback(err, resp);
+  });
+}
+
+function vg_url_check(url) {
+  if (!vg.config.domainWhiteList) return true;
+  var a = document.createElement("a");
+  a.href = url;
+  var domain = a.hostname.toLowerCase();
+  return vg.config.domainWhiteList.some(function(d) {
+    return d === domain ||
+      domain.lastIndexOf("."+d) === (domain.length - d.length - 1);
+  });
+}
+
+function vg_load_file(file, callback) {
+  vg.log("LOAD FILE: " + file);
+  var idx = file.indexOf(vg_load_fileProtocol);
+  if (idx >= 0) file = file.slice(vg_load_fileProtocol.length);
+  require("fs").readFile(file, callback);
+}
+
+function vg_load_http(url, callback) {
+  vg.log("LOAD HTTP: " + url);
+	var req = require("http").request(url, function(res) {
+    var pos=0, data = new Buffer(parseInt(res.headers['content-length'],10));
+		res.on("error", function(err) { callback(err, null); });
+		res.on("data", function(x) { x.copy(data, pos); pos += x.length; });
+		res.on("end", function() { callback(null, data); });
+	});
+	req.on("error", function(err) { callback(err); });
+	req.end();
+}vg.data.read = (function() {
+  var formats = {},
+      parsers = {
+        "number": vg.number,
+        "boolean": vg.boolean,
+        "date": Date.parse
+      };
+
+  function read(data, format) {
+    var type = (format && format.type) || "json";
+    data = formats[type](data, format);
+    if (format && format.parse) parseValues(data, format.parse);
+    return data;
+  }
+
+  formats.json = function(data, format) {
+    var d = vg.isObject(data) ? data : JSON.parse(data);
+    if (format && format.property) {
+      d = vg.accessor(format.property)(d);
+    }
+    return d;
+  };
+
+  formats.csv = function(data, format) {
+    var d = d3.csv.parse(data);
+    return d;
+  };
+
+  formats.tsv = function(data, format) {
+    var d = d3.tsv.parse(data);
+    return d;
+  };
+  
+  formats.topojson = function(data, format) {
+    if (topojson == null) {
+      vg.error("TopoJSON library not loaded.");
+      return [];
+    }    
+    var t = vg.isObject(data) ? data : JSON.parse(data),
+        obj = [];
+
+    if (format && format.feature) {
+      obj = (obj = t.objects[format.feature])
+        ? topojson.feature(t, obj).features
+        : (vg.error("Invalid TopoJSON object: "+format.feature), []);
+    } else if (format && format.mesh) {
+      obj = (obj = t.objects[format.mesh])
+        ? [topojson.mesh(t, t.objects[format.mesh])]
+        : (vg.error("Invalid TopoJSON object: " + format.mesh), []);
+    }
+    else { vg.error("Missing TopoJSON feature or mesh parameter."); }
+
+    return obj;
+  };
+  
+  formats.treejson = function(data, format) {
+    data = vg.isObject(data) ? data : JSON.parse(data);
+    return vg.tree(data, format.children);
+  };
+  
+  function parseValues(data, types) {
+    var cols = vg.keys(types),
+        p = cols.map(function(col) { return parsers[types[col]]; }),
+        tree = vg.isTree(data);
+    vg_parseArray(tree ? [data] : data, cols, p, tree);
+  }
+  
+  function vg_parseArray(data, cols, p, tree) {
+    var d, i, j, len, clen;
+    for (i=0, len=data.length; i<len; ++i) {
+      d = data[i];
+      for (j=0, clen=cols.length; j<clen; ++j) {
+        d[cols[j]] = p[j](d[cols[j]]);
+      }
+      if (tree && d.values) parseValues(d, cols, p, true);
+    }
+  }
+
+  read.formats = formats;
+  read.parse = parseValues;
+  return read;
+})();vg.data.array = function() {
+  var fields = [];
+   
+  function array(data) {
+    return data.map(function(d) {      
+      var list = [];
+      for (var i=0, len=fields.length; i<len; ++i) {
+        list.push(fields[i](d));
+      }
+      return list;
+    });
+  }
+  
+  array.fields = function(fieldList) {
+    fields = vg.array(fieldList).map(vg.accessor);
+    return array;
+  };
+  
+  return array;
+};vg.data.copy = function() {
+  var from = vg.accessor("data"),
+      fields = [],
+      as = null;
+  
+  var copy = vg.data.mapper(function(d) {
+    var src = from(d), i, len,
+        source = fields,
+        target = as || fields;
+    for (i=0, len=fields.length; i<len; ++i) {
+      d[target[i]] = src[fields[i]];
+    }
+    return d;
+  });
+
+  copy.from = function(field) {
+    from = vg.accessor(field);
+    return copy;
+  };
+  
+  copy.fields = function(fieldList) {
+    fields = vg.array(fieldList);
+    return copy;
+  };
+  
+  copy.as = function(fieldList) {
+    as = vg.array(fieldList);
+    return copy;
+  };
+
+  return copy;
+};vg.data.cross = function() {
+  var other = null,
+      nodiag = false,
+      output = {left:"a", right:"b"};
+
+  function cross(data) {
+    var result = [],
+        data2 = other || data,
+        o, i, j, n = data.length;
+
+    for (i=0; i<n; ++i) {
+      for (j=0; j<n; ++j) {
+        if (nodiag && i===j) continue;
+        o = {};
+        o[output.left] = data[i];
+        o[output.right] = data2[j];
+        result.push(o);
+      }
+    }
+    return result;
+  }
+
+  cross["with"] = function(d) {
+    other = d;
+    return cross;
+  };
+  
+  cross.diagonal = function(x) {
+    nodiag = !x;
+    return cross;
+  };
+
+  cross.output = function(map) {
+    vg.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) { output[k] = map[k]; }
+    });
+    return cross;
+  };
+
+  return cross;
+};
+vg.data.facet = function() {
+
+  var keys = [],
+      sort = null;
+
+  function facet(data) {    
+    var result = {
+          key: "",
+          keys: [],
+          values: []
+        },
+        map = {}, 
+        vals = result.values,
+        obj, klist, kstr, len, i, j, k, kv, cmp;
+
+    if (keys.length === 0) {
+      // if no keys, skip collation step
+      vals.push(obj = {
+        key: "", keys: [], index: 0,
+        values: sort ? data.slice() : data
+      });
+      if (sort) sort(obj.values);
+      return result;
+    }
+
+    for (i=0, len=data.length; i<len; ++i) {
+      for (k=0, klist=[], kstr=""; k<keys.length; ++k) {
+        kv = keys[k](data[i]);
+        klist.push(kv);
+        kstr += (k>0 ? "|" : "") + String(kv);
+      }
+      obj = map[kstr];
+      if (obj === undefined) {
+        vals.push(obj = map[kstr] = {
+          key: kstr,
+          keys: klist,
+          index: vals.length,
+          values: []
+        });
+      }
+      obj.values.push(data[i]);
+    }
+
+    if (sort) {
+      for (i=0, len=vals.length; i<len; ++i) {
+        sort(vals[i].values);
+      }
+    }
+
+    return result;
+  }
+  
+  facet.keys = function(k) {
+    keys = vg.array(k).map(vg.accessor);
+    return facet;
+  };
+  
+  facet.sort = function(s) {
+    sort = vg.data.sort().by(s);
+    return facet;
+  };
+
+  return facet;
+};vg.data.filter = function() {
+
+  var test = null;
+
+  function filter(data) {
+    return test ? data.filter(test) : data;
+  }
+  
+  filter.test = function(func) {
+    test = vg.isFunction(func) ? func : vg.parse.expr(func);
+    return filter;
+  };
+
+  return filter;
+};vg.data.flatten = function() {
+    
+  function flatten(data) {
+    return flat(data, []);
+  }
+  
+  function flat(data, list) {
+    if (data.values) {
+      for (var i=0, n=data.values.length; i<n; ++i) {
+        flat(data.values[i], list);
+      }
+    } else {
+      list.push(data);
+    }
+    return list;
+  }
+  
+  return flatten;
+};vg.data.fold = function() {
+  var fields = [],
+      accessors = [],
+      output = {
+        key: "key",
+        value: "value"
+      };
+
+  function fold(data) {
+    var values = [],
+        item, i, j, n, m = fields.length;
+
+    for (i=0, n=data.length; i<n; ++i) {
+      item = data[i];
+      for (j=0; j<m; ++j) {
+        var o = {
+          index: values.length,
+          data: item.data
+        };
+        o[output.key] = fields[j];
+        o[output.value] = accessors[j](item);
+        values.push(o);
+      }
+    }
+
+    return values;
+  }  
+
+  fold.fields = function(f) {
+    fields = vg.array(f);
+    accessors = fields.map(vg.accessor);
+    return fold;
+  };
+
+  fold.output = function(map) {
+    vg.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) {
+        output[k] = map[k];
+      }
+    });
+    return fold;
+  };
+
+  return fold;
+};vg.data.force = function() {
+  var layout = d3.layout.force(),
+      links = null,
+      linkDistance = 20,
+      linkStrength = 1,
+      charge = -30,
+      iterations = 500,
+      size = ["width", "height"],
+      params = [
+        "friction",
+        "theta",
+        "gravity",
+        "alpha"
+      ];
+
+  function force(data, db, group) {    
+    layout
+      .size(vg.data.size(size, group))
+      .nodes(data);
+      
+    if (links && db[links]) {
+      layout.links(db[links]);
+    }
+
+    layout.start();      
+    for (var i=0; i<iterations; ++i) {
+      layout.tick();
+    }
+    layout.stop();
+    
+    return data;
+  }
+
+  force.links = function(dataSetName) {
+    links = dataSetName;
+    return force;
+  };
+  
+  force.size = function(sz) {
+    size = sz;
+    return force;
+  };
+       
+  force.linkDistance = function(field) {
+    linkDistance = typeof field === 'number'
+      ? field
+      : vg.accessor(field);
+    layout.linkDistance(linkDistance);
+    return force;
+  };
+
+  force.linkStrength = function(field) {
+    linkStrength = typeof field === 'number'
+      ? field
+      : vg.accessor(field);
+    layout.linkStrength(linkStrength);
+    return force;
+  };
+  
+  force.charge = function(field) {
+    charge = typeof field === 'number'
+      ? field
+      : vg.accessor(field);
+    layout.charge(charge);
+    return force;
+  };
+  
+  force.iterations = function(iter) {
+    iterations = iter;
+    return force;
+  };
+
+  params.forEach(function(name) {
+    force[name] = function(x) {
+      layout[name](x);
+      return force;
+    }
+  });
+
+  return force;
+};
+
+vg.data.force.dependencies = ["links"];vg.data.formula = (function() {
+  
+  return function() {
+    var field = null,
+        expr = vg.identity;
+  
+    var formula = vg.data.mapper(function(d, i, list) {
+      if (field) d[field] = expr.call(null, d, i, list);
+      return d;
+    });
+
+    formula.field = function(name) {
+      field = name;
+      return formula;
+    };
+  
+    formula.expr = function(func) {
+      expr = vg.isFunction(func) ? func : vg.parse.expr(func);
+      return formula;
+    };
+
+    return formula;
+  };
+})();vg.data.geo = (function() {
+  var params = [
+    "center",
+    "scale",
+    "translate",
+    "rotate",
+    "precision",
+    "clipAngle"
+  ];
+
+  function geo() {
+    var opt = {},
+        projection = "mercator",
+        func = d3.geo[projection](),
+        lat = vg.identity,
+        lon = vg.identity,
+        output = {
+          "x": "x",
+          "y": "y"
+        };
+    
+    var map = vg.data.mapper(function(d) {
+      var ll = [lon(d), lat(d)],
+          xy = func(ll);
+      d[output.x] = xy[0];
+      d[output.y] = xy[1];
+      return d;
+    });
+
+    map.func = function() {
+      return func;
+    };
+        
+    map.projection = function(p) {
+      if (projection !== p) {
+        projection = p;
+        func = d3.geo[projection]();
+        for (var name in opt) {
+          func[name](opt[name]);
+        }
+      }
+      return map;
+    };
+
+    params.forEach(function(name) {
+      map[name] = function(x) {
+        opt[name] = x;
+        func[name](x);
+        return map;
+      }
+    });
+    
+    map.lon = function(field) {
+      lon = vg.accessor(field);
+      return map;
+    };
+
+    map.lat = function(field) {
+      lat = vg.accessor(field);
+      return map;
+    };
+    
+    map.output = function(map) {
+      vg.keys(output).forEach(function(k) {
+        if (map[k] !== undefined) {
+          output[k] = map[k];
+        }
+      });
+      return map;
+    };
+    
+    
+    return map;
+  };
+  
+  geo.params = params;
+  return geo;
+})();vg.data.geopath = function() {
+  var geopath = d3.geo.path().projection(d3.geo.mercator()),
+      projection = "mercator",
+      geojson = vg.identity,
+      opt = {},
+      output = {"path": "path"};
+
+  var map = vg.data.mapper(function(d) {
+    d[output.path] = geopath(geojson(d));
+    return d;
+  });
+  
+  map.projection = function(proj) {
+    if (projection !== proj) {
+      projection = proj;
+      var p = d3.geo[projection]();
+      for (var name in opt) {
+        p[name](opt[name]);
+      }
+      geopath.projection(p);
+    }
+    return map;
+  };
+  
+  vg.data.geo.params.forEach(function(name) {
+    map[name] = function(x) {
+      opt[name] = x;
+      (geopath.projection())[name](x);
+      return map;
+    }
+  });
+   
+  map.value = function(field) {
+    geojson = vg.accessor(field);
+    return map;
+  };
+
+  map.output = function(map) {
+    vg.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) {
+        output[k] = map[k];
+      }
+    });
+    return map;
+  };
+
+  return map;
+};vg.data.link = function() {
+  var shape = "line",
+      source = vg.accessor("source"),
+      target = vg.accessor("target"),
+      tension = 0.2,
+      output = {"path": "path"};
+  
+  function line(d) {
+    var s = source(d),
+        t = target(d);
+    return "M" + s.x + "," + s.y 
+         + "L" + t.x + "," + t.y;
+  }
+
+  function curve(d) {
+    var s = source(d),
+        t = target(d),
+        dx = t.x - s.x,
+        dy = t.y - s.y,
+        ix = tension * (dx + dy),
+        iy = tension * (dy - dx);
+    return "M" + s.x + "," + s.y
+         + "C" + (s.x+ix) + "," + (s.y+iy)
+         + " " + (t.x+iy) + "," + (t.y-ix)
+         + " " + t.x + "," + t.y;
+  }
+  
+  function diagonalX(d) {
+    var s = source(d),
+        t = target(d),
+        m = (s.x + t.x) / 2;
+    return "M" + s.x + "," + s.y
+         + "C" + m   + "," + s.y
+         + " " + m   + "," + t.y
+         + " " + t.x + "," + t.y;
+  }
+
+  function diagonalY(d) {
+    var s = source(d),
+        t = target(d),
+        m = (s.y + t.y) / 2;
+    return "M" + s.x + "," + s.y
+         + "C" + s.x + "," + m
+         + " " + t.x + "," + m
+         + " " + t.x + "," + t.y;
+  }
+
+  var shapes = {
+    line:      line,
+    curve:     curve,
+    diagonal:  diagonalX,
+    diagonalX: diagonalX,
+    diagonalY: diagonalY
+  };
+  
+  function link(data) {
+    var path = shapes[shape];
+        
+    data.forEach(function(d) {
+      d[output.path] = path(d);
+    });
+    
+    return data;
+  }
+
+  link.shape = function(val) {
+    shape = val;
+    return link;
+  };
+
+  link.tension = function(val) {
+    tension = val;
+    return link;
+  };
+  
+  link.source = function(field) {
+    source = vg.accessor(field);
+    return link;
+  };
+  
+  link.target = function(field) {
+    target = vg.accessor(field);
+    return link;
+  };
+  
+  link.output = function(map) {
+    vg.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) {
+        output[k] = map[k];
+      }
+    });
+    return link;
+  };
+  
+  return link;
+};vg.data.pie = function() {
+  var one = function() { return 1; },
+      value = one,
+      start = 0,
+      end = 2 * Math.PI,
+      sort = false,
+      output = {
+        "startAngle": "startAngle",
+        "endAngle": "endAngle",
+        "midAngle": "midAngle"
+      };
+
+  function pie(data) {
+    var values = data.map(function(d, i) { return +value(d); }),
+        a = start,
+        k = (end - start) / d3.sum(values),
+        index = d3.range(data.length);
+    
+    if (sort) {
+      index.sort(function(a, b) {
+        return values[a] - values[b];
+      });
+    }
+    
+    index.forEach(function(i) {
+      var d;
+      data[i].value = (d = values[i]);
+      data[i][output.startAngle] = a;
+      data[i][output.midAngle] = (a + 0.5 * d * k);
+      data[i][output.endAngle] = (a += d * k);
+    });
+    
+    return data;
+  }
+
+  pie.sort = function(b) {
+    sort = b;
+    return pie;
+  };
+       
+  pie.value = function(field) {
+    value = field ? vg.accessor(field) : one;
+    return pie;
+  };
+  
+  pie.startAngle = function(startAngle) {
+    start = Math.PI * startAngle / 180;
+    return pie;
+  };
+  
+  pie.endAngle = function(endAngle) {
+    end = Math.PI * endAngle / 180;
+    return pie;
+  };
+
+  pie.output = function(map) {
+    vg.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) {
+        output[k] = map[k];
+      }
+    });
+    return pie;
+  };
+
+  return pie;
+};vg.data.slice = function() {
+  var by = null,
+      field = vg.accessor("data");
+
+  function slice(data) {
+    data = vg.values(data);
+    
+    if (by === "min") {
+      data = [data[vg.minIndex(data, field)]];
+    } else if (by === "max") {
+      data = [data[vg.maxIndex(data, field)]];
+    } else if (by === "median") {
+      var list = data.slice().sort(function(a,b) {
+        a = field(a); b = field(b);
+        return a < b ? -1 : a > b ? 1 : 0;
+      });
+      data = [data[~~(list.length/2)]];
+    } else {
+      var idx = vg.array(by);
+      data = data.slice(idx[0], idx[1]);
+    }
+    return data;
+  }
+  
+  slice.by = function(x) {
+    by = x;
+    return slice;
+  };
+  
+  slice.field = function(f) {
+    field = vg.accessor(f);
+    return slice;
+  };
+
+  return slice;
+};vg.data.sort = function() {
+  var by = null;
+
+  function sort(data) {
+    data = (vg.isArray(data) ? data : data.values || []);
+    data.sort(by);
+    for (var i=0, n=data.length; i<n; ++i) data[i].index = i; // re-index
+    return data;
+  }
+  
+  sort.by = function(s) {
+    by = vg.comparator(s);
+    return sort;
+  };
+
+  return sort;
+};vg.data.stack = function() {
+  var layout = d3.layout.stack(),
+      point = vg.accessor("index"),
+      height = vg.accessor("data"),
+      params = ["offset", "order"],
+      output = {
+        "y0": "y2",
+        "y1": "y",
+        "cy": "cy"
+      };
+
+  function stack(data) {
+    var out_y0 = output["y0"],
+        out_y1 = output["y1"],
+        out_cy = output["cy"];
+    
+    var series = stacks(data);
+    if (series.length === 0) return data;
+    
+    layout.out(function(d, y0, y) {
+      if (d.datum) {
+        d.datum[out_y0] = y0;
+        d.datum[out_y1] = y + y0;
+        d.datum[out_cy] = y0 + y/2;
+      }
+    })(series);
+    
+    return data;
+  }
+  
+  function stacks(data) {
+    var values = vg.values(data),
+        points = [], series = [],
+        a, i, n, j, m, k, p, v, x;
+
+    // exit early if no data
+    if (values.length === 0) return series;
+
+    // collect and sort data points
+    for (i=0, n=values.length; i<n; ++i) {
+      a = vg.values(values[i]);
+      for (j=0, m=a.length; j<m; ++j) {
+        points.push({x:point(a[j]), y:height(a[j]), z:i, datum:a[j]});
+      }
+      series.push([]);
+    }
+    points.sort(function(a,b) {
+      return a.x<b.x ? -1 : a.x>b.x ? 1 : (a.z<b.z ? -1 : a.z>b.z ? 1 : 0);
+    });
+
+    // emit data series for stack layout
+    for (x=points[0].x, i=0, j=0, k=0, n=points.length; k<n; ++k) {
+      p = points[k];    
+      if (p.x !== x) {
+        while (i < series.length) series[i++].push({x:j, y:0});
+        x = p.x; i = 0; j += 1;
+      }
+      while (p.z > i) series[i++].push({x:j, y:0});
+      p.x = j;
+      series[i++].push(p);
+    }
+    while (i < series.length) series[i++].push({x:j, y:0});
+
+    return series;
+  }
+       
+  stack.point = function(field) {
+    point = vg.accessor(field);
+    return stack;
+  };
+  
+  stack.height = function(field) {
+    height = vg.accessor(field);
+    return stack;
+  };
+
+  params.forEach(function(name) {
+    stack[name] = function(x) {
+      layout[name](x);
+      return stack;
+    }
+  });
+
+  stack.output = function(map) {
+    d3.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) {
+        output[k] = map[k];
+      }
+    });
+    return stack;
+  };
+
+  return stack;
+};vg.data.stats = function() {
+  var value = vg.accessor("data"),
+      assign = false,
+      median = false,
+      output = {
+        "count":    "count",
+        "min":      "min",
+        "max":      "max",
+        "sum":      "sum",
+        "mean":     "mean",
+        "variance": "variance",
+        "stdev":    "stdev",
+        "median":   "median"
+      };
+
+  function reduce(data) {
+    var min = +Infinity,
+        max = -Infinity,
+        sum = 0,
+        mean = 0,
+        M2 = 0,
+        i, len, v, delta;
+
+    var list = (vg.isArray(data) ? data : data.values || []).map(value);
+
+    // compute aggregates
+    for (i=0, len=list.length; i<len; ++i) {
+      v = list[i];
+      if (v < min) min = v;
+      if (v > max) max = v;
+      sum += v;
+      delta = v - mean;
+      mean = mean + delta / (i+1);
+      M2 = M2 + delta * (v - mean);
+    }
+    M2 = M2 / (len - 1);
+
+    var o = vg.isArray(data) ? {} : data;
+    if (median) {
+      list.sort(vg.numcmp);
+      i = list.length >> 1;
+      o[output.median] = list.length % 2
+        ? list[i]
+        : (list[i-1] + list[i])/2;
+    }
+    o[output.count] = len;
+    o[output.min] = min;
+    o[output.max] = max;
+    o[output.sum] = sum;
+    o[output.mean] = mean;
+    o[output.variance] = M2;
+    o[output.stdev] = Math.sqrt(M2);
+
+    if (assign) {
+      list = (vg.isArray(data) ? data : data.values);
+      v = {};
+      v[output.count] = len;
+      v[output.min] = min;
+      v[output.max] = max;
+      v[output.sum] = sum;
+      v[output.mean] = mean;
+      v[output.variance] = M2;
+      v[output.stdev] = Math.sqrt(M2);
+      if (median) v[output.median] = o[output.median];
+      for (i=0, len=list.length; i<len; ++i) {
+        list[i].stats = v;
+      }
+      if (vg.isArray(data)) o = list;
+    }
+
+    return o;
+  }
+
+  function stats(data) {
+    if (vg.isArray(data)) {
+      return reduce(data);
+    } else {
+      return (data.values || []).map(reduce);
+    }
+  }
+
+  stats.median = function(bool) {
+    median = bool || false;
+    return stats;
+  };
+
+  stats.value = function(field) {
+    value = vg.accessor(field);
+    return stats;
+  };
+
+  stats.assign = function(b) {
+    assign = b;
+    return stats;
+  };
+
+  stats.output = function(map) {
+    vg.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) {
+        output[k] = map[k];
+      }
+    });
+    return stats;
+  };
+
+  return stats;
+};vg.data.treemap = function() {
+  var layout = d3.layout.treemap()
+                 .children(function(d) { return d.values; }),
+      value = vg.accessor("data"),
+      size = ["width", "height"],
+      params = ["round", "sticky", "ratio", "padding"],
+      output = {
+        "x": "x",
+        "y": "y",
+        "dx": "width",
+        "dy": "height"
+      };
+
+  function treemap(data, db, group) {
+    data = layout
+      .size(vg.data.size(size, group))
+      .value(value)
+      .nodes(vg.isTree(data) ? data : {values: data});
+    
+    var keys = vg.keys(output),
+        len = keys.length;
+    data.forEach(function(d) {
+      var key, val;
+      for (var i=0; i<len; ++i) {
+        key = keys[i];
+        if (key !== output[key]) {
+          val = d[key];
+          delete d[key];
+          d[output[key]] = val;
+        }
+      }
+    });
+    
+    return data;
+  }
+
+  treemap.size = function(sz) {
+    size = sz;
+    return treemap;
+  };
+
+  treemap.value = function(field) {
+    value = vg.accessor(field);
+    return treemap;
+  };
+
+  params.forEach(function(name) {
+    treemap[name] = function(x) {
+      layout[name](x);
+      return treemap;
+    }
+  });
+
+  treemap.output = function(map) {
+    vg.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) {
+        output[k] = map[k];
+      }
+    });
+    return treemap;
+  };
+
+  return treemap;
+};vg.data.truncate = function() {
+  var value = vg.accessor("data"),
+      as = "truncate",
+      position = "right",
+      ellipsis = "...",
+      wordBreak = true,
+      limit = 100;
+  
+  var truncate = vg.data.mapper(function(d) {
+    var text = vg.truncate(value(d), limit, position, wordBreak, ellipsis);
+    return (d[as] = text, d);
+  });
+
+  truncate.value = function(field) {
+    value = vg.accessor(field);
+    return truncate;
+  };
+  
+  truncate.output = function(field) {
+    as = field;
+    return truncate;
+  };
+
+  truncate.limit = function(len) {
+    limit = +len;
+    return truncate;
+  };
+  
+  truncate.position = function(pos) {
+    position = pos;
+    return truncate;
+  };
+
+  truncate.ellipsis = function(str) {
+    ellipsis = str+"";
+    return truncate;
+  };
+
+  truncate.wordbreak = function(b) {
+    wordBreak = !!b;
+    return truncate;
+  };
+
+  return truncate;
+};vg.data.unique = function() {
+
+  var field = null,
+      as = "field";
+
+  function unique(data) {
+    return vg.unique(data, field)
+      .map(function(x) {
+        var o = {};
+        o[as] = x;
+        return o;
+      });
+  }
+  
+  unique.field = function(f) {
+    field = vg.accessor(f);
+    return unique;
+  };
+  
+  unique.as = function(x) {
+    as = x;
+    return unique;
+  };
+
+  return unique;
+};vg.data.window = function() {
+
+  var size = 2,
+      step = 1;
+  
+  function win(data) {
+    data = vg.isArray(data) ? data : data.values || [];
+    var runs = [], i, j, n=data.length-size, curr;
+    for (i=0; i<=n; i+=step) {
+      for (j=0, curr=[]; j<size; ++j) curr.push(data[i+j]);
+      runs.push({key: i, values: curr});
+    }
+    return {values: runs};
+  }
+  
+  win.size = function(n) {
+    size = n;
+    return win;
+  };
+  
+  win.step = function(n) {
+    step = n;
+    return win;
+  };
+
+  return win;
+};vg.data.wordcloud = function() {
+  var layout = d3.layout.cloud().size([900, 500]),
+      text = vg.accessor("data"),
+      size = ["width", "height"],
+      fontSize = function() { return 14; },
+      rotate = function() { return 0; },
+      params = ["font", "fontStyle", "fontWeight", "padding"];
+  
+  var output = {
+    "x": "x",
+    "y": "y",
+    "size": "fontSize",
+    "font": "font",
+    "rotate": "angle"
+  };
+  
+  function cloud(data, db, group) {
+    function finish(tags, bounds) {
+      var size = layout.size(),
+          dx = size[0] / 2,
+          dy = size[1] / 2,
+          keys = vg.keys(output),
+          key, d, i, n, k, m = keys.length;
+
+      // sort data to match wordcloud order
+      data.sort(function(a,b) {
+        return fontSize(b) - fontSize(a);
+      });
+
+      for (i=0, n=tags.length; i<n; ++i) {
+        d = data[i];
+        for (k=0; k<m; ++k) {
+          key = keys[k];
+          d[output[key]] = tags[i][key];
+          if (key === "x") d[output.x] += dx;
+          if (key === "y") d[output.y] += dy;
+        }
+      }
+    }
+    
+    layout
+      .size(vg.data.size(size, group))
+      .text(text)
+      .fontSize(fontSize)
+      .rotate(rotate)
+      .words(data)
+      .on("end", finish)
+      .start();
+    return data;
+  }
+
+  cloud.text = function(field) {
+    text = vg.accessor(field);
+    return cloud;
+  };
+  
+  cloud.size = function(sz) {
+    size = sz;
+    return cloud;
+  };
+         
+  cloud.fontSize = function(field) {
+    fontSize = vg.accessor(field);
+    return cloud;
+  };
+  
+  cloud.rotate = function(x) {
+    var v;
+    if (vg.isObject(x) && !Array.isArray(x)) {
+      if (x.random !== undefined) {
+        v = (v = x.random) ? vg.array(v) : [0];
+        rotate = function() {
+          return v[~~(Math.random()*v.length-0.00001)];
+        };
+      } else if (x.alternate !== undefined) {
+        v = (v = x.alternate) ? vg.array(v) : [0];
+        rotate = function(d, i) {
+          return v[i % v.length];
+        };
+      }
+    } else {
+      rotate = vg.accessor(field);
+    }
+    return cloud;
+  };
+
+  params.forEach(function(name) {
+    cloud[name] = function(x) {
+      layout[name](x);
+      return cloud;
+    }
+  });
+
+  cloud.output = function(map) {
+    vg.keys(output).forEach(function(k) {
+      if (map[k] !== undefined) {
+        output[k] = map[k];
+      }
+    });
+    return cloud;
+  };
+  
+  return cloud;
+};vg.data.zip = function() {
+  var z = null,
+      as = "zip",
+      key = vg.accessor("data"),
+      defaultValue = undefined,
+      withKey = null;
+
+  function zip(data, db) {
+    var zdata = db[z], zlen = zdata.length, v, d, i, len, map;
+    
+    if (withKey) {
+      map = {};
+      zdata.forEach(function(s) { map[withKey(s)] = s; });
+    }
+    
+    for (i=0, len=data.length; i<len; ++i) {
+      d = data[i];
+      d[as] = map
+        ? ((v=map[key(d)]) != null ? v : defaultValue)
+        : zdata[i % zlen];
+    }
+    
+    return data;
+  }
+
+  zip["with"] = function(d) {
+    z = d;
+    return zip;
+  };
+  
+  zip["default"] = function(d) {
+    defaultValue = d;
+    return zip;
+  };
+
+  zip.as = function(name) {
+    as = name;
+    return zip;
+  };
+
+  zip.key = function(k) {
+    key = vg.accessor(k);
+    return zip;
+  };
+
+  zip.withKey = function(k) {
+    withKey = vg.accessor(k);
+    return zip;
+  };
+
+  return zip;
+};
+
+vg.data.zip.dependencies = ["with"];vg.parse = {};vg.parse.axes = (function() {
+  var ORIENT = {
+    "x":      "bottom",
+    "y":      "left",
+    "top":    "top",
+    "bottom": "bottom",
+    "left":   "left",
+    "right":  "right"
+  };
+
+  function axes(spec, axes, scales) {
+    (spec || []).forEach(function(def, index) {
+      axes[index] = axes[index] || vg.scene.axis();
+      axis(def, index, axes[index], scales);
+    });
+  };
+
+  function axis(def, index, axis, scales) {
+    // axis scale
+    if (def.scale !== undefined) {
+      axis.scale(scales[def.scale]);
+    }
+
+    // axis orientation
+    axis.orient(def.orient || ORIENT[def.type]);
+    // axis offset
+    axis.offset(def.offset || 0);
+    // axis layer
+    axis.layer(def.layer || "front");
+    // axis grid lines
+    axis.grid(def.grid || false);
+    // axis title
+    axis.title(def.title || null);
+    // axis title offset
+    axis.titleOffset(def.titleOffset != null
+      ? def.titleOffset : vg.config.axis.titleOffset);
+    // axis values
+    axis.tickValues(def.values || null);
+    // axis label formatting
+    axis.tickFormat(def.format || null);
+    // axis tick subdivision
+    axis.tickSubdivide(def.subdivide || 0);
+    // axis tick padding
+    axis.tickPadding(def.tickPadding || vg.config.axis.padding);
+
+    // axis tick size(s)
+    var size = [];
+    if (def.tickSize !== undefined) {
+      for (var i=0; i<3; ++i) size.push(def.tickSize);
+    } else {
+      var ts = vg.config.axis.tickSize;
+      size = [ts, ts, ts];
+    }
+    if (def.tickSizeMajor != null) size[0] = def.tickSizeMajor;
+    if (def.tickSizeMinor != null) size[1] = def.tickSizeMinor;
+    if (def.tickSizeEnd   != null) size[2] = def.tickSizeEnd;
+    if (size.length) {
+      axis.tickSize.apply(axis, size);
+    }
+
+    // tick arguments
+    if (def.ticks != null) {
+      var ticks = vg.isArray(def.ticks) ? def.ticks : [def.ticks];
+      axis.ticks.apply(axis, ticks);
+    } else {
+      axis.ticks(vg.config.axis.ticks);
+    }
+
+    // style properties
+    var p = def.properties;
+    if (p && p.ticks) {
+      axis.majorTickProperties(p.majorTicks
+        ? vg.extend({}, p.ticks, p.majorTicks) : p.ticks);
+      axis.minorTickProperties(p.minorTicks
+        ? vg.extend({}, p.ticks, p.minorTicks) : p.ticks);
+    } else {
+      axis.majorTickProperties(p && p.majorTicks || {});
+      axis.minorTickProperties(p && p.minorTicks || {});
+    }
+    axis.tickLabelProperties(p && p.labels || {});
+    axis.titleProperties(p && p.title || {});
+    axis.gridLineProperties(p && p.grid || {});
+    axis.domainProperties(p && p.axis || {});
+  }
+
+  return axes;
+})();
+vg.parse.data = function(spec, callback) {
+  var model = {
+    defs: spec,
+    load: {},
+    flow: {},
+    deps: {},
+    source: {},
+    sorted: null
+  };
+
+  var count = 0;
+  
+  function load(d) {
+    return function(error, data) {
+      if (error) {
+        vg.error("LOADING FAILED: " + d.url);
+      } else {
+        model.load[d.name] = vg.data.read(data.toString(), d.format);
+      }
+      if (--count === 0) callback();
+    }
+  }
+  
+  // process each data set definition
+  (spec || []).forEach(function(d) {
+    if (d.url) {
+      count += 1;
+      vg.data.load(d.url, load(d)); 
+    } else if (d.values) {
+      model.load[d.name] = vg.data.read(d.values, d.format);
+    } else if (d.source) {
+      (model.source[d.source] || (model.source[d.source] = [])).push(d.name);
+    }
+    
+    if (d.transform) {
+      var flow = vg.parse.dataflow(d);
+      model.flow[d.name] = flow;
+      flow.dependencies.forEach(function(dep) {
+        (model.deps[dep] || (model.deps[dep] = [])).push(d.name);
+      });
+    }
+  });
+  
+  // topological sort by dependencies
+  var names = (spec || []).map(vg.accessor("name")),
+      order = [], v = {}, n;
+  function visit(n) {
+    if (v[n] === 1) return; // not a DAG!
+    if (!v[n]) {
+      v[n] = 1;
+      (model.source[n] || []).forEach(visit);
+      (model.deps[n] || []).forEach(visit);
+      v[n] = 2;
+      order.push(n);
+    }
+  }
+  while (names.length) { if (v[n=names.pop()] !== 2) visit(n); }
+  model.sorted = order.reverse();
+  
+  if (count === 0) setTimeout(callback, 1);
+  return model;
+};vg.parse.dataflow = function(def) {
+  var tx = (def.transform || []).map(vg.parse.transform),
+      df = tx.length
+        ? function(data, db, group) {
+            return tx.reduce(function(d,t) { return t(d,db,group); }, data);
+          }
+        : vg.identity;
+  df.transforms = tx;
+  df.dependencies = vg.keys((def.transform || [])
+    .reduce(function(map, tdef) {
+      var deps = vg.data[tdef.type].dependencies;
+      if (deps) deps.forEach(function(d) {
+        if (tdef[d]) map[tdef[d]] = 1;
+      });
+      return map;
+    }, {}));
+  return df;
+};vg.parse.expr = (function() {
+
+  var CONSTANT = {
+  	"E":       "Math.E",
+  	"LN2":     "Math.LN2",
+  	"LN10":    "Math.LN10",
+  	"LOG2E":   "Math.LOG2E",
+  	"LOG10E":  "Math.LOG10E",
+  	"PI":      "Math.PI",
+  	"SQRT1_2": "Math.SQRT1_2",
+  	"SQRT2":   "Math.SQRT2"
+  };
+
+  var FUNCTION = {
+  	"abs":    "Math.abs",
+  	"acos":   "Math.acos",
+  	"asin":   "Math.asin",
+  	"atan":   "Math.atan",
+  	"atan2":  "Math.atan2",
+  	"ceil":   "Math.ceil",
+  	"cos":    "Math.cos",
+  	"exp":    "Math.exp",
+  	"floor":  "Math.floor",
+  	"log":    "Math.log",
+  	"max":    "Math.max",
+  	"min":    "Math.min",
+  	"pow":    "Math.pow",
+  	"random": "Math.random",
+  	"round":  "Math.round",
+  	"sin":    "Math.sin",
+  	"sqrt":   "Math.sqrt",
+  	"tan":    "Math.tan"
+  };
+
+  var lexer = /([\"\']|[\=\<\>\~\&\|\?\:\+\-\/\*\%\!\^\,\;\[\]\{\}\(\) ]+)/;
+
+  return function(x) {
+    if (vg.config.safeMode) {
+      vg.error("Safe mode: Expression parsing disabled.");
+      return vg.true;
+    }
+
+    var tokens = x.split(lexer),
+        t, v, i, n, sq, dq;
+
+    for (sq=0, dq=0, i=0, n=tokens.length; i<n; ++i) {
+      var t = tokens[i];
+      if (t==="'") { if (!dq) sq = !sq; continue; }
+      if (t==='"') { if (!sq) dq = !dq; continue; }
+      if (dq || sq) continue;
+      if (CONSTANT[t]) {
+        tokens[i] = CONSTANT[t];
+      }
+      if (FUNCTION[t] && (v=tokens[i+1]) && v[0]==="(") {
+        tokens[i] = FUNCTION[t];
+      }
+    }
+
+    return Function("d", "index", "data", "return ("+tokens.join("")+");");
+  };
+
+})();vg.parse.legends = (function() {
+
+  function legends(spec, legends, scales) {
+    (spec || []).forEach(function(def, index) {
+      legends[index] = legends[index] || vg.scene.legend();
+      legend(def, index, legends[index], scales);
+    });
+  };
+
+  function legend(def, index, legend, scales) {
+    // legend scales
+    legend.size  (def.size   ? scales[def.size]   : null);
+    legend.shape (def.shape  ? scales[def.shape]  : null);
+    legend.fill  (def.fill   ? scales[def.fill]   : null);
+    legend.stroke(def.stroke ? scales[def.stroke] : null);
+
+    // legend orientation
+    if (def.orient) legend.orient(def.orient);
+
+    // legend offset
+    if (def.offset != null) legend.offset(def.offset);
+
+    // legend title
+    legend.title(def.title || null);
+
+    // legend values
+    legend.values(def.values || null);
+
+    // legend label formatting
+    legend.format(def.format !== undefined ? def.format : null);
+
+    // style properties
+    var p = def.properties;
+    legend.titleProperties(p && p.title || {});
+    legend.labelProperties(p && p.labels || {});
+    legend.legendProperties(p && p.legend || {});
+    legend.symbolProperties(p && p.symbols || {});
+    legend.gradientProperties(p && p.gradient || {});
+  }
+  
+  return legends;
+})();vg.parse.mark = function(mark) {
+  var props = mark.properties,
+      group = mark.marks;
+
+  // parse mark property definitions
+  vg.keys(props).forEach(function(k) {
+    props[k] = vg.parse.properties(mark.type, props[k]);
+  });
+
+  // parse delay function
+  if (mark.delay) {
+    mark.delay = vg.parse.properties(mark.type, {delay: mark.delay});
+  }
+
+  // parse mark data definition
+  if (mark.from) {
+    var name = mark.from.data,
+        tx = vg.parse.dataflow(mark.from);
+    mark.from = function(db, group, parentData) {
+      var data = vg.scene.data(name ? db[name] : null, parentData);
+      return tx(data, db, group);
+    };
+  }
+
+  // recurse if group type
+  if (group) {
+    mark.marks = group.map(vg.parse.mark);
+  }
+    
+  return mark;
+};vg.parse.marks = function(spec, width, height) {
+  return {
+    type: "group",
+    width: width,
+    height: height,
+    scales: spec.scales || [],
+    axes: spec.axes || [],
+    legends: spec.legends || [],
+    marks: (spec.marks || []).map(vg.parse.mark)
+  };
+};vg.parse.padding = function(pad) {
+  if (pad == null) return "auto";
+  else if (vg.isString(pad)) return pad==="strict" ? "strict" : "auto";
+  else if (vg.isObject(pad)) return pad;
+  var p = vg.isNumber(pad) ? pad : 20;
+  return {top:p, left:p, right:p, bottom:p};
+};
+vg.parse.properties = (function() {
+  function compile(mark, spec) {
+    var code = "",
+        names = vg.keys(spec),
+        i, len, name, ref, vars = {};
+        
+    code += "var o = trans ? {} : item;\n"
+    
+    for (i=0, len=names.length; i<len; ++i) {
+      ref = spec[name = names[i]];
+      code += (i > 0) ? "\n  " : "  ";
+      code += "o."+name+" = "+valueRef(name, ref)+";";
+      vars[name] = true;
+    }
+    
+    if (vars.x2) {
+      if (vars.x) {
+        code += "\n  if (o.x > o.x2) { "
+              + "var t = o.x; o.x = o.x2; o.x2 = t; };";
+        code += "\n  o.width = (o.x2 - o.x);";
+      } else if (vars.width) {
+        code += "\n  o.x = (o.x2 - o.width);";
+      } else {
+        code += "\n  o.x = o.x2;"
+      }
+    }
+
+    if (vars.y2) {
+      if (vars.y) {
+        code += "\n  if (o.y > o.y2) { "
+              + "var t = o.y; o.y = o.y2; o.y2 = t; };";
+        code += "\n  o.height = (o.y2 - o.y);";
+      } else if (vars.height) {
+        code += "\n  o.y = (o.y2 - o.height);";
+      } else {
+        code += "\n  o.y = o.y2;"
+      }
+    }
+    
+    if (hasPath(mark, vars)) code += "\n  item.touch();";
+    code += "\n  if (trans) trans.interpolate(item, o);";
+
+    try {
+      return Function("item", "group", "trans", code);
+    } catch (e) {
+      vg.error(e);
+      vg.log(code);
+    }
+  }
+  
+  function hasPath(mark, vars) {
+    return vars.path ||
+      ((mark==="area" || mark==="line") &&
+        (vars.x || vars.x2 || vars.width ||
+         vars.y || vars.y2 || vars.height ||
+         vars.tension || vars.interpolate));
+  }
+  
+  var GROUP_VARS = {
+    "width": 1,
+    "height": 1,
+    "mark.group.width": 1,
+    "mark.group.height": 1
+  };
+
+  function valueRef(name, ref) {
+    if (ref == null) return null;
+    var isColor = name==="fill" || name==="stroke";
+
+    if (isColor) {
+      if (ref.c) {
+        return colorRef("hcl", ref.h, ref.c, ref.l);
+      } else if (ref.h || ref.s) {
+        return colorRef("hsl", ref.h, ref.s, ref.l);
+      } else if (ref.l || ref.a) {
+        return colorRef("lab", ref.l, ref.a, ref.b);
+      } else if (ref.r || ref.g || ref.b) {
+        return colorRef("rgb", ref.r, ref.g, ref.b);
+      }
+    }
+
+    // initialize value
+    var val = "item.datum.data";
+    if (ref.value !== undefined) {
+      val = vg.str(ref.value);
+    }
+
+    // get field reference for enclosing group
+    if (ref.group != null) {
+      var grp = "group.datum";
+      if (vg.isString(ref.group)) {
+        grp = GROUP_VARS[ref.group]
+          ? "group." + ref.group
+          : "group.datum["+vg.field(ref.group).map(vg.str).join("][")+"]";
+      }
+    }
+
+    // get data field value
+    if (ref.field != null) {
+      if (vg.isString(ref.field)) {
+        val = "item.datum["+vg.field(ref.field).map(vg.str).join("][")+"]";
+        if (ref.group != null) { val = "this.accessor("+val+")("+grp+")"; }
+      } else {
+        val = "this.accessor(group.datum["
+            + vg.field(ref.field.group).map(vg.str).join("][")
+            + "])(item.datum.data)";
+      }
+    } else if (ref.group != null) {
+      val = grp;
+    }
+
+    // run through scale function
+    if (ref.scale != null) {
+      var scale = vg.isString(ref.scale)
+        ? vg.str(ref.scale)
+        : (ref.scale.group ? "group" : "item")
+          + ".datum[" + vg.str(ref.scale.group || ref.scale.field) + "]";
+      scale = "group.scales[" + scale + "]";
+      val = scale + (ref.band ? ".rangeBand()" : "("+val+")");
+    }
+    
+    // multiply, offset, return value
+    val = "(" + (ref.mult?(vg.number(ref.mult)+" * "):"") + val + ")"
+      + (ref.offset ? " + " + vg.number(ref.offset) : "");
+    return val;
+  }
+  
+  function colorRef(type, x, y, z) {
+    var xx = x ? valueRef("", x) : vg.config.color[type][0],
+        yy = y ? valueRef("", y) : vg.config.color[type][1],
+        zz = z ? valueRef("", z) : vg.config.color[type][2];
+    return "(this.d3." + type + "(" + [xx,yy,zz].join(",") + ') + "")';
+  }
+  
+  return compile;
+})();vg.parse.scales = (function() {
+  var LINEAR = "linear",
+      ORDINAL = "ordinal",
+      LOG = "log",
+      POWER = "pow",
+      TIME = "time",
+      QUANTILE = "quantile",
+      GROUP_PROPERTY = {width: 1, height: 1};
+
+  function scales(spec, scales, db, group) {
+    return (spec || []).reduce(function(o, def) {
+      var name = def.name, prev = name + ":prev";
+      o[name] = scale(def, o[name], db, group);
+      o[prev] = o[prev] || o[name];
+      return o;
+    }, scales || {});
+  }
+
+  function scale(def, scale, db, group) {
+    var s = instance(def, scale),
+        m = s.type===ORDINAL ? ordinal : quantitative,
+        rng = range(def, group),
+        data = vg.values(group.datum);
+
+    m(def, s, rng, db, data);
+    return s;
+  }
+
+  function instance(def, scale) {
+    var type = def.type || LINEAR;
+    if (!scale || type !== scale.type) {
+      var ctor = vg.config.scale[type] || d3.scale[type];
+      if (!ctor) vg.error("Unrecognized scale type: " + type);
+      (scale = ctor()).type = scale.type || type;
+      scale.scaleName = def.name;
+    }
+    return scale;
+  }
+
+  function ordinal(def, scale, rng, db, data) {
+    var domain, sort, str, refs, dataDrivenRange = false;
+    
+    // range pre-processing for data-driven ranges
+    if (vg.isObject(def.range) && !vg.isArray(def.range)) {
+      dataDrivenRange = true;
+      refs = def.range.fields || vg.array(def.range);
+      rng = extract(refs, db, data);
+    }
+    
+    // domain
+    sort = def.sort && !dataDrivenRange;
+    domain = domainValues(def, db, data, sort);
+    if (domain) scale.domain(domain);
+
+    // range
+    str = typeof rng[0] === 'string';
+    if (str || rng.length > 2 || rng.length===1 || dataDrivenRange) {
+      scale.range(rng); // color or shape values
+    } else if (def.points) {
+      scale.rangePoints(rng, def.padding||0);
+    } else if (def.round || def.round===undefined) {
+      scale.rangeRoundBands(rng, def.padding||0);
+    } else {
+      scale.rangeBands(rng, def.padding||0);
+    }
+  }
+
+  function quantitative(def, scale, rng, db, data) {
+    var domain, interval;
+
+    // domain
+    domain = (def.type === QUANTILE)
+      ? domainValues(def, db, data, false)
+      : domainMinMax(def, db, data);
+    scale.domain(domain);
+
+    // range
+    // vertical scales should flip by default, so use XOR here
+    if (def.range === "height") rng = rng.reverse();
+    scale[def.round && scale.rangeRound ? "rangeRound" : "range"](rng);
+
+    if (def.exponent && def.type===POWER) scale.exponent(def.exponent);
+    if (def.clamp) scale.clamp(true);
+    if (def.nice) {
+      if (def.type === TIME) {
+        interval = d3.time[def.nice];
+        if (!interval) vg.error("Unrecognized interval: " + interval);
+        scale.nice(interval);
+      } else {
+        scale.nice();
+      }
+    }
+  }
+  
+  function extract(refs, db, data) {
+    return refs.reduce(function(values, r) {        
+      var dat = vg.values(db[r.data] || data),
+          get = vg.accessor(vg.isString(r.field)
+              ? r.field : "data." + vg.accessor(r.field.group)(data));
+      return vg.unique(dat, get, values);
+    }, []);
+  }
+  
+  function domainValues(def, db, data, sort) {
+    var domain = def.domain, values, refs;
+    if (vg.isArray(domain)) {
+      values = sort ? domain.slice() : domain;
+    } else if (vg.isObject(domain)) {
+      refs = domain.fields || vg.array(domain);
+      values = extract(refs, db, data);
+    }
+    if (values && sort) values.sort(vg.cmp);
+    return values;
+  }
+  
+  function domainMinMax(def, db, data) {
+    var domain = [null, null], refs, z;
+    
+    function extract(ref, min, max, z) {
+      var dat = vg.values(db[ref.data] || data);
+      var fields = vg.array(ref.field).map(function(f) {
+        return vg.isString(f) ? f
+          : "data." + vg.accessor(f.group)(data);
+      });
+      
+      fields.forEach(function(f,i) {
+        f = vg.accessor(f);
+        if (min) domain[0] = d3.min([domain[0], d3.min(dat, f)]);
+        if (max) domain[z] = d3.max([domain[z], d3.max(dat, f)]);
+      });
+    }
+
+    if (def.domain !== undefined) {
+      if (vg.isArray(def.domain)) {
+        domain = def.domain.slice();
+      } else if (vg.isObject(def.domain)) {
+        refs = def.domain.fields || vg.array(def.domain);
+        refs.forEach(function(r) { extract(r,1,1,1); });
+      } else {
+        domain = def.domain;
+      }
+    }
+    z = domain.length - 1;
+    if (def.domainMin !== undefined) {
+      if (vg.isObject(def.domainMin)) {
+        domain[0] = null;
+        refs = def.domainMin.fields || vg.array(def.domainMin);
+        refs.forEach(function(r) { extract(r,1,0,z); });
+      } else {
+        domain[0] = def.domainMin;
+      }
+    }
+    if (def.domainMax !== undefined) {
+      if (vg.isObject(def.domainMax)) {
+        domain[z] = null;
+        refs = def.domainMax.fields || vg.array(def.domainMax);
+        refs.forEach(function(r) { extract(r,0,1,z); });
+      } else {
+        domain[z] = def.domainMax;
+      }
+    }
+    if (def.type !== LOG && def.type !== TIME && (def.zero || def.zero===undefined)) {
+      domain[0] = Math.min(0, domain[0]);
+      domain[z] = Math.max(0, domain[z]);
+    }
+    return domain;
+  }
+
+  function range(def, group) {
+    var rng = [null, null];
+
+    if (def.range !== undefined) {
+      if (typeof def.range === 'string') {
+        if (GROUP_PROPERTY[def.range]) {
+          rng = [0, group[def.range]];
+        } else if (vg.config.range[def.range]) {
+          rng = vg.config.range[def.range];
+        } else {
+          vg.error("Unrecogized range: "+def.range);
+          return rng;
+        }
+      } else if (vg.isArray(def.range)) {
+        rng = def.range;
+      } else if (vg.isObject(def.range)) {
+        return null; // early exit
+      } else {
+        rng = [0, def.range];
+      }
+    }
+    if (def.rangeMin !== undefined) {
+      rng[0] = def.rangeMin;
+    }
+    if (def.rangeMax !== undefined) {
+      rng[rng.length-1] = def.rangeMax;
+    }
+    
+    if (def.reverse !== undefined) {
+      var rev = def.reverse;
+      if (vg.isObject(rev)) {
+        rev = vg.accessor(rev.field)(group.datum);
+      }
+      if (rev) rng = rng.reverse();
+    }
+    
+    return rng;
+  }
+
+  return scales;
+})();
+vg.parse.spec = function(spec, callback, viewFactory) {
+  
+  viewFactory = viewFactory || vg.ViewFactory;
+  
+  function parse(spec) {
+    // protect against subsequent spec modification
+    spec = vg.duplicate(spec);
+    
+    var width = spec.width || 500,
+        height = spec.height || 500,
+        viewport = spec.viewport || null;
+    
+    var defs = {
+      width: width,
+      height: height,
+      viewport: viewport,
+      padding: vg.parse.padding(spec.padding),
+      marks: vg.parse.marks(spec, width, height),
+      data: vg.parse.data(spec.data, function() { callback(viewConstructor); })
+    };
+    
+    var viewConstructor = viewFactory(defs);
+  }
+  
+  vg.isObject(spec) ? parse(spec) :
+    d3.json(spec, function(error, json) {
+      error ? vg.error(error) : parse(json);
+    });
+};vg.parse.transform = function(def) {
+  var tx = vg.data[def.type]();
+      
+  vg.keys(def).forEach(function(k) {
+    if (k === 'type') return;
+    (tx[k])(def[k]);
+  });
+  
+  return tx;
+};vg.scene = {};
+
+vg.scene.GROUP  = "group",
+vg.scene.ENTER  = 0,
+vg.scene.UPDATE = 1,
+vg.scene.EXIT   = 2;
+
+vg.scene.DEFAULT_DATA = {"sentinel":1}
+
+vg.scene.data = function(data, parentData) {
+  var DEFAULT = vg.scene.DEFAULT_DATA;
+
+  // if data is undefined, inherit or use default
+  data = vg.values(data || parentData || [DEFAULT]);
+
+  // if inheriting default data, ensure its in an array
+  if (data === DEFAULT) data = [DEFAULT];
+  
+  return data;
+};
+
+vg.scene.fontString = function(o) {
+  return (o.fontStyle ? o.fontStyle + " " : "")
+    + (o.fontVariant ? o.fontVariant + " " : "")
+    + (o.fontWeight ? o.fontWeight + " " : "")
+    + (o.fontSize != null ? o.fontSize : vg.config.render.fontSize) + "px "
+    + (o.font || vg.config.render.font);
+};vg.scene.Item = (function() {
+  function item(mark) {
+    this.mark = mark;
+  }
+  
+  var prototype = item.prototype;
+
+  prototype.hasPropertySet = function(name) {
+    var props = this.mark.def.properties;
+    return props && props[name] != null;
+  };
+
+  prototype.cousin = function(offset, index) {
+    if (offset === 0) return this;
+    offset = offset || -1;
+    var mark = this.mark,
+        group = mark.group,
+        iidx = index==null ? mark.items.indexOf(this) : index,
+        midx = group.items.indexOf(mark) + offset;
+    return group.items[midx].items[iidx];
+  };
+  
+  prototype.sibling = function(offset) {
+    if (offset === 0) return this;
+    offset = offset || -1;
+    var mark = this.mark,
+        iidx = mark.items.indexOf(this) + offset;
+    return mark.items[iidx];
+  };
+  
+  prototype.remove = function() {
+    var item = this,
+        list = item.mark.items,
+        i = list.indexOf(item);
+    if (i >= 0) (i===list.length-1) ? list.pop() : list.splice(i, 1);
+    return item;
+  };
+  
+  prototype.touch = function() {
+    if (this.pathCache) this.pathCache = null;
+    if (this.mark.pathCache) this.mark.pathCache = null;
+  };
+  
+  return item;
+})();
+
+vg.scene.item = function(mark) {
+  return new vg.scene.Item(mark);
+};vg.scene.visit = function(node, func) {
+  var i, n, s, m, items;
+  if (func(node)) return true;
+
+  var sets = ["items", "axisItems", "legendItems"];
+  for (s=0, m=sets.length; s<m; ++s) {
+    if (items = node[sets[s]]) {
+      for (i=0, n=items.length; i<n; ++i) {
+        if (vg.scene.visit(items[i], func)) return true;
+      }
+    }
+  }
+};vg.scene.build = (function() {
+  var GROUP  = vg.scene.GROUP,
+      ENTER  = vg.scene.ENTER,
+      UPDATE = vg.scene.UPDATE,
+      EXIT   = vg.scene.EXIT,
+      DEFAULT= {"sentinel":1};
+  
+  function build(def, db, node, parentData, reentrant) {
+    var data = vg.scene.data(
+      def.from ? def.from(db, node, parentData) : null,
+      parentData);
+    
+    // build node and items
+    node = buildNode(def, node);
+    node.items = buildItems(def, data, node);
+    buildTrans(def, node);
+    
+    // recurse if group
+    if (def.type === GROUP) {
+      buildGroup(def, db, node, reentrant);
+    }
+    
+    return node;
+  };
+  
+  function buildNode(def, node) {
+    node = node || {};
+    node.def = def;
+    node.marktype = def.type;
+    node.interactive = !(def.interactive === false);
+    return node;
+  }
+  
+  function buildItems(def, data, node) {
+    var keyf = keyFunction(def.key),
+        prev = node.items || [],
+        next = [],
+        map = {},
+        i, key, len, item, datum, enter;
+
+    for (i=0, len=prev.length; i<len; ++i) {
+      item = prev[i];
+      item.status = EXIT;
+      if (keyf) map[item.key] = item;
+    }
+    
+    for (i=0, len=data.length; i<len; ++i) {
+      datum = data[i];
+      key = i;
+      item = keyf ? map[key = keyf(datum)] : prev[i];
+      enter = item ? false : (item = vg.scene.item(node), true);
+      item.status = enter ? ENTER : UPDATE;
+      item.datum = datum;
+      item.key = key;
+      next.push(item);
+    }
+
+    for (i=0, len=prev.length; i<len; ++i) {
+      item = prev[i];
+      if (item.status === EXIT) {
+        item.key = keyf ? item.key : next.length;
+        next.splice(item.index, 0, item);
+      }
+    }
+    
+    return next;
+  }
+  
+  function buildGroup(def, db, node, reentrant) {
+    var groups = node.items,
+        marks = def.marks,
+        i, len, m, mlen, name, group;
+
+    for (i=0, len=groups.length; i<len; ++i) {
+      group = groups[i];
+      
+      // update scales
+      if (!reentrant && group.scales) for (name in group.scales) {
+        if (name.indexOf(":prev") < 0) {
+          group.scales[name+":prev"] = group.scales[name].copy();
+        }
+      }
+
+      // build items
+      group.items = group.items || [];
+      for (m=0, mlen=marks.length; m<mlen; ++m) {
+        group.items[m] = build(marks[m], db, group.items[m], group.datum);
+        group.items[m].group = group;
+      }
+    }
+  }
+
+  function buildTrans(def, node) {
+    if (def.duration) node.duration = def.duration;
+    if (def.ease) node.ease = d3.ease(def.ease)
+    if (def.delay) {
+      var items = node.items, group = node.group, n = items.length, i;
+      for (i=0; i<n; ++i) def.delay.call(this, items[i], group);
+    }
+  }
+  
+  function keyFunction(key) {
+    if (key == null) return null;
+    var f = vg.array(key).map(vg.accessor);
+    return function(d) {
+      for (var s="", i=0, n=f.length; i<n; ++i) {
+        if (i>0) s += "|";
+        s += String(f[i](d));
+      }
+      return s;
+    }
+  }
+  
+  return build;
+})();vg.scene.bounds = (function() {
+
+  var parse = vg.canvas.path.parse,
+      boundPath = vg.canvas.path.bounds,
+      areaPath = vg.canvas.path.area,
+      linePath = vg.canvas.path.line,
+      halfpi = Math.PI / 2,
+      sqrt3 = Math.sqrt(3),
+      tan30 = Math.tan(30 * Math.PI / 180),
+      gfx = null;
+
+  function context() {
+    return gfx || (gfx = (vg.config.isNode
+      ? new (require("canvas"))(1,1)
+      : d3.select("body").append("canvas")
+          .attr("class", "vega_hidden")
+          .attr("width", 1)
+          .attr("height", 1)
+          .style("display", "none")
+          .node())
+      .getContext("2d"));
+  }
+
+  function pathBounds(o, path, bounds) {
+    if (path == null) {
+      bounds.set(0, 0, 0, 0);
+    } else {
+      boundPath(path, bounds);
+      if (o.stroke && o.opacity !== 0 && o.strokeWidth > 0) {
+        bounds.expand(o.strokeWidth);
+      }
+    }
+    return bounds;
+  }
+
+  function path(o, bounds) {
+    var p = o.path
+      ? o.pathCache || (o.pathCache = parse(o.path))
+      : null;
+    return pathBounds(o, p, bounds);
+  }
+  
+  function area(o, bounds) {
+    var items = o.mark.items, o = items[0];
+    var p = o.pathCache || (o.pathCache = parse(areaPath(items)));
+    return pathBounds(items[0], p, bounds);
+  }
+
+  function line(o, bounds) {
+    var items = o.mark.items, o = items[0];
+    var p = o.pathCache || (o.pathCache = parse(linePath(items)));
+    return pathBounds(items[0], p, bounds);
+  }
+
+  function rect(o, bounds) {
+    var x = o.x || 0,
+        y = o.y || 0,
+        w = (x + o.width) || 0,
+        h = (y + o.height) || 0;
+    bounds.set(x, y, w, h);
+    if (o.stroke && o.opacity !== 0 && o.strokeWidth > 0) {
+      bounds.expand(o.strokeWidth);
+    }
+    return bounds;
+  }
+
+  function image(o, bounds) {
+    var w = o.width || 0,
+        h = o.height || 0,
+        x = (o.x||0) - (o.align === "center"
+            ? w/2 : (o.align === "right" ? w : 0)),
+        y = (o.y||0) - (o.baseline === "middle"
+            ? h/2 : (o.baseline === "bottom" ? h : 0));
+    return bounds.set(x, y, x+w, y+h);
+  }
+
+  function rule(o, bounds) {
+    var x1, y1;
+    bounds.set(
+      x1 = o.x || 0,
+      y1 = o.y || 0,
+      o.x2 != null ? o.x2 : x1,
+      o.y2 != null ? o.y2 : y1
+    );
+    if (o.stroke && o.opacity !== 0 && o.strokeWidth > 0) {
+      bounds.expand(o.strokeWidth);
+    }
+    return bounds;
+  }
+  
+  function arc(o, bounds) {
+    var cx = o.x || 0,
+        cy = o.y || 0,
+        ir = o.innerRadius || 0,
+        or = o.outerRadius || 0,
+        sa = (o.startAngle || 0) - halfpi,
+        ea = (o.endAngle || 0) - halfpi,
+        xmin = Infinity, xmax = -Infinity,
+        ymin = Infinity, ymax = -Infinity,
+        a, i, n, x, y, ix, iy, ox, oy;
+
+    var angles = [sa, ea],
+        s = sa - (sa%halfpi);
+    for (i=0; i<4 && s<ea; ++i, s+=halfpi) {
+      angles.push(s);
+    }
+
+    for (i=0, n=angles.length; i<n; ++i) {
+      a = angles[i];
+      x = Math.cos(a); ix = ir*x; ox = or*x;
+      y = Math.sin(a); iy = ir*y; oy = or*y;
+      xmin = Math.min(xmin, ix, ox);
+      xmax = Math.max(xmax, ix, ox);
+      ymin = Math.min(ymin, iy, oy);
+      ymax = Math.max(ymax, iy, oy);
+    }
+
+    bounds.set(cx+xmin, cy+ymin, cx+xmax, cy+ymax);
+    if (o.stroke && o.opacity !== 0 && o.strokeWidth > 0) {
+      bounds.expand(o.strokeWidth);
+    }
+    return bounds;
+  }
+
+  function symbol(o, bounds) {
+    var size = o.size != null ? o.size : 100,
+        x = o.x || 0,
+        y = o.y || 0,
+        r, t, rx, ry;
+
+    switch (o.shape) {
+      case "cross":
+        r = Math.sqrt(size / 5) / 2;
+        t = 3*r;
+        bounds.set(x-t, y-r, x+t, y+r);
+        break;
+
+      case "diamond":
+        ry = Math.sqrt(size / (2 * tan30));
+        rx = ry * tan30;
+        bounds.set(x-rx, y-ry, x+rx, y+ry);
+        break;
+
+      case "square":
+        t = Math.sqrt(size);
+        r = t / 2;
+        bounds.set(x-r, y-r, x+r, y+r);
+        break;
+
+      case "triangle-down":
+        rx = Math.sqrt(size / sqrt3);
+        ry = rx * sqrt3 / 2;
+        bounds.set(x-rx, y-ry, x+rx, y+ry);
+        break;
+
+      case "triangle-up":
+        rx = Math.sqrt(size / sqrt3);
+        ry = rx * sqrt3 / 2;
+        bounds.set(x-rx, y-ry, x+rx, y+ry);
+        break;
+
+      default:
+        r = Math.sqrt(size/Math.PI);
+        bounds.set(x-r, y-r, x+r, y+r);
+    }
+    if (o.stroke && o.opacity !== 0 && o.strokeWidth > 0) {
+      bounds.expand(o.strokeWidth);
+    }
+    return bounds;
+  }
+
+  function text(o, bounds, noRotate) {
+    var x = (o.x || 0) + (o.dx || 0),
+        y = (o.y || 0) + (o.dy || 0),
+        h = o.fontSize || vg.config.render.fontSize,
+        a = o.align,
+        b = o.baseline,
+        r = o.radius || 0,
+        g = context(), w, t;
+
+    g.font = vg.scene.fontString(o);
+    g.textAlign = a || "left";
+    g.textBaseline = b || "alphabetic";
+    w = g.measureText(o.text || "").width;
+
+    if (r) {
+      t = (o.theta || 0) - Math.PI/2;
+      x += r * Math.cos(t);
+      y += r * Math.sin(t);
+    }
+
+    // horizontal
+    if (a === "center") {
+      x = x - (w / 2);
+    } else if (a === "right") {
+      x = x - w;
+    } else {
+      // left by default, do nothing
+    }
+
+    /// TODO find a robust solution for heights.
+    /// These offsets work for some but not all fonts.
+
+    // vertical
+    if (b === "top") {
+      y = y + (h/5);
+    } else if (b === "bottom") {
+      y = y - h;
+    } else if (b === "middle") {
+      y = y - (h/2) + (h/10);
+    } else {
+      y = y - 4*h/5; // alphabetic by default
+    }
+    
+    bounds.set(x, y, x+w, y+h);
+    if (o.angle && !noRotate) {
+      bounds.rotate(o.angle*Math.PI/180, o.x||0, o.y||0);
+    }
+    return bounds.expand(noRotate ? 0 : 1);
+  }
+
+  function group(g, bounds, includeLegends) {
+    var axes = g.axisItems || [],
+        legends = g.legendItems || [], j, m;
+
+    for (j=0, m=axes.length; j<m; ++j) {
+      bounds.union(axes[j].bounds);
+    }
+    for (j=0, m=g.items.length; j<m; ++j) {
+      bounds.union(g.items[j].bounds);
+    }
+    if (includeLegends) {
+      for (j=0, m=legends.length; j<m; ++j) {
+        bounds.union(legends[j].bounds);
+      }
+      if (g.width != null && g.height != null) {
+        bounds.add(g.width, g.height);
+      }
+      if (g.x != null && g.y != null) {
+        bounds.add(0, 0);
+      }
+    }
+    bounds.translate(g.x||0, g.y||0);
+    return bounds;
+  }
+
+  var methods = {
+    group:  group,
+    symbol: symbol,
+    image:  image,
+    rect:   rect,
+    rule:   rule,
+    arc:    arc,
+    text:   text,
+    path:   path,
+    area:   area,
+    line:   line
+  };
+
+  function itemBounds(item, func, opt) {
+    func = func || methods[item.mark.marktype];
+    if (!item.bounds_prev) item['bounds:prev'] = new vg.Bounds();
+    var b = item.bounds, pb = item['bounds:prev'];
+    if (b) pb.clear().union(b);
+    item.bounds = func(item, b ? b.clear() : new vg.Bounds(), opt);
+    if (!b) pb.clear().union(item.bounds);
+    return item.bounds;
+  }
+
+  function markBounds(mark, bounds, opt) {
+    bounds = bounds || mark.bounds && mark.bounds.clear() || new vg.Bounds();
+    var type  = mark.marktype,
+        func  = methods[type],
+        items = mark.items,
+        item, i, len;
+        
+    if (type==="area" || type==="line") {
+      if (items.length) {
+        items[0].bounds = func(items[0], bounds);
+      }
+    } else {
+      for (i=0, len=items.length; i<len; ++i) {
+        bounds.union(itemBounds(items[i], func, opt));
+      }
+    }
+    mark.bounds = bounds;
+  }
+  
+  return {
+    mark:  markBounds,
+    item:  itemBounds,
+    text:  text,
+    group: group
+  };
+
+})();vg.scene.encode = (function() {
+  var GROUP  = vg.scene.GROUP,
+      ENTER  = vg.scene.ENTER,
+      UPDATE = vg.scene.UPDATE,
+      EXIT   = vg.scene.EXIT,
+      EMPTY  = {};
+
+  function main(scene, def, trans, request, items) {
+    (request && items)
+      ? update.call(this, scene, def, trans, request, items)
+      : encode.call(this, scene, scene, def, trans, request);
+    return scene;
+  }
+  
+  function update(scene, def, trans, request, items) {
+    items = vg.array(items);
+    var i, len, item, group, props, prop;
+    for (i=0, len=items.length; i<len; ++i) {
+      item = items[i];
+      group = item.mark.group || null;
+      props = item.mark.def.properties;
+      prop = props && props[request];
+      if (prop) {
+        prop.call(vg, item, group, trans);
+        vg.scene.bounds.item(item);
+      }
+    }
+  }
+  
+  function encode(group, scene, def, trans, request) {
+    encodeItems.call(this, group, scene.items, def, trans, request);
+    if (scene.marktype === GROUP) {
+      encodeGroup.call(this, scene, def, group, trans, request);
+    } else {
+      vg.scene.bounds.mark(scene);
+    }
+  }
+  
+  function encodeLegend(group, scene, def, trans, request) {
+    encodeGroup.call(this, scene, def, group, trans, request);
+    encodeItems.call(this, group, scene.items, def, trans, request);
+    vg.scene.bounds.mark(scene, null, true);
+  }
+  
+  function encodeGroup(scene, def, parent, trans, request) {
+    var i, len, m, mlen, group, scales,
+        axes, axisItems, axisDef, leg, legItems, legDef;
+
+    for (i=0, len=scene.items.length; i<len; ++i) {
+      group = scene.items[i];
+
+      // cascade scales recursively
+      // use parent scales if there are no group-level scale defs
+      scales = group.scales || (group.scales =
+        def.scales ? vg.extend({}, parent.scales) : parent.scales);
+      
+      // update group-level scales
+      if (def.scales) {
+        vg.parse.scales(def.scales, scales, this._data, group);
+      }
+      
+      // update group-level axes
+      if (def.axes) {
+        axes = group.axes || (group.axes = []);
+        axisItems = group.axisItems || (group.axisItems = []);
+        vg.parse.axes(def.axes, axes, group.scales);
+        axes.forEach(function(a, i) {
+          axisDef = a.def();
+          axisItems[i] = vg.scene.build(axisDef, this._data, axisItems[i], null, 1);
+          axisItems[i].group = group;
+          encode.call(this, group, group.axisItems[i], axisDef, trans);
+        });
+      }
+      
+      // encode children marks
+      for (m=0, mlen=group.items.length; m<mlen; ++m) {
+        encode.call(this, group, group.items[m], def.marks[m], trans, request);
+      }
+    }
+    
+    // compute bounds (without legend)
+    vg.scene.bounds.mark(scene, null, !def.legends);
+    
+    // update legends
+    if (def.legends) {
+      for (i=0, len=scene.items.length; i<len; ++i) {
+        group = scene.items[i];
+        leg = group.legends || (group.legends = []);
+        legItems = group.legendItems || (group.legendItems = []);
+        vg.parse.legends(def.legends, leg, group.scales);
+        leg.forEach(function(l, i) {
+          legDef = l.def();
+          legItems[i] = vg.scene.build(legDef, this._data, legItems[i], null, 1);
+          legItems[i].group = group;
+          encodeLegend.call(this, group, group.legendItems[i], legDef, trans);
+        });
+      }
+      vg.scene.bounds.mark(scene, null, true);
+    }
+  }
+  
+  function encodeItems(group, items, def, trans, request) {    
+    var props  = def.properties || EMPTY,
+        enter  = props.enter,
+        update = props.update,
+        exit   = props.exit,
+        i, len, item, prop;
+
+    if (request) {
+      if (prop = props[request]) {
+        for (i=0, len=items.length; i<len; ++i) {
+          prop.call(vg, items[i], group, trans);
+        }
+      }
+      return; // exit early if given request
+    }
+
+    for (i=0; i<items.length; ++i) {
+      item = items[i];
+
+      // enter set
+      if (item.status === ENTER) {
+        if (enter) enter.call(vg, item, group);
+        item.status = UPDATE;
+      }
+
+      // update set      
+      if (item.status !== EXIT && update) {
+        update.call(vg, item, group, trans);
+      }
+      
+      // exit set
+      if (item.status === EXIT) {
+        if (exit) exit.call(vg, item, group, trans);
+        if (trans && !exit) trans.interpolate(item, EMPTY);
+        else if (!trans) items[i--].remove();
+      }
+    }
+  }
+  
+  return main;
+})();vg.scene.Transition = (function() {
+  function trans(duration, ease) {
+    this.duration = duration || 500;
+    this.ease = ease && d3.ease(ease) || d3.ease("cubic-in-out");
+    this.updates = {next: null};
+  }
+  
+  var prototype = trans.prototype;
+  
+  var skip = {
+    "text": 1,
+    "url":  1
+  };
+  
+  prototype.interpolate = function(item, values) {
+    var key, curr, next, interp, list = null;
+
+    for (key in values) {
+      curr = item[key];
+      next = values[key];      
+      if (curr !== next) {
+        if (skip[key] || curr === undefined) {
+          // skip interpolation for specific keys or undefined start values
+          item[key] = next;
+        } else if (typeof curr === "number" && !isFinite(curr)) {
+          // for NaN or infinite numeric values, skip to final value
+          item[key] = next;
+        } else {
+          // otherwise lookup interpolator
+          interp = d3.interpolate(curr, next);
+          interp.property = key;
+          (list || (list=[])).push(interp);
+        }
+      }
+    }
+
+    if (list === null && item.status === vg.scene.EXIT) {
+      list = []; // ensure exiting items are included
+    }
+
+    if (list != null) {
+      list.item = item;
+      list.ease = item.mark.ease || this.ease;
+      list.next = this.updates.next;
+      this.updates.next = list;
+    }
+    return this;
+  };
+  
+  prototype.start = function(callback) {
+    var t = this, prev = t.updates, curr = prev.next;
+    for (; curr!=null; prev=curr, curr=prev.next) {
+      if (curr.item.status === vg.scene.EXIT) curr.remove = true;
+    }
+    t.callback = callback;
+    d3.timer(function(elapsed) { return step.call(t, elapsed); });
+  };
+
+  function step(elapsed) {
+    var list = this.updates, prev = list, curr = prev.next,
+        duration = this.duration,
+        item, delay, f, e, i, n, stop = true;
+
+    for (; curr!=null; prev=curr, curr=prev.next) {
+      item = curr.item;
+      delay = item.delay || 0;
+
+      f = (elapsed - delay) / duration;
+      if (f < 0) { stop = false; continue; }
+      if (f > 1) f = 1;
+      e = curr.ease(f);
+
+      for (i=0, n=curr.length; i<n; ++i) {
+        item[curr[i].property] = curr[i](e);
+      }
+      item.touch();
+      vg.scene.bounds.item(item);
+
+      if (f === 1) {
+        if (curr.remove) item.remove();
+        prev.next = curr.next;
+        curr = prev;
+      } else {
+        stop = false;
+      }
+    }
+
+    this.callback();
+    return stop;
+  };
+  
+  return trans;
+  
+})();
+
+vg.scene.transition = function(dur, ease) {
+  return new vg.scene.Transition(dur, ease);
+};vg.scene.axis = function() {
+  var scale,
+      orient = vg.config.axis.orient,
+      offset = 0,
+      titleOffset = vg.config.axis.titleOffset,
+      axisDef = null,
+      layer = "front",
+      grid = false,
+      title = null,
+      tickMajorSize = vg.config.axis.tickSize,
+      tickMinorSize = vg.config.axis.tickSize,
+      tickEndSize = vg.config.axis.tickSize,
+      tickPadding = vg.config.axis.padding,
+      tickValues = null,
+      tickFormatString = null,
+      tickFormat = null,
+      tickSubdivide = 0,
+      tickArguments = [vg.config.axis.ticks],
+      gridLineStyle = {},
+      tickLabelStyle = {},
+      majorTickStyle = {},
+      minorTickStyle = {},
+      titleStyle = {},
+      domainStyle = {};
+
+  var axis = {};
+
+  function reset() {
+    axisDef = null;
+  }
+
+  axis.def = function() {
+    var def = axisDef ? axisDef : (axisDef = axis_def(scale));
+
+    // tick format
+    tickFormat = !tickFormatString ? null : ((scale.type === 'time')
+      ? d3.time.format(tickFormatString)
+      : d3.format(tickFormatString));
+
+    // generate data
+    var major = tickValues == null
+      ? (scale.ticks ? scale.ticks.apply(scale, tickArguments) : scale.domain())
+      : tickValues;
+    var minor = vg_axisSubdivide(scale, major, tickSubdivide).map(vg.data.ingest);
+    major = major.map(vg.data.ingest);
+    var fmt = tickFormat==null ? (scale.tickFormat ? scale.tickFormat.apply(scale, tickArguments) : String) : tickFormat;
+    major.forEach(function(d) { d.label = fmt(d.data); });
+    var tdata = title ? [title].map(vg.data.ingest) : [];
+    
+    // update axis def
+    def.marks[0].from = function() { return grid ? major : []; };
+    def.marks[1].from = function() { return major; };
+    def.marks[2].from = function() { return minor; };
+    def.marks[3].from = def.marks[1].from;
+    def.marks[4].from = function() { return [1]; };
+    def.marks[5].from = function() { return tdata; };
+    def.offset = offset;
+    def.orient = orient;
+    def.layer = layer;
+    return def;
+  };
+
+  function axis_def(scale) {
+    // setup scale mapping
+    var newScale, oldScale, range;
+    if (scale.type === "ordinal") {
+      newScale = {scale: scale.scaleName, offset: 0.5 + scale.rangeBand()/2};
+      oldScale = newScale;
+    } else {
+      newScale = {scale: scale.scaleName, offset: 0.5};
+      oldScale = {scale: scale.scaleName+":prev", offset: 0.5};
+    }
+    range = vg_axisScaleRange(scale);
+
+    // setup axis marks
+    var gridLines = vg_axisTicks();
+    var majorTicks = vg_axisTicks();
+    var minorTicks = vg_axisTicks();
+    var tickLabels = vg_axisTickLabels();
+    var domain = vg_axisDomain();
+    var title = vg_axisTitle();
+    gridLines.properties.enter.stroke = {value: vg.config.axis.gridColor};
+
+    // extend axis marks based on axis orientation
+    vg_axisTicksExtend(orient, gridLines, oldScale, newScale, Infinity);
+    vg_axisTicksExtend(orient, majorTicks, oldScale, newScale, tickMajorSize);
+    vg_axisTicksExtend(orient, minorTicks, oldScale, newScale, tickMinorSize);
+    vg_axisLabelExtend(orient, tickLabels, oldScale, newScale, tickMajorSize, tickPadding);
+
+    vg_axisDomainExtend(orient, domain, range, tickEndSize);
+    vg_axisTitleExtend(orient, title, range, titleOffset); // TODO get offset
+    
+    // add / override custom style properties
+    vg.extend(gridLines.properties.update, gridLineStyle);
+    vg.extend(majorTicks.properties.update, majorTickStyle);
+    vg.extend(minorTicks.properties.update, minorTickStyle);
+    vg.extend(tickLabels.properties.update, tickLabelStyle);
+    vg.extend(domain.properties.update, domainStyle);
+    vg.extend(title.properties.update, titleStyle);
+
+    var marks = [gridLines, majorTicks, minorTicks, tickLabels, domain, title];
+    return {
+      type: "group",
+      interactive: false,
+      properties: { enter: vg_axisUpdate, update: vg_axisUpdate },
+      marks: marks.map(vg.parse.mark)
+    };
+  }
+
+  axis.scale = function(x) {
+    if (!arguments.length) return scale;
+    if (scale !== x) { scale = x; reset(); }
+    return axis;
+  };
+
+  axis.orient = function(x) {
+    if (!arguments.length) return orient;
+    if (orient !== x) {
+      orient = x in vg_axisOrients ? x + "" : vg.config.axis.orient;
+      reset();
+    }
+    return axis;
+  };
+
+  axis.title = function(x) {
+    if (!arguments.length) return title;
+    if (title !== x) { title = x; reset(); }
+    return axis;
+  };
+
+  axis.ticks = function() {
+    if (!arguments.length) return tickArguments;
+    tickArguments = arguments;
+    return axis;
+  };
+
+  axis.tickValues = function(x) {
+    if (!arguments.length) return tickValues;
+    tickValues = x;
+    return axis;
+  };
+
+  axis.tickFormat = function(x) {
+    if (!arguments.length) return tickFormatString;
+    if (tickFormatString !== x) {
+      tickFormatString = x;
+      reset();
+    }
+    return axis;
+  };
+  
+  axis.tickSize = function(x, y) {
+    if (!arguments.length) return tickMajorSize;
+    var n = arguments.length - 1,
+        major = +x,
+        minor = n > 1 ? +y : tickMajorSize,
+        end   = n > 0 ? +arguments[n] : tickMajorSize;
+
+    if (tickMajorSize !== major ||
+        tickMinorSize !== minor ||
+        tickEndSize !== end) {
+      reset();
+    }
+
+    tickMajorSize = major;
+    tickMinorSize = minor;
+    tickEndSize = end;
+    return axis;
+  };
+
+  axis.tickSubdivide = function(x) {
+    if (!arguments.length) return tickSubdivide;
+    tickSubdivide = +x;
+    return axis;
+  };
+  
+  axis.offset = function(x) {
+    if (!arguments.length) return offset;
+    offset = vg.isObject(x) ? x : +x;
+    return axis;
+  };
+
+  axis.tickPadding = function(x) {
+    if (!arguments.length) return tickPadding;
+    if (tickPadding !== +x) { tickPadding = +x; reset(); }
+    return axis;
+  };
+
+  axis.titleOffset = function(x) {
+    if (!arguments.length) return titleOffset;
+    if (titleOffset !== +x) { titleOffset = +x; reset(); }
+    return axis;
+  };
+
+  axis.layer = function(x) {
+    if (!arguments.length) return layer;
+    if (layer !== x) { layer = x; reset(); }
+    return axis;
+  };
+
+  axis.grid = function(x) {
+    if (!arguments.length) return grid;
+    if (grid !== x) { grid = x; reset(); }
+    return axis;
+  };
+
+  axis.gridLineProperties = function(x) {
+    if (!arguments.length) return gridLineStyle;
+    if (gridLineStyle !== x) { gridLineStyle = x; }
+    return axis;
+  };
+
+  axis.majorTickProperties = function(x) {
+    if (!arguments.length) return majorTickStyle;
+    if (majorTickStyle !== x) { majorTickStyle = x; }
+    return axis;
+  };
+
+  axis.minorTickProperties = function(x) {
+    if (!arguments.length) return minorTickStyle;
+    if (minorTickStyle !== x) { minorTickStyle = x; }
+    return axis;
+  };
+
+  axis.tickLabelProperties = function(x) {
+    if (!arguments.length) return tickLabelStyle;
+    if (tickLabelStyle !== x) { tickLabelStyle = x; }
+    return axis;
+  };
+
+  axis.titleProperties = function(x) {
+    if (!arguments.length) return titleStyle;
+    if (titleStyle !== x) { titleStyle = x; }
+    return axis;
+  };
+
+  axis.domainProperties = function(x) {
+    if (!arguments.length) return domainStyle;
+    if (domainStyle !== x) { domainStyle = x; }
+    return axis;
+  };
+  
+  axis.reset = function() { reset(); };
+
+  return axis;
+};
+
+var vg_axisOrients = {top: 1, right: 1, bottom: 1, left: 1};
+
+function vg_axisSubdivide(scale, ticks, m) {
+  subticks = [];
+  if (m && ticks.length > 1) {
+    var extent = vg_axisScaleExtent(scale.domain()),
+        subticks,
+        i = -1,
+        n = ticks.length,
+        d = (ticks[1] - ticks[0]) / ++m,
+        j,
+        v;
+    while (++i < n) {
+      for (j = m; --j > 0;) {
+        if ((v = +ticks[i] - j * d) >= extent[0]) {
+          subticks.push(v);
+        }
+      }
+    }
+    for (--i, j = 0; ++j < m && (v = +ticks[i] + j * d) < extent[1];) {
+      subticks.push(v);
+    }
+  }
+  return subticks;
+}
+
+function vg_axisScaleExtent(domain) {
+  var start = domain[0], stop = domain[domain.length - 1];
+  return start < stop ? [start, stop] : [stop, start];
+}
+
+function vg_axisScaleRange(scale) {
+  return scale.rangeExtent
+    ? scale.rangeExtent()
+    : vg_axisScaleExtent(scale.range());
+}
+
+var vg_axisAlign = {
+  bottom: "center",
+  top: "center",
+  left: "right",
+  right: "left"
+};
+
+var vg_axisBaseline = {
+  bottom: "top",
+  top: "bottom",
+  left: "middle",
+  right: "middle"
+};
+
+function vg_axisLabelExtend(orient, labels, oldScale, newScale, size, pad) {
+  size = Math.max(size, 0) + pad;
+  if (orient === "left" || orient === "top") {
+    size *= -1;
+  }  
+  if (orient === "top" || orient === "bottom") {
+    vg.extend(labels.properties.enter, {
+      x: oldScale,
+      y: {value: size},
+    });
+    vg.extend(labels.properties.update, {
+      x: newScale,
+      y: {value: size},
+      align: {value: "center"},
+      baseline: {value: vg_axisBaseline[orient]}
     });
   } else {
-    root = typeof exports !== "undefined" && exports !== null ? exports : this;
-    root.chroma = chroma;
-  }
-
-  chroma.color = function(x, y, z, m) {
-    return new Color(x, y, z, m);
-  };
-
-  chroma.hsl = function(h, s, l, a) {
-    return new Color(h, s, l, a, 'hsl');
-  };
-
-  chroma.hsv = function(h, s, v, a) {
-    return new Color(h, s, v, a, 'hsv');
-  };
-
-  chroma.rgb = function(r, g, b, a) {
-    return new Color(r, g, b, a, 'rgb');
-  };
-
-  chroma.hex = function(x) {
-    return new Color(x);
-  };
-
-  chroma.css = function(x) {
-    return new Color(x);
-  };
-
-  chroma.lab = function(l, a, b) {
-    return new Color(l, a, b, 'lab');
-  };
-
-  chroma.lch = function(l, c, h) {
-    return new Color(l, c, h, 'lch');
-  };
-
-  chroma.hsi = function(h, s, i) {
-    return new Color(h, s, i, 'hsi');
-  };
-
-  chroma.gl = function(r, g, b, a) {
-    return new Color(r * 255, g * 255, b * 255, a, 'gl');
-  };
-
-  chroma.interpolate = function(a, b, f, m) {
-    if ((a == null) || (b == null)) {
-      return '#000';
-    }
-    if (type(a) === 'string') {
-      a = new Color(a);
-    }
-    if (type(b) === 'string') {
-      b = new Color(b);
-    }
-    return a.interpolate(f, b, m);
-  };
-
-  chroma.mix = chroma.interpolate;
-
-  chroma.contrast = function(a, b) {
-    var l1, l2;
-
-    if (type(a) === 'string') {
-      a = new Color(a);
-    }
-    if (type(b) === 'string') {
-      b = new Color(b);
-    }
-    l1 = a.luminance();
-    l2 = b.luminance();
-    if (l1 > l2) {
-      return (l1 + 0.05) / (l2 + 0.05);
-    } else {
-      return (l2 + 0.05) / (l1 + 0.05);
-    }
-  };
-
-  chroma.luminance = function(color) {
-    return chroma(color).luminance();
-  };
-
-  chroma._Color = Color;
-
-  /**
-      chroma.js
-  
-      Copyright (c) 2011-2013, Gregor Aisch
-      All rights reserved.
-  
-      Redistribution and use in source and binary forms, with or without
-      modification, are permitted provided that the following conditions are met:
-  
-      * Redistributions of source code must retain the above copyright notice, this
-        list of conditions and the following disclaimer.
-  
-      * Redistributions in binary form must reproduce the above copyright notice,
-        this list of conditions and the following disclaimer in the documentation
-        and/or other materials provided with the distribution.
-  
-      * The name Gregor Aisch may not be used to endorse or promote products
-        derived from this software without specific prior written permission.
-  
-      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-      AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-      IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-      DISCLAIMED. IN NO EVENT SHALL GREGOR AISCH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-      INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-      BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-      DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-      OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-      NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  
-      @source: https://github.com/gka/chroma.js
-  */
-
-
-  Color = (function() {
-    function Color() {
-      var a, arg, args, m, me, me_rgb, x, y, z, _i, _len, _ref, _ref1, _ref2, _ref3, _ref4;
-
-      me = this;
-      args = [];
-      for (_i = 0, _len = arguments.length; _i < _len; _i++) {
-        arg = arguments[_i];
-        if (arg != null) {
-          args.push(arg);
-        }
-      }
-      if (args.length === 0) {
-        _ref = [255, 0, 255, 1, 'rgb'], x = _ref[0], y = _ref[1], z = _ref[2], a = _ref[3], m = _ref[4];
-      } else if (type(args[0]) === "array") {
-        if (args[0].length === 3) {
-          _ref1 = args[0], x = _ref1[0], y = _ref1[1], z = _ref1[2];
-          a = 1;
-        } else if (args[0].length === 4) {
-          _ref2 = args[0], x = _ref2[0], y = _ref2[1], z = _ref2[2], a = _ref2[3];
-        } else {
-          throw 'unknown input argument';
-        }
-        m = (_ref3 = args[1]) != null ? _ref3 : 'rgb';
-      } else if (type(args[0]) === "string") {
-        x = args[0];
-        m = 'hex';
-      } else if (type(args[0]) === "object") {
-        _ref4 = args[0]._rgb, x = _ref4[0], y = _ref4[1], z = _ref4[2], a = _ref4[3];
-        m = 'rgb';
-      } else if (args.length >= 3) {
-        x = args[0];
-        y = args[1];
-        z = args[2];
-      }
-      if (args.length === 3) {
-        m = 'rgb';
-        a = 1;
-      } else if (args.length === 4) {
-        if (type(args[3]) === "string") {
-          m = args[3];
-          a = 1;
-        } else if (type(args[3]) === "number") {
-          m = 'rgb';
-          a = args[3];
-        }
-      } else if (args.length === 5) {
-        a = args[3];
-        m = args[4];
-      }
-      if (a == null) {
-        a = 1;
-      }
-      if (m === 'rgb') {
-        me._rgb = [x, y, z, a];
-      } else if (m === 'gl') {
-        me._rgb = [x * 255, y * 255, z * 255, a];
-      } else if (m === 'hsl') {
-        me._rgb = hsl2rgb(x, y, z);
-        me._rgb[3] = a;
-      } else if (m === 'hsv') {
-        me._rgb = hsv2rgb(x, y, z);
-        me._rgb[3] = a;
-      } else if (m === 'hex') {
-        me._rgb = hex2rgb(x);
-      } else if (m === 'lab') {
-        me._rgb = lab2rgb(x, y, z);
-        me._rgb[3] = a;
-      } else if (m === 'lch') {
-        me._rgb = lch2rgb(x, y, z);
-        me._rgb[3] = a;
-      } else if (m === 'hsi') {
-        me._rgb = hsi2rgb(x, y, z);
-        me._rgb[3] = a;
-      }
-      me_rgb = clip_rgb(me._rgb);
-    }
-
-    Color.prototype.rgb = function() {
-      return this._rgb.slice(0, 3);
-    };
-
-    Color.prototype.rgba = function() {
-      return this._rgb;
-    };
-
-    Color.prototype.hex = function() {
-      return rgb2hex(this._rgb);
-    };
-
-    Color.prototype.toString = function() {
-      return this.name();
-    };
-
-    Color.prototype.hsl = function() {
-      return rgb2hsl(this._rgb);
-    };
-
-    Color.prototype.hsv = function() {
-      return rgb2hsv(this._rgb);
-    };
-
-    Color.prototype.lab = function() {
-      return rgb2lab(this._rgb);
-    };
-
-    Color.prototype.lch = function() {
-      return rgb2lch(this._rgb);
-    };
-
-    Color.prototype.hsi = function() {
-      return rgb2hsi(this._rgb);
-    };
-
-    Color.prototype.gl = function() {
-      return [this._rgb[0] / 255, this._rgb[1] / 255, this._rgb[2] / 255, this._rgb[3]];
-    };
-
-    Color.prototype.luminance = function() {
-      return luminance(this._rgb);
-    };
-
-    Color.prototype.name = function() {
-      var h, k;
-
-      h = this.hex();
-      for (k in chroma.colors) {
-        if (h === chroma.colors[k]) {
-          return k;
-        }
-      }
-      return h;
-    };
-
-    Color.prototype.alpha = function(alpha) {
-      if (arguments.length) {
-        this._rgb[3] = alpha;
-        return this;
-      }
-      return this._rgb[3];
-    };
-
-    Color.prototype.css = function(mode) {
-      var hsl, me, rgb, rnd;
-
-      if (mode == null) {
-        mode = 'rgb';
-      }
-      me = this;
-      rgb = me._rgb;
-      if (mode.length === 3 && rgb[3] < 1) {
-        mode += 'a';
-      }
-      if (mode === 'rgb') {
-        return mode + '(' + rgb.slice(0, 3).map(Math.round).join(',') + ')';
-      } else if (mode === 'rgba') {
-        return mode + '(' + rgb.slice(0, 3).map(Math.round).join(',') + ',' + rgb[3] + ')';
-      } else if (mode === 'hsl' || mode === 'hsla') {
-        hsl = me.hsl();
-        rnd = function(a) {
-          return Math.round(a * 100) / 100;
-        };
-        hsl[0] = rnd(hsl[0]);
-        hsl[1] = rnd(hsl[1] * 100) + '%';
-        hsl[2] = rnd(hsl[2] * 100) + '%';
-        if (mode.length === 4) {
-          hsl[3] = rgb[3];
-        }
-        return mode + '(' + hsl.join(',') + ')';
-      }
-    };
-
-    Color.prototype.interpolate = function(f, col, m) {
-      /*
-      interpolates between colors
-      f = 0 --> me
-      f = 1 --> col
-      */
-
-      var dh, hue, hue0, hue1, lbv, lbv0, lbv1, me, res, sat, sat0, sat1, xyz0, xyz1;
-
-      me = this;
-      if (m == null) {
-        m = 'rgb';
-      }
-      if (type(col) === "string") {
-        col = new Color(col);
-      }
-      if (m === 'hsl' || m === 'hsv' || m === 'lch' || m === 'hsi') {
-        if (m === 'hsl') {
-          xyz0 = me.hsl();
-          xyz1 = col.hsl();
-        } else if (m === 'hsv') {
-          xyz0 = me.hsv();
-          xyz1 = col.hsv();
-        } else if (m === 'hsi') {
-          xyz0 = me.hsi();
-          xyz1 = col.hsi();
-        } else if (m === 'lch') {
-          xyz0 = me.lch();
-          xyz1 = col.lch();
-        }
-        if (m.substr(0, 1) === 'h') {
-          hue0 = xyz0[0], sat0 = xyz0[1], lbv0 = xyz0[2];
-          hue1 = xyz1[0], sat1 = xyz1[1], lbv1 = xyz1[2];
-        } else {
-          lbv0 = xyz0[0], sat0 = xyz0[1], hue0 = xyz0[2];
-          lbv1 = xyz1[0], sat1 = xyz1[1], hue1 = xyz1[2];
-        }
-        if (!isNaN(hue0) && !isNaN(hue1)) {
-          if (hue1 > hue0 && hue1 - hue0 > 180) {
-            dh = hue1 - (hue0 + 360);
-          } else if (hue1 < hue0 && hue0 - hue1 > 180) {
-            dh = hue1 + 360 - hue0;
-          } else {
-            dh = hue1 - hue0;
-          }
-          hue = hue0 + f * dh;
-        } else if (!isNaN(hue0)) {
-          hue = hue0;
-          if ((lbv1 === 1 || lbv1 === 0) && m !== 'hsv') {
-            sat = sat0;
-          }
-        } else if (!isNaN(hue1)) {
-          hue = hue1;
-          if ((lbv0 === 1 || lbv0 === 0) && m !== 'hsv') {
-            sat = sat1;
-          }
-        } else {
-          hue = Number.NaN;
-        }
-        if (sat == null) {
-          sat = sat0 + f * (sat1 - sat0);
-        }
-        lbv = lbv0 + f * (lbv1 - lbv0);
-        if (m.substr(0, 1) === 'h') {
-          res = new Color(hue, sat, lbv, m);
-        } else {
-          res = new Color(lbv, sat, hue, m);
-        }
-      } else if (m === 'rgb') {
-        xyz0 = me._rgb;
-        xyz1 = col._rgb;
-        res = new Color(xyz0[0] + f * (xyz1[0] - xyz0[0]), xyz0[1] + f * (xyz1[1] - xyz0[1]), xyz0[2] + f * (xyz1[2] - xyz0[2]), m);
-      } else if (m === 'lab') {
-        xyz0 = me.lab();
-        xyz1 = col.lab();
-        res = new Color(xyz0[0] + f * (xyz1[0] - xyz0[0]), xyz0[1] + f * (xyz1[1] - xyz0[1]), xyz0[2] + f * (xyz1[2] - xyz0[2]), m);
-      } else {
-        throw "color mode " + m + " is not supported";
-      }
-      res.alpha(me.alpha() + f * (col.alpha() - me.alpha()));
-      return res;
-    };
-
-    Color.prototype.premultiply = function() {
-      var a, rgb;
-
-      rgb = this.rgb();
-      a = this.alpha();
-      return chroma(rgb[0] * a, rgb[1] * a, rgb[2] * a, a);
-    };
-
-    Color.prototype.darken = function(amount) {
-      var lch, me;
-
-      if (amount == null) {
-        amount = 20;
-      }
-      me = this;
-      lch = me.lch();
-      lch[0] -= amount;
-      return chroma.lch(lch).alpha(me.alpha());
-    };
-
-    Color.prototype.darker = function(amount) {
-      return this.darken(amount);
-    };
-
-    Color.prototype.brighten = function(amount) {
-      if (amount == null) {
-        amount = 20;
-      }
-      return this.darken(-amount);
-    };
-
-    Color.prototype.brighter = function(amount) {
-      return this.brighten(amount);
-    };
-
-    Color.prototype.saturate = function(amount) {
-      var lch, me;
-
-      if (amount == null) {
-        amount = 20;
-      }
-      me = this;
-      lch = me.lch();
-      lch[1] += amount;
-      return chroma.lch(lch).alpha(me.alpha());
-    };
-
-    Color.prototype.desaturate = function(amount) {
-      if (amount == null) {
-        amount = 20;
-      }
-      return this.saturate(-amount);
-    };
-
-    return Color;
-
-  })();
-
-  clip_rgb = function(rgb) {
-    var i;
-
-    for (i in rgb) {
-      if (i < 3) {
-        if (rgb[i] < 0) {
-          rgb[i] = 0;
-        }
-        if (rgb[i] > 255) {
-          rgb[i] = 255;
-        }
-      } else if (i === 3) {
-        if (rgb[i] < 0) {
-          rgb[i] = 0;
-        }
-        if (rgb[i] > 1) {
-          rgb[i] = 1;
-        }
-      }
-    }
-    return rgb;
-  };
-
-  css2rgb = function(css) {
-    var hsl, i, m, rgb, _i, _j, _k, _l;
-
-    css = css.toLowerCase();
-    if ((chroma.colors != null) && chroma.colors[css]) {
-      return hex2rgb(chroma.colors[css]);
-    }
-    if (m = css.match(/rgb\(\s*(\-?\d+),\s*(\-?\d+)\s*,\s*(\-?\d+)\s*\)/)) {
-      rgb = m.slice(1, 4);
-      for (i = _i = 0; _i <= 2; i = ++_i) {
-        rgb[i] = +rgb[i];
-      }
-      rgb[3] = 1;
-    } else if (m = css.match(/rgba\(\s*(\-?\d+),\s*(\-?\d+)\s*,\s*(\-?\d+)\s*,\s*([01]|[01]?\.\d+)\)/)) {
-      rgb = m.slice(1, 5);
-      for (i = _j = 0; _j <= 3; i = ++_j) {
-        rgb[i] = +rgb[i];
-      }
-    } else if (m = css.match(/rgb\(\s*(\-?\d+(?:\.\d+)?)%,\s*(\-?\d+(?:\.\d+)?)%\s*,\s*(\-?\d+(?:\.\d+)?)%\s*\)/)) {
-      rgb = m.slice(1, 4);
-      for (i = _k = 0; _k <= 2; i = ++_k) {
-        rgb[i] = Math.round(rgb[i] * 2.55);
-      }
-      rgb[3] = 1;
-    } else if (m = css.match(/rgba\(\s*(\-?\d+(?:\.\d+)?)%,\s*(\-?\d+(?:\.\d+)?)%\s*,\s*(\-?\d+(?:\.\d+)?)%\s*,\s*([01]|[01]?\.\d+)\)/)) {
-      rgb = m.slice(1, 5);
-      for (i = _l = 0; _l <= 2; i = ++_l) {
-        rgb[i] = Math.round(rgb[i] * 2.55);
-      }
-      rgb[3] = +rgb[3];
-    } else if (m = css.match(/hsl\(\s*(\-?\d+(?:\.\d+)?),\s*(\-?\d+(?:\.\d+)?)%\s*,\s*(\-?\d+(?:\.\d+)?)%\s*\)/)) {
-      hsl = m.slice(1, 4);
-      hsl[1] *= 0.01;
-      hsl[2] *= 0.01;
-      rgb = hsl2rgb(hsl);
-      rgb[3] = 1;
-    } else if (m = css.match(/hsla\(\s*(\-?\d+(?:\.\d+)?),\s*(\-?\d+(?:\.\d+)?)%\s*,\s*(\-?\d+(?:\.\d+)?)%\s*,\s*([01]|[01]?\.\d+)\)/)) {
-      hsl = m.slice(1, 4);
-      hsl[1] *= 0.01;
-      hsl[2] *= 0.01;
-      rgb = hsl2rgb(hsl);
-      rgb[3] = +m[4];
-    }
-    return rgb;
-  };
-
-  hex2rgb = function(hex) {
-    var a, b, g, r, rgb, u;
-
-    if (hex.match(/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
-      if (hex.length === 4 || hex.length === 7) {
-        hex = hex.substr(1);
-      }
-      if (hex.length === 3) {
-        hex = hex.split("");
-        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-      }
-      u = parseInt(hex, 16);
-      r = u >> 16;
-      g = u >> 8 & 0xFF;
-      b = u & 0xFF;
-      return [r, g, b, 1];
-    }
-    if (hex.match(/^#?([A-Fa-f0-9]{8})$/)) {
-      if (hex.length === 9) {
-        hex = hex.substr(1);
-      }
-      u = parseInt(hex, 16);
-      r = u >> 24 & 0xFF;
-      g = u >> 16 & 0xFF;
-      b = u >> 8 & 0xFF;
-      a = u & 0xFF;
-      return [r, g, b, a];
-    }
-    if (rgb = css2rgb(hex)) {
-      return rgb;
-    }
-    throw "unknown color: " + hex;
-  };
-
-  hsi2rgb = function(h, s, i) {
-    /*
-    borrowed from here:
-    http://hummer.stanford.edu/museinfo/doc/examples/humdrum/keyscape2/hsi2rgb.cpp
-    */
-
-    var b, g, r, _ref;
-
-    _ref = unpack(arguments), h = _ref[0], s = _ref[1], i = _ref[2];
-    h /= 360;
-    if (h < 1 / 3) {
-      b = (1 - s) / 3;
-      r = (1 + s * cos(TWOPI * h) / cos(PITHIRD - TWOPI * h)) / 3;
-      g = 1 - (b + r);
-    } else if (h < 2 / 3) {
-      h -= 1 / 3;
-      r = (1 - s) / 3;
-      g = (1 + s * cos(TWOPI * h) / cos(PITHIRD - TWOPI * h)) / 3;
-      b = 1 - (r + g);
-    } else {
-      h -= 2 / 3;
-      g = (1 - s) / 3;
-      b = (1 + s * cos(TWOPI * h) / cos(PITHIRD - TWOPI * h)) / 3;
-      r = 1 - (g + b);
-    }
-    r = limit(i * r * 3);
-    g = limit(i * g * 3);
-    b = limit(i * b * 3);
-    return [r * 255, g * 255, b * 255];
-  };
-
-  hsl2rgb = function() {
-    var b, c, g, h, i, l, r, s, t1, t2, t3, _i, _ref, _ref1;
-
-    _ref = unpack(arguments), h = _ref[0], s = _ref[1], l = _ref[2];
-    if (s === 0) {
-      r = g = b = l * 255;
-    } else {
-      t3 = [0, 0, 0];
-      c = [0, 0, 0];
-      t2 = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      t1 = 2 * l - t2;
-      h /= 360;
-      t3[0] = h + 1 / 3;
-      t3[1] = h;
-      t3[2] = h - 1 / 3;
-      for (i = _i = 0; _i <= 2; i = ++_i) {
-        if (t3[i] < 0) {
-          t3[i] += 1;
-        }
-        if (t3[i] > 1) {
-          t3[i] -= 1;
-        }
-        if (6 * t3[i] < 1) {
-          c[i] = t1 + (t2 - t1) * 6 * t3[i];
-        } else if (2 * t3[i] < 1) {
-          c[i] = t2;
-        } else if (3 * t3[i] < 2) {
-          c[i] = t1 + (t2 - t1) * ((2 / 3) - t3[i]) * 6;
-        } else {
-          c[i] = t1;
-        }
-      }
-      _ref1 = [Math.round(c[0] * 255), Math.round(c[1] * 255), Math.round(c[2] * 255)], r = _ref1[0], g = _ref1[1], b = _ref1[2];
-    }
-    return [r, g, b];
-  };
-
-  hsv2rgb = function() {
-    var b, f, g, h, i, p, q, r, s, t, v, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6;
-
-    _ref = unpack(arguments), h = _ref[0], s = _ref[1], v = _ref[2];
-    v *= 255;
-    if (s === 0) {
-      r = g = b = v;
-    } else {
-      if (h === 360) {
-        h = 0;
-      }
-      if (h > 360) {
-        h -= 360;
-      }
-      if (h < 0) {
-        h += 360;
-      }
-      h /= 60;
-      i = Math.floor(h);
-      f = h - i;
-      p = v * (1 - s);
-      q = v * (1 - s * f);
-      t = v * (1 - s * (1 - f));
-      switch (i) {
-        case 0:
-          _ref1 = [v, t, p], r = _ref1[0], g = _ref1[1], b = _ref1[2];
-          break;
-        case 1:
-          _ref2 = [q, v, p], r = _ref2[0], g = _ref2[1], b = _ref2[2];
-          break;
-        case 2:
-          _ref3 = [p, v, t], r = _ref3[0], g = _ref3[1], b = _ref3[2];
-          break;
-        case 3:
-          _ref4 = [p, q, v], r = _ref4[0], g = _ref4[1], b = _ref4[2];
-          break;
-        case 4:
-          _ref5 = [t, p, v], r = _ref5[0], g = _ref5[1], b = _ref5[2];
-          break;
-        case 5:
-          _ref6 = [v, p, q], r = _ref6[0], g = _ref6[1], b = _ref6[2];
-      }
-    }
-    r = Math.round(r);
-    g = Math.round(g);
-    b = Math.round(b);
-    return [r, g, b];
-  };
-
-  K = 18;
-
-  X = 0.950470;
-
-  Y = 1;
-
-  Z = 1.088830;
-
-  lab2lch = function() {
-    var a, b, c, h, l, _ref;
-
-    _ref = unpack(arguments), l = _ref[0], a = _ref[1], b = _ref[2];
-    c = Math.sqrt(a * a + b * b);
-    h = Math.atan2(b, a) / Math.PI * 180;
-    return [l, c, h];
-  };
-
-  lab2rgb = function(l, a, b) {
-    /*
-    adapted to match d3 implementation
-    */
-
-    var g, r, x, y, z, _ref, _ref1;
-
-    if (l !== void 0 && l.length === 3) {
-      _ref = l, l = _ref[0], a = _ref[1], b = _ref[2];
-    }
-    if (l !== void 0 && l.length === 3) {
-      _ref1 = l, l = _ref1[0], a = _ref1[1], b = _ref1[2];
-    }
-    y = (l + 16) / 116;
-    x = y + a / 500;
-    z = y - b / 200;
-    x = lab_xyz(x) * X;
-    y = lab_xyz(y) * Y;
-    z = lab_xyz(z) * Z;
-    r = xyz_rgb(3.2404542 * x - 1.5371385 * y - 0.4985314 * z);
-    g = xyz_rgb(-0.9692660 * x + 1.8760108 * y + 0.0415560 * z);
-    b = xyz_rgb(0.0556434 * x - 0.2040259 * y + 1.0572252 * z);
-    return [limit(r, 0, 255), limit(g, 0, 255), limit(b, 0, 255), 1];
-  };
-
-  lab_xyz = function(x) {
-    if (x > 0.206893034) {
-      return x * x * x;
-    } else {
-      return (x - 4 / 29) / 7.787037;
-    }
-  };
-
-  xyz_rgb = function(r) {
-    return Math.round(255 * (r <= 0.00304 ? 12.92 * r : 1.055 * Math.pow(r, 1 / 2.4) - 0.055));
-  };
-
-  lch2lab = function() {
-    /*
-    Convert from a qualitative parameter h and a quantitative parameter l to a 24-bit pixel. These formulas were invented by David Dalrymple to obtain maximum contrast without going out of gamut if the parameters are in the range 0-1.
-    A saturation multiplier was added by Gregor Aisch
-    */
-
-    var c, h, l, _ref;
-
-    _ref = unpack(arguments), l = _ref[0], c = _ref[1], h = _ref[2];
-    h = h * Math.PI / 180;
-    return [l, Math.cos(h) * c, Math.sin(h) * c];
-  };
-
-  lch2rgb = function(l, c, h) {
-    var L, a, b, g, r, _ref, _ref1;
-
-    _ref = lch2lab(l, c, h), L = _ref[0], a = _ref[1], b = _ref[2];
-    _ref1 = lab2rgb(L, a, b), r = _ref1[0], g = _ref1[1], b = _ref1[2];
-    return [limit(r, 0, 255), limit(g, 0, 255), limit(b, 0, 255)];
-  };
-
-  luminance = function(r, g, b) {
-    var _ref;
-
-    _ref = unpack(arguments), r = _ref[0], g = _ref[1], b = _ref[2];
-    r = luminance_x(r);
-    g = luminance_x(g);
-    b = luminance_x(b);
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  };
-
-  luminance_x = function(x) {
-    x /= 255;
-    if (x <= 0.03928) {
-      return x / 12.92;
-    } else {
-      return Math.pow((x + 0.055) / 1.055, 2.4);
-    }
-  };
-
-  rgb2hex = function() {
-    var b, g, r, str, u, _ref;
-
-    _ref = unpack(arguments), r = _ref[0], g = _ref[1], b = _ref[2];
-    u = r << 16 | g << 8 | b;
-    str = "000000" + u.toString(16);
-    return "#" + str.substr(str.length - 6);
-  };
-
-  rgb2hsi = function() {
-    /*
-    borrowed from here:
-    http://hummer.stanford.edu/museinfo/doc/examples/humdrum/keyscape2/rgb2hsi.cpp
-    */
-
-    var TWOPI, b, g, h, i, min, r, s, _ref;
-
-    _ref = unpack(arguments), r = _ref[0], g = _ref[1], b = _ref[2];
-    TWOPI = Math.PI * 2;
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    min = Math.min(r, g, b);
-    i = (r + g + b) / 3;
-    s = 1 - min / i;
-    if (s === 0) {
-      h = 0;
-    } else {
-      h = ((r - g) + (r - b)) / 2;
-      h /= Math.sqrt((r - g) * (r - g) + (r - b) * (g - b));
-      h = Math.acos(h);
-      if (b > g) {
-        h = TWOPI - h;
-      }
-      h /= TWOPI;
-    }
-    return [h * 360, s, i];
-  };
-
-  rgb2hsl = function(r, g, b) {
-    var h, l, max, min, s, _ref;
-
-    if (r !== void 0 && r.length >= 3) {
-      _ref = r, r = _ref[0], g = _ref[1], b = _ref[2];
-    }
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    min = Math.min(r, g, b);
-    max = Math.max(r, g, b);
-    l = (max + min) / 2;
-    if (max === min) {
-      s = 0;
-      h = Number.NaN;
-    } else {
-      s = l < 0.5 ? (max - min) / (max + min) : (max - min) / (2 - max - min);
-    }
-    if (r === max) {
-      h = (g - b) / (max - min);
-    } else if (g === max) {
-      h = 2 + (b - r) / (max - min);
-    } else if (b === max) {
-      h = 4 + (r - g) / (max - min);
-    }
-    h *= 60;
-    if (h < 0) {
-      h += 360;
-    }
-    return [h, s, l];
-  };
-
-  rgb2hsv = function() {
-    var b, delta, g, h, max, min, r, s, v, _ref;
-
-    _ref = unpack(arguments), r = _ref[0], g = _ref[1], b = _ref[2];
-    min = Math.min(r, g, b);
-    max = Math.max(r, g, b);
-    delta = max - min;
-    v = max / 255.0;
-    if (max === 0) {
-      h = Number.NaN;
-      s = 0;
-    } else {
-      s = delta / max;
-      if (r === max) {
-        h = (g - b) / delta;
-      }
-      if (g === max) {
-        h = 2 + (b - r) / delta;
-      }
-      if (b === max) {
-        h = 4 + (r - g) / delta;
-      }
-      h *= 60;
-      if (h < 0) {
-        h += 360;
-      }
-    }
-    return [h, s, v];
-  };
-
-  rgb2lab = function() {
-    var b, g, r, x, y, z, _ref;
-
-    _ref = unpack(arguments), r = _ref[0], g = _ref[1], b = _ref[2];
-    r = rgb_xyz(r);
-    g = rgb_xyz(g);
-    b = rgb_xyz(b);
-    x = xyz_lab((0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / X);
-    y = xyz_lab((0.2126729 * r + 0.7151522 * g + 0.0721750 * b) / Y);
-    z = xyz_lab((0.0193339 * r + 0.1191920 * g + 0.9503041 * b) / Z);
-    return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
-  };
-
-  rgb_xyz = function(r) {
-    if ((r /= 255) <= 0.04045) {
-      return r / 12.92;
-    } else {
-      return Math.pow((r + 0.055) / 1.055, 2.4);
-    }
-  };
-
-  xyz_lab = function(x) {
-    if (x > 0.008856) {
-      return Math.pow(x, 1 / 3);
-    } else {
-      return 7.787037 * x + 4 / 29;
-    }
-  };
-
-  rgb2lch = function() {
-    var a, b, g, l, r, _ref, _ref1;
-
-    _ref = unpack(arguments), r = _ref[0], g = _ref[1], b = _ref[2];
-    _ref1 = rgb2lab(r, g, b), l = _ref1[0], a = _ref1[1], b = _ref1[2];
-    return lab2lch(l, a, b);
-  };
-
-  /*
-      chroma.js
-  
-      Copyright (c) 2011-2013, Gregor Aisch
-      All rights reserved.
-  
-      Redistribution and use in source and binary forms, with or without
-      modification, are permitted provided that the following conditions are met:
-  
-      * Redistributions of source code must retain the above copyright notice, this
-        list of conditions and the following disclaimer.
-  
-      * Redistributions in binary form must reproduce the above copyright notice,
-        this list of conditions and the following disclaimer in the documentation
-        and/or other materials provided with the distribution.
-  
-      * The name Gregor Aisch may not be used to endorse or promote products
-        derived from this software without specific prior written permission.
-  
-      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-      AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-      IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-      DISCLAIMED. IN NO EVENT SHALL GREGOR AISCH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-      INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-      BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-      DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-      OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-      NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  
-      @source: https://github.com/gka/chroma.js
-  */
-
-
-  chroma.scale = function(colors, positions) {
-    var classifyValue, f, getClass, getColor, resetCache, setColors, setDomain, tmap, _colorCache, _colors, _correctLightness, _domain, _fixed, _max, _min, _mode, _nacol, _numClasses, _out, _pos, _spread;
-
-    _mode = 'rgb';
-    _nacol = chroma('#ccc');
-    _spread = 0;
-    _fixed = false;
-    _domain = [0, 1];
-    _colors = [];
-    _out = false;
-    _pos = [];
-    _min = 0;
-    _max = 1;
-    _correctLightness = false;
-    _numClasses = 0;
-    _colorCache = {};
-    setColors = function(colors, positions) {
-      var c, col, _i, _j, _ref, _ref1, _ref2;
-
-      if (colors == null) {
-        colors = ['#ddd', '#222'];
-      }
-      if ((colors != null) && type(colors) === 'string' && (((_ref = chroma.brewer) != null ? _ref[colors] : void 0) != null)) {
-        colors = chroma.brewer[colors];
-      }
-      if (type(colors) === 'array') {
-        colors = colors.slice(0);
-        for (c = _i = 0, _ref1 = colors.length - 1; 0 <= _ref1 ? _i <= _ref1 : _i >= _ref1; c = 0 <= _ref1 ? ++_i : --_i) {
-          col = colors[c];
-          if (type(col) === "string") {
-            colors[c] = chroma(col);
-          }
-        }
-        if (positions != null) {
-          _pos = positions;
-        } else {
-          _pos = [];
-          for (c = _j = 0, _ref2 = colors.length - 1; 0 <= _ref2 ? _j <= _ref2 : _j >= _ref2; c = 0 <= _ref2 ? ++_j : --_j) {
-            _pos.push(c / (colors.length - 1));
-          }
-        }
-      }
-      resetCache();
-      return _colors = colors;
-    };
-    setDomain = function(domain) {
-      if (domain == null) {
-        domain = [];
-      }
-      /*
-      # use this if you want to display a limited number of data classes
-      # possible methods are "equalinterval", "quantiles", "custom"
-      */
-
-      _domain = domain;
-      _min = domain[0];
-      _max = domain[domain.length - 1];
-      resetCache();
-      if (domain.length === 2) {
-        return _numClasses = 0;
-      } else {
-        return _numClasses = domain.length - 1;
-      }
-    };
-    getClass = function(value) {
-      var i, n;
-
-      if (_domain != null) {
-        n = _domain.length - 1;
-        i = 0;
-        while (i < n && value >= _domain[i]) {
-          i++;
-        }
-        return i - 1;
-      }
-      return 0;
-    };
-    tmap = function(t) {
-      return t;
-    };
-    classifyValue = function(value) {
-      var i, maxc, minc, n, val;
-
-      val = value;
-      if (_domain.length > 2) {
-        n = _domain.length - 1;
-        i = getClass(value);
-        minc = _domain[0] + (_domain[1] - _domain[0]) * (0 + _spread * 0.5);
-        maxc = _domain[n - 1] + (_domain[n] - _domain[n - 1]) * (1 - _spread * 0.5);
-        val = _min + ((_domain[i] + (_domain[i + 1] - _domain[i]) * 0.5 - minc) / (maxc - minc)) * (_max - _min);
-      }
-      return val;
-    };
-    getColor = function(val, bypassMap) {
-      var c, col, f0, i, k, p, t, _i, _ref;
-
-      if (bypassMap == null) {
-        bypassMap = false;
-      }
-      if (isNaN(val)) {
-        return _nacol;
-      }
-      if (!bypassMap) {
-        if (_domain.length > 2) {
-          c = getClass(val);
-          t = c / (_numClasses - 1);
-        } else {
-          t = f0 = (val - _min) / (_max - _min);
-          t = Math.min(1, Math.max(0, t));
-        }
-      } else {
-        t = val;
-      }
-      if (!bypassMap) {
-        t = tmap(t);
-      }
-      k = Math.floor(t * 10000);
-      if (_colorCache[k]) {
-        col = _colorCache[k];
-      } else {
-        if (type(_colors) === 'array') {
-          for (i = _i = 0, _ref = _pos.length - 1; 0 <= _ref ? _i <= _ref : _i >= _ref; i = 0 <= _ref ? ++_i : --_i) {
-            p = _pos[i];
-            if (t <= p) {
-              col = _colors[i];
-              break;
-            }
-            if (t >= p && i === _pos.length - 1) {
-              col = _colors[i];
-              break;
-            }
-            if (t > p && t < _pos[i + 1]) {
-              t = (t - p) / (_pos[i + 1] - p);
-              col = chroma.interpolate(_colors[i], _colors[i + 1], t, _mode);
-              break;
-            }
-          }
-        } else if (type(_colors) === 'function') {
-          col = _colors(t);
-        }
-        _colorCache[k] = col;
-      }
-      return col;
-    };
-    resetCache = function() {
-      return _colorCache = {};
-    };
-    setColors(colors, positions);
-    f = function(v) {
-      var c;
-
-      c = getColor(v);
-      if (_out && c[_out]) {
-        return c[_out]();
-      } else {
-        return c;
-      }
-    };
-    f.domain = function(domain, classes, mode, key) {
-      var d;
-
-      if (mode == null) {
-        mode = 'e';
-      }
-      if (!arguments.length) {
-        return _domain;
-      }
-      if (classes != null) {
-        d = chroma.analyze(domain, key);
-        if (classes === 0) {
-          domain = [d.min, d.max];
-        } else {
-          domain = chroma.limits(d, mode, classes);
-        }
-      }
-      setDomain(domain);
-      return f;
-    };
-    f.mode = function(_m) {
-      if (!arguments.length) {
-        return _mode;
-      }
-      _mode = _m;
-      resetCache();
-      return f;
-    };
-    f.range = function(colors, _pos) {
-      setColors(colors, _pos);
-      return f;
-    };
-    f.out = function(_o) {
-      _out = _o;
-      return f;
-    };
-    f.spread = function(val) {
-      if (!arguments.length) {
-        return _spread;
-      }
-      _spread = val;
-      return f;
-    };
-    f.correctLightness = function(v) {
-      if (!arguments.length) {
-        return _correctLightness;
-      }
-      _correctLightness = v;
-      resetCache();
-      if (_correctLightness) {
-        tmap = function(t) {
-          var L0, L1, L_actual, L_diff, L_ideal, max_iter, pol, t0, t1;
-
-          L0 = getColor(0, true).lab()[0];
-          L1 = getColor(1, true).lab()[0];
-          pol = L0 > L1;
-          L_actual = getColor(t, true).lab()[0];
-          L_ideal = L0 + (L1 - L0) * t;
-          L_diff = L_actual - L_ideal;
-          t0 = 0;
-          t1 = 1;
-          max_iter = 20;
-          while (Math.abs(L_diff) > 1e-2 && max_iter-- > 0) {
-            (function() {
-              if (pol) {
-                L_diff *= -1;
-              }
-              if (L_diff < 0) {
-                t0 = t;
-                t += (t1 - t) * 0.5;
-              } else {
-                t1 = t;
-                t += (t0 - t) * 0.5;
-              }
-              L_actual = getColor(t, true).lab()[0];
-              return L_diff = L_actual - L_ideal;
-            })();
-          }
-          return t;
-        };
-      } else {
-        tmap = function(t) {
-          return t;
-        };
-      }
-      return f;
-    };
-    f.colors = function(out) {
-      var i, samples, _i, _j, _len, _ref;
-
-      if (out == null) {
-        out = 'hex';
-      }
-      colors = [];
-      samples = [];
-      if (_domain.length > 2) {
-        for (i = _i = 1, _ref = _domain.length; 1 <= _ref ? _i < _ref : _i > _ref; i = 1 <= _ref ? ++_i : --_i) {
-          samples.push((_domain[i - 1] + _domain[i]) * 0.5);
-        }
-      } else {
-        samples = _domain;
-      }
-      for (_j = 0, _len = samples.length; _j < _len; _j++) {
-        i = samples[_j];
-        colors.push(f(i)[out]());
-      }
-      return colors;
-    };
-    return f;
-  };
-
-  if ((_ref = chroma.scales) == null) {
-    chroma.scales = {};
-  }
-
-  chroma.scales.cool = function() {
-    return chroma.scale([chroma.hsl(180, 1, .9), chroma.hsl(250, .7, .4)]);
-  };
-
-  chroma.scales.hot = function() {
-    return chroma.scale(['#000', '#f00', '#ff0', '#fff'], [0, .25, .75, 1]).mode('rgb');
-  };
-
-  /*
-      chroma.js
-  
-      Copyright (c) 2011-2013, Gregor Aisch
-      All rights reserved.
-  
-      Redistribution and use in source and binary forms, with or without
-      modification, are permitted provided that the following conditions are met:
-  
-      * Redistributions of source code must retain the above copyright notice, this
-        list of conditions and the following disclaimer.
-  
-      * Redistributions in binary form must reproduce the above copyright notice,
-        this list of conditions and the following disclaimer in the documentation
-        and/or other materials provided with the distribution.
-  
-      * The name Gregor Aisch may not be used to endorse or promote products
-        derived from this software without specific prior written permission.
-  
-      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-      AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-      IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-      DISCLAIMED. IN NO EVENT SHALL GREGOR AISCH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-      INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-      BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-      DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-      OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-      NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  
-      @source: https://github.com/gka/chroma.js
-  */
-
-
-  chroma.analyze = function(data, key, filter) {
-    var add, k, r, val, visit, _i, _len;
-
-    r = {
-      min: Number.MAX_VALUE,
-      max: Number.MAX_VALUE * -1,
-      sum: 0,
-      values: [],
-      count: 0
-    };
-    if (filter == null) {
-      filter = function() {
-        return true;
-      };
-    }
-    add = function(val) {
-      if ((val != null) && !isNaN(val)) {
-        r.values.push(val);
-        r.sum += val;
-        if (val < r.min) {
-          r.min = val;
-        }
-        if (val > r.max) {
-          r.max = val;
-        }
-        r.count += 1;
-      }
-    };
-    visit = function(val, k) {
-      if (filter(val, k)) {
-        if ((key != null) && type(key) === 'function') {
-          return add(key(val));
-        } else if ((key != null) && type(key) === 'string' || type(key) === 'number') {
-          return add(val[key]);
-        } else {
-          return add(val);
-        }
-      }
-    };
-    if (type(data) === 'array') {
-      for (_i = 0, _len = data.length; _i < _len; _i++) {
-        val = data[_i];
-        visit(val);
-      }
-    } else {
-      for (k in data) {
-        val = data[k];
-        visit(val, k);
-      }
-    }
-    r.domain = [r.min, r.max];
-    r.limits = function(mode, num) {
-      return chroma.limits(r, mode, num);
-    };
-    return r;
-  };
-
-  chroma.limits = function(data, mode, num) {
-    var assignments, best, centroids, cluster, clusterSizes, dist, i, j, kClusters, limits, max, max_log, min, min_log, mindist, n, nb_iters, newCentroids, p, pb, pr, repeat, sum, tmpKMeansBreaks, value, values, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _ref1, _ref10, _ref11, _ref12, _ref13, _ref14, _ref15, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9, _s, _t, _u, _v, _w;
-
-    if (mode == null) {
-      mode = 'equal';
-    }
-    if (num == null) {
-      num = 7;
-    }
-    if (type(data) === 'array') {
-      data = chroma.analyze(data);
-    }
-    min = data.min;
-    max = data.max;
-    sum = data.sum;
-    values = data.values.sort(function(a, b) {
-      return a - b;
+    vg.extend(labels.properties.enter, {
+      x: {value: size},
+      y: oldScale,
     });
-    limits = [];
-    if (mode.substr(0, 1) === 'c') {
-      limits.push(min);
-      limits.push(max);
-    }
-    if (mode.substr(0, 1) === 'e') {
-      limits.push(min);
-      for (i = _i = 1, _ref1 = num - 1; 1 <= _ref1 ? _i <= _ref1 : _i >= _ref1; i = 1 <= _ref1 ? ++_i : --_i) {
-        limits.push(min + (i / num) * (max - min));
-      }
-      limits.push(max);
-    } else if (mode.substr(0, 1) === 'l') {
-      if (min <= 0) {
-        throw 'Logarithmic scales are only possible for values > 0';
-      }
-      min_log = Math.LOG10E * Math.log(min);
-      max_log = Math.LOG10E * Math.log(max);
-      limits.push(min);
-      for (i = _j = 1, _ref2 = num - 1; 1 <= _ref2 ? _j <= _ref2 : _j >= _ref2; i = 1 <= _ref2 ? ++_j : --_j) {
-        limits.push(Math.pow(10, min_log + (i / num) * (max_log - min_log)));
-      }
-      limits.push(max);
-    } else if (mode.substr(0, 1) === 'q') {
-      limits.push(min);
-      for (i = _k = 1, _ref3 = num - 1; 1 <= _ref3 ? _k <= _ref3 : _k >= _ref3; i = 1 <= _ref3 ? ++_k : --_k) {
-        p = values.length * i / num;
-        pb = Math.floor(p);
-        if (pb === p) {
-          limits.push(values[pb]);
-        } else {
-          pr = p - pb;
-          limits.push(values[pb] * pr + values[pb + 1] * (1 - pr));
-        }
-      }
-      limits.push(max);
-    } else if (mode.substr(0, 1) === 'k') {
-      /*
-      implementation based on
-      http://code.google.com/p/figue/source/browse/trunk/figue.js#336
-      simplified for 1-d input values
-      */
+    vg.extend(labels.properties.update, {
+      x: {value: size},
+      y: newScale,
+      align: {value: vg_axisAlign[orient]},
+      baseline: {value: "middle"}
+    });
+  }
+}
 
-      n = values.length;
-      assignments = new Array(n);
-      clusterSizes = new Array(num);
-      repeat = true;
-      nb_iters = 0;
-      centroids = null;
-      centroids = [];
-      centroids.push(min);
-      for (i = _l = 1, _ref4 = num - 1; 1 <= _ref4 ? _l <= _ref4 : _l >= _ref4; i = 1 <= _ref4 ? ++_l : --_l) {
-        centroids.push(min + (i / num) * (max - min));
-      }
-      centroids.push(max);
-      while (repeat) {
-        for (j = _m = 0, _ref5 = num - 1; 0 <= _ref5 ? _m <= _ref5 : _m >= _ref5; j = 0 <= _ref5 ? ++_m : --_m) {
-          clusterSizes[j] = 0;
-        }
-        for (i = _n = 0, _ref6 = n - 1; 0 <= _ref6 ? _n <= _ref6 : _n >= _ref6; i = 0 <= _ref6 ? ++_n : --_n) {
-          value = values[i];
-          mindist = Number.MAX_VALUE;
-          for (j = _o = 0, _ref7 = num - 1; 0 <= _ref7 ? _o <= _ref7 : _o >= _ref7; j = 0 <= _ref7 ? ++_o : --_o) {
-            dist = Math.abs(centroids[j] - value);
-            if (dist < mindist) {
-              mindist = dist;
-              best = j;
-            }
-          }
-          clusterSizes[best]++;
-          assignments[i] = best;
-        }
-        newCentroids = new Array(num);
-        for (j = _p = 0, _ref8 = num - 1; 0 <= _ref8 ? _p <= _ref8 : _p >= _ref8; j = 0 <= _ref8 ? ++_p : --_p) {
-          newCentroids[j] = null;
-        }
-        for (i = _q = 0, _ref9 = n - 1; 0 <= _ref9 ? _q <= _ref9 : _q >= _ref9; i = 0 <= _ref9 ? ++_q : --_q) {
-          cluster = assignments[i];
-          if (newCentroids[cluster] === null) {
-            newCentroids[cluster] = values[i];
-          } else {
-            newCentroids[cluster] += values[i];
-          }
-        }
-        for (j = _r = 0, _ref10 = num - 1; 0 <= _ref10 ? _r <= _ref10 : _r >= _ref10; j = 0 <= _ref10 ? ++_r : --_r) {
-          newCentroids[j] *= 1 / clusterSizes[j];
-        }
-        repeat = false;
-        for (j = _s = 0, _ref11 = num - 1; 0 <= _ref11 ? _s <= _ref11 : _s >= _ref11; j = 0 <= _ref11 ? ++_s : --_s) {
-          if (newCentroids[j] !== centroids[i]) {
-            repeat = true;
-            break;
-          }
-        }
-        centroids = newCentroids;
-        nb_iters++;
-        if (nb_iters > 200) {
-          repeat = false;
-        }
-      }
-      kClusters = {};
-      for (j = _t = 0, _ref12 = num - 1; 0 <= _ref12 ? _t <= _ref12 : _t >= _ref12; j = 0 <= _ref12 ? ++_t : --_t) {
-        kClusters[j] = [];
-      }
-      for (i = _u = 0, _ref13 = n - 1; 0 <= _ref13 ? _u <= _ref13 : _u >= _ref13; i = 0 <= _ref13 ? ++_u : --_u) {
-        cluster = assignments[i];
-        kClusters[cluster].push(values[i]);
-      }
-      tmpKMeansBreaks = [];
-      for (j = _v = 0, _ref14 = num - 1; 0 <= _ref14 ? _v <= _ref14 : _v >= _ref14; j = 0 <= _ref14 ? ++_v : --_v) {
-        tmpKMeansBreaks.push(kClusters[j][0]);
-        tmpKMeansBreaks.push(kClusters[j][kClusters[j].length - 1]);
-      }
-      tmpKMeansBreaks = tmpKMeansBreaks.sort(function(a, b) {
-        return a - b;
-      });
-      limits.push(tmpKMeansBreaks[0]);
-      for (i = _w = 1, _ref15 = tmpKMeansBreaks.length - 1; _w <= _ref15; i = _w += 2) {
-        if (!isNaN(tmpKMeansBreaks[i])) {
-          limits.push(tmpKMeansBreaks[i]);
-        }
-      }
+function vg_axisTicksExtend(orient, ticks, oldScale, newScale, size) {
+  var sign = (orient === "left" || orient === "top") ? -1 : 1;
+  if (size === Infinity) {
+    size = (orient === "top" || orient === "bottom")
+      ? {group: "mark.group.height", mult: -sign}
+      : {group: "mark.group.width", mult: -sign};
+  } else {
+    size = {value: sign * size};
+  }
+  if (orient === "top" || orient === "bottom") {
+    vg.extend(ticks.properties.enter, {
+      x:  oldScale,
+      y:  {value: 0},
+      y2: size
+    });
+    vg.extend(ticks.properties.update, {
+      x:  newScale,
+      y:  {value: 0},
+      y2: size
+    });
+    vg.extend(ticks.properties.exit, {
+      x:  newScale,
+    });        
+  } else {
+    vg.extend(ticks.properties.enter, {
+      x:  {value: 0},
+      x2: size,
+      y:  oldScale
+    });
+    vg.extend(ticks.properties.update, {
+      x:  {value: 0},
+      x2: size,
+      y:  newScale
+    });
+    vg.extend(ticks.properties.exit, {
+      y:  newScale,
+    });
+  }
+}
+
+function vg_axisTitleExtend(orient, title, range, offset) {
+  var mid = ~~((range[0] + range[1]) / 2),
+      sign = (orient === "top" || orient === "left") ? -1 : 1;
+  
+  if (orient === "bottom" || orient === "top") {
+    vg.extend(title.properties.update, {
+      x: {value: mid},
+      y: {value: sign*offset},
+      angle: {value: 0}
+    });
+  } else {
+    vg.extend(title.properties.update, {
+      x: {value: sign*offset},
+      y: {value: mid},
+      angle: {value: -90}
+    });
+  }
+}
+
+function vg_axisDomainExtend(orient, domain, range, size) {
+  var path;
+  if (orient === "top" || orient === "left") {
+    size = -1 * size;
+  }
+  if (orient === "bottom" || orient === "top") {
+    path = "M" + range[0] + "," + size + "V0H" + range[1] + "V" + size;
+  } else {
+    path = "M" + size + "," + range[0] + "H0V" + range[1] + "H" + size;
+  }
+  domain.properties.update.path = {value: path};
+}
+
+function vg_axisUpdate(item, group, trans) {
+  var o = trans ? {} : item,
+      offset = item.mark.def.offset,
+      orient = item.mark.def.orient,
+      width  = group.width,
+      height = group.height; // TODO fallback to global w,h?
+
+  if (vg.isObject(offset)) {
+    offset = -group.scales[offset.scale](offset.value);
+  }
+
+  switch (orient) {
+    case "left":   { o.x = -offset; o.y = 0; break; }
+    case "right":  { o.x = width + offset; o.y = 0; break; }
+    case "bottom": { o.x = 0; o.y = height + offset; break; }
+    case "top":    { o.x = 0; o.y = -offset; break; }
+    default:       { o.x = 0; o.y = 0; }
+  }
+
+  if (trans) trans.interpolate(item, o);
+}
+
+function vg_axisTicks() {
+  return {
+    type: "rule",
+    interactive: false,
+    key: "data",
+    properties: {
+      enter: {
+        stroke: {value: vg.config.axis.tickColor},
+        strokeWidth: {value: vg.config.axis.tickWidth},
+        opacity: {value: 1e-6}
+      },
+      exit: { opacity: {value: 1e-6} },
+      update: { opacity: {value: 1} }
     }
-    return limits;
+  };
+}
+
+function vg_axisTickLabels() {
+  return {
+    type: "text",
+    interactive: true,
+    key: "data",
+    properties: {
+      enter: {
+        fill: {value: vg.config.axis.tickLabelColor},
+        font: {value: vg.config.axis.tickLabelFont},
+        fontSize: {value: vg.config.axis.tickLabelFontSize},
+        opacity: {value: 1e-6},
+        text: {field: "label"}
+      },
+      exit: { opacity: {value: 1e-6} },
+      update: { opacity: {value: 1} }
+    }
+  };
+}
+
+function vg_axisTitle() {
+  return {
+    type: "text",
+    interactive: true,
+    properties: {
+      enter: {
+        font: {value: vg.config.axis.titleFont},
+        fontSize: {value: vg.config.axis.titleFontSize},
+        fontWeight: {value: vg.config.axis.titleFontWeight},
+        fill: {value: vg.config.axis.titleColor},
+        align: {value: "center"},
+        baseline: {value: "middle"},
+        text: {field: "data"}
+      },
+      update: {}
+    }
+  };
+}
+
+function vg_axisDomain() {
+  return {
+    type: "path",
+    interactive: false,
+    properties: {
+      enter: {
+        x: {value: 0.5},
+        y: {value: 0.5},
+        stroke: {value: vg.config.axis.axisColor},
+        strokeWidth: {value: vg.config.axis.axisWidth}
+      },
+      update: {}
+    }
+  };
+}
+vg.scene.legend = function() {
+  var size = null,
+      shape = null,
+      fill = null,
+      stroke = null,
+      spacing = null,
+      values = null,
+      format = null,
+      formatString = null,
+      title = undefined,
+      orient = "right",
+      offset = vg.config.legend.offset,
+      padding = vg.config.legend.padding,
+      legendDef,
+      tickArguments = [5],
+      legendStyle = {},
+      symbolStyle = {},
+      gradientStyle = {},
+      titleStyle = {},
+      labelStyle = {};
+
+  var legend = {},
+      legendDef = null;
+
+  function reset() { legendDef = null; }
+
+  legend.def = function() {
+    var scale = size || shape || fill || stroke;
+    
+    format = !formatString ? null : ((scale.type === 'time')
+      ? d3.time.format(formatString)
+      : d3.format(formatString));
+    
+    if (!legendDef) {
+      legendDef = (scale===fill || scale===stroke) && !discrete(scale.type)
+        ? quantDef(scale)
+        : ordinalDef(scale);      
+    }
+    legendDef.orient = orient;
+    legendDef.offset = offset;
+    legendDef.padding = padding;
+    return legendDef;
   };
 
-  /**
-  	ColorBrewer colors for chroma.js
-  
-  	Copyright (c) 2002 Cynthia Brewer, Mark Harrower, and The 
-  	Pennsylvania State University.
-  
-  	Licensed under the Apache License, Version 2.0 (the "License"); 
-  	you may not use this file except in compliance with the License.
-  	You may obtain a copy of the License at	
-  	http://www.apache.org/licenses/LICENSE-2.0
-  
-  	Unless required by applicable law or agreed to in writing, software distributed
-  	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-  	CONDITIONS OF ANY KIND, either express or implied. See the License for the
-  	specific language governing permissions and limitations under the License.
-  
-      @preserve
-  */
+  function discrete(type) {
+    return type==="ordinal" || type==="quantize"
+      || type==="quantile" || type==="threshold";
+  }
 
+  function ordinalDef(scale) {
+    var def = o_legend_def(size, shape, fill, stroke);
 
-  chroma.brewer = brewer = {
-    OrRd: ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#b30000', '#7f0000'],
-    PuBu: ['#fff7fb', '#ece7f2', '#d0d1e6', '#a6bddb', '#74a9cf', '#3690c0', '#0570b0', '#045a8d', '#023858'],
-    BuPu: ['#f7fcfd', '#e0ecf4', '#bfd3e6', '#9ebcda', '#8c96c6', '#8c6bb1', '#88419d', '#810f7c', '#4d004b'],
-    Oranges: ['#fff5eb', '#fee6ce', '#fdd0a2', '#fdae6b', '#fd8d3c', '#f16913', '#d94801', '#a63603', '#7f2704'],
-    BuGn: ['#f7fcfd', '#e5f5f9', '#ccece6', '#99d8c9', '#66c2a4', '#41ae76', '#238b45', '#006d2c', '#00441b'],
-    YlOrBr: ['#ffffe5', '#fff7bc', '#fee391', '#fec44f', '#fe9929', '#ec7014', '#cc4c02', '#993404', '#662506'],
-    YlGn: ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#41ab5d', '#238443', '#006837', '#004529'],
-    Reds: ['#fff5f0', '#fee0d2', '#fcbba1', '#fc9272', '#fb6a4a', '#ef3b2c', '#cb181d', '#a50f15', '#67000d'],
-    RdPu: ['#fff7f3', '#fde0dd', '#fcc5c0', '#fa9fb5', '#f768a1', '#dd3497', '#ae017e', '#7a0177', '#49006a'],
-    Greens: ['#f7fcf5', '#e5f5e0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#006d2c', '#00441b'],
-    YlGnBu: ['#ffffd9', '#edf8b1', '#c7e9b4', '#7fcdbb', '#41b6c4', '#1d91c0', '#225ea8', '#253494', '#081d58'],
-    Purples: ['#fcfbfd', '#efedf5', '#dadaeb', '#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#54278f', '#3f007d'],
-    GnBu: ['#f7fcf0', '#e0f3db', '#ccebc5', '#a8ddb5', '#7bccc4', '#4eb3d3', '#2b8cbe', '#0868ac', '#084081'],
-    Greys: ['#ffffff', '#f0f0f0', '#d9d9d9', '#bdbdbd', '#969696', '#737373', '#525252', '#252525', '#000000'],
-    YlOrRd: ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'],
-    PuRd: ['#f7f4f9', '#e7e1ef', '#d4b9da', '#c994c7', '#df65b0', '#e7298a', '#ce1256', '#980043', '#67001f'],
-    Blues: ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'],
-    PuBuGn: ['#fff7fb', '#ece2f0', '#d0d1e6', '#a6bddb', '#67a9cf', '#3690c0', '#02818a', '#016c59', '#014636'],
-    Spectral: ['#9e0142', '#d53e4f', '#f46d43', '#fdae61', '#fee08b', '#ffffbf', '#e6f598', '#abdda4', '#66c2a5', '#3288bd', '#5e4fa2'],
-    RdYlGn: ['#a50026', '#d73027', '#f46d43', '#fdae61', '#fee08b', '#ffffbf', '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850', '#006837'],
-    RdBu: ['#67001f', '#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#f7f7f7', '#d1e5f0', '#92c5de', '#4393c3', '#2166ac', '#053061'],
-    PiYG: ['#8e0152', '#c51b7d', '#de77ae', '#f1b6da', '#fde0ef', '#f7f7f7', '#e6f5d0', '#b8e186', '#7fbc41', '#4d9221', '#276419'],
-    PRGn: ['#40004b', '#762a83', '#9970ab', '#c2a5cf', '#e7d4e8', '#f7f7f7', '#d9f0d3', '#a6dba0', '#5aae61', '#1b7837', '#00441b'],
-    RdYlBu: ['#a50026', '#d73027', '#f46d43', '#fdae61', '#fee090', '#ffffbf', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695'],
-    BrBG: ['#543005', '#8c510a', '#bf812d', '#dfc27d', '#f6e8c3', '#f5f5f5', '#c7eae5', '#80cdc1', '#35978f', '#01665e', '#003c30'],
-    RdGy: ['#67001f', '#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#ffffff', '#e0e0e0', '#bababa', '#878787', '#4d4d4d', '#1a1a1a'],
-    PuOr: ['#7f3b08', '#b35806', '#e08214', '#fdb863', '#fee0b6', '#f7f7f7', '#d8daeb', '#b2abd2', '#8073ac', '#542788', '#2d004b'],
-    Set2: ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494', '#b3b3b3'],
-    Accent: ['#7fc97f', '#beaed4', '#fdc086', '#ffff99', '#386cb0', '#f0027f', '#bf5b17', '#666666'],
-    Set1: ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf', '#999999'],
-    Set3: ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fdb462', '#b3de69', '#fccde5', '#d9d9d9', '#bc80bd', '#ccebc5', '#ffed6f'],
-    Dark2: ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e', '#e6ab02', '#a6761d', '#666666'],
-    Paired: ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928'],
-    Pastel2: ['#b3e2cd', '#fdcdac', '#cbd5e8', '#f4cae4', '#e6f5c9', '#fff2ae', '#f1e2cc', '#cccccc'],
-    Pastel1: ['#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4', '#fed9a6', '#ffffcc', '#e5d8bd', '#fddaec', '#f2f2f2']
-  };
-
-  /**
-  	X11 color names
-  
-  	http://www.w3.org/TR/css3-color/#svg-color
-  */
-
-
-  chroma.colors = colors = {
-    indigo: "#4b0082",
-    gold: "#ffd700",
-    hotpink: "#ff69b4",
-    firebrick: "#b22222",
-    indianred: "#cd5c5c",
-    yellow: "#ffff00",
-    mistyrose: "#ffe4e1",
-    darkolivegreen: "#556b2f",
-    olive: "#808000",
-    darkseagreen: "#8fbc8f",
-    pink: "#ffc0cb",
-    tomato: "#ff6347",
-    lightcoral: "#f08080",
-    orangered: "#ff4500",
-    navajowhite: "#ffdead",
-    lime: "#00ff00",
-    palegreen: "#98fb98",
-    darkslategrey: "#2f4f4f",
-    greenyellow: "#adff2f",
-    burlywood: "#deb887",
-    seashell: "#fff5ee",
-    mediumspringgreen: "#00fa9a",
-    fuchsia: "#ff00ff",
-    papayawhip: "#ffefd5",
-    blanchedalmond: "#ffebcd",
-    chartreuse: "#7fff00",
-    dimgray: "#696969",
-    black: "#000000",
-    peachpuff: "#ffdab9",
-    springgreen: "#00ff7f",
-    aquamarine: "#7fffd4",
-    white: "#ffffff",
-    orange: "#ffa500",
-    lightsalmon: "#ffa07a",
-    darkslategray: "#2f4f4f",
-    brown: "#a52a2a",
-    ivory: "#fffff0",
-    dodgerblue: "#1e90ff",
-    peru: "#cd853f",
-    lawngreen: "#7cfc00",
-    chocolate: "#d2691e",
-    crimson: "#dc143c",
-    forestgreen: "#228b22",
-    darkgrey: "#a9a9a9",
-    lightseagreen: "#20b2aa",
-    cyan: "#00ffff",
-    mintcream: "#f5fffa",
-    silver: "#c0c0c0",
-    antiquewhite: "#faebd7",
-    mediumorchid: "#ba55d3",
-    skyblue: "#87ceeb",
-    gray: "#808080",
-    darkturquoise: "#00ced1",
-    goldenrod: "#daa520",
-    darkgreen: "#006400",
-    floralwhite: "#fffaf0",
-    darkviolet: "#9400d3",
-    darkgray: "#a9a9a9",
-    moccasin: "#ffe4b5",
-    saddlebrown: "#8b4513",
-    grey: "#808080",
-    darkslateblue: "#483d8b",
-    lightskyblue: "#87cefa",
-    lightpink: "#ffb6c1",
-    mediumvioletred: "#c71585",
-    slategrey: "#708090",
-    red: "#ff0000",
-    deeppink: "#ff1493",
-    limegreen: "#32cd32",
-    darkmagenta: "#8b008b",
-    palegoldenrod: "#eee8aa",
-    plum: "#dda0dd",
-    turquoise: "#40e0d0",
-    lightgrey: "#d3d3d3",
-    lightgoldenrodyellow: "#fafad2",
-    darkgoldenrod: "#b8860b",
-    lavender: "#e6e6fa",
-    maroon: "#800000",
-    yellowgreen: "#9acd32",
-    sandybrown: "#f4a460",
-    thistle: "#d8bfd8",
-    violet: "#ee82ee",
-    navy: "#000080",
-    magenta: "#ff00ff",
-    dimgrey: "#696969",
-    tan: "#d2b48c",
-    rosybrown: "#bc8f8f",
-    olivedrab: "#6b8e23",
-    blue: "#0000ff",
-    lightblue: "#add8e6",
-    ghostwhite: "#f8f8ff",
-    honeydew: "#f0fff0",
-    cornflowerblue: "#6495ed",
-    slateblue: "#6a5acd",
-    linen: "#faf0e6",
-    darkblue: "#00008b",
-    powderblue: "#b0e0e6",
-    seagreen: "#2e8b57",
-    darkkhaki: "#bdb76b",
-    snow: "#fffafa",
-    sienna: "#a0522d",
-    mediumblue: "#0000cd",
-    royalblue: "#4169e1",
-    lightcyan: "#e0ffff",
-    green: "#008000",
-    mediumpurple: "#9370db",
-    midnightblue: "#191970",
-    cornsilk: "#fff8dc",
-    paleturquoise: "#afeeee",
-    bisque: "#ffe4c4",
-    slategray: "#708090",
-    darkcyan: "#008b8b",
-    khaki: "#f0e68c",
-    wheat: "#f5deb3",
-    teal: "#008080",
-    darkorchid: "#9932cc",
-    deepskyblue: "#00bfff",
-    salmon: "#fa8072",
-    darkred: "#8b0000",
-    steelblue: "#4682b4",
-    palevioletred: "#db7093",
-    lightslategray: "#778899",
-    aliceblue: "#f0f8ff",
-    lightslategrey: "#778899",
-    lightgreen: "#90ee90",
-    orchid: "#da70d6",
-    gainsboro: "#dcdcdc",
-    mediumseagreen: "#3cb371",
-    lightgray: "#d3d3d3",
-    mediumturquoise: "#48d1cc",
-    lemonchiffon: "#fffacd",
-    cadetblue: "#5f9ea0",
-    lightyellow: "#ffffe0",
-    lavenderblush: "#fff0f5",
-    coral: "#ff7f50",
-    purple: "#800080",
-    aqua: "#00ffff",
-    whitesmoke: "#f5f5f5",
-    mediumslateblue: "#7b68ee",
-    darkorange: "#ff8c00",
-    mediumaquamarine: "#66cdaa",
-    darksalmon: "#e9967a",
-    beige: "#f5f5dc",
-    blueviolet: "#8a2be2",
-    azure: "#f0ffff",
-    lightsteelblue: "#b0c4de",
-    oldlace: "#fdf5e6"
-  };
-
-  /*
-      chroma.js
-  
-      Copyright (c) 2011-2013, Gregor Aisch
-      All rights reserved.
-  
-      Redistribution and use in source and binary forms, with or without
-      modification, are permitted provided that the following conditions are met:
-  
-      * Redistributions of source code must retain the above copyright notice, this
-        list of conditions and the following disclaimer.
-  
-      * Redistributions in binary form must reproduce the above copyright notice,
-        this list of conditions and the following disclaimer in the documentation
-        and/or other materials provided with the distribution.
-  
-      * The name Gregor Aisch may not be used to endorse or promote products
-        derived from this software without specific prior written permission.
-  
-      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-      AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-      IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-      DISCLAIMED. IN NO EVENT SHALL GREGOR AISCH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-      INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-      BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-      DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-      OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-      NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  
-      @source: https://github.com/gka/chroma.js
-  */
-
-
-  type = (function() {
-    /*
-    for browser-safe type checking+
-    ported from jQuery's $.type
-    */
-
-    var classToType, name, _i, _len, _ref1;
-
-    classToType = {};
-    _ref1 = "Boolean Number String Function Array Date RegExp Undefined Null".split(" ");
-    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-      name = _ref1[_i];
-      classToType["[object " + name + "]"] = name.toLowerCase();
-    }
-    return function(obj) {
-      var strType;
-
-      strType = Object.prototype.toString.call(obj);
-      return classToType[strType] || "object";
-    };
-  })();
-
-  limit = function(x, min, max) {
-    if (min == null) {
-      min = 0;
-    }
-    if (max == null) {
-      max = 1;
-    }
-    if (x < min) {
-      x = min;
-    }
-    if (x > max) {
-      x = max;
-    }
-    return x;
-  };
-
-  unpack = function(args) {
-    if (args.length >= 3) {
-      return args;
+    // generate data
+    var data = (values == null
+      ? (scale.ticks ? scale.ticks.apply(scale, tickArguments) : scale.domain())
+      : values).map(vg.data.ingest);
+    var fmt = format==null ? (scale.tickFormat ? scale.tickFormat.apply(scale, tickArguments) : String) : format;
+    
+    // determine spacing between legend entries
+    var fs, range, offset, pad=5, domain = d3.range(data.length);
+    if (size) {
+      range = data.map(function(x) { return Math.sqrt(size(x.data)); });
+      offset = d3.max(range);
+      range = range.reduce(function(a,b,i,z) {
+          if (i > 0) a[i] = a[i-1] + z[i-1]/2 + pad;
+          return (a[i] += b/2, a); }, [0]).map(Math.round);
     } else {
-      return args[0];
+      offset = Math.round(Math.sqrt(vg.config.legend.symbolSize));
+      range = spacing
+        || (fs = labelStyle.fontSize) && (fs.value + pad)
+        || (vg.config.legend.labelFontSize + pad);
+      range = domain.map(function(d,i) {
+        return Math.round(offset/2 + i*range);
+      });
     }
+
+    // account for padding and title size
+    var sz = padding, ts;
+    if (title) {
+      ts = titleStyle.fontSize;
+      sz += 5 + ((ts && ts.value) || vg.config.legend.titleFontSize);
+    }
+    for (var i=0, n=range.length; i<n; ++i) range[i] += sz;
+    
+    // build scale for label layout
+    var scale = {
+      name: "legend",
+      type: "ordinal",
+      points: true,
+      domain: domain,
+      range: range
+    };
+    
+    // update legend def
+    var tdata = (title ? [title] : []).map(vg.data.ingest);
+    data.forEach(function(d) {
+      d.label = fmt(d.data);
+      d.offset = offset;
+    });
+    def.scales = [ scale ];
+    def.marks[0].from = function() { return tdata; };
+    def.marks[1].from = function() { return data; };
+    def.marks[2].from = def.marks[1].from;
+    return def;
+  }
+
+  function o_legend_def(size, shape, fill, stroke) {
+    // setup legend marks
+    var titles = vg_legendTitle(),
+        symbols = vg_legendSymbols(),
+        labels = vg_vLegendLabels();
+
+    // extend legend marks
+    vg_legendSymbolExtend(symbols, size, shape, fill, stroke);
+    
+    // add / override custom style properties
+    vg.extend(titles.properties.update, titleStyle);
+    vg.extend(symbols.properties.update, symbolStyle);
+    vg.extend(labels.properties.update, labelStyle);
+
+    // padding from legend border
+    titles.properties.enter.x.value += padding;
+    titles.properties.enter.y.value += padding;
+    labels.properties.enter.x.offset += padding + 1;
+    symbols.properties.enter.x.offset = padding + 1;
+    labels.properties.update.x.offset += padding + 1;
+    symbols.properties.update.x.offset = padding + 1;
+
+    return {
+      type: "group",
+      interactive: false,
+      properties: {
+        enter: vg.parse.properties("group", legendStyle),
+        update: vg_legendUpdate
+      },
+      marks: [titles, symbols, labels].map(vg.parse.mark)
+    };
+  }
+
+  function quantDef(scale) {
+    var def = q_legend_def(scale),
+        dom = scale.domain(),
+        data = dom.map(vg.data.ingest),
+        width = (gradientStyle.width && gradientStyle.width.value) || vg.config.legend.gradientWidth,
+        fmt = format==null ? (scale.tickFormat ? scale.tickFormat.apply(scale, tickArguments) : String) : format;
+
+    // build scale for label layout
+    var layout = {
+      name: "legend",
+      type: scale.type,
+      round: true,
+      zero: false,
+      domain: [dom[0], dom[dom.length-1]],
+      range: [padding, width+padding]
+    };
+    if (scale.type==="pow") layout.exponent = scale.exponent();
+    
+    // update legend def
+    var tdata = (title ? [title] : []).map(vg.data.ingest);
+    data.forEach(function(d,i) {
+      d.label = fmt(d.data);
+      d.align = i==(data.length-1) ? "right" : i==0 ? "left" : "center";
+    });
+    def.scales = [ layout ];
+    def.marks[0].from = function() { return tdata; };
+    def.marks[1].from = function() { return [1]; };
+    def.marks[2].from = function() { return data; };
+    return def;
+  }
+  
+  function q_legend_def(scale) {
+    // setup legend marks
+    var titles = vg_legendTitle(),
+        gradient = vg_legendGradient(),
+        labels = vg_hLegendLabels(),
+        grad = new vg.Gradient();
+
+    // setup color gradient
+    var dom = scale.domain(),
+        min = dom[0],
+        max = dom[dom.length-1],
+        f = scale.copy().domain([min, max]).range([0,1]);
+        
+    var stops = (scale.type !== "linear" && scale.ticks)
+      ? scale.ticks.call(scale, 15) : dom;
+    if (min !== stops[0]) stops.unshift(min);
+    if (max !== stops[stops.length-1]) stops.push(max);
+
+    for (var i=0, n=stops.length; i<n; ++i) {
+      grad.stop(f(stops[i]), scale(stops[i]));
+    }
+    gradient.properties.enter.fill = {value: grad};
+
+    // add / override custom style properties
+    vg.extend(titles.properties.update, titleStyle);
+    vg.extend(gradient.properties.update, gradientStyle);
+    vg.extend(labels.properties.update, labelStyle);
+
+    // account for gradient size
+    var gp = gradient.properties, gh = gradientStyle.height,
+        hh = (gh && gh.value) || gp.enter.height.value;
+    labels.properties.enter.y.value = hh;
+    labels.properties.update.y.value = hh;
+
+    // account for title size as needed
+    if (title) {
+      var tp = titles.properties, fs = titleStyle.fontSize,
+          sz = 4 + ((fs && fs.value) || tp.enter.fontSize.value);
+      gradient.properties.enter.y.value += sz;
+      labels.properties.enter.y.value += sz;
+      gradient.properties.update.y.value += sz;
+      labels.properties.update.y.value += sz;
+    }
+    
+    // padding from legend border
+    titles.properties.enter.x.value += padding;
+    titles.properties.enter.y.value += padding;
+    gradient.properties.enter.x.value += padding;
+    gradient.properties.enter.y.value += padding;
+    labels.properties.enter.y.value += padding;
+    gradient.properties.update.x.value += padding;
+    gradient.properties.update.y.value += padding;
+    labels.properties.update.y.value += padding;
+
+    return {
+      type: "group",
+      interactive: false,
+      properties: {
+        enter: vg.parse.properties("group", legendStyle),
+        update: vg_legendUpdate
+      },
+      marks: [titles, gradient, labels].map(vg.parse.mark)
+    };
+  }
+
+  legend.size = function(x) {
+    if (!arguments.length) return size;
+    if (size !== x) { size = x; reset(); }
+    return legend;
   };
 
-  TWOPI = Math.PI * 2;
+  legend.shape = function(x) {
+    if (!arguments.length) return shape;
+    if (shape !== x) { shape = x; reset(); }
+    return legend;
+  };
 
-  PITHIRD = Math.PI / 3;
+  legend.fill = function(x) {
+    if (!arguments.length) return fill;
+    if (fill !== x) { fill = x; reset(); }
+    return legend;
+  };
+  
+  legend.stroke = function(x) {
+    if (!arguments.length) return stroke;
+    if (stroke !== x) { stroke = x; reset(); }
+    return legend;
+  };
 
-  cos = Math.cos;
+  legend.title = function(x) {
+    if (!arguments.length) return title;
+    if (title !== x) { title = x; reset(); }
+    return legend;
+  };
 
-  /*
-  interpolates between a set of colors uzing a bezier spline
-  */
+  legend.format = function(x) {
+    if (!arguments.length) return formatString;
+    if (formatString !== x) {
+      formatString = x;
+      reset();
+    }
+    return legend;
+  };
 
+  legend.spacing = function(x) {
+    if (!arguments.length) return spacing;
+    if (spacing !== +x) { spacing = +x; reset(); }
+    return legend;
+  };
 
-  bezier = function(colors) {
-    var I, I0, I1, c, lab0, lab1, lab2, lab3, _ref1, _ref2, _ref3;
+  legend.orient = function(x) {
+    if (!arguments.length) return orient;
+    orient = x in vg_legendOrients ? x + "" : vg.config.legend.orient;
+    return legend;
+  };
 
-    colors = (function() {
-      var _i, _len, _results;
+  legend.offset = function(x) {
+    if (!arguments.length) return offset;
+    offset = +x;
+    return legend;
+  };
 
-      _results = [];
-      for (_i = 0, _len = colors.length; _i < _len; _i++) {
-        c = colors[_i];
-        _results.push(chroma(c));
+  legend.values = function(x) {
+    if (!arguments.length) return values;
+    values = x;
+    return legend;
+  };
+
+  legend.legendProperties = function(x) {
+    if (!arguments.length) return legendStyle;
+    legendStyle = x;
+    return legend;
+  };
+
+  legend.symbolProperties = function(x) {
+    if (!arguments.length) return symbolStyle;
+    symbolStyle = x;
+    return legend;
+  };
+
+  legend.gradientProperties = function(x) {
+    if (!arguments.length) return gradientStyle;
+    gradientStyle = x;
+    return legend;
+  };
+
+  legend.labelProperties = function(x) {
+    if (!arguments.length) return labelStyle;
+    labelStyle = x;
+    return legend;
+  };
+  
+  legend.titleProperties = function(x) {
+    if (!arguments.length) return titleStyle;
+    titleStyle = x;
+    return legend;
+  };
+
+  legend.reset = function() { reset(); };
+
+  return legend;
+};
+
+var vg_legendOrients = {right: 1, left: 1};
+
+function vg_legendUpdate(item, group, trans) {
+  var o = trans ? {} : item, gx,
+      offset = item.mark.def.offset,
+      orient = item.mark.def.orient,
+      pad    = item.mark.def.padding * 2,
+      lw     = ~~item.bounds.width() + (item.width ? 0 : pad),
+      lh     = ~~item.bounds.height() + (item.height ? 0 : pad);
+
+  o.x = 0.5;
+  o.y = 0.5;
+  o.width = lw;
+  o.height = lh;
+
+  // HACK: use to estimate group bounds during animated transition
+  if (!trans && group.bounds) {
+    group.bounds.delta = group.bounds.x2 - group.width;
+  }
+
+  switch (orient) {
+    case "left":  {
+      gx = group.bounds ? group.bounds.x1 : 0;
+      o.x += gx - offset - lw;
+      break;
+    };
+    case "right": {
+      gx = group.width;
+      if (group.bounds) gx = trans
+        ? group.width + group.bounds.delta
+        : group.bounds.x2;
+      o.x += gx + offset;
+      break;
+    };
+  }
+  
+  if (trans) trans.interpolate(item, o);
+  item.mark.def.properties.enter(item, group, trans);
+}
+
+function vg_legendSymbolExtend(mark, size, shape, fill, stroke) {
+  var e = mark.properties.enter,
+      u = mark.properties.update;
+  if (size)   e.size   = u.size   = {scale: size.scaleName,   field: "data"};
+  if (shape)  e.shape  = u.shape  = {scale: shape.scaleName,  field: "data"};
+  if (fill)   e.fill   = u.fill   = {scale: fill.scaleName,   field: "data"};
+  if (stroke) e.stroke = u.stroke = {scale: stroke.scaleName, field: "data"};
+}
+
+function vg_legendTitle() {
+  var cfg = vg.config.legend;
+  return {
+    type: "text",
+    interactive: false,
+    key: "data",
+    properties: {
+      enter: {
+        x: {value: 0},
+        y: {value: 0},
+        fill: {value: cfg.titleColor},
+        font: {value: cfg.titleFont},
+        fontSize: {value: cfg.titleFontSize},
+        fontWeight: {value: cfg.titleFontWeight},
+        baseline: {value: "top"},
+        text: {field: "data"},
+        opacity: {value: 1e-6}
+      },
+      exit: { opacity: {value: 1e-6} },
+      update: { opacity: {value: 1} }
+    }
+  };
+}
+
+function vg_legendSymbols() {
+  var cfg = vg.config.legend;
+  return {
+    type: "symbol",
+    interactive: false,
+    key: "data",
+    properties: {
+      enter: {
+        x: {field: "offset", mult: 0.5},
+        y: {scale: "legend", field: "index"},
+        shape: {value: cfg.symbolShape},
+        size: {value: cfg.symbolSize},
+        stroke: {value: cfg.symbolColor},
+        strokeWidth: {value: cfg.symbolStrokeWidth},
+        opacity: {value: 1e-6}
+      },
+      exit: { opacity: {value: 1e-6} },
+      update: {
+        x: {field: "offset", mult: 0.5},
+        y: {scale: "legend", field: "index"},
+        opacity: {value: 1}
       }
-      return _results;
-    })();
-    if (colors.length === 2) {
-      _ref1 = (function() {
-        var _i, _len, _results;
-
-        _results = [];
-        for (_i = 0, _len = colors.length; _i < _len; _i++) {
-          c = colors[_i];
-          _results.push(c.lab());
-        }
-        return _results;
-      })(), lab0 = _ref1[0], lab1 = _ref1[1];
-      I = function(t) {
-        var i, lab;
-
-        lab = (function() {
-          var _i, _results;
-
-          _results = [];
-          for (i = _i = 0; _i <= 2; i = ++_i) {
-            _results.push(lab0[i] + t * (lab1[i] - lab0[i]));
-          }
-          return _results;
-        })();
-        return chroma.lab.apply(chroma, lab);
-      };
-    } else if (colors.length === 3) {
-      _ref2 = (function() {
-        var _i, _len, _results;
-
-        _results = [];
-        for (_i = 0, _len = colors.length; _i < _len; _i++) {
-          c = colors[_i];
-          _results.push(c.lab());
-        }
-        return _results;
-      })(), lab0 = _ref2[0], lab1 = _ref2[1], lab2 = _ref2[2];
-      I = function(t) {
-        var i, lab;
-
-        lab = (function() {
-          var _i, _results;
-
-          _results = [];
-          for (i = _i = 0; _i <= 2; i = ++_i) {
-            _results.push((1 - t) * (1 - t) * lab0[i] + 2 * (1 - t) * t * lab1[i] + t * t * lab2[i]);
-          }
-          return _results;
-        })();
-        return chroma.lab.apply(chroma, lab);
-      };
-    } else if (colors.length === 4) {
-      _ref3 = (function() {
-        var _i, _len, _results;
-
-        _results = [];
-        for (_i = 0, _len = colors.length; _i < _len; _i++) {
-          c = colors[_i];
-          _results.push(c.lab());
-        }
-        return _results;
-      })(), lab0 = _ref3[0], lab1 = _ref3[1], lab2 = _ref3[2], lab3 = _ref3[3];
-      I = function(t) {
-        var i, lab;
-
-        lab = (function() {
-          var _i, _results;
-
-          _results = [];
-          for (i = _i = 0; _i <= 2; i = ++_i) {
-            _results.push((1 - t) * (1 - t) * (1 - t) * lab0[i] + 3 * (1 - t) * (1 - t) * t * lab1[i] + 3 * (1 - t) * t * t * lab2[i] + t * t * t * lab3[i]);
-          }
-          return _results;
-        })();
-        return chroma.lab.apply(chroma, lab);
-      };
-    } else if (colors.length === 5) {
-      I0 = bezier(colors.slice(0, 3));
-      I1 = bezier(colors.slice(2, 5));
-      I = function(t) {
-        if (t < 0.5) {
-          return I0(t * 2);
-        } else {
-          return I1((t - 0.5) * 2);
-        }
-      };
     }
-    return I;
+  };
+}
+
+function vg_vLegendLabels() {
+  var cfg = vg.config.legend;
+  return {
+    type: "text",
+    interactive: false,
+    key: "data",
+    properties: {
+      enter: {
+        x: {field: "offset", offset: 5},
+        y: {scale: "legend", field: "index"},
+        fill: {value: cfg.labelColor},
+        font: {value: cfg.labelFont},
+        fontSize: {value: cfg.labelFontSize},
+        align: {value: cfg.labelAlign},
+        baseline: {value: cfg.labelBaseline},
+        text: {field: "label"},
+        opacity: {value: 1e-6}
+      },
+      exit: { opacity: {value: 1e-6} },
+      update: {
+        opacity: {value: 1},
+        x: {field: "offset", offset: 5},
+        y: {scale: "legend", field: "index"},
+      }
+    }
+  };
+}
+
+function vg_legendGradient() {
+  var cfg = vg.config.legend;
+  return {
+    type: "rect",
+    interactive: false,
+    properties: {
+      enter: {
+        x: {value: 0},
+        y: {value: 0},
+        width: {value: cfg.gradientWidth},
+        height: {value: cfg.gradientHeight},
+        stroke: {value: cfg.gradientStrokeColor},
+        strokeWidth: {value: cfg.gradientStrokeWidth},
+        opacity: {value: 1e-6}
+      },
+      exit: { opacity: {value: 1e-6} },
+      update: {
+        x: {value: 0},
+        y: {value: 0},
+        opacity: {value: 1}
+      }
+    }
+  };
+}
+
+function vg_hLegendLabels() {
+  var cfg = vg.config.legend;
+  return {
+    type: "text",
+    interactive: false,
+    key: "data",
+    properties: {
+      enter: {
+        x: {scale: "legend", field: "data"},
+        y: {value: 20},
+        dy: {value: 2},
+        fill: {value: cfg.labelColor},
+        font: {value: cfg.labelFont},
+        fontSize: {value: cfg.labelFontSize},
+        align: {field: "align"},
+        baseline: {value: "top"},
+        text: {field: "label"},
+        opacity: {value: 1e-6}
+      },
+      exit: { opacity: {value: 1e-6} },
+      update: {
+        x: {scale: "legend", field: "data"},
+        y: {value: 20},
+        opacity: {value: 1}
+      }
+    }
+  };
+}vg.Model = (function() {
+  function model() {
+    this._defs = null;
+    this._data = {};
+    this._scene = null;
+    this._reset = {axes: false, legends: false};
+  }
+
+  var prototype = model.prototype;
+
+  prototype.defs = function(defs) {
+    if (!arguments.length) return this._defs;
+    this._defs = defs;
+    return this;
   };
 
-  chroma.interpolate.bezier = bezier;
+  prototype.data = function(data) {
+    if (!arguments.length) return this._data;
 
-}).call(this);
+    var deps = {},
+        defs = this._defs,
+        src  = defs.data.source,
+        tx   = defs.data.flow || {},
+        keys = defs.data.sorted,
+        len  = keys.length, i, k, x;
 
+    // collect source data set dependencies
+    function sources(k) {
+      (src[k] || []).forEach(function(s) { deps[s] = k; sources(s); });
+    }
+    vg.keys(data).forEach(sources);
+    
+    // update data sets in dependency-aware order
+    for (i=0; i<len; ++i) {
+      if (data[k=keys[i]]) {
+        x = data[k];
+      } else if (deps[k]) {
+        x = vg_data_duplicate(data[deps[k]]);
+        if (vg.isTree(data)) vg_make_tree(x);
+      } else continue;
+      this._data[k] = tx[k] ? tx[k](x, this._data, defs.marks) : x;
+    }
+
+    this._reset.legends = true;
+    return this;
+  };
+
+  prototype.width = function(width) {
+    if (this._defs) this._defs.width = width;
+    if (this._defs && this._defs.marks) this._defs.marks.width = width;
+    if (this._scene) this._scene.items[0].width = width;
+    this._reset.axes = true;
+    return this;
+  };
+
+  prototype.height = function(height) {
+    if (this._defs) this._defs.height = height;
+    if (this._defs && this._defs.marks) this._defs.marks.height = height;
+    if (this._scene) this._scene.items[0].height = height;
+    this._reset.axes = true;
+    return this;
+  };
+
+  prototype.scene = function(node) {
+    if (!arguments.length) return this._scene;
+    this._scene = node;
+    return this;
+  };
+
+  prototype.build = function() {
+    var m = this, data = m._data, marks = m._defs.marks;
+    m._scene = vg.scene.build.call(m, marks, data, m._scene);
+    m._scene.items[0].width = marks.width;
+    m._scene.items[0].height = marks.height;
+    m._scene.interactive = false;
+    return this;
+  };
+
+  prototype.encode = function(trans, request, item) {
+    this.reset();
+    var m = this, scene = m._scene, defs = m._defs;
+    vg.scene.encode.call(m, scene, defs.marks, trans, request, item);
+    return this;
+  };
+
+  prototype.reset = function() {
+    if (this._scene && this._reset.axes) {
+      vg.scene.visit(this._scene, function(item) {
+        if (item.axes) item.axes.forEach(function(axis) { axis.reset(); });
+      });
+      this._reset.axes = false;
+    }
+    if (this._scene && this._reset.legends) {
+      vg.scene.visit(this._scene, function(item) {
+        if (item.legends) item.legends.forEach(function(l) { l.reset(); });
+      });
+      this._reset.legends = false;
+    }
+    return this;
+  };
+
+  return model;
+})();vg.View = (function() {
+  var view = function(el, width, height) {
+    this._el = null;
+    this._build = false;
+    this._model = new vg.Model();
+    this._width = this.__width = width || 500;
+    this._height = this.__height = height || 500;
+    this._autopad = 1;
+    this._padding = {top:0, left:0, bottom:0, right:0};
+    this._viewport = null;
+    this._renderer = null;
+    this._handler = null;
+    this._io = vg.canvas;
+    if (el) this.initialize(el);
+  };
+  
+  var prototype = view.prototype;
+  
+  prototype.width = function(width) {
+    if (!arguments.length) return this.__width;
+    if (this.__width !== width) {
+      this._width = this.__width = width;
+      if (this._el) this.initialize(this._el.parentNode);
+      this._model.width(width);
+      if (this._strict) this._autopad = 1;
+    }
+    return this;
+  };
+
+  prototype.height = function(height) {
+    if (!arguments.length) return this.__height;
+    if (this.__height !== height) {
+      this._height = this.__height = height;
+      if (this._el) this.initialize(this._el.parentNode);
+      this._model.height(this._height);
+      if (this._strict) this._autopad = 1;
+    }
+    return this;
+  };
+
+  prototype.padding = function(pad) {
+    if (!arguments.length) return this._padding;
+    if (this._padding !== pad) {
+      if (vg.isString(pad)) {
+        this._autopad = 1;
+        this._padding = {top:0, left:0, bottom:0, right:0};
+        this._strict = (pad === "strict");
+      } else {
+        this._autopad = 0;
+        this._padding = pad;
+        this._strict = false;
+      }
+      if (this._el) {
+        this._renderer.resize(this._width, this._height, pad);
+        this._handler.padding(pad);
+      }
+    }
+    return this;
+  };
+  
+  prototype.autopad = function(opt) {
+    if (this._autopad < 1) return this;
+    else this._autopad = 0;
+
+    var pad = this._padding,
+        b = this.model().scene().bounds,
+        inset = vg.config.autopadInset,
+        l = b.x1 < 0 ? Math.ceil(-b.x1) + inset : 0,
+        t = b.y1 < 0 ? Math.ceil(-b.y1) + inset : 0,
+        r = b.x2 > this._width  ? Math.ceil(+b.x2 - this._width) + inset : 0,
+        b = b.y2 > this._height ? Math.ceil(+b.y2 - this._height) + inset : 0;
+    pad = {left:l, top:t, right:r, bottom:b};
+
+    if (this._strict) {
+      this._autopad = 0;
+      this._padding = pad;
+      this._width = Math.max(0, this.__width - (l+r));
+      this._height = Math.max(0, this.__height - (t+b));
+      this._model.width(this._width);
+      this._model.height(this._height);
+      if (this._el) this.initialize(this._el.parentNode);
+      this.update({props:"enter"}).update({props:"update"});
+    } else {
+      this.padding(pad).update(opt);
+    }
+    return this;
+  };
+
+  prototype.viewport = function(size) {
+    if (!arguments.length) return this._viewport;
+    if (this._viewport !== size) {
+      this._viewport = size;
+      if (this._el) this.initialize(this._el.parentNode);
+    }
+    return this;
+  };
+  
+  prototype.renderer = function(type) {
+    if (!arguments.length) return this._io;
+    if (type === "canvas") type = vg.canvas;
+    if (type === "svg") type = vg.svg;
+    if (this._io !== type) {
+      this._io = type;
+      this._renderer = null;
+      if (this._el) this.initialize(this._el.parentNode);
+      if (this._build) this.render();
+    }
+    return this;
+  };
+
+  prototype.defs = function(defs) {
+    if (!arguments.length) return this._model.defs();
+    this._model.defs(defs);
+    return this;
+  };
+
+  prototype.data = function(data) {
+    if (!arguments.length) return this._model.data();
+    var ingest = vg.keys(data).reduce(function(d, k) {
+      return (d[k] = vg.data.ingestAll(data[k]), d);
+    }, {});
+    this._model.data(ingest);
+    this._build = false;
+    return this;
+  };
+
+  prototype.model = function(model) {
+    if (!arguments.length) return this._model;
+    if (this._model !== model) {
+      this._model = model;
+      if (this._handler) this._handler.model(model);
+    }
+    return this;
+  };
+
+  prototype.initialize = function(el) {
+    var v = this, prevHandler,
+        w = v._width, h = v._height, pad = v._padding;
+    
+    // clear pre-existing container
+    d3.select(el).select("div.vega").remove();
+    
+    // add div container
+    this._el = el = d3.select(el)
+      .append("div")
+      .attr("class", "vega")
+      .style("position", "relative")
+      .node();
+    if (v._viewport) {
+      d3.select(el)
+        .style("width",  (v._viewport[0] || w)+"px")
+        .style("height", (v._viewport[1] || h)+"px")
+        .style("overflow", "auto");
+    }
+    
+    // renderer
+    v._renderer = (v._renderer || new this._io.Renderer())
+      .initialize(el, w, h, pad);
+    
+    // input handler
+    prevHandler = v._handler;
+    v._handler = new this._io.Handler()
+      .initialize(el, pad, v)
+      .model(v._model);
+
+    if (prevHandler) {
+      prevHandler.handlers().forEach(function(h) {
+        v._handler.on(h.type, h.handler);
+      });
+    }
+    
+    return this;
+  };
+  
+  prototype.render = function(items) {
+    this._renderer.render(this._model.scene(), items);
+    return this;
+  };
+  
+  prototype.on = function() {
+    this._handler.on.apply(this._handler, arguments);
+    return this;
+  };
+  
+  prototype.off = function() {
+    this._handler.off.apply(this._handler, arguments);
+    return this;
+  };
+  
+  prototype.update = function(opt) {    
+    opt = opt || {};
+    var view = this,
+        trans = opt.duration
+          ? vg.scene.transition(opt.duration, opt.ease)
+          : null;
+
+    view._build = view._build || (view._model.build(), true);
+    view._model.encode(trans, opt.props, opt.items);
+    
+    if (trans) {
+      trans.start(function(items) {
+        view._renderer.render(view._model.scene(), items);
+      });
+    }
+    else view.render(opt.items);
+
+    return view.autopad(opt);
+  };
+      
+  return view;
+})();
+
+// view constructor factory
+// takes definitions from parsed specification as input
+// returns a view constructor
+vg.ViewFactory = function(defs) {
+  return function(opt) {
+    opt = opt || {};
+    var v = new vg.View()
+      .width(defs.width)
+      .height(defs.height)
+      .padding(defs.padding)
+      .viewport(defs.viewport)
+      .renderer(opt.renderer || "canvas")
+      .defs(defs);
+
+    if (defs.data.load) v.data(defs.data.load);
+    if (opt.data) v.data(opt.data);
+    if (opt.el) v.initialize(opt.el);
+
+    if (opt.hover !== false) {
+      v.on("mouseover", function(evt, item) {
+        if (item.hasPropertySet("hover")) {
+          this.update({props:"hover", items:item});
+        }
+      })
+      .on("mouseout", function(evt, item) {
+        if (item.hasPropertySet("hover")) {
+          this.update({props:"update", items:item});
+        }
+      });
+    }
+  
+    return v;
+  };
+};
+vg.Spec = (function() {
+  var spec = function(s) {
+    this.spec = {
+      width: 500,
+      height: 500,
+      padding: 0,
+      data: [],
+      scales: [],
+      axes: [],
+      marks: []
+    };
+    if (s) vg.extend(this.spec, s);
+  };
+  
+  var prototype = spec.prototype;
+
+  prototype.width = function(w) {
+    this.spec.width = w;
+    return this;
+  };
+  
+  prototype.height = function(h) {
+    this.spec.height = h;
+    return this;
+  };
+  
+  prototype.padding = function(p) {
+    this.spec.padding = p;
+    return this;
+  };
+  
+  prototype.viewport = function(v) {
+    this.spec.viewport = v;
+    return this;
+  };
+
+  prototype.data = function(name, params) {
+    if (!params) params = vg.isString(name) ? {name: name} : name;
+    else params.name = name;
+    this.spec.data.push(params);
+    return this;
+  };
+  
+  prototype.scale = function(name, params) {
+    if (!params) params = vg.isString(name) ? {name: name} : name;
+    else params.name = name;
+    this.spec.scales.push(params);
+    return this;
+  };
+  
+  prototype.axis = function(params) {
+    this.spec.axes.push(params);
+    return this;
+  };
+  
+  prototype.mark = function(type, mark) {
+    if (!mark) mark = {type: type};
+    else mark.type = type;
+    mark.properties = {};
+    this.spec.marks.push(mark);
+    
+    var that = this;
+    return {
+      from: function(name, obj) {
+              mark.from = obj
+                ? (obj.data = name, obj)
+                : vg.isString(name) ? {data: name} : name;
+              return this;
+            },
+      prop: function(name, obj) {
+              mark.properties[name] = vg.keys(obj).reduce(function(o,k) {
+                var v = obj[k];
+                return (o[k] = vg.isObject(v) ? v : {value: v}, o);
+              }, {});
+              return this;
+            },
+      done: function() { return that; }
+    };
+  };
+
+  prototype.parse = function(callback) {
+    vg.parse.spec(this.spec, callback);
+  };
+
+  prototype.json = function() {
+    return this.spec;
+  };
+
+  return spec;
+})();
+
+vg.spec = function(s) {
+  return new vg.Spec(s);
+};
+vg.headless = {};vg.headless.View = (function() {
+  
+  var view = function(width, height, pad, type, vp) {
+    this._canvas = null;
+    this._type = type;
+    this._el = "body";
+    this._build = false;
+    this._model = new vg.Model();
+    this._width = this.__width = width || 500;
+    this._height = this.__height = height || 500;
+    this._padding = pad || {top:0, left:0, bottom:0, right:0};
+    this._autopad = vg.isString(this._padding) ? 1 : 0;
+    this._renderer = new vg[type].Renderer();
+    this._viewport = vp || null;
+    this.initialize();
+  };
+  
+  var prototype = view.prototype;
+
+  prototype.el = function(el) {
+    if (!arguments.length) return this._el;
+    if (this._el !== el) {
+      this._el = el;
+      this.initialize();
+    }
+    return this;
+  };
+
+  prototype.width = function(width) {
+    if (!arguments.length) return this._width;
+    if (this._width !== width) {
+      this._width = width;
+      this.initialize();
+      this._model.width(width);
+    }
+    return this;
+  };
+
+  prototype.height = function(height) {
+    if (!arguments.length) return this._height;
+    if (this._height !== height) {
+      this._height = height;
+      this.initialize();
+      this._model.height(this._height);
+    }
+    return this;
+  };
+
+  prototype.padding = function(pad) {
+    if (!arguments.length) return this._padding;
+    if (this._padding !== pad) {
+      if (vg.isString(pad)) {
+        this._autopad = 1;
+        this._padding = {top:0, left:0, bottom:0, right:0};
+        this._strict = (pad === "strict");
+      } else {
+        this._autopad = 0;
+        this._padding = pad;
+        this._strict = false;
+      }
+      this.initialize();
+    }
+    return this;
+  };
+
+  prototype.autopad = function(opt) {
+    if (this._autopad < 1) return this;
+    else this._autopad = 0;
+
+    var pad = this._padding,
+        b = this._model.scene().bounds,
+        inset = vg.config.autopadInset,
+        l = b.x1 < 0 ? Math.ceil(-b.x1) + inset : 0,
+        t = b.y1 < 0 ? Math.ceil(-b.y1) + inset : 0,
+        r = b.x2 > this._width  ? Math.ceil(+b.x2 - this._width) + inset : 0,
+        b = b.y2 > this._height ? Math.ceil(+b.y2 - this._height) + inset : 0;
+    pad = {left:l, top:t, right:r, bottom:b};
+
+    if (this._strict) {
+      this._autopad = 0;
+      this._padding = pad;
+      this._width = Math.max(0, this.__width - (l+r));
+      this._height = Math.max(0, this.__height - (t+b));
+      this._model.width(this._width);
+      this._model.height(this._height);
+      if (this._el) this.initialize();
+      this.update({props:"enter"}).update({props:"update"});
+    } else {
+      this.padding(pad).update(opt);
+    }
+    return this;
+  };
+
+  prototype.viewport = function(vp) {
+    if (!arguments.length) return _viewport;
+    this._viewport = vp;
+    this.initialize();
+    return this;
+  };
+
+  prototype.defs = function(defs) {
+    if (!arguments.length) return this._model.defs();
+    this._model.defs(defs);
+    return this;
+  };
+
+  prototype.data = function(data) {
+    if (!arguments.length) return this._model.data();
+    var ingest = vg.keys(data).reduce(function(d, k) {
+      return (d[k] = vg.data.ingestAll(data[k]), d);
+    }, {});
+    this._model.data(ingest);
+    this._build = false;
+    return this;
+  };
+
+  prototype.renderer = function() {
+    return this._renderer;
+  };
+
+  prototype.canvas = function() {
+    return this._canvas;
+  };
+  
+  prototype.canvasAsync = function(callback) {
+    var r = this._renderer, view = this;
+    
+    function wait() {
+      if (r.pendingImages() === 0) {
+        view.render(); // re-render with all images
+        callback(view._canvas);
+      } else {
+        setTimeout(wait, 10);
+      }
+    }
+
+    // if images loading, poll until ready
+    (r.pendingImages() > 0) ? wait() : callback(this._canvas);
+  };
+  
+  prototype.svg = function() {
+    if (this._type !== "svg") return null;
+
+    var p = this._padding,
+        w = this._width  + (p ? p.left + p.right : 0),
+        h = this._height + (p ? p.top + p.bottom : 0);
+
+    if (this._viewport) {
+      w = this._viewport[0] - (p ? p.left + p.right : 0);
+      h = this._viewport[1] - (p ? p.top + p.bottom : 0);
+    }
+
+      // build svg text
+    var svg = d3.select(this._el)
+      .select("svg").node().innerHTML
+      .replace(/ href=/g, " xlink:href="); // ns hack. sigh.
+
+    return '<svg '
+      + 'width="' + w + '" '
+      + 'height="' + h + '" '
+      + vg.config.svgNamespace + '>' + svg + '</svg>'
+  };
+
+  prototype.initialize = function() {    
+    var w = this._width,
+        h = this._height,
+        pad = this._padding;
+
+    if (this._viewport) {
+      w = this._viewport[0] - (pad ? pad.left + pad.right : 0);
+      h = this._viewport[1] - (pad ? pad.top + pad.bottom : 0);
+    }
+    
+    if (this._type === "svg") {
+      this.initSVG(w, h, pad);
+    } else {
+      this.initCanvas(w, h, pad);
+    }
+    
+    return this;
+  };
+  
+  prototype.initCanvas = function(w, h, pad) {
+    var Canvas = require("canvas"),
+        tw = w + pad.left + pad.right,
+        th = h + pad.top + pad.bottom,
+        canvas = this._canvas = new Canvas(tw, th),
+        ctx = canvas.getContext("2d");
+    
+    // setup canvas context
+    ctx.setTransform(1, 0, 0, 1, pad.left, pad.top);
+
+    // configure renderer
+    this._renderer.context(ctx);
+    this._renderer.resize(w, h, pad);
+  };
+  
+  prototype.initSVG = function(w, h, pad) {
+    var tw = w + pad.left + pad.right,
+        th = h + pad.top + pad.bottom;
+
+    // configure renderer
+    this._renderer.initialize(this._el, w, h, pad);
+  }
+  
+  prototype.render = function(items) {
+    this._renderer.render(this._model.scene(), items);
+    return this;
+  };
+  
+  prototype.update = function(opt) {
+    opt = opt || {};
+    var view = this;
+    view._build = view._build || (view._model.build(), true);
+    view._model.encode(null, opt.props, opt.items);
+    view.render(opt.items);
+    return view.autopad(opt);
+  };
+    
+  return view;
+})();
+
+// headless view constructor factory
+// takes definitions from parsed specification as input
+// returns a view constructor
+vg.headless.View.Factory = function(defs) {
+  return function(opt) {
+    opt = opt || {};
+    var w = defs.width,
+        h = defs.height,
+        p = defs.padding,
+        vp = defs.viewport,
+        r = opt.renderer || "canvas",
+        v = new vg.headless.View(w, h, p, r, vp).defs(defs);
+    if (defs.data.load) v.data(defs.data.load);
+    if (opt.data) v.data(opt.data);
+    return v;
+  };
+};vg.headless.render = function(opt, callback) {
+  function draw(chart) {
+    try {
+      // create and render view
+      var view = chart({
+        data: opt.data,
+        renderer: opt.renderer
+      }).update();
+
+      if (opt.renderer === "svg") {
+        // extract rendered svg
+        callback(null, {svg: view.svg()});
+      } else {
+        // extract rendered canvas, waiting for any images to load
+        view.canvasAsync(function(canvas) {
+          callback(null, {canvas: canvas});
+        });
+      }
+    } catch (err) {
+      callback(err, null);
+    }
+  }
+
+  vg.parse.spec(opt.spec, draw, vg.headless.View.Factory);
+};  // return module
+  return vg;
+
+//---------------------------------------------------
+// END code for this module
+//---------------------------------------------------
+}));
 /**
  * marked - a markdown parser
  * Copyright (c) 2011-2014, Christopher Jeffrey. (MIT Licensed)
@@ -40790,15 +45903,6 @@ if (typeof exports === 'object') {
   return this || (typeof window !== 'undefined' ? window : global);
 }());
 
-!function(e){"undefined"!=typeof exports?e(exports):(window.hljs=e({}),"function"==typeof define&&define.amd&&define([],function(){return window.hljs}))}(function(e){function t(e){return e.replace(/&/gm,"&amp;").replace(/</gm,"&lt;").replace(/>/gm,"&gt;")}function r(e){return e.nodeName.toLowerCase()}function a(e,t){var r=e&&e.exec(t);return r&&0==r.index}function i(e){var t=(e.className+" "+(e.parentNode?e.parentNode.className:"")).split(/\s+/);return t=t.map(function(e){return e.replace(/^lang(uage)?-/,"")}),t.filter(function(e){return _(e)||/no(-?)highlight|plain|text/.test(e)})[0]}function n(e,t){var r,a={};for(r in e)a[r]=e[r];if(t)for(r in t)a[r]=t[r];return a}function o(e){var t=[];return function a(e,i){for(var n=e.firstChild;n;n=n.nextSibling)3==n.nodeType?i+=n.nodeValue.length:1==n.nodeType&&(t.push({event:"start",offset:i,node:n}),i=a(n,i),r(n).match(/br|hr|img|input/)||t.push({event:"stop",offset:i,node:n}));return i}(e,0),t}function s(e,a,i){function n(){return e.length&&a.length?e[0].offset!=a[0].offset?e[0].offset<a[0].offset?e:a:"start"==a[0].event?e:a:e.length?e:a}function o(e){function a(e){return" "+e.nodeName+'="'+t(e.value)+'"'}d+="<"+r(e)+Array.prototype.map.call(e.attributes,a).join("")+">"}function s(e){d+="</"+r(e)+">"}function l(e){("start"==e.event?o:s)(e.node)}for(var c=0,d="",p=[];e.length||a.length;){var u=n();if(d+=t(i.substr(c,u[0].offset-c)),c=u[0].offset,u==e){p.reverse().forEach(s);do l(u.splice(0,1)[0]),u=n();while(u==e&&u.length&&u[0].offset==c);p.reverse().forEach(o)}else"start"==u[0].event?p.push(u[0].node):p.pop(),l(u.splice(0,1)[0])}return d+t(i.substr(c))}function l(e){function t(e){return e&&e.source||e}function r(r,a){return new RegExp(t(r),"m"+(e.cI?"i":"")+(a?"g":""))}function a(i,o){if(!i.compiled){if(i.compiled=!0,i.k=i.k||i.bK,i.k){var s={},l=function(t,r){e.cI&&(r=r.toLowerCase()),r.split(" ").forEach(function(e){var r=e.split("|");s[r[0]]=[t,r[1]?Number(r[1]):1]})};"string"==typeof i.k?l("keyword",i.k):Object.keys(i.k).forEach(function(e){l(e,i.k[e])}),i.k=s}i.lR=r(i.l||/\b\w+\b/,!0),o&&(i.bK&&(i.b="\\b("+i.bK.split(" ").join("|")+")\\b"),i.b||(i.b=/\B|\b/),i.bR=r(i.b),i.e||i.eW||(i.e=/\B|\b/),i.e&&(i.eR=r(i.e)),i.tE=t(i.e)||"",i.eW&&o.tE&&(i.tE+=(i.e?"|":"")+o.tE)),i.i&&(i.iR=r(i.i)),void 0===i.r&&(i.r=1),i.c||(i.c=[]);var c=[];i.c.forEach(function(e){e.v?e.v.forEach(function(t){c.push(n(e,t))}):c.push("self"==e?i:e)}),i.c=c,i.c.forEach(function(e){a(e,i)}),i.starts&&a(i.starts,o);var d=i.c.map(function(e){return e.bK?"\\.?("+e.b+")\\.?":e.b}).concat([i.tE,i.i]).map(t).filter(Boolean);i.t=d.length?r(d.join("|"),!0):{exec:function(){return null}}}}a(e)}function c(e,r,i,n){function o(e,t){for(var r=0;r<t.c.length;r++)if(a(t.c[r].bR,e))return t.c[r]}function s(e,t){if(a(e.eR,t)){for(;e.endsParent&&e.parent;)e=e.parent;return e}return e.eW?s(e.parent,t):void 0}function p(e,t){return!i&&a(t.iR,e)}function u(e,t){var r=C.cI?t[0].toLowerCase():t[0];return e.k.hasOwnProperty(r)&&e.k[r]}function m(e,t,r,a){var i=a?"":y.classPrefix,n='<span class="'+i,o=r?"":"</span>";return n+=e+'">',n+t+o}function b(){if(!w.k)return t(D);var e="",r=0;w.lR.lastIndex=0;for(var a=w.lR.exec(D);a;){e+=t(D.substr(r,a.index-r));var i=u(w,a);i?(M+=i[1],e+=m(i[0],t(a[0]))):e+=t(a[0]),r=w.lR.lastIndex,a=w.lR.exec(D)}return e+t(D.substr(r))}function g(){if(w.sL&&!x[w.sL])return t(D);var e=w.sL?c(w.sL,D,!0,N[w.sL]):d(D);return w.r>0&&(M+=e.r),"continuous"==w.subLanguageMode&&(N[w.sL]=e.top),m(e.language,e.value,!1,!0)}function f(){return void 0!==w.sL?g():b()}function h(e,r){var a=e.cN?m(e.cN,"",!0):"";e.rB?(k+=a,D=""):e.eB?(k+=t(r)+a,D=""):(k+=a,D=r),w=Object.create(e,{parent:{value:w}})}function v(e,r){if(D+=e,void 0===r)return k+=f(),0;var a=o(r,w);if(a)return k+=f(),h(a,r),a.rB?0:r.length;var i=s(w,r);if(i){var n=w;n.rE||n.eE||(D+=r),k+=f();do w.cN&&(k+="</span>"),M+=w.r,w=w.parent;while(w!=i.parent);return n.eE&&(k+=t(r)),D="",i.starts&&h(i.starts,""),n.rE?0:r.length}if(p(r,w))throw new Error('Illegal lexeme "'+r+'" for mode "'+(w.cN||"<unnamed>")+'"');return D+=r,r.length||1}var C=_(e);if(!C)throw new Error('Unknown language: "'+e+'"');l(C);var S,w=n||C,N={},k="";for(S=w;S!=C;S=S.parent)S.cN&&(k=m(S.cN,"",!0)+k);var D="",M=0;try{for(var T,E,A=0;;){if(w.t.lastIndex=A,T=w.t.exec(r),!T)break;E=v(r.substr(A,T.index-A),T[0]),A=T.index+E}for(v(r.substr(A)),S=w;S.parent;S=S.parent)S.cN&&(k+="</span>");return{r:M,value:k,language:e,top:w}}catch(L){if(-1!=L.message.indexOf("Illegal"))return{r:0,value:t(r)};throw L}}function d(e,r){r=r||y.languages||Object.keys(x);var a={r:0,value:t(e)},i=a;return r.forEach(function(t){if(_(t)){var r=c(t,e,!1);r.language=t,r.r>i.r&&(i=r),r.r>a.r&&(i=a,a=r)}}),i.language&&(a.second_best=i),a}function p(e){return y.tabReplace&&(e=e.replace(/^((<[^>]+>|\t)+)/gm,function(e,t){return t.replace(/\t/g,y.tabReplace)})),y.useBR&&(e=e.replace(/\n/g,"<br>")),e}function u(e,t,r){var a=t?C[t]:r,i=[e.trim()];return e.match(/\bhljs\b/)||i.push("hljs"),-1===e.indexOf(a)&&i.push(a),i.join(" ").trim()}function m(e){var t=i(e);if(!/no(-?)highlight|plain|text/.test(t)){var r;y.useBR?(r=document.createElementNS("http://www.w3.org/1999/xhtml","div"),r.innerHTML=e.innerHTML.replace(/\n/g,"").replace(/<br[ \/]*>/g,"\n")):r=e;var a=r.textContent,n=t?c(t,a,!0):d(a),l=o(r);if(l.length){var m=document.createElementNS("http://www.w3.org/1999/xhtml","div");m.innerHTML=n.value,n.value=s(l,o(m),a)}n.value=p(n.value),e.innerHTML=n.value,e.className=u(e.className,t,n.language),e.result={language:n.language,re:n.r},n.second_best&&(e.second_best={language:n.second_best.language,re:n.second_best.r})}}function b(e){y=n(y,e)}function g(){if(!g.called){g.called=!0;var e=document.querySelectorAll("pre code");Array.prototype.forEach.call(e,m)}}function f(){addEventListener("DOMContentLoaded",g,!1),addEventListener("load",g,!1)}function h(t,r){var a=x[t]=r(e);a.aliases&&a.aliases.forEach(function(e){C[e]=t})}function v(){return Object.keys(x)}function _(e){return x[e]||x[C[e]]}var y={classPrefix:"hljs-",tabReplace:null,useBR:!1,languages:void 0},x={},C={};return e.highlight=c,e.highlightAuto=d,e.fixMarkup=p,e.highlightBlock=m,e.configure=b,e.initHighlighting=g,e.initHighlightingOnLoad=f,e.registerLanguage=h,e.listLanguages=v,e.getLanguage=_,e.inherit=n,e.IR="[a-zA-Z]\\w*",e.UIR="[a-zA-Z_]\\w*",e.NR="\\b\\d+(\\.\\d+)?",e.CNR="\\b(0[xX][a-fA-F0-9]+|(\\d+(\\.\\d*)?|\\.\\d+)([eE][-+]?\\d+)?)",e.BNR="\\b(0b[01]+)",e.RSR="!|!=|!==|%|%=|&|&&|&=|\\*|\\*=|\\+|\\+=|,|-|-=|/=|/|:|;|<<|<<=|<=|<|===|==|=|>>>=|>>=|>=|>>>|>>|>|\\?|\\[|\\{|\\(|\\^|\\^=|\\||\\|=|\\|\\||~",e.BE={b:"\\\\[\\s\\S]",r:0},e.ASM={cN:"string",b:"'",e:"'",i:"\\n",c:[e.BE]},e.QSM={cN:"string",b:'"',e:'"',i:"\\n",c:[e.BE]},e.PWM={b:/\b(a|an|the|are|I|I'm|isn't|don't|doesn't|won't|but|just|should|pretty|simply|enough|gonna|going|wtf|so|such)\b/},e.C=function(t,r,a){var i=e.inherit({cN:"comment",b:t,e:r,c:[]},a||{});return i.c.push(e.PWM),i},e.CLCM=e.C("//","$"),e.CBCM=e.C("/\\*","\\*/"),e.HCM=e.C("#","$"),e.NM={cN:"number",b:e.NR,r:0},e.CNM={cN:"number",b:e.CNR,r:0},e.BNM={cN:"number",b:e.BNR,r:0},e.CSSNM={cN:"number",b:e.NR+"(%|em|ex|ch|rem|vw|vh|vmin|vmax|cm|mm|in|pt|pc|px|deg|grad|rad|turn|s|ms|Hz|kHz|dpi|dpcm|dppx)?",r:0},e.RM={cN:"regexp",b:/\//,e:/\/[gimuy]*/,i:/\n/,c:[e.BE,{b:/\[/,e:/\]/,r:0,c:[e.BE]}]},e.TM={cN:"title",b:e.IR,r:0},e.UTM={cN:"title",b:e.UIR,r:0},e}),hljs.registerLanguage("1c",function(e){var t="[a-zA-Zа-яА-Я][a-zA-Z0-9_а-яА-Я]*",r="возврат дата для если и или иначе иначеесли исключение конецесли конецпопытки конецпроцедуры конецфункции конеццикла константа не перейти перем перечисление по пока попытка прервать продолжить процедура строка тогда фс функция цикл число экспорт",a="ansitooem oemtoansi ввестивидсубконто ввестидату ввестизначение ввестиперечисление ввестипериод ввестиплансчетов ввестистроку ввестичисло вопрос восстановитьзначение врег выбранныйплансчетов вызватьисключение датагод датамесяц датачисло добавитьмесяц завершитьработусистемы заголовоксистемы записьжурналарегистрации запуститьприложение зафиксироватьтранзакцию значениевстроку значениевстрокувнутр значениевфайл значениеизстроки значениеизстрокивнутр значениеизфайла имякомпьютера имяпользователя каталогвременныхфайлов каталогиб каталогпользователя каталогпрограммы кодсимв командасистемы конгода конецпериодаби конецрассчитанногопериодаби конецстандартногоинтервала конквартала конмесяца коннедели лев лог лог10 макс максимальноеколичествосубконто мин монопольныйрежим названиеинтерфейса названиенабораправ назначитьвид назначитьсчет найти найтипомеченныенаудаление найтиссылки началопериодаби началостандартногоинтервала начатьтранзакцию начгода начквартала начмесяца начнедели номерднягода номерднянедели номернеделигода нрег обработкаожидания окр описаниеошибки основнойжурналрасчетов основнойплансчетов основнойязык открытьформу открытьформумодально отменитьтранзакцию очиститьокносообщений периодстр полноеимяпользователя получитьвремята получитьдатута получитьдокументта получитьзначенияотбора получитьпозициюта получитьпустоезначение получитьта прав праводоступа предупреждение префиксавтонумерации пустаястрока пустоезначение рабочаядаттьпустоезначение рабочаядата разделительстраниц разделительстрок разм разобратьпозициюдокумента рассчитатьрегистрына рассчитатьрегистрыпо сигнал симв символтабуляции создатьобъект сокрл сокрлп сокрп сообщить состояние сохранитьзначение сред статусвозврата стрдлина стрзаменить стрколичествострок стрполучитьстроку  стрчисловхождений сформироватьпозициюдокумента счетпокоду текущаядата текущеевремя типзначения типзначениястр удалитьобъекты установитьтана установитьтапо фиксшаблон формат цел шаблон",i={cN:"dquote",b:'""'},n={cN:"string",b:'"',e:'"|$',c:[i]},o={cN:"string",b:"\\|",e:'"|$',c:[i]};return{cI:!0,l:t,k:{keyword:r,built_in:a},c:[e.CLCM,e.NM,n,o,{cN:"function",b:"(процедура|функция)",e:"$",l:t,k:"процедура функция",c:[e.inherit(e.TM,{b:t}),{cN:"tail",eW:!0,c:[{cN:"params",b:"\\(",e:"\\)",l:t,k:"знач",c:[n,o]},{cN:"export",b:"экспорт",eW:!0,l:t,k:"экспорт",c:[e.CLCM]}]},e.CLCM]},{cN:"preprocessor",b:"#",e:"$"},{cN:"date",b:"'\\d{2}\\.\\d{2}\\.(\\d{2}|\\d{4})'"}]}}),hljs.registerLanguage("actionscript",function(e){var t="[a-zA-Z_$][a-zA-Z0-9_$]*",r="([*]|[a-zA-Z_$][a-zA-Z0-9_$]*)",a={cN:"rest_arg",b:"[.]{3}",e:t,r:10};return{aliases:["as"],k:{keyword:"as break case catch class const continue default delete do dynamic each else extends final finally for function get if implements import in include instanceof interface internal is namespace native new override package private protected public return set static super switch this throw try typeof use var void while with",literal:"true false null undefined"},c:[e.ASM,e.QSM,e.CLCM,e.CBCM,e.CNM,{cN:"package",bK:"package",e:"{",c:[e.TM]},{cN:"class",bK:"class interface",e:"{",eE:!0,c:[{bK:"extends implements"},e.TM]},{cN:"preprocessor",bK:"import include",e:";"},{cN:"function",bK:"function",e:"[{;]",eE:!0,i:"\\S",c:[e.TM,{cN:"params",b:"\\(",e:"\\)",c:[e.ASM,e.QSM,e.CLCM,e.CBCM,a]},{cN:"type",b:":",e:r,r:10}]}]}}),hljs.registerLanguage("apache",function(e){var t={cN:"number",b:"[\\$%]\\d+"};return{aliases:["apacheconf"],cI:!0,c:[e.HCM,{cN:"tag",b:"</?",e:">"},{cN:"keyword",b:/\w+/,r:0,k:{common:"order deny allow setenv rewriterule rewriteengine rewritecond documentroot sethandler errordocument loadmodule options header listen serverroot servername"},starts:{e:/$/,r:0,k:{literal:"on off all"},c:[{cN:"sqbracket",b:"\\s\\[",e:"\\]$"},{cN:"cbracket",b:"[\\$%]\\{",e:"\\}",c:["self",t]},t,e.QSM]}}],i:/\S/}}),hljs.registerLanguage("applescript",function(e){var t=e.inherit(e.QSM,{i:""}),r={cN:"params",b:"\\(",e:"\\)",c:["self",e.CNM,t]},a=e.C("--","$"),i=e.C("\\(\\*","\\*\\)",{c:["self",a]}),n=[a,i,e.HCM];return{aliases:["osascript"],k:{keyword:"about above after against and around as at back before beginning behind below beneath beside between but by considering contain contains continue copy div does eighth else end equal equals error every exit fifth first for fourth from front get given global if ignoring in into is it its last local me middle mod my ninth not of on onto or over prop property put ref reference repeat returning script second set seventh since sixth some tell tenth that the|0 then third through thru timeout times to transaction try until where while whose with without",constant:"AppleScript false linefeed return pi quote result space tab true",type:"alias application boolean class constant date file integer list number real record string text",command:"activate beep count delay launch log offset read round run say summarize write",property:"character characters contents day frontmost id item length month name paragraph paragraphs rest reverse running time version weekday word words year"},c:[t,e.CNM,{cN:"type",b:"\\bPOSIX file\\b"},{cN:"command",b:"\\b(clipboard info|the clipboard|info for|list (disks|folder)|mount volume|path to|(close|open for) access|(get|set) eof|current date|do shell script|get volume settings|random number|set volume|system attribute|system info|time to GMT|(load|run|store) script|scripting components|ASCII (character|number)|localized string|choose (application|color|file|file name|folder|from list|remote application|URL)|display (alert|dialog))\\b|^\\s*return\\b"},{cN:"constant",b:"\\b(text item delimiters|current application|missing value)\\b"},{cN:"keyword",b:"\\b(apart from|aside from|instead of|out of|greater than|isn't|(doesn't|does not) (equal|come before|come after|contain)|(greater|less) than( or equal)?|(starts?|ends|begins?) with|contained by|comes (before|after)|a (ref|reference))\\b"},{cN:"property",b:"\\b(POSIX path|(date|time) string|quoted form)\\b"},{cN:"function_start",bK:"on",i:"[${=;\\n]",c:[e.UTM,r]}].concat(n),i:"//|->|=>"}}),hljs.registerLanguage("xml",function(e){var t="[A-Za-z0-9\\._:-]+",r={b:/<\?(php)?(?!\w)/,e:/\?>/,sL:"php",subLanguageMode:"continuous"},a={eW:!0,i:/</,r:0,c:[r,{cN:"attribute",b:t,r:0},{b:"=",r:0,c:[{cN:"value",c:[r],v:[{b:/"/,e:/"/},{b:/'/,e:/'/},{b:/[^\s\/>]+/}]}]}]};return{aliases:["html","xhtml","rss","atom","xsl","plist"],cI:!0,c:[{cN:"doctype",b:"<!DOCTYPE",e:">",r:10,c:[{b:"\\[",e:"\\]"}]},e.C("<!--","-->",{r:10}),{cN:"cdata",b:"<\\!\\[CDATA\\[",e:"\\]\\]>",r:10},{cN:"tag",b:"<style(?=\\s|>|$)",e:">",k:{title:"style"},c:[a],starts:{e:"</style>",rE:!0,sL:"css"}},{cN:"tag",b:"<script(?=\\s|>|$)",e:">",k:{title:"script"},c:[a],starts:{e:"</script>",rE:!0,sL:""}},r,{cN:"pi",b:/<\?\w+/,e:/\?>/,r:10},{cN:"tag",b:"</?",e:"/?>",c:[{cN:"title",b:/[^ \/><\n\t]+/,r:0},a]}]}}),hljs.registerLanguage("asciidoc",function(e){return{aliases:["adoc"],c:[e.C("^/{4,}\\n","\\n/{4,}$",{r:10}),e.C("^//","$",{r:0}),{cN:"title",b:"^\\.\\w.*$"},{b:"^[=\\*]{4,}\\n",e:"\\n^[=\\*]{4,}$",r:10},{cN:"header",b:"^(={1,5}) .+?( \\1)?$",r:10},{cN:"header",b:"^[^\\[\\]\\n]+?\\n[=\\-~\\^\\+]{2,}$",r:10},{cN:"attribute",b:"^:.+?:",e:"\\s",eE:!0,r:10},{cN:"attribute",b:"^\\[.+?\\]$",r:0},{cN:"blockquote",b:"^_{4,}\\n",e:"\\n_{4,}$",r:10},{cN:"code",b:"^[\\-\\.]{4,}\\n",e:"\\n[\\-\\.]{4,}$",r:10},{b:"^\\+{4,}\\n",e:"\\n\\+{4,}$",c:[{b:"<",e:">",sL:"xml",r:0}],r:10},{cN:"bullet",b:"^(\\*+|\\-+|\\.+|[^\\n]+?::)\\s+"},{cN:"label",b:"^(NOTE|TIP|IMPORTANT|WARNING|CAUTION):\\s+",r:10},{cN:"strong",b:"\\B\\*(?![\\*\\s])",e:"(\\n{2}|\\*)",c:[{b:"\\\\*\\w",r:0}]},{cN:"emphasis",b:"\\B'(?!['\\s])",e:"(\\n{2}|')",c:[{b:"\\\\'\\w",r:0}],r:0},{cN:"emphasis",b:"_(?![_\\s])",e:"(\\n{2}|_)",r:0},{cN:"smartquote",v:[{b:"``.+?''"},{b:"`.+?'"}]},{cN:"code",b:"(`.+?`|\\+.+?\\+)",r:0},{cN:"code",b:"^[ \\t]",e:"$",r:0},{cN:"horizontal_rule",b:"^'{3,}[ \\t]*$",r:10},{b:"(link:)?(http|https|ftp|file|irc|image:?):\\S+\\[.*?\\]",rB:!0,c:[{b:"(link|image:?):",r:0},{cN:"link_url",b:"\\w",e:"[^\\[]+",r:0},{cN:"link_label",b:"\\[",e:"\\]",eB:!0,eE:!0,r:0}],r:10}]}}),hljs.registerLanguage("aspectj",function(e){var t="false synchronized int abstract float private char boolean static null if const for true while long throw strictfp finally protected import native final return void enum else extends implements break transient new catch instanceof byte super volatile case assert short package default double public try this switch continue throws privileged aspectOf adviceexecution proceed cflowbelow cflow initialization preinitialization staticinitialization withincode target within execution getWithinTypeName handler thisJoinPoint thisJoinPointStaticPart thisEnclosingJoinPointStaticPart declare parents warning error soft precedence thisAspectInstance",r="get set args call";return{k:t,i:/<\//,c:[{cN:"javadoc",b:"/\\*\\*",e:"\\*/",r:0,c:[{cN:"javadoctag",b:"(^|\\s)@[A-Za-z]+"}]},e.CLCM,e.CBCM,e.ASM,e.QSM,{cN:"aspect",bK:"aspect",e:/[{;=]/,eE:!0,i:/[:;"\[\]]/,c:[{bK:"extends implements pertypewithin perthis pertarget percflowbelow percflow issingleton"},e.UTM,{b:/\([^\)]*/,e:/[)]+/,k:t+" "+r,eE:!1}]},{cN:"class",bK:"class interface",e:/[{;=]/,eE:!0,r:0,k:"class interface",i:/[:"\[\]]/,c:[{bK:"extends implements"},e.UTM]},{bK:"pointcut after before around throwing returning",e:/[)]/,eE:!1,i:/["\[\]]/,c:[{b:e.UIR+"\\s*\\(",rB:!0,c:[e.UTM]}]},{b:/[:]/,rB:!0,e:/[{;]/,r:0,eE:!1,k:t,i:/["\[\]]/,c:[{b:e.UIR+"\\s*\\(",k:t+" "+r},e.QSM]},{bK:"new throw",r:0},{cN:"function",b:/\w+ +\w+(\.)?\w+\s*\([^\)]*\)\s*((throws)[\w\s,]+)?[\{;]/,rB:!0,e:/[{;=]/,k:t,eE:!0,c:[{b:e.UIR+"\\s*\\(",rB:!0,r:0,c:[e.UTM]},{cN:"params",b:/\(/,e:/\)/,r:0,k:t,c:[e.ASM,e.QSM,e.CNM,e.CBCM]},e.CLCM,e.CBCM]},e.CNM,{cN:"annotation",b:"@[A-Za-z]+"}]}}),hljs.registerLanguage("autohotkey",function(e){var t={cN:"escape",b:"`[\\s\\S]"},r=e.C(";","$",{r:0}),a=[{cN:"built_in",b:"A_[a-zA-Z0-9]+"},{cN:"built_in",bK:"ComSpec Clipboard ClipboardAll ErrorLevel"}];return{cI:!0,k:{keyword:"Break Continue Else Gosub If Loop Return While",literal:"A true false NOT AND OR"},c:a.concat([t,e.inherit(e.QSM,{c:[t]}),r,{cN:"number",b:e.NR,r:0},{cN:"var_expand",b:"%",e:"%",i:"\\n",c:[t]},{cN:"label",c:[t],v:[{b:'^[^\\n";]+::(?!=)'},{b:'^[^\\n";]+:(?!=)',r:0}]},{b:",\\s*,",r:10}])}}),hljs.registerLanguage("avrasm",function(e){return{cI:!0,l:"\\.?"+e.IR,k:{keyword:"adc add adiw and andi asr bclr bld brbc brbs brcc brcs break breq brge brhc brhs brid brie brlo brlt brmi brne brpl brsh brtc brts brvc brvs bset bst call cbi cbr clc clh cli cln clr cls clt clv clz com cp cpc cpi cpse dec eicall eijmp elpm eor fmul fmuls fmulsu icall ijmp in inc jmp ld ldd ldi lds lpm lsl lsr mov movw mul muls mulsu neg nop or ori out pop push rcall ret reti rjmp rol ror sbc sbr sbrc sbrs sec seh sbi sbci sbic sbis sbiw sei sen ser ses set sev sez sleep spm st std sts sub subi swap tst wdr",built_in:"r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15 r16 r17 r18 r19 r20 r21 r22 r23 r24 r25 r26 r27 r28 r29 r30 r31 x|0 xh xl y|0 yh yl z|0 zh zl ucsr1c udr1 ucsr1a ucsr1b ubrr1l ubrr1h ucsr0c ubrr0h tccr3c tccr3a tccr3b tcnt3h tcnt3l ocr3ah ocr3al ocr3bh ocr3bl ocr3ch ocr3cl icr3h icr3l etimsk etifr tccr1c ocr1ch ocr1cl twcr twdr twar twsr twbr osccal xmcra xmcrb eicra spmcsr spmcr portg ddrg ping portf ddrf sreg sph spl xdiv rampz eicrb eimsk gimsk gicr eifr gifr timsk tifr mcucr mcucsr tccr0 tcnt0 ocr0 assr tccr1a tccr1b tcnt1h tcnt1l ocr1ah ocr1al ocr1bh ocr1bl icr1h icr1l tccr2 tcnt2 ocr2 ocdr wdtcr sfior eearh eearl eedr eecr porta ddra pina portb ddrb pinb portc ddrc pinc portd ddrd pind spdr spsr spcr udr0 ucsr0a ucsr0b ubrr0l acsr admux adcsr adch adcl porte ddre pine pinf",preprocessor:".byte .cseg .db .def .device .dseg .dw .endmacro .equ .eseg .exit .include .list .listmac .macro .nolist .org .set"},c:[e.CBCM,e.C(";","$",{r:0}),e.CNM,e.BNM,{cN:"number",b:"\\b(\\$[a-zA-Z0-9]+|0o[0-7]+)"},e.QSM,{cN:"string",b:"'",e:"[^\\\\]'",i:"[^\\\\][^']"},{cN:"label",b:"^[A-Za-z0-9_.$]+:"},{cN:"preprocessor",b:"#",e:"$"},{cN:"localvars",b:"@[0-9]+"}]}}),hljs.registerLanguage("axapta",function(e){return{k:"false int abstract private char boolean static null if for true while long throw finally protected final return void enum else break new catch byte super case short default double public try this switch continue reverse firstfast firstonly forupdate nofetch sum avg minof maxof count order group by asc desc index hint like dispaly edit client server ttsbegin ttscommit str real date container anytype common div mod",c:[e.CLCM,e.CBCM,e.ASM,e.QSM,e.CNM,{cN:"preprocessor",b:"#",e:"$"},{cN:"class",bK:"class interface",e:"{",eE:!0,i:":",c:[{bK:"extends implements"},e.UTM]}]}}),hljs.registerLanguage("bash",function(e){var t={cN:"variable",v:[{b:/\$[\w\d#@][\w\d_]*/},{b:/\$\{(.*?)}/}]},r={cN:"string",b:/"/,e:/"/,c:[e.BE,t,{cN:"variable",b:/\$\(/,e:/\)/,c:[e.BE]}]},a={cN:"string",b:/'/,e:/'/};return{aliases:["sh","zsh"],l:/-?[a-z\.]+/,k:{keyword:"if then else elif fi for while in do done case esac function",literal:"true false",built_in:"break cd continue eval exec exit export getopts hash pwd readonly return shift test times trap umask unset alias bind builtin caller command declare echo enable help let local logout mapfile printf read readarray source type typeset ulimit unalias set shopt autoload bg bindkey bye cap chdir clone comparguments compcall compctl compdescribe compfiles compgroups compquote comptags comptry compvalues dirs disable disown echotc echoti emulate fc fg float functions getcap getln history integer jobs kill limit log noglob popd print pushd pushln rehash sched setcap setopt stat suspend ttyctl unfunction unhash unlimit unsetopt vared wait whence where which zcompile zformat zftp zle zmodload zparseopts zprof zpty zregexparse zsocket zstyle ztcp",operator:"-ne -eq -lt -gt -f -d -e -s -l -a"},c:[{cN:"shebang",b:/^#![^\n]+sh\s*$/,r:10},{cN:"function",b:/\w[\w\d_]*\s*\(\s*\)\s*\{/,rB:!0,c:[e.inherit(e.TM,{b:/\w[\w\d_]*/})],r:0},e.HCM,e.NM,r,a,t]}}),hljs.registerLanguage("brainfuck",function(e){var t={cN:"literal",b:"[\\+\\-]",r:0};return{aliases:["bf"],c:[e.C("[^\\[\\]\\.,\\+\\-<> \r\n]","[\\[\\]\\.,\\+\\-<> \r\n]",{rE:!0,r:0}),{cN:"title",b:"[\\[\\]]",r:0},{cN:"string",b:"[\\.,]",r:0},{b:/\+\+|\-\-/,rB:!0,c:[t]},t]}}),hljs.registerLanguage("capnproto",function(e){return{aliases:["capnp"],k:{keyword:"struct enum interface union group import using const annotation extends in of on as with from fixed",built_in:"Void Bool Int8 Int16 Int32 Int64 UInt8 UInt16 UInt32 UInt64 Float32 Float64 Text Data AnyPointer AnyStruct Capability List",literal:"true false"},c:[e.QSM,e.NM,e.HCM,{cN:"shebang",b:/@0x[\w\d]{16};/,i:/\n/},{cN:"number",b:/@\d+\b/},{cN:"class",bK:"struct enum",e:/\{/,i:/\n/,c:[e.inherit(e.TM,{starts:{eW:!0,eE:!0}})]},{cN:"class",bK:"interface",e:/\{/,i:/\n/,c:[e.inherit(e.TM,{starts:{eW:!0,eE:!0}})]}]}}),hljs.registerLanguage("clojure",function(e){var t={built_in:"def cond apply if-not if-let if not not= = < > <= >= == + / * - rem quot neg? pos? delay? symbol? keyword? true? false? integer? empty? coll? list? set? ifn? fn? associative? sequential? sorted? counted? reversible? number? decimal? class? distinct? isa? float? rational? reduced? ratio? odd? even? char? seq? vector? string? map? nil? contains? zero? instance? not-every? not-any? libspec? -> ->> .. . inc compare do dotimes mapcat take remove take-while drop letfn drop-last take-last drop-while while intern condp case reduced cycle split-at split-with repeat replicate iterate range merge zipmap declare line-seq sort comparator sort-by dorun doall nthnext nthrest partition eval doseq await await-for let agent atom send send-off release-pending-sends add-watch mapv filterv remove-watch agent-error restart-agent set-error-handler error-handler set-error-mode! error-mode shutdown-agents quote var fn loop recur throw try monitor-enter monitor-exit defmacro defn defn- macroexpand macroexpand-1 for dosync and or when when-not when-let comp juxt partial sequence memoize constantly complement identity assert peek pop doto proxy defstruct first rest cons defprotocol cast coll deftype defrecord last butlast sigs reify second ffirst fnext nfirst nnext defmulti defmethod meta with-meta ns in-ns create-ns import refer keys select-keys vals key val rseq name namespace promise into transient persistent! conj! assoc! dissoc! pop! disj! use class type num float double short byte boolean bigint biginteger bigdec print-method print-dup throw-if printf format load compile get-in update-in pr pr-on newline flush read slurp read-line subvec with-open memfn time re-find re-groups rand-int rand mod locking assert-valid-fdecl alias resolve ref deref refset swap! reset! set-validator! compare-and-set! alter-meta! reset-meta! commute get-validator alter ref-set ref-history-count ref-min-history ref-max-history ensure sync io! new next conj set! to-array future future-call into-array aset gen-class reduce map filter find empty hash-map hash-set sorted-map sorted-map-by sorted-set sorted-set-by vec vector seq flatten reverse assoc dissoc list disj get union difference intersection extend extend-type extend-protocol int nth delay count concat chunk chunk-buffer chunk-append chunk-first chunk-rest max min dec unchecked-inc-int unchecked-inc unchecked-dec-inc unchecked-dec unchecked-negate unchecked-add-int unchecked-add unchecked-subtract-int unchecked-subtract chunk-next chunk-cons chunked-seq? prn vary-meta lazy-seq spread list* str find-keyword keyword symbol gensym force rationalize"},r="a-zA-Z_\\-!.?+*=<>&#'",a="["+r+"]["+r+"0-9/;:]*",i="[-+]?\\d+(\\.\\d+)?",n={b:a,r:0},o={cN:"number",b:i,r:0},s=e.inherit(e.QSM,{i:null}),l=e.C(";","$",{r:0}),c={cN:"literal",b:/\b(true|false|nil)\b/},d={cN:"collection",b:"[\\[\\{]",e:"[\\]\\}]"},p={cN:"comment",b:"\\^"+a},u=e.C("\\^\\{","\\}"),m={cN:"attribute",b:"[:]"+a},b={cN:"list",b:"\\(",e:"\\)"},g={eW:!0,r:0},f={k:t,l:a,cN:"keyword",b:a,starts:g},h=[b,s,p,u,l,m,d,o,c,n];return b.c=[e.C("comment",""),f,g],g.c=h,d.c=h,{aliases:["clj"],i:/\S/,c:[b,s,p,u,l,m,d,o,c]}}),hljs.registerLanguage("clojure-repl",function(e){return{c:[{cN:"prompt",b:/^([\w.-]+|\s*#_)=>/,starts:{e:/$/,sL:"clojure",subLanguageMode:"continuous"}}]}}),hljs.registerLanguage("cmake",function(e){return{aliases:["cmake.in"],cI:!0,k:{keyword:"add_custom_command add_custom_target add_definitions add_dependencies add_executable add_library add_subdirectory add_test aux_source_directory break build_command cmake_minimum_required cmake_policy configure_file create_test_sourcelist define_property else elseif enable_language enable_testing endforeach endfunction endif endmacro endwhile execute_process export find_file find_library find_package find_path find_program fltk_wrap_ui foreach function get_cmake_property get_directory_property get_filename_component get_property get_source_file_property get_target_property get_test_property if include include_directories include_external_msproject include_regular_expression install link_directories load_cache load_command macro mark_as_advanced message option output_required_files project qt_wrap_cpp qt_wrap_ui remove_definitions return separate_arguments set set_directory_properties set_property set_source_files_properties set_target_properties set_tests_properties site_name source_group string target_link_libraries try_compile try_run unset variable_watch while build_name exec_program export_library_dependencies install_files install_programs install_targets link_libraries make_directory remove subdir_depends subdirs use_mangled_mesa utility_source variable_requires write_file qt5_use_modules qt5_use_package qt5_wrap_cpp on off true false and or",operator:"equal less greater strless strgreater strequal matches"},c:[{cN:"envvar",b:"\\${",e:"}"},e.HCM,e.QSM,e.NM]}}),hljs.registerLanguage("coffeescript",function(e){var t={keyword:"in if for while finally new do return else break catch instanceof throw try this switch continue typeof delete debugger super then unless until loop of by when and or is isnt not",literal:"true false null undefined yes no on off",reserved:"case default function var void with const let enum export import native __hasProp __extends __slice __bind __indexOf",built_in:"npm require console print module global window document"},r="[A-Za-z$_][0-9A-Za-z$_]*",a={cN:"subst",b:/#\{/,e:/}/,k:t},i=[e.BNM,e.inherit(e.CNM,{starts:{e:"(\\s*/)?",r:0}}),{cN:"string",v:[{b:/'''/,e:/'''/,c:[e.BE]},{b:/'/,e:/'/,c:[e.BE]},{b:/"""/,e:/"""/,c:[e.BE,a]},{b:/"/,e:/"/,c:[e.BE,a]}]},{cN:"regexp",v:[{b:"///",e:"///",c:[a,e.HCM]},{b:"//[gim]*",r:0},{b:/\/(?![ *])(\\\/|.)*?\/[gim]*(?=\W|$)/}]},{cN:"property",b:"@"+r},{b:"`",e:"`",eB:!0,eE:!0,sL:"javascript"}];a.c=i;var n=e.inherit(e.TM,{b:r}),o="(\\(.*\\))?\\s*\\B[-=]>",s={cN:"params",b:"\\([^\\(]",rB:!0,c:[{b:/\(/,e:/\)/,k:t,c:["self"].concat(i)}]};return{aliases:["coffee","cson","iced"],k:t,i:/\/\*/,c:i.concat([e.C("###","###"),e.HCM,{cN:"function",b:"^\\s*"+r+"\\s*=\\s*"+o,e:"[-=]>",rB:!0,c:[n,s]},{b:/[:\(,=]\s*/,r:0,c:[{cN:"function",b:o,e:"[-=]>",rB:!0,c:[s]}]},{cN:"class",bK:"class",e:"$",i:/[:="\[\]]/,c:[{bK:"extends",eW:!0,i:/[:="\[\]]/,c:[n]},n]},{cN:"attribute",b:r+":",e:":",rB:!0,rE:!0,r:0}])}}),hljs.registerLanguage("cpp",function(e){var t={keyword:"false int float while private char catch export virtual operator sizeof dynamic_cast|10 typedef const_cast|10 const struct for static_cast|10 union namespace unsigned long volatile static protected bool template mutable if public friend do goto auto void enum else break extern using true class asm case typeid short reinterpret_cast|10 default double register explicit signed typename try this switch continue wchar_t inline delete alignof char16_t char32_t constexpr decltype noexcept nullptr static_assert thread_local restrict _Bool complex _Complex _Imaginary intmax_t uintmax_t int8_t uint8_t int16_t uint16_t int32_t uint32_t  int64_t uint64_t int_least8_t uint_least8_t int_least16_t uint_least16_t int_least32_t uint_least32_t int_least64_t uint_least64_t int_fast8_t uint_fast8_t int_fast16_t uint_fast16_t int_fast32_t uint_fast32_t int_fast64_t uint_fast64_t intptr_t uintptr_t atomic_bool atomic_char atomic_schar atomic_uchar atomic_short atomic_ushort atomic_int atomic_uint atomic_long atomic_ulong atomic_llong atomic_ullong atomic_wchar_t atomic_char16_t atomic_char32_t atomic_intmax_t atomic_uintmax_t atomic_intptr_t atomic_uintptr_t atomic_size_t atomic_ptrdiff_t atomic_int_least8_t atomic_int_least16_t atomic_int_least32_t atomic_int_least64_t atomic_uint_least8_t atomic_uint_least16_t atomic_uint_least32_t atomic_uint_least64_t atomic_int_fast8_t atomic_int_fast16_t atomic_int_fast32_t atomic_int_fast64_t atomic_uint_fast8_t atomic_uint_fast16_t atomic_uint_fast32_t atomic_uint_fast64_t",built_in:"std string cin cout cerr clog stringstream istringstream ostringstream auto_ptr deque list queue stack vector map set bitset multiset multimap unordered_set unordered_map unordered_multiset unordered_multimap array shared_ptr abort abs acos asin atan2 atan calloc ceil cosh cos exit exp fabs floor fmod fprintf fputs free frexp fscanf isalnum isalpha iscntrl isdigit isgraph islower isprint ispunct isspace isupper isxdigit tolower toupper labs ldexp log10 log malloc memchr memcmp memcpy memset modf pow printf putchar puts scanf sinh sin snprintf sprintf sqrt sscanf strcat strchr strcmp strcpy strcspn strlen strncat strncmp strncpy strpbrk strrchr strspn strstr tanh tan vfprintf vprintf vsprintf"};return{aliases:["c","cc","h","c++","h++","hpp"],k:t,i:"</",c:[e.CLCM,e.CBCM,e.QSM,{cN:"string",b:"'\\\\?.",e:"'",i:"."},{cN:"number",b:"\\b(\\d+(\\.\\d*)?|\\.\\d+)(u|U|l|L|ul|UL|f|F)"},e.CNM,{cN:"preprocessor",b:"#",e:"$",k:"if else elif endif define undef warning error line pragma",c:[{b:/\\\n/,r:0},{b:'include\\s*[<"]',e:'[>"]',k:"include",i:"\\n"},e.CLCM]},{b:"\\b(deque|list|queue|stack|vector|map|set|bitset|multiset|multimap|unordered_map|unordered_set|unordered_multiset|unordered_multimap|array)\\s*<",e:">",k:t,c:["self"]},{b:e.IR+"::",k:t},{bK:"new throw return else",r:0},{cN:"function",b:"("+e.IR+"\\s+)+"+e.IR+"\\s*\\(",rB:!0,e:/[{;=]/,eE:!0,k:t,c:[{b:e.IR+"\\s*\\(",rB:!0,c:[e.TM],r:0},{cN:"params",b:/\(/,e:/\)/,k:t,r:0,c:[e.CBCM]},e.CLCM,e.CBCM]}]}}),hljs.registerLanguage("cs",function(e){
-var t="abstract as base bool break byte case catch char checked const continue decimal dynamic default delegate do double else enum event explicit extern false finally fixed float for foreach goto if implicit in int interface internal is lock long null when object operator out override params private protected public readonly ref sbyte sealed short sizeof stackalloc static string struct switch this true try typeof uint ulong unchecked unsafe ushort using virtual volatile void while async protected public private internal ascending descending from get group into join let orderby partial select set value var where yield",r=e.IR+"(<"+e.IR+">)?";return{aliases:["csharp"],k:t,i:/::/,c:[e.C("///","$",{rB:!0,c:[{cN:"xmlDocTag",v:[{b:"///",r:0},{b:"<!--|-->"},{b:"</?",e:">"}]}]}),e.CLCM,e.CBCM,{cN:"preprocessor",b:"#",e:"$",k:"if else elif endif define undef warning error line region endregion pragma checksum"},{cN:"string",b:'@"',e:'"',c:[{b:'""'}]},e.ASM,e.QSM,e.CNM,{bK:"class namespace interface",e:/[{;=]/,i:/[^\s:]/,c:[e.TM,e.CLCM,e.CBCM]},{bK:"new return throw await",r:0},{cN:"function",b:"("+r+"\\s+)+"+e.IR+"\\s*\\(",rB:!0,e:/[{;=]/,eE:!0,k:t,c:[{b:e.IR+"\\s*\\(",rB:!0,c:[e.TM],r:0},{cN:"params",b:/\(/,e:/\)/,k:t,r:0,c:[e.ASM,e.QSM,e.CNM,e.CBCM]},e.CLCM,e.CBCM]}]}}),hljs.registerLanguage("css",function(e){var t="[a-zA-Z-][a-zA-Z0-9_-]*",r={cN:"function",b:t+"\\(",rB:!0,eE:!0,e:"\\("},a={cN:"rule",b:/[A-Z\_\.\-]+\s*:/,rB:!0,e:";",eW:!0,c:[{cN:"attribute",b:/\S/,e:":",eE:!0,starts:{cN:"value",eW:!0,eE:!0,c:[r,e.CSSNM,e.QSM,e.ASM,e.CBCM,{cN:"hexcolor",b:"#[0-9A-Fa-f]+"},{cN:"important",b:"!important"}]}}]};return{cI:!0,i:/[=\/|']/,c:[e.CBCM,a,{cN:"id",b:/\#[A-Za-z0-9_-]+/},{cN:"class",b:/\.[A-Za-z0-9_-]+/,r:0},{cN:"attr_selector",b:/\[/,e:/\]/,i:"$"},{cN:"pseudo",b:/:(:)?[a-zA-Z0-9\_\-\+\(\)"']+/},{cN:"at_rule",b:"@(font-face|page)",l:"[a-z-]+",k:"font-face page"},{cN:"at_rule",b:"@",e:"[{;]",c:[{cN:"keyword",b:/\S+/},{b:/\s/,eW:!0,eE:!0,r:0,c:[r,e.ASM,e.QSM,e.CSSNM]}]},{cN:"tag",b:t,r:0},{cN:"rules",b:"{",e:"}",i:/\S/,r:0,c:[e.CBCM,a]}]}}),hljs.registerLanguage("d",function(e){var t={keyword:"abstract alias align asm assert auto body break byte case cast catch class const continue debug default delete deprecated do else enum export extern final finally for foreach foreach_reverse|10 goto if immutable import in inout int interface invariant is lazy macro mixin module new nothrow out override package pragma private protected public pure ref return scope shared static struct super switch synchronized template this throw try typedef typeid typeof union unittest version void volatile while with __FILE__ __LINE__ __gshared|10 __thread __traits __DATE__ __EOF__ __TIME__ __TIMESTAMP__ __VENDOR__ __VERSION__",built_in:"bool cdouble cent cfloat char creal dchar delegate double dstring float function idouble ifloat ireal long real short string ubyte ucent uint ulong ushort wchar wstring",literal:"false null true"},r="(0|[1-9][\\d_]*)",a="(0|[1-9][\\d_]*|\\d[\\d_]*|[\\d_]+?\\d)",i="0[bB][01_]+",n="([\\da-fA-F][\\da-fA-F_]*|_[\\da-fA-F][\\da-fA-F_]*)",o="0[xX]"+n,s="([eE][+-]?"+a+")",l="("+a+"(\\.\\d*|"+s+")|\\d+\\."+a+a+"|\\."+r+s+"?)",c="(0[xX]("+n+"\\."+n+"|\\.?"+n+")[pP][+-]?"+a+")",d="("+r+"|"+i+"|"+o+")",p="("+c+"|"+l+")",u="\\\\(['\"\\?\\\\abfnrtv]|u[\\dA-Fa-f]{4}|[0-7]{1,3}|x[\\dA-Fa-f]{2}|U[\\dA-Fa-f]{8})|&[a-zA-Z\\d]{2,};",m={cN:"number",b:"\\b"+d+"(L|u|U|Lu|LU|uL|UL)?",r:0},b={cN:"number",b:"\\b("+p+"([fF]|L|i|[fF]i|Li)?|"+d+"(i|[fF]i|Li))",r:0},g={cN:"string",b:"'("+u+"|.)",e:"'",i:"."},f={b:u,r:0},h={cN:"string",b:'"',c:[f],e:'"[cwd]?'},v={cN:"string",b:'[rq]"',e:'"[cwd]?',r:5},_={cN:"string",b:"`",e:"`[cwd]?"},y={cN:"string",b:'x"[\\da-fA-F\\s\\n\\r]*"[cwd]?',r:10},x={cN:"string",b:'q"\\{',e:'\\}"'},C={cN:"shebang",b:"^#!",e:"$",r:5},S={cN:"preprocessor",b:"#(line)",e:"$",r:5},w={cN:"keyword",b:"@[a-zA-Z_][a-zA-Z_\\d]*"},N=e.C("\\/\\+","\\+\\/",{c:["self"],r:10});return{l:e.UIR,k:t,c:[e.CLCM,e.CBCM,N,y,h,v,_,x,b,m,g,C,S,w]}}),hljs.registerLanguage("markdown",function(e){return{aliases:["md","mkdown","mkd"],c:[{cN:"header",v:[{b:"^#{1,6}",e:"$"},{b:"^.+?\\n[=-]{2,}$"}]},{b:"<",e:">",sL:"xml",r:0},{cN:"bullet",b:"^([*+-]|(\\d+\\.))\\s+"},{cN:"strong",b:"[*_]{2}.+?[*_]{2}"},{cN:"emphasis",v:[{b:"\\*.+?\\*"},{b:"_.+?_",r:0}]},{cN:"blockquote",b:"^>\\s+",e:"$"},{cN:"code",v:[{b:"`.+?`"},{b:"^( {4}|	)",e:"$",r:0}]},{cN:"horizontal_rule",b:"^[-\\*]{3,}",e:"$"},{b:"\\[.+?\\][\\(\\[].*?[\\)\\]]",rB:!0,c:[{cN:"link_label",b:"\\[",e:"\\]",eB:!0,rE:!0,r:0},{cN:"link_url",b:"\\]\\(",e:"\\)",eB:!0,eE:!0},{cN:"link_reference",b:"\\]\\[",e:"\\]",eB:!0,eE:!0}],r:10},{b:"^\\[.+\\]:",rB:!0,c:[{cN:"link_reference",b:"\\[",e:"\\]:",eB:!0,eE:!0,starts:{cN:"link_url",e:"$"}}]}]}}),hljs.registerLanguage("dart",function(e){var t={cN:"subst",b:"\\$\\{",e:"}",k:"true false null this is new super"},r={cN:"string",v:[{b:"r'''",e:"'''"},{b:'r"""',e:'"""'},{b:"r'",e:"'",i:"\\n"},{b:'r"',e:'"',i:"\\n"},{b:"'''",e:"'''",c:[e.BE,t]},{b:'"""',e:'"""',c:[e.BE,t]},{b:"'",e:"'",i:"\\n",c:[e.BE,t]},{b:'"',e:'"',i:"\\n",c:[e.BE,t]}]};t.c=[e.CNM,r];var a={keyword:"assert break case catch class const continue default do else enum extends false final finally for if in is new null rethrow return super switch this throw true try var void while with",literal:"abstract as dynamic export external factory get implements import library operator part set static typedef",built_in:"print Comparable DateTime Duration Function Iterable Iterator List Map Match Null Object Pattern RegExp Set Stopwatch String StringBuffer StringSink Symbol Type Uri bool double int num document window querySelector querySelectorAll Element ElementList"};return{k:a,c:[r,{cN:"dartdoc",b:"/\\*\\*",e:"\\*/",sL:"markdown",subLanguageMode:"continuous"},{cN:"dartdoc",b:"///",e:"$",sL:"markdown",subLanguageMode:"continuous"},e.CLCM,e.CBCM,{cN:"class",bK:"class interface",e:"{",eE:!0,c:[{bK:"extends implements"},e.UTM]},e.CNM,{cN:"annotation",b:"@[A-Za-z]+"},{b:"=>"}]}}),hljs.registerLanguage("delphi",function(e){var t="exports register file shl array record property for mod while set ally label uses raise not stored class safecall var interface or private static exit index inherited to else stdcall override shr asm far resourcestring finalization packed virtual out and protected library do xorwrite goto near function end div overload object unit begin string on inline repeat until destructor write message program with read initialization except default nil if case cdecl in downto threadvar of try pascal const external constructor type public then implementation finally published procedure",r=[e.CLCM,e.C(/\{/,/\}/,{r:0}),e.C(/\(\*/,/\*\)/,{r:10})],a={cN:"string",b:/'/,e:/'/,c:[{b:/''/}]},i={cN:"string",b:/(#\d+)+/},n={b:e.IR+"\\s*=\\s*class\\s*\\(",rB:!0,c:[e.TM]},o={cN:"function",bK:"function constructor destructor procedure",e:/[:;]/,k:"function constructor|10 destructor|10 procedure|10",c:[e.TM,{cN:"params",b:/\(/,e:/\)/,k:t,c:[a,i]}].concat(r)};return{cI:!0,k:t,i:/"|\$[G-Zg-z]|\/\*|<\/|\|/,c:[a,i,e.NM,n,o].concat(r)}}),hljs.registerLanguage("diff",function(e){return{aliases:["patch"],c:[{cN:"chunk",r:10,v:[{b:/^@@ +\-\d+,\d+ +\+\d+,\d+ +@@$/},{b:/^\*\*\* +\d+,\d+ +\*\*\*\*$/},{b:/^\-\-\- +\d+,\d+ +\-\-\-\-$/}]},{cN:"header",v:[{b:/Index: /,e:/$/},{b:/=====/,e:/=====$/},{b:/^\-\-\-/,e:/$/},{b:/^\*{3} /,e:/$/},{b:/^\+\+\+/,e:/$/},{b:/\*{5}/,e:/\*{5}$/}]},{cN:"addition",b:"^\\+",e:"$"},{cN:"deletion",b:"^\\-",e:"$"},{cN:"change",b:"^\\!",e:"$"}]}}),hljs.registerLanguage("django",function(e){var t={cN:"filter",b:/\|[A-Za-z]+:?/,k:"truncatewords removetags linebreaksbr yesno get_digit timesince random striptags filesizeformat escape linebreaks length_is ljust rjust cut urlize fix_ampersands title floatformat capfirst pprint divisibleby add make_list unordered_list urlencode timeuntil urlizetrunc wordcount stringformat linenumbers slice date dictsort dictsortreversed default_if_none pluralize lower join center default truncatewords_html upper length phone2numeric wordwrap time addslashes slugify first escapejs force_escape iriencode last safe safeseq truncatechars localize unlocalize localtime utc timezone",c:[{cN:"argument",b:/"/,e:/"/},{cN:"argument",b:/'/,e:/'/}]};return{aliases:["jinja"],cI:!0,sL:"xml",subLanguageMode:"continuous",c:[e.C(/\{%\s*comment\s*%}/,/\{%\s*endcomment\s*%}/),e.C(/\{#/,/#}/),{cN:"template_tag",b:/\{%/,e:/%}/,k:"comment endcomment load templatetag ifchanged endifchanged if endif firstof for endfor in ifnotequal endifnotequal widthratio extends include spaceless endspaceless regroup by as ifequal endifequal ssi now with cycle url filter endfilter debug block endblock else autoescape endautoescape csrf_token empty elif endwith static trans blocktrans endblocktrans get_static_prefix get_media_prefix plural get_current_language language get_available_languages get_current_language_bidi get_language_info get_language_info_list localize endlocalize localtime endlocaltime timezone endtimezone get_current_timezone verbatim",c:[t]},{cN:"variable",b:/\{\{/,e:/}}/,c:[t]}]}}),hljs.registerLanguage("dockerfile",function(e){return{aliases:["docker"],cI:!0,k:{built_ins:"from maintainer cmd expose add copy entrypoint volume user workdir onbuild run env"},c:[e.HCM,{k:{built_in:"run cmd entrypoint volume add copy workdir onbuild"},b:/^ *(onbuild +)?(run|cmd|entrypoint|volume|add|copy|workdir) +/,starts:{e:/[^\\]\n/,sL:"bash",subLanguageMode:"continuous"}},{k:{built_in:"from maintainer expose env user onbuild"},b:/^ *(onbuild +)?(from|maintainer|expose|env|user|onbuild) +/,e:/[^\\]\n/,c:[e.ASM,e.QSM,e.NM,e.HCM]}]}}),hljs.registerLanguage("dos",function(e){var t=e.C(/@?rem\b/,/$/,{r:10}),r={cN:"label",b:"^\\s*[A-Za-z._?][A-Za-z0-9_$#@~.?]*(:|\\s+label)",r:0};return{aliases:["bat","cmd"],cI:!0,k:{flow:"if else goto for in do call exit not exist errorlevel defined",operator:"equ neq lss leq gtr geq",keyword:"shift cd dir echo setlocal endlocal set pause copy",stream:"prn nul lpt3 lpt2 lpt1 con com4 com3 com2 com1 aux",winutils:"ping net ipconfig taskkill xcopy ren del",built_in:"append assoc at attrib break cacls cd chcp chdir chkdsk chkntfs cls cmd color comp compact convert date dir diskcomp diskcopy doskey erase fs find findstr format ftype graftabl help keyb label md mkdir mode more move path pause print popd pushd promt rd recover rem rename replace restore rmdir shiftsort start subst time title tree type ver verify vol"},c:[{cN:"envvar",b:/%%[^ ]|%[^ ]+?%|![^ ]+?!/},{cN:"function",b:r.b,e:"goto:eof",c:[e.inherit(e.TM,{b:"([_a-zA-Z]\\w*\\.)*([_a-zA-Z]\\w*:)?[_a-zA-Z]\\w*"}),t]},{cN:"number",b:"\\b\\d+",r:0},t]}}),hljs.registerLanguage("dust",function(e){var t="if eq ne lt lte gt gte select default math sep";return{aliases:["dst"],cI:!0,sL:"xml",subLanguageMode:"continuous",c:[{cN:"expression",b:"{",e:"}",r:0,c:[{cN:"begin-block",b:"#[a-zA-Z- .]+",k:t},{cN:"string",b:'"',e:'"'},{cN:"end-block",b:"\\/[a-zA-Z- .]+",k:t},{cN:"variable",b:"[a-zA-Z-.]+",k:t,r:0}]}]}}),hljs.registerLanguage("elixir",function(e){var t="[a-zA-Z_][a-zA-Z0-9_]*(\\!|\\?)?",r="[a-zA-Z_]\\w*[!?=]?|[-+~]\\@|<<|>>|=~|===?|<=>|[<>]=?|\\*\\*|[-/+%^&*~`|]|\\[\\]=?",a="and false then defined module in return redo retry end for true self when next until do begin unless nil break not case cond alias while ensure or include use alias fn quote",i={cN:"subst",b:"#\\{",e:"}",l:t,k:a},n={cN:"string",c:[e.BE,i],v:[{b:/'/,e:/'/},{b:/"/,e:/"/}]},o={cN:"function",bK:"def defp defmacro",e:/\B\b/,c:[e.inherit(e.TM,{b:t,endsParent:!0})]},s=e.inherit(o,{cN:"class",bK:"defmodule defrecord",e:/\bdo\b|$|;/}),l=[n,e.HCM,s,o,{cN:"constant",b:"(\\b[A-Z_]\\w*(.)?)+",r:0},{cN:"symbol",b:":",c:[n,{b:r}],r:0},{cN:"symbol",b:t+":",r:0},{cN:"number",b:"(\\b0[0-7_]+)|(\\b0x[0-9a-fA-F_]+)|(\\b[1-9][0-9_]*(\\.[0-9_]+)?)|[0_]\\b",r:0},{cN:"variable",b:"(\\$\\W)|((\\$|\\@\\@?)(\\w+))"},{b:"->"},{b:"("+e.RSR+")\\s*",c:[e.HCM,{cN:"regexp",i:"\\n",c:[e.BE,i],v:[{b:"/",e:"/[a-z]*"},{b:"%r\\[",e:"\\][a-z]*"}]}],r:0}];return i.c=l,{l:t,k:a,c:l}}),hljs.registerLanguage("ruby",function(e){var t="[a-zA-Z_]\\w*[!?=]?|[-+~]\\@|<<|>>|=~|===?|<=>|[<>]=?|\\*\\*|[-/+%^&*~`|]|\\[\\]=?",r="and false then defined module in return redo if BEGIN retry end for true self when next until do begin unless END rescue nil else break undef not super class case require yield alias while ensure elsif or include attr_reader attr_writer attr_accessor",a={cN:"yardoctag",b:"@[A-Za-z]+"},i={cN:"value",b:"#<",e:">"},n=[e.C("#","$",{c:[a]}),e.C("^\\=begin","^\\=end",{c:[a],r:10}),e.C("^__END__","\\n$")],o={cN:"subst",b:"#\\{",e:"}",k:r},s={cN:"string",c:[e.BE,o],v:[{b:/'/,e:/'/},{b:/"/,e:/"/},{b:/`/,e:/`/},{b:"%[qQwWx]?\\(",e:"\\)"},{b:"%[qQwWx]?\\[",e:"\\]"},{b:"%[qQwWx]?{",e:"}"},{b:"%[qQwWx]?<",e:">"},{b:"%[qQwWx]?/",e:"/"},{b:"%[qQwWx]?%",e:"%"},{b:"%[qQwWx]?-",e:"-"},{b:"%[qQwWx]?\\|",e:"\\|"},{b:/\B\?(\\\d{1,3}|\\x[A-Fa-f0-9]{1,2}|\\u[A-Fa-f0-9]{4}|\\?\S)\b/}]},l={cN:"params",b:"\\(",e:"\\)",k:r},c=[s,i,{cN:"class",bK:"class module",e:"$|;",i:/=/,c:[e.inherit(e.TM,{b:"[A-Za-z_]\\w*(::\\w+)*(\\?|\\!)?"}),{cN:"inheritance",b:"<\\s*",c:[{cN:"parent",b:"("+e.IR+"::)?"+e.IR}]}].concat(n)},{cN:"function",bK:"def",e:" |$|;",r:0,c:[e.inherit(e.TM,{b:t}),l].concat(n)},{cN:"constant",b:"(::)?(\\b[A-Z]\\w*(::)?)+",r:0},{cN:"symbol",b:e.UIR+"(\\!|\\?)?:",r:0},{cN:"symbol",b:":",c:[s,{b:t}],r:0},{cN:"number",b:"(\\b0[0-7_]+)|(\\b0x[0-9a-fA-F_]+)|(\\b[1-9][0-9_]*(\\.[0-9_]+)?)|[0_]\\b",r:0},{cN:"variable",b:"(\\$\\W)|((\\$|\\@\\@?)(\\w+))"},{b:"("+e.RSR+")\\s*",c:[i,{cN:"regexp",c:[e.BE,o],i:/\n/,v:[{b:"/",e:"/[a-z]*"},{b:"%r{",e:"}[a-z]*"},{b:"%r\\(",e:"\\)[a-z]*"},{b:"%r!",e:"![a-z]*"},{b:"%r\\[",e:"\\][a-z]*"}]}].concat(n),r:0}].concat(n);o.c=c,l.c=c;var d="[>?]>",p="[\\w#]+\\(\\w+\\):\\d+:\\d+>",u="(\\w+-)?\\d+\\.\\d+\\.\\d(p\\d+)?[^>]+>",m=[{b:/^\s*=>/,cN:"status",starts:{e:"$",c:c}},{cN:"prompt",b:"^("+d+"|"+p+"|"+u+")",starts:{e:"$",c:c}}];return{aliases:["rb","gemspec","podspec","thor","irb"],k:r,c:n.concat(m).concat(c)}}),hljs.registerLanguage("erb",function(e){return{sL:"xml",subLanguageMode:"continuous",c:[e.C("<%#","%>"),{b:"<%[%=-]?",e:"[%-]?%>",sL:"ruby",eB:!0,eE:!0}]}}),hljs.registerLanguage("erlang-repl",function(e){return{k:{special_functions:"spawn spawn_link self",reserved:"after and andalso|10 band begin bnot bor bsl bsr bxor case catch cond div end fun if let not of or orelse|10 query receive rem try when xor"},c:[{cN:"prompt",b:"^[0-9]+> ",r:10},e.C("%","$"),{cN:"number",b:"\\b(\\d+#[a-fA-F0-9]+|\\d+(\\.\\d+)?([eE][-+]?\\d+)?)",r:0},e.ASM,e.QSM,{cN:"constant",b:"\\?(::)?([A-Z]\\w*(::)?)+"},{cN:"arrow",b:"->"},{cN:"ok",b:"ok"},{cN:"exclamation_mark",b:"!"},{cN:"function_or_atom",b:"(\\b[a-z'][a-zA-Z0-9_']*:[a-z'][a-zA-Z0-9_']*)|(\\b[a-z'][a-zA-Z0-9_']*)",r:0},{cN:"variable",b:"[A-Z][a-zA-Z0-9_']*",r:0}]}}),hljs.registerLanguage("erlang",function(e){var t="[a-z'][a-zA-Z0-9_']*",r="("+t+":"+t+"|"+t+")",a={keyword:"after and andalso|10 band begin bnot bor bsl bzr bxor case catch cond div end fun if let not of orelse|10 query receive rem try when xor",literal:"false true"},i=e.C("%","$"),n={cN:"number",b:"\\b(\\d+#[a-fA-F0-9]+|\\d+(\\.\\d+)?([eE][-+]?\\d+)?)",r:0},o={b:"fun\\s+"+t+"/\\d+"},s={b:r+"\\(",e:"\\)",rB:!0,r:0,c:[{cN:"function_name",b:r,r:0},{b:"\\(",e:"\\)",eW:!0,rE:!0,r:0}]},l={cN:"tuple",b:"{",e:"}",r:0},c={cN:"variable",b:"\\b_([A-Z][A-Za-z0-9_]*)?",r:0},d={cN:"variable",b:"[A-Z][a-zA-Z0-9_]*",r:0},p={b:"#"+e.UIR,r:0,rB:!0,c:[{cN:"record_name",b:"#"+e.UIR,r:0},{b:"{",e:"}",r:0}]},u={bK:"fun receive if try case",e:"end",k:a};u.c=[i,o,e.inherit(e.ASM,{cN:""}),u,s,e.QSM,n,l,c,d,p];var m=[i,o,u,s,e.QSM,n,l,c,d,p];s.c[1].c=m,l.c=m,p.c[1].c=m;var b={cN:"params",b:"\\(",e:"\\)",c:m};return{aliases:["erl"],k:a,i:"(</|\\*=|\\+=|-=|/\\*|\\*/|\\(\\*|\\*\\))",c:[{cN:"function",b:"^"+t+"\\s*\\(",e:"->",rB:!0,i:"\\(|#|//|/\\*|\\\\|:|;",c:[b,e.inherit(e.TM,{b:t})],starts:{e:";|\\.",k:a,c:m}},i,{cN:"pp",b:"^-",e:"\\.",r:0,eE:!0,rB:!0,l:"-"+e.IR,k:"-module -record -undef -export -ifdef -ifndef -author -copyright -doc -vsn -import -include -include_lib -compile -define -else -endif -file -behaviour -behavior -spec",c:[b]},n,e.QSM,p,c,d,l,{b:/\.$/}]}}),hljs.registerLanguage("fix",function(e){return{c:[{b:/[^\u2401\u0001]+/,e:/[\u2401\u0001]/,eE:!0,rB:!0,rE:!1,c:[{b:/([^\u2401\u0001=]+)/,e:/=([^\u2401\u0001=]+)/,rE:!0,rB:!1,cN:"attribute"},{b:/=/,e:/([\u2401\u0001])/,eE:!0,eB:!0,cN:"string"}]}],cI:!0}}),hljs.registerLanguage("fortran",function(e){var t={cN:"params",b:"\\(",e:"\\)"},r={constant:".False. .True.",type:"integer real character complex logical dimension allocatable|10 parameter external implicit|10 none double precision assign intent optional pointer target in out common equivalence data",keyword:"kind do while private call intrinsic where elsewhere type endtype endmodule endselect endinterface end enddo endif if forall endforall only contains default return stop then public subroutine|10 function program .and. .or. .not. .le. .eq. .ge. .gt. .lt. goto save else use module select case access blank direct exist file fmt form formatted iostat name named nextrec number opened rec recl sequential status unformatted unit continue format pause cycle exit c_null_char c_alert c_backspace c_form_feed flush wait decimal round iomsg synchronous nopass non_overridable pass protected volatile abstract extends import non_intrinsic value deferred generic final enumerator class associate bind enum c_int c_short c_long c_long_long c_signed_char c_size_t c_int8_t c_int16_t c_int32_t c_int64_t c_int_least8_t c_int_least16_t c_int_least32_t c_int_least64_t c_int_fast8_t c_int_fast16_t c_int_fast32_t c_int_fast64_t c_intmax_t C_intptr_t c_float c_double c_long_double c_float_complex c_double_complex c_long_double_complex c_bool c_char c_null_ptr c_null_funptr c_new_line c_carriage_return c_horizontal_tab c_vertical_tab iso_c_binding c_loc c_funloc c_associated  c_f_pointer c_ptr c_funptr iso_fortran_env character_storage_size error_unit file_storage_size input_unit iostat_end iostat_eor numeric_storage_size output_unit c_f_procpointer ieee_arithmetic ieee_support_underflow_control ieee_get_underflow_mode ieee_set_underflow_mode newunit contiguous pad position action delim readwrite eor advance nml interface procedure namelist include sequence elemental pure",built_in:"alog alog10 amax0 amax1 amin0 amin1 amod cabs ccos cexp clog csin csqrt dabs dacos dasin datan datan2 dcos dcosh ddim dexp dint dlog dlog10 dmax1 dmin1 dmod dnint dsign dsin dsinh dsqrt dtan dtanh float iabs idim idint idnint ifix isign max0 max1 min0 min1 sngl algama cdabs cdcos cdexp cdlog cdsin cdsqrt cqabs cqcos cqexp cqlog cqsin cqsqrt dcmplx dconjg derf derfc dfloat dgamma dimag dlgama iqint qabs qacos qasin qatan qatan2 qcmplx qconjg qcos qcosh qdim qerf qerfc qexp qgamma qimag qlgama qlog qlog10 qmax1 qmin1 qmod qnint qsign qsin qsinh qsqrt qtan qtanh abs acos aimag aint anint asin atan atan2 char cmplx conjg cos cosh exp ichar index int log log10 max min nint sign sin sinh sqrt tan tanh print write dim lge lgt lle llt mod nullify allocate deallocate adjustl adjustr all allocated any associated bit_size btest ceiling count cshift date_and_time digits dot_product eoshift epsilon exponent floor fraction huge iand ibclr ibits ibset ieor ior ishft ishftc lbound len_trim matmul maxexponent maxloc maxval merge minexponent minloc minval modulo mvbits nearest pack present product radix random_number random_seed range repeat reshape rrspacing scale scan selected_int_kind selected_real_kind set_exponent shape size spacing spread sum system_clock tiny transpose trim ubound unpack verify achar iachar transfer dble entry dprod cpu_time command_argument_count get_command get_command_argument get_environment_variable is_iostat_end ieee_arithmetic ieee_support_underflow_control ieee_get_underflow_mode ieee_set_underflow_mode is_iostat_eor move_alloc new_line selected_char_kind same_type_as extends_type_ofacosh asinh atanh bessel_j0 bessel_j1 bessel_jn bessel_y0 bessel_y1 bessel_yn erf erfc erfc_scaled gamma log_gamma hypot norm2 atomic_define atomic_ref execute_command_line leadz trailz storage_size merge_bits bge bgt ble blt dshiftl dshiftr findloc iall iany iparity image_index lcobound ucobound maskl maskr num_images parity popcnt poppar shifta shiftl shiftr this_image"};return{cI:!0,aliases:["f90","f95"],k:r,c:[e.inherit(e.ASM,{cN:"string",r:0}),e.inherit(e.QSM,{cN:"string",r:0}),{cN:"function",bK:"subroutine function program",i:"[${=\\n]",c:[e.UTM,t]},e.C("!","$",{r:0}),{cN:"number",b:"(?=\\b|\\+|\\-|\\.)(?=\\.\\d|\\d)(?:\\d+)?(?:\\.?\\d*)(?:[de][+-]?\\d+)?\\b\\.?",r:0}]}}),hljs.registerLanguage("fsharp",function(e){var t={b:"<",e:">",c:[e.inherit(e.TM,{b:/'[a-zA-Z0-9_]+/})]};return{aliases:["fs"],k:"yield! return! let! do!abstract and as assert base begin class default delegate do done downcast downto elif else end exception extern false finally for fun function global if in inherit inline interface internal lazy let match member module mutable namespace new null of open or override private public rec return sig static struct then to true try type upcast use val void when while with yield",c:[{cN:"string",b:'@"',e:'"',c:[{b:'""'}]},{cN:"string",b:'"""',e:'"""'},e.C("\\(\\*","\\*\\)"),{cN:"class",bK:"type",e:"\\(|=|$",eE:!0,c:[e.UTM,t]},{cN:"annotation",b:"\\[<",e:">\\]",r:10},{cN:"attribute",b:"\\B('[A-Za-z])\\b",c:[e.BE]},e.CLCM,e.inherit(e.QSM,{i:null}),e.CNM]}}),hljs.registerLanguage("gcode",function(e){var t="[A-Z_][A-Z0-9_.]*",r="\\%",a={literal:"",built_in:"",keyword:"IF DO WHILE ENDWHILE CALL ENDIF SUB ENDSUB GOTO REPEAT ENDREPEAT EQ LT GT NE GE LE OR XOR"},i={cN:"preprocessor",b:"([O])([0-9]+)"},n=[e.CLCM,e.CBCM,e.C(/\(/,/\)/),e.inherit(e.CNM,{b:"([-+]?([0-9]*\\.?[0-9]+\\.?))|"+e.CNR}),e.inherit(e.ASM,{i:null}),e.inherit(e.QSM,{i:null}),{cN:"keyword",b:"([G])([0-9]+\\.?[0-9]?)"},{cN:"title",b:"([M])([0-9]+\\.?[0-9]?)"},{cN:"title",b:"(VC|VS|#)",e:"(\\d+)"},{cN:"title",b:"(VZOFX|VZOFY|VZOFZ)"},{cN:"built_in",b:"(ATAN|ABS|ACOS|ASIN|SIN|COS|EXP|FIX|FUP|ROUND|LN|TAN)(\\[)",e:"([-+]?([0-9]*\\.?[0-9]+\\.?))(\\])"},{cN:"label",v:[{b:"N",e:"\\d+",i:"\\W"}]}];return{aliases:["nc"],cI:!0,l:t,k:a,c:[{cN:"preprocessor",b:r},i].concat(n)}}),hljs.registerLanguage("gherkin",function(e){return{aliases:["feature"],k:"Feature Background Ability Business Need Scenario Scenarios Scenario Outline Scenario Template Examples Given And Then But When",c:[{cN:"keyword",b:"\\*"},e.C("@[^@\r\n	 ]+","$"),{cN:"string",b:"\\|",e:"\\$"},{cN:"variable",b:"<",e:">"},e.HCM,{cN:"string",b:'"""',e:'"""'},e.QSM]}}),hljs.registerLanguage("glsl",function(e){return{k:{keyword:"atomic_uint attribute bool break bvec2 bvec3 bvec4 case centroid coherent const continue default discard dmat2 dmat2x2 dmat2x3 dmat2x4 dmat3 dmat3x2 dmat3x3 dmat3x4 dmat4 dmat4x2 dmat4x3 dmat4x4 do double dvec2 dvec3 dvec4 else flat float for highp if iimage1D iimage1DArray iimage2D iimage2DArray iimage2DMS iimage2DMSArray iimage2DRect iimage3D iimageBuffer iimageCube iimageCubeArray image1D image1DArray image2D image2DArray image2DMS image2DMSArray image2DRect image3D imageBuffer imageCube imageCubeArray in inout int invariant isampler1D isampler1DArray isampler2D isampler2DArray isampler2DMS isampler2DMSArray isampler2DRect isampler3D isamplerBuffer isamplerCube isamplerCubeArray ivec2 ivec3 ivec4 layout lowp mat2 mat2x2 mat2x3 mat2x4 mat3 mat3x2 mat3x3 mat3x4 mat4 mat4x2 mat4x3 mat4x4 mediump noperspective out patch precision readonly restrict return sample sampler1D sampler1DArray sampler1DArrayShadow sampler1DShadow sampler2D sampler2DArray sampler2DArrayShadow sampler2DMS sampler2DMSArray sampler2DRect sampler2DRectShadow sampler2DShadow sampler3D samplerBuffer samplerCube samplerCubeArray samplerCubeArrayShadow samplerCubeShadow smooth struct subroutine switch uimage1D uimage1DArray uimage2D uimage2DArray uimage2DMS uimage2DMSArray uimage2DRect uimage3D uimageBuffer uimageCube uimageCubeArray uint uniform usampler1D usampler1DArray usampler2D usampler2DArray usampler2DMS usampler2DMSArray usampler2DRect usampler3D usamplerBuffer usamplerCube usamplerCubeArray uvec2 uvec3 uvec4 varying vec2 vec3 vec4 void volatile while writeonly",built_in:"gl_BackColor gl_BackLightModelProduct gl_BackLightProduct gl_BackMaterial gl_BackSecondaryColor gl_ClipDistance gl_ClipPlane gl_ClipVertex gl_Color gl_DepthRange gl_EyePlaneQ gl_EyePlaneR gl_EyePlaneS gl_EyePlaneT gl_Fog gl_FogCoord gl_FogFragCoord gl_FragColor gl_FragCoord gl_FragData gl_FragDepth gl_FrontColor gl_FrontFacing gl_FrontLightModelProduct gl_FrontLightProduct gl_FrontMaterial gl_FrontSecondaryColor gl_InstanceID gl_InvocationID gl_Layer gl_LightModel gl_LightSource gl_MaxAtomicCounterBindings gl_MaxAtomicCounterBufferSize gl_MaxClipDistances gl_MaxClipPlanes gl_MaxCombinedAtomicCounterBuffers gl_MaxCombinedAtomicCounters gl_MaxCombinedImageUniforms gl_MaxCombinedImageUnitsAndFragmentOutputs gl_MaxCombinedTextureImageUnits gl_MaxDrawBuffers gl_MaxFragmentAtomicCounterBuffers gl_MaxFragmentAtomicCounters gl_MaxFragmentImageUniforms gl_MaxFragmentInputComponents gl_MaxFragmentUniformComponents gl_MaxFragmentUniformVectors gl_MaxGeometryAtomicCounterBuffers gl_MaxGeometryAtomicCounters gl_MaxGeometryImageUniforms gl_MaxGeometryInputComponents gl_MaxGeometryOutputComponents gl_MaxGeometryOutputVertices gl_MaxGeometryTextureImageUnits gl_MaxGeometryTotalOutputComponents gl_MaxGeometryUniformComponents gl_MaxGeometryVaryingComponents gl_MaxImageSamples gl_MaxImageUnits gl_MaxLights gl_MaxPatchVertices gl_MaxProgramTexelOffset gl_MaxTessControlAtomicCounterBuffers gl_MaxTessControlAtomicCounters gl_MaxTessControlImageUniforms gl_MaxTessControlInputComponents gl_MaxTessControlOutputComponents gl_MaxTessControlTextureImageUnits gl_MaxTessControlTotalOutputComponents gl_MaxTessControlUniformComponents gl_MaxTessEvaluationAtomicCounterBuffers gl_MaxTessEvaluationAtomicCounters gl_MaxTessEvaluationImageUniforms gl_MaxTessEvaluationInputComponents gl_MaxTessEvaluationOutputComponents gl_MaxTessEvaluationTextureImageUnits gl_MaxTessEvaluationUniformComponents gl_MaxTessGenLevel gl_MaxTessPatchComponents gl_MaxTextureCoords gl_MaxTextureImageUnits gl_MaxTextureUnits gl_MaxVaryingComponents gl_MaxVaryingFloats gl_MaxVaryingVectors gl_MaxVertexAtomicCounterBuffers gl_MaxVertexAtomicCounters gl_MaxVertexAttribs gl_MaxVertexImageUniforms gl_MaxVertexOutputComponents gl_MaxVertexTextureImageUnits gl_MaxVertexUniformComponents gl_MaxVertexUniformVectors gl_MaxViewports gl_MinProgramTexelOffsetgl_ModelViewMatrix gl_ModelViewMatrixInverse gl_ModelViewMatrixInverseTranspose gl_ModelViewMatrixTranspose gl_ModelViewProjectionMatrix gl_ModelViewProjectionMatrixInverse gl_ModelViewProjectionMatrixInverseTranspose gl_ModelViewProjectionMatrixTranspose gl_MultiTexCoord0 gl_MultiTexCoord1 gl_MultiTexCoord2 gl_MultiTexCoord3 gl_MultiTexCoord4 gl_MultiTexCoord5 gl_MultiTexCoord6 gl_MultiTexCoord7 gl_Normal gl_NormalMatrix gl_NormalScale gl_ObjectPlaneQ gl_ObjectPlaneR gl_ObjectPlaneS gl_ObjectPlaneT gl_PatchVerticesIn gl_PerVertex gl_Point gl_PointCoord gl_PointSize gl_Position gl_PrimitiveID gl_PrimitiveIDIn gl_ProjectionMatrix gl_ProjectionMatrixInverse gl_ProjectionMatrixInverseTranspose gl_ProjectionMatrixTranspose gl_SampleID gl_SampleMask gl_SampleMaskIn gl_SamplePosition gl_SecondaryColor gl_TessCoord gl_TessLevelInner gl_TessLevelOuter gl_TexCoord gl_TextureEnvColor gl_TextureMatrixInverseTranspose gl_TextureMatrixTranspose gl_Vertex gl_VertexID gl_ViewportIndex gl_in gl_out EmitStreamVertex EmitVertex EndPrimitive EndStreamPrimitive abs acos acosh all any asin asinh atan atanh atomicCounter atomicCounterDecrement atomicCounterIncrement barrier bitCount bitfieldExtract bitfieldInsert bitfieldReverse ceil clamp cos cosh cross dFdx dFdy degrees determinant distance dot equal exp exp2 faceforward findLSB findMSB floatBitsToInt floatBitsToUint floor fma fract frexp ftransform fwidth greaterThan greaterThanEqual imageAtomicAdd imageAtomicAnd imageAtomicCompSwap imageAtomicExchange imageAtomicMax imageAtomicMin imageAtomicOr imageAtomicXor imageLoad imageStore imulExtended intBitsToFloat interpolateAtCentroid interpolateAtOffset interpolateAtSample inverse inversesqrt isinf isnan ldexp length lessThan lessThanEqual log log2 matrixCompMult max memoryBarrier min mix mod modf noise1 noise2 noise3 noise4 normalize not notEqual outerProduct packDouble2x32 packHalf2x16 packSnorm2x16 packSnorm4x8 packUnorm2x16 packUnorm4x8 pow radians reflect refract round roundEven shadow1D shadow1DLod shadow1DProj shadow1DProjLod shadow2D shadow2DLod shadow2DProj shadow2DProjLod sign sin sinh smoothstep sqrt step tan tanh texelFetch texelFetchOffset texture texture1D texture1DLod texture1DProj texture1DProjLod texture2D texture2DLod texture2DProj texture2DProjLod texture3D texture3DLod texture3DProj texture3DProjLod textureCube textureCubeLod textureGather textureGatherOffset textureGatherOffsets textureGrad textureGradOffset textureLod textureLodOffset textureOffset textureProj textureProjGrad textureProjGradOffset textureProjLod textureProjLodOffset textureProjOffset textureQueryLod textureSize transpose trunc uaddCarry uintBitsToFloat umulExtended unpackDouble2x32 unpackHalf2x16 unpackSnorm2x16 unpackSnorm4x8 unpackUnorm2x16 unpackUnorm4x8 usubBorrow gl_TextureMatrix gl_TextureMatrixInverse",literal:"true false"},i:'"',c:[e.CLCM,e.CBCM,e.CNM,{cN:"preprocessor",b:"#",e:"$"}]}}),hljs.registerLanguage("go",function(e){var t={keyword:"break default func interface select case map struct chan else goto package switch const fallthrough if range type continue for import return var go defer",constant:"true false iota nil",typename:"bool byte complex64 complex128 float32 float64 int8 int16 int32 int64 string uint8 uint16 uint32 uint64 int uint uintptr rune",built_in:"append cap close complex copy imag len make new panic print println real recover delete"};return{aliases:["golang"],k:t,i:"</",c:[e.CLCM,e.CBCM,e.QSM,{cN:"string",b:"'",e:"[^\\\\]'"},{cN:"string",b:"`",e:"`"},{cN:"number",b:e.CNR+"[dflsi]?",r:0},e.CNM]}}),hljs.registerLanguage("gradle",function(e){return{cI:!0,k:{keyword:"task project allprojects subprojects artifacts buildscript configurations dependencies repositories sourceSets description delete from into include exclude source classpath destinationDir includes options sourceCompatibility targetCompatibility group flatDir doLast doFirst flatten todir fromdir ant def abstract break case catch continue default do else extends final finally for if implements instanceof native new private protected public return static switch synchronized throw throws transient try volatile while strictfp package import false null super this true antlrtask checkstyle codenarc copy boolean byte char class double float int interface long short void compile runTime file fileTree abs any append asList asWritable call collect compareTo count div dump each eachByte eachFile eachLine every find findAll flatten getAt getErr getIn getOut getText grep immutable inject inspect intersect invokeMethods isCase join leftShift minus multiply newInputStream newOutputStream newPrintWriter newReader newWriter next plus pop power previous print println push putAt read readBytes readLines reverse reverseEach round size sort splitEachLine step subMap times toInteger toList tokenize upto waitForOrKill withPrintWriter withReader withStream withWriter withWriterAppend write writeLine"},c:[e.CLCM,e.CBCM,e.ASM,e.QSM,e.NM,e.RM]}}),hljs.registerLanguage("groovy",function(e){return{k:{typename:"byte short char int long boolean float double void",literal:"true false null",keyword:"def as in assert trait super this abstract static volatile transient public private protected synchronized final class interface enum if else for while switch case break default continue throw throws try catch finally implements extends new import package return instanceof"},c:[e.CLCM,{cN:"javadoc",b:"/\\*\\*",e:"\\*//*",r:0,c:[{
-cN:"javadoctag",b:"(^|\\s)@[A-Za-z]+"}]},e.CBCM,{cN:"string",b:'"""',e:'"""'},{cN:"string",b:"'''",e:"'''"},{cN:"string",b:"\\$/",e:"/\\$",r:10},e.ASM,{cN:"regexp",b:/~?\/[^\/\n]+\//,c:[e.BE]},e.QSM,{cN:"shebang",b:"^#!/usr/bin/env",e:"$",i:"\n"},e.BNM,{cN:"class",bK:"class interface trait enum",e:"{",i:":",c:[{bK:"extends implements"},e.UTM]},e.CNM,{cN:"annotation",b:"@[A-Za-z]+"},{cN:"string",b:/[^\?]{0}[A-Za-z0-9_$]+ *:/},{b:/\?/,e:/\:/},{cN:"label",b:"^\\s*[A-Za-z0-9_$]+:",r:0}]}}),hljs.registerLanguage("haml",function(e){return{cI:!0,c:[{cN:"doctype",b:"^!!!( (5|1\\.1|Strict|Frameset|Basic|Mobile|RDFa|XML\\b.*))?$",r:10},e.C("^\\s*(!=#|=#|-#|/).*$",!1,{r:0}),{b:"^\\s*(-|=|!=)(?!#)",starts:{e:"\\n",sL:"ruby"}},{cN:"tag",b:"^\\s*%",c:[{cN:"title",b:"\\w+"},{cN:"value",b:"[#\\.]\\w+"},{b:"{\\s*",e:"\\s*}",eE:!0,c:[{b:":\\w+\\s*=>",e:",\\s+",rB:!0,eW:!0,c:[{cN:"symbol",b:":\\w+"},{cN:"string",b:'"',e:'"'},{cN:"string",b:"'",e:"'"},{b:"\\w+",r:0}]}]},{b:"\\(\\s*",e:"\\s*\\)",eE:!0,c:[{b:"\\w+\\s*=",e:"\\s+",rB:!0,eW:!0,c:[{cN:"attribute",b:"\\w+",r:0},{cN:"string",b:'"',e:'"'},{cN:"string",b:"'",e:"'"},{b:"\\w+",r:0}]}]}]},{cN:"bullet",b:"^\\s*[=~]\\s*",r:0},{b:"#{",starts:{e:"}",sL:"ruby"}}]}}),hljs.registerLanguage("handlebars",function(e){var t="each in with if else unless bindattr action collection debugger log outlet template unbound view yield";return{aliases:["hbs","html.hbs","html.handlebars"],cI:!0,sL:"xml",subLanguageMode:"continuous",c:[{cN:"expression",b:"{{",e:"}}",c:[{cN:"begin-block",b:"#[a-zA-Z- .]+",k:t},{cN:"string",b:'"',e:'"'},{cN:"end-block",b:"\\/[a-zA-Z- .]+",k:t},{cN:"variable",b:"[a-zA-Z-.]+",k:t}]}]}}),hljs.registerLanguage("haskell",function(e){var t=[e.C("--","$"),e.C("{-","-}",{c:["self"]})],r={cN:"pragma",b:"{-#",e:"#-}"},a={cN:"preprocessor",b:"^#",e:"$"},i={cN:"type",b:"\\b[A-Z][\\w']*",r:0},n={cN:"container",b:"\\(",e:"\\)",i:'"',c:[r,a,{cN:"type",b:"\\b[A-Z][\\w]*(\\((\\.\\.|,|\\w+)\\))?"},e.inherit(e.TM,{b:"[_a-z][\\w']*"})].concat(t)},o={cN:"container",b:"{",e:"}",c:n.c};return{aliases:["hs"],k:"let in if then else case of where do module import hiding qualified type data newtype deriving class instance as default infix infixl infixr foreign export ccall stdcall cplusplus jvm dotnet safe unsafe family forall mdo proc rec",c:[{cN:"module",b:"\\bmodule\\b",e:"where",k:"module where",c:[n].concat(t),i:"\\W\\.|;"},{cN:"import",b:"\\bimport\\b",e:"$",k:"import|0 qualified as hiding",c:[n].concat(t),i:"\\W\\.|;"},{cN:"class",b:"^(\\s*)?(class|instance)\\b",e:"where",k:"class family instance where",c:[i,n].concat(t)},{cN:"typedef",b:"\\b(data|(new)?type)\\b",e:"$",k:"data family type newtype deriving",c:[r,i,n,o].concat(t)},{cN:"default",bK:"default",e:"$",c:[i,n].concat(t)},{cN:"infix",bK:"infix infixl infixr",e:"$",c:[e.CNM].concat(t)},{cN:"foreign",b:"\\bforeign\\b",e:"$",k:"foreign import export ccall stdcall cplusplus jvm dotnet safe unsafe",c:[i,e.QSM].concat(t)},{cN:"shebang",b:"#!\\/usr\\/bin\\/env runhaskell",e:"$"},r,a,e.QSM,e.CNM,i,e.inherit(e.TM,{b:"^[_a-z][\\w']*"}),{b:"->|<-"}].concat(t)}}),hljs.registerLanguage("haxe",function(e){var t="([*]|[a-zA-Z_$][a-zA-Z0-9_$]*)";return{aliases:["hx"],k:{keyword:"break callback case cast catch class continue default do dynamic else enum extends extern for function here if implements import in inline interface never new override package private public return static super switch this throw trace try typedef untyped using var while",literal:"true false null"},c:[e.ASM,e.QSM,e.CLCM,e.CBCM,e.CNM,{cN:"class",bK:"class interface",e:"{",eE:!0,c:[{bK:"extends implements"},e.TM]},{cN:"preprocessor",b:"#",e:"$",k:"if else elseif end error"},{cN:"function",bK:"function",e:"[{;]",eE:!0,i:"\\S",c:[e.TM,{cN:"params",b:"\\(",e:"\\)",c:[e.ASM,e.QSM,e.CLCM,e.CBCM]},{cN:"type",b:":",e:t,r:10}]}]}}),hljs.registerLanguage("http",function(e){return{aliases:["https"],i:"\\S",c:[{cN:"status",b:"^HTTP/[0-9\\.]+",e:"$",c:[{cN:"number",b:"\\b\\d{3}\\b"}]},{cN:"request",b:"^[A-Z]+ (.*?) HTTP/[0-9\\.]+$",rB:!0,e:"$",c:[{cN:"string",b:" ",e:" ",eB:!0,eE:!0}]},{cN:"attribute",b:"^\\w",e:": ",eE:!0,i:"\\n|\\s|=",starts:{cN:"string",e:"$"}},{b:"\\n\\n",starts:{sL:"",eW:!0}}]}}),hljs.registerLanguage("ini",function(e){return{cI:!0,i:/\S/,c:[e.C(";","$"),{cN:"title",b:"^\\[",e:"\\]"},{cN:"setting",b:"^[a-z0-9\\[\\]_-]+[ \\t]*=[ \\t]*",e:"$",c:[{cN:"value",eW:!0,k:"on off true false yes no",c:[e.QSM,e.NM],r:0}]}]}}),hljs.registerLanguage("java",function(e){var t=e.UIR+"(<"+e.UIR+">)?",r="false synchronized int abstract float private char boolean static null if const for true while long strictfp finally protected import native final void enum else break transient catch instanceof byte super volatile case assert short package default double public try this switch continue throws protected public private",a="(\\b(0b[01_]+)|\\b0[xX][a-fA-F0-9_]+|(\\b[\\d_]+(\\.[\\d_]*)?|\\.[\\d_]+)([eE][-+]?\\d+)?)[lLfF]?",i={cN:"number",b:a,r:0};return{aliases:["jsp"],k:r,i:/<\//,c:[{cN:"javadoc",b:"/\\*\\*",e:"\\*/",r:0,c:[{cN:"javadoctag",b:"(^|\\s)@[A-Za-z]+"}]},e.CLCM,e.CBCM,e.ASM,e.QSM,{cN:"class",bK:"class interface",e:/[{;=]/,eE:!0,k:"class interface",i:/[:"\[\]]/,c:[{bK:"extends implements"},e.UTM]},{bK:"new throw return",r:0},{cN:"function",b:"("+t+"\\s+)+"+e.UIR+"\\s*\\(",rB:!0,e:/[{;=]/,eE:!0,k:r,c:[{b:e.UIR+"\\s*\\(",rB:!0,r:0,c:[e.UTM]},{cN:"params",b:/\(/,e:/\)/,k:r,r:0,c:[e.ASM,e.QSM,e.CNM,e.CBCM]},e.CLCM,e.CBCM]},i,{cN:"annotation",b:"@[A-Za-z]+"}]}}),hljs.registerLanguage("javascript",function(e){return{aliases:["js"],k:{keyword:"in of if for while finally var new function do return void else break catch instanceof with throw case default try this switch continue typeof delete let yield const export super debugger as await",literal:"true false null undefined NaN Infinity",built_in:"eval isFinite isNaN parseFloat parseInt decodeURI decodeURIComponent encodeURI encodeURIComponent escape unescape Object Function Boolean Error EvalError InternalError RangeError ReferenceError StopIteration SyntaxError TypeError URIError Number Math Date String RegExp Array Float32Array Float64Array Int16Array Int32Array Int8Array Uint16Array Uint32Array Uint8Array Uint8ClampedArray ArrayBuffer DataView JSON Intl arguments require module console window document Symbol Set Map WeakSet WeakMap Proxy Reflect Promise"},c:[{cN:"pi",r:10,v:[{b:/^\s*('|")use strict('|")/},{b:/^\s*('|")use asm('|")/}]},e.ASM,e.QSM,{cN:"string",b:"`",e:"`",c:[e.BE,{cN:"subst",b:"\\$\\{",e:"\\}"}]},e.CLCM,e.CBCM,{cN:"number",b:"\\b(0[xXbBoO][a-fA-F0-9]+|(\\d+(\\.\\d*)?|\\.\\d+)([eE][-+]?\\d+)?)",r:0},{b:"("+e.RSR+"|\\b(case|return|throw)\\b)\\s*",k:"return throw case",c:[e.CLCM,e.CBCM,e.RM,{b:/</,e:/>\s*[);\]]/,r:0,sL:"xml"}],r:0},{cN:"function",bK:"function",e:/\{/,eE:!0,c:[e.inherit(e.TM,{b:/[A-Za-z$_][0-9A-Za-z$_]*/}),{cN:"params",b:/\(/,e:/\)/,c:[e.CLCM,e.CBCM],i:/["'\(]/}],i:/\[|%/},{b:/\$[(.]/},{b:"\\."+e.IR,r:0},{bK:"import",e:"[;$]",k:"import from as",c:[e.ASM,e.QSM]},{cN:"class",bK:"class",e:/[{;=]/,eE:!0,i:/[:"\[\]]/,c:[{bK:"extends"},e.UTM]}]}}),hljs.registerLanguage("json",function(e){var t={literal:"true false null"},r=[e.QSM,e.CNM],a={cN:"value",e:",",eW:!0,eE:!0,c:r,k:t},i={b:"{",e:"}",c:[{cN:"attribute",b:'\\s*"',e:'"\\s*:\\s*',eB:!0,eE:!0,c:[e.BE],i:"\\n",starts:a}],i:"\\S"},n={b:"\\[",e:"\\]",c:[e.inherit(a,{cN:null})],i:"\\S"};return r.splice(r.length,0,i,n),{c:r,k:t,i:"\\S"}}),hljs.registerLanguage("julia",function(e){var t={keyword:"in abstract baremodule begin bitstype break catch ccall const continue do else elseif end export finally for function global if immutable import importall let local macro module quote return try type typealias using while",literal:"true false ANY ARGS CPU_CORES C_NULL DL_LOAD_PATH DevNull ENDIAN_BOM ENV I|0 Inf Inf16 Inf32 InsertionSort JULIA_HOME LOAD_PATH MS_ASYNC MS_INVALIDATE MS_SYNC MergeSort NaN NaN16 NaN32 OS_NAME QuickSort RTLD_DEEPBIND RTLD_FIRST RTLD_GLOBAL RTLD_LAZY RTLD_LOCAL RTLD_NODELETE RTLD_NOLOAD RTLD_NOW RoundDown RoundFromZero RoundNearest RoundToZero RoundUp STDERR STDIN STDOUT VERSION WORD_SIZE catalan cglobal e eu eulergamma golden im nothing pi γ π φ",built_in:"ASCIIString AbstractArray AbstractRNG AbstractSparseArray Any ArgumentError Array Associative Base64Pipe Bidiagonal BigFloat BigInt BitArray BitMatrix BitVector Bool BoundsError Box CFILE Cchar Cdouble Cfloat Char CharString Cint Clong Clonglong ClusterManager Cmd Coff_t Colon Complex Complex128 Complex32 Complex64 Condition Cptrdiff_t Cshort Csize_t Cssize_t Cuchar Cuint Culong Culonglong Cushort Cwchar_t DArray DataType DenseArray Diagonal Dict DimensionMismatch DirectIndexString Display DivideError DomainError EOFError EachLine Enumerate ErrorException Exception Expr Factorization FileMonitor FileOffset Filter Float16 Float32 Float64 FloatRange FloatingPoint Function GetfieldNode GotoNode Hermitian IO IOBuffer IOStream IPv4 IPv6 InexactError Int Int128 Int16 Int32 Int64 Int8 IntSet Integer InterruptException IntrinsicFunction KeyError LabelNode LambdaStaticData LineNumberNode LoadError LocalProcess MIME MathConst MemoryError MersenneTwister Method MethodError MethodTable Module NTuple NewvarNode Nothing Number ObjectIdDict OrdinalRange OverflowError ParseError PollingFileWatcher ProcessExitedException ProcessGroup Ptr QuoteNode Range Range1 Ranges Rational RawFD Real Regex RegexMatch RemoteRef RepString RevString RopeString RoundingMode Set SharedArray Signed SparseMatrixCSC StackOverflowError Stat StatStruct StepRange String SubArray SubString SymTridiagonal Symbol SymbolNode Symmetric SystemError Task TextDisplay Timer TmStruct TopNode Triangular Tridiagonal Type TypeConstructor TypeError TypeName TypeVar UTF16String UTF32String UTF8String UdpSocket Uint Uint128 Uint16 Uint32 Uint64 Uint8 UndefRefError UndefVarError UniformScaling UnionType UnitRange Unsigned Vararg VersionNumber WString WeakKeyDict WeakRef Woodbury Zip"},r="[A-Za-z_\\u00A1-\\uFFFF][A-Za-z_0-9\\u00A1-\\uFFFF]*",a={l:r,k:t},i={cN:"type-annotation",b:/::/},n={cN:"subtype",b:/<:/},o={cN:"number",b:/(\b0x[\d_]*(\.[\d_]*)?|0x\.\d[\d_]*)p[-+]?\d+|\b0[box][a-fA-F0-9][a-fA-F0-9_]*|(\b\d[\d_]*(\.[\d_]*)?|\.\d[\d_]*)([eEfF][-+]?\d+)?/,r:0},s={cN:"char",b:/'(.|\\[xXuU][a-zA-Z0-9]+)'/},l={cN:"subst",b:/\$\(/,e:/\)/,k:t},c={cN:"variable",b:"\\$"+r},d={cN:"string",c:[e.BE,l,c],v:[{b:/\w*"/,e:/"\w*/},{b:/\w*"""/,e:/"""\w*/}]},p={cN:"string",c:[e.BE,l,c],b:"`",e:"`"},u={cN:"macrocall",b:"@"+r},m={cN:"comment",v:[{b:"#=",e:"=#",r:10},{b:"#",e:"$"}]};return a.c=[o,s,i,n,d,p,u,m,e.HCM],l.c=a.c,a}),hljs.registerLanguage("kotlin",function(e){var t="val var get set class trait object public open private protected final enum if else do while for when break continue throw try catch finally import package is as in return fun override default companion reified inline volatile transient native";return{k:{typename:"Byte Short Char Int Long Boolean Float Double Void Unit Nothing",literal:"true false null",keyword:t},c:[e.CLCM,{cN:"javadoc",b:"/\\*\\*",e:"\\*//*",r:0,c:[{cN:"javadoctag",b:"(^|\\s)@[A-Za-z]+"}]},e.CBCM,{cN:"type",b:/</,e:/>/,rB:!0,eE:!1,r:0},{cN:"function",bK:"fun",e:"[(]|$",rB:!0,eE:!0,k:t,i:/fun\s+(<.*>)?[^\s\(]+(\s+[^\s\(]+)\s*=/,r:5,c:[{b:e.UIR+"\\s*\\(",rB:!0,r:0,c:[e.UTM]},{cN:"type",b:/</,e:/>/,k:"reified",r:0},{cN:"params",b:/\(/,e:/\)/,k:t,r:0,i:/\([^\(,\s:]+,/,c:[{cN:"typename",b:/:\s*/,e:/\s*[=\)]/,eB:!0,rE:!0,r:0}]},e.CLCM,e.CBCM]},{cN:"class",bK:"class trait",e:/[:\{(]|$/,eE:!0,i:"extends implements",c:[e.UTM,{cN:"type",b:/</,e:/>/,eB:!0,eE:!0,r:0},{cN:"typename",b:/[,:]\s*/,e:/[<\(,]|$/,eB:!0,rE:!0}]},{cN:"variable",bK:"var val",e:/\s*[=:$]/,eE:!0},e.QSM,{cN:"shebang",b:"^#!/usr/bin/env",e:"$",i:"\n"},e.CNM]}}),hljs.registerLanguage("lasso",function(e){var t="[a-zA-Z_][a-zA-Z0-9_.]*",r="<\\?(lasso(script)?|=)",a="\\]|\\?>",i={literal:"true false none minimal full all void and or not bw nbw ew new cn ncn lt lte gt gte eq neq rx nrx ft",built_in:"array date decimal duration integer map pair string tag xml null boolean bytes keyword list locale queue set stack staticarray local var variable global data self inherited",keyword:"error_code error_msg error_pop error_push error_reset cache database_names database_schemanames database_tablenames define_tag define_type email_batch encode_set html_comment handle handle_error header if inline iterate ljax_target link link_currentaction link_currentgroup link_currentrecord link_detail link_firstgroup link_firstrecord link_lastgroup link_lastrecord link_nextgroup link_nextrecord link_prevgroup link_prevrecord log loop namespace_using output_none portal private protect records referer referrer repeating resultset rows search_args search_arguments select sort_args sort_arguments thread_atomic value_list while abort case else if_empty if_false if_null if_true loop_abort loop_continue loop_count params params_up return return_value run_children soap_definetag soap_lastrequest soap_lastresponse tag_name ascending average by define descending do equals frozen group handle_failure import in into join let match max min on order parent protected provide public require returnhome skip split_thread sum take thread to trait type where with yield yieldhome"},n=e.C("<!--","-->",{r:0}),o={cN:"preprocessor",b:"\\[noprocess\\]",starts:{cN:"markup",e:"\\[/noprocess\\]",rE:!0,c:[n]}},s={cN:"preprocessor",b:"\\[/noprocess|"+r},l={cN:"variable",b:"'"+t+"'"},c=[e.CLCM,{cN:"javadoc",b:"/\\*\\*!",e:"\\*/",c:[e.PWM]},e.CBCM,e.inherit(e.CNM,{b:e.CNR+"|(-?infinity|nan)\\b"}),e.inherit(e.ASM,{i:null}),e.inherit(e.QSM,{i:null}),{cN:"string",b:"`",e:"`"},{cN:"variable",v:[{b:"[#$]"+t},{b:"#",e:"\\d+",i:"\\W"}]},{cN:"tag",b:"::\\s*",e:t,i:"\\W"},{cN:"attribute",v:[{b:"-"+e.UIR,r:0},{b:"(\\.\\.\\.)"}]},{cN:"subst",v:[{b:"->\\s*",c:[l]},{b:":=|/(?!\\w)=?|[-+*%=<>&|!?\\\\]+",r:0}]},{cN:"built_in",b:"\\.\\.?\\s*",r:0,c:[l]},{cN:"class",bK:"define",rE:!0,e:"\\(|=>",c:[e.inherit(e.TM,{b:e.UIR+"(=(?!>))?"})]}];return{aliases:["ls","lassoscript"],cI:!0,l:t+"|&[lg]t;",k:i,c:[{cN:"preprocessor",b:a,r:0,starts:{cN:"markup",e:"\\[|"+r,rE:!0,r:0,c:[n]}},o,s,{cN:"preprocessor",b:"\\[no_square_brackets",starts:{e:"\\[/no_square_brackets\\]",l:t+"|&[lg]t;",k:i,c:[{cN:"preprocessor",b:a,r:0,starts:{cN:"markup",e:"\\[noprocess\\]|"+r,rE:!0,c:[n]}},o,s].concat(c)}},{cN:"preprocessor",b:"\\[",r:0},{cN:"shebang",b:"^#!.+lasso9\\b",r:10}].concat(c)}}),hljs.registerLanguage("less",function(e){var t="[\\w-]+",r="("+t+"|@{"+t+"})",a=[],i=[],n=function(e){return{cN:"string",b:"~?"+e+".*?"+e}},o=function(e,t,r){return{cN:e,b:t,r:r}},s=function(t,r,a){return e.inherit({cN:t,b:r+"\\(",e:"\\(",rB:!0,eE:!0,r:0},a)},l={b:"\\(",e:"\\)",c:i,r:0};i.push(e.CLCM,e.CBCM,n("'"),n('"'),e.CSSNM,o("hexcolor","#[0-9A-Fa-f]+\\b"),s("function","(url|data-uri)",{starts:{cN:"string",e:"[\\)\\n]",eE:!0}}),s("function",t),l,o("variable","@@?"+t,10),o("variable","@{"+t+"}"),o("built_in","~?`[^`]*?`"),{cN:"attribute",b:t+"\\s*:",e:":",rB:!0,eE:!0});var c=i.concat({b:"{",e:"}",c:a}),d={bK:"when",eW:!0,c:[{bK:"and not"}].concat(i)},p={cN:"attribute",b:r,e:":",eE:!0,c:[e.CLCM,e.CBCM],i:/\S/,starts:{e:"[;}]",rE:!0,c:i,i:"[<=$]"}},u={cN:"at_rule",b:"@(import|media|charset|font-face|(-[a-z]+-)?keyframes|supports|document|namespace|page|viewport|host)\\b",starts:{e:"[;{}]",rE:!0,c:i,r:0}},m={cN:"variable",v:[{b:"@"+t+"\\s*:",r:15},{b:"@"+t}],starts:{e:"[;}]",rE:!0,c:c}},b={v:[{b:"[\\.#:&\\[]",e:"[;{}]"},{b:r+"[^;]*{",e:"{"}],rB:!0,rE:!0,i:"[<='$\"]",c:[e.CLCM,e.CBCM,d,o("keyword","all\\b"),o("variable","@{"+t+"}"),o("tag",r+"%?",0),o("id","#"+r),o("class","\\."+r,0),o("keyword","&",0),s("pseudo",":not"),s("keyword",":extend"),o("pseudo","::?"+r),{cN:"attr_selector",b:"\\[",e:"\\]"},{b:"\\(",e:"\\)",c:c},{b:"!important"}]};return a.push(e.CLCM,e.CBCM,u,m,b,p),{cI:!0,i:"[=>'/<($\"]",c:a}}),hljs.registerLanguage("lisp",function(e){var t="[a-zA-Z_\\-\\+\\*\\/\\<\\=\\>\\&\\#][a-zA-Z0-9_\\-\\+\\*\\/\\<\\=\\>\\&\\#!]*",r="\\|[^]*?\\|",a="(\\-|\\+)?\\d+(\\.\\d+|\\/\\d+)?((d|e|f|l|s|D|E|F|L|S)(\\+|\\-)?\\d+)?",i={cN:"shebang",b:"^#!",e:"$"},n={cN:"literal",b:"\\b(t{1}|nil)\\b"},o={cN:"number",v:[{b:a,r:0},{b:"#(b|B)[0-1]+(/[0-1]+)?"},{b:"#(o|O)[0-7]+(/[0-7]+)?"},{b:"#(x|X)[0-9a-fA-F]+(/[0-9a-fA-F]+)?"},{b:"#(c|C)\\("+a+" +"+a,e:"\\)"}]},s=e.inherit(e.QSM,{i:null}),l=e.C(";","$",{r:0}),c={cN:"variable",b:"\\*",e:"\\*"},d={cN:"keyword",b:"[:&]"+t},p={b:t,r:0},u={b:r},m={b:"\\(",e:"\\)",c:["self",n,s,o,p]},b={cN:"quoted",c:[o,s,c,d,m,p],v:[{b:"['`]\\(",e:"\\)"},{b:"\\(quote ",e:"\\)",k:"quote"},{b:"'"+r}]},g={cN:"quoted",v:[{b:"'"+t},{b:"#'"+t+"(::"+t+")*"}]},f={cN:"list",b:"\\(\\s*",e:"\\)"},h={eW:!0,r:0};return f.c=[{cN:"keyword",v:[{b:t},{b:r}]},h],h.c=[b,g,f,n,o,s,l,c,d,u,p],{i:/\S/,c:[o,i,n,s,l,b,g,f,p]}}),hljs.registerLanguage("livecodeserver",function(e){var t={cN:"variable",b:"\\b[gtps][A-Z]+[A-Za-z0-9_\\-]*\\b|\\$_[A-Z]+",r:0},r=[e.CBCM,e.HCM,e.C("--","$"),e.C("[^:]//","$")],a=e.inherit(e.TM,{v:[{b:"\\b_*rig[A-Z]+[A-Za-z0-9_\\-]*"},{b:"\\b_[a-z0-9\\-]+"}]}),i=e.inherit(e.TM,{b:"\\b([A-Za-z0-9_\\-]+)\\b"});return{cI:!1,k:{keyword:"$_COOKIE $_FILES $_GET $_GET_BINARY $_GET_RAW $_POST $_POST_BINARY $_POST_RAW $_SESSION $_SERVER codepoint codepoints segment segments codeunit codeunits sentence sentences trueWord trueWords paragraph after byte bytes english the until http forever descending using line real8 with seventh for stdout finally element word words fourth before black ninth sixth characters chars stderr uInt1 uInt1s uInt2 uInt2s stdin string lines relative rel any fifth items from middle mid at else of catch then third it file milliseconds seconds second secs sec int1 int1s int4 int4s internet int2 int2s normal text item last long detailed effective uInt4 uInt4s repeat end repeat URL in try into switch to words https token binfile each tenth as ticks tick system real4 by dateItems without char character ascending eighth whole dateTime numeric short first ftp integer abbreviated abbr abbrev private case while if",constant:"SIX TEN FORMFEED NINE ZERO NONE SPACE FOUR FALSE COLON CRLF PI COMMA ENDOFFILE EOF EIGHT FIVE QUOTE EMPTY ONE TRUE RETURN CR LINEFEED RIGHT BACKSLASH NULL SEVEN TAB THREE TWO six ten formfeed nine zero none space four false colon crlf pi comma endoffile eof eight five quote empty one true return cr linefeed right backslash null seven tab three two RIVERSION RISTATE FILE_READ_MODE FILE_WRITE_MODE FILE_WRITE_MODE DIR_WRITE_MODE FILE_READ_UMASK FILE_WRITE_UMASK DIR_READ_UMASK DIR_WRITE_UMASK",operator:"div mod wrap and or bitAnd bitNot bitOr bitXor among not in a an within contains ends with begins the keys of keys",built_in:"put abs acos aliasReference annuity arrayDecode arrayEncode asin atan atan2 average avg avgDev base64Decode base64Encode baseConvert binaryDecode binaryEncode byteOffset byteToNum cachedURL cachedURLs charToNum cipherNames codepointOffset codepointProperty codepointToNum codeunitOffset commandNames compound compress constantNames cos date dateFormat decompress directories diskSpace DNSServers exp exp1 exp2 exp10 extents files flushEvents folders format functionNames geometricMean global globals hasMemory harmonicMean hostAddress hostAddressToName hostName hostNameToAddress isNumber ISOToMac itemOffset keys len length libURLErrorData libUrlFormData libURLftpCommand libURLLastHTTPHeaders libURLLastRHHeaders libUrlMultipartFormAddPart libUrlMultipartFormData libURLVersion lineOffset ln ln1 localNames log log2 log10 longFilePath lower macToISO matchChunk matchText matrixMultiply max md5Digest median merge millisec millisecs millisecond milliseconds min monthNames nativeCharToNum normalizeText num number numToByte numToChar numToCodepoint numToNativeChar offset open openfiles openProcesses openProcessIDs openSockets paragraphOffset paramCount param params peerAddress pendingMessages platform popStdDev populationStandardDeviation populationVariance popVariance processID random randomBytes replaceText result revCreateXMLTree revCreateXMLTreeFromFile revCurrentRecord revCurrentRecordIsFirst revCurrentRecordIsLast revDatabaseColumnCount revDatabaseColumnIsNull revDatabaseColumnLengths revDatabaseColumnNames revDatabaseColumnNamed revDatabaseColumnNumbered revDatabaseColumnTypes revDatabaseConnectResult revDatabaseCursors revDatabaseID revDatabaseTableNames revDatabaseType revDataFromQuery revdb_closeCursor revdb_columnbynumber revdb_columncount revdb_columnisnull revdb_columnlengths revdb_columnnames revdb_columntypes revdb_commit revdb_connect revdb_connections revdb_connectionerr revdb_currentrecord revdb_cursorconnection revdb_cursorerr revdb_cursors revdb_dbtype revdb_disconnect revdb_execute revdb_iseof revdb_isbof revdb_movefirst revdb_movelast revdb_movenext revdb_moveprev revdb_query revdb_querylist revdb_recordcount revdb_rollback revdb_tablenames revGetDatabaseDriverPath revNumberOfRecords revOpenDatabase revOpenDatabases revQueryDatabase revQueryDatabaseBlob revQueryResult revQueryIsAtStart revQueryIsAtEnd revUnixFromMacPath revXMLAttribute revXMLAttributes revXMLAttributeValues revXMLChildContents revXMLChildNames revXMLCreateTreeFromFileWithNamespaces revXMLCreateTreeWithNamespaces revXMLDataFromXPathQuery revXMLEvaluateXPath revXMLFirstChild revXMLMatchingNode revXMLNextSibling revXMLNodeContents revXMLNumberOfChildren revXMLParent revXMLPreviousSibling revXMLRootNode revXMLRPC_CreateRequest revXMLRPC_Documents revXMLRPC_Error revXMLRPC_GetHost revXMLRPC_GetMethod revXMLRPC_GetParam revXMLText revXMLRPC_Execute revXMLRPC_GetParamCount revXMLRPC_GetParamNode revXMLRPC_GetParamType revXMLRPC_GetPath revXMLRPC_GetPort revXMLRPC_GetProtocol revXMLRPC_GetRequest revXMLRPC_GetResponse revXMLRPC_GetSocket revXMLTree revXMLTrees revXMLValidateDTD revZipDescribeItem revZipEnumerateItems revZipOpenArchives round sampVariance sec secs seconds sentenceOffset sha1Digest shell shortFilePath sin specialFolderPath sqrt standardDeviation statRound stdDev sum sysError systemVersion tan tempName textDecode textEncode tick ticks time to tokenOffset toLower toUpper transpose truewordOffset trunc uniDecode uniEncode upper URLDecode URLEncode URLStatus uuid value variableNames variance version waitDepth weekdayNames wordOffset xsltApplyStylesheet xsltApplyStylesheetFromFile xsltLoadStylesheet xsltLoadStylesheetFromFile add breakpoint cancel clear local variable file word line folder directory URL close socket process combine constant convert create new alias folder directory decrypt delete variable word line folder directory URL dispatch divide do encrypt filter get include intersect kill libURLDownloadToFile libURLFollowHttpRedirects libURLftpUpload libURLftpUploadFile libURLresetAll libUrlSetAuthCallback libURLSetCustomHTTPHeaders libUrlSetExpect100 libURLSetFTPListCommand libURLSetFTPMode libURLSetFTPStopTime libURLSetStatusCallback load multiply socket prepare process post seek rel relative read from process rename replace require resetAll resolve revAddXMLNode revAppendXML revCloseCursor revCloseDatabase revCommitDatabase revCopyFile revCopyFolder revCopyXMLNode revDeleteFolder revDeleteXMLNode revDeleteAllXMLTrees revDeleteXMLTree revExecuteSQL revGoURL revInsertXMLNode revMoveFolder revMoveToFirstRecord revMoveToLastRecord revMoveToNextRecord revMoveToPreviousRecord revMoveToRecord revMoveXMLNode revPutIntoXMLNode revRollBackDatabase revSetDatabaseDriverPath revSetXMLAttribute revXMLRPC_AddParam revXMLRPC_DeleteAllDocuments revXMLAddDTD revXMLRPC_Free revXMLRPC_FreeAll revXMLRPC_DeleteDocument revXMLRPC_DeleteParam revXMLRPC_SetHost revXMLRPC_SetMethod revXMLRPC_SetPort revXMLRPC_SetProtocol revXMLRPC_SetSocket revZipAddItemWithData revZipAddItemWithFile revZipAddUncompressedItemWithData revZipAddUncompressedItemWithFile revZipCancel revZipCloseArchive revZipDeleteItem revZipExtractItemToFile revZipExtractItemToVariable revZipSetProgressCallback revZipRenameItem revZipReplaceItemWithData revZipReplaceItemWithFile revZipOpenArchive send set sort split start stop subtract union unload wait write"},c:[t,{cN:"keyword",b:"\\bend\\sif\\b"},{cN:"function",bK:"function",e:"$",c:[t,i,e.ASM,e.QSM,e.BNM,e.CNM,a]},{cN:"function",bK:"end",e:"$",c:[i,a]},{cN:"command",bK:"command on",e:"$",c:[t,i,e.ASM,e.QSM,e.BNM,e.CNM,a]},{cN:"command",bK:"end",e:"$",c:[i,a]},{cN:"preprocessor",b:"<\\?rev|<\\?lc|<\\?livecode",r:10},{cN:"preprocessor",b:"<\\?"},{cN:"preprocessor",b:"\\?>"},e.ASM,e.QSM,e.BNM,e.CNM,a].concat(r),i:";$|^\\[|^="}}),hljs.registerLanguage("livescript",function(e){var t={keyword:"in if for while finally new do return else break catch instanceof throw try this switch continue typeof delete debugger case default function var with then unless until loop of by when and or is isnt not it that otherwise from to til fallthrough super case default function var void const let enum export import native __hasProp __extends __slice __bind __indexOf",literal:"true false null undefined yes no on off it that void",built_in:"npm require console print module global window document"},r="[A-Za-z$_](?:-[0-9A-Za-z$_]|[0-9A-Za-z$_])*",a=e.inherit(e.TM,{b:r}),i={cN:"subst",b:/#\{/,e:/}/,k:t},n={cN:"subst",b:/#[A-Za-z$_]/,e:/(?:\-[0-9A-Za-z$_]|[0-9A-Za-z$_])*/,k:t},o=[e.BNM,{cN:"number",b:"(\\b0[xX][a-fA-F0-9_]+)|(\\b\\d(\\d|_\\d)*(\\.(\\d(\\d|_\\d)*)?)?(_*[eE]([-+]\\d(_\\d|\\d)*)?)?[_a-z]*)",r:0,starts:{e:"(\\s*/)?",r:0}},{cN:"string",v:[{b:/'''/,e:/'''/,c:[e.BE]},{b:/'/,e:/'/,c:[e.BE]},{b:/"""/,e:/"""/,c:[e.BE,i,n]},{b:/"/,e:/"/,c:[e.BE,i,n]},{b:/\\/,e:/(\s|$)/,eE:!0}]},{cN:"pi",v:[{b:"//",e:"//[gim]*",c:[i,e.HCM]},{b:/\/(?![ *])(\\\/|.)*?\/[gim]*(?=\W|$)/}]},{cN:"property",b:"@"+r},{b:"``",e:"``",eB:!0,eE:!0,sL:"javascript"}];i.c=o;var s={cN:"params",b:"\\(",rB:!0,c:[{b:/\(/,e:/\)/,k:t,c:["self"].concat(o)}]};return{aliases:["ls"],k:t,i:/\/\*/,c:o.concat([e.C("\\/\\*","\\*\\/"),e.HCM,{cN:"function",c:[a,s],rB:!0,v:[{b:"("+r+"\\s*(?:=|:=)\\s*)?(\\(.*\\))?\\s*\\B\\->\\*?",e:"\\->\\*?"},{b:"("+r+"\\s*(?:=|:=)\\s*)?!?(\\(.*\\))?\\s*\\B[-~]{1,2}>\\*?",e:"[-~]{1,2}>\\*?"},{b:"("+r+"\\s*(?:=|:=)\\s*)?(\\(.*\\))?\\s*\\B!?[-~]{1,2}>\\*?",e:"!?[-~]{1,2}>\\*?"}]},{cN:"class",bK:"class",e:"$",i:/[:="\[\]]/,c:[{bK:"extends",eW:!0,i:/[:="\[\]]/,c:[a]},a]},{cN:"attribute",b:r+":",e:":",rB:!0,rE:!0,r:0}])}}),hljs.registerLanguage("lua",function(e){var t="\\[=*\\[",r="\\]=*\\]",a={b:t,e:r,c:["self"]},i=[e.C("--(?!"+t+")","$"),e.C("--"+t,r,{c:[a],r:10})];return{l:e.UIR,k:{keyword:"and break do else elseif end false for if in local nil not or repeat return then true until while",built_in:"_G _VERSION assert collectgarbage dofile error getfenv getmetatable ipairs load loadfile loadstring module next pairs pcall print rawequal rawget rawset require select setfenv setmetatable tonumber tostring type unpack xpcall coroutine debug io math os package string table"},c:i.concat([{cN:"function",bK:"function",e:"\\)",c:[e.inherit(e.TM,{b:"([_a-zA-Z]\\w*\\.)*([_a-zA-Z]\\w*:)?[_a-zA-Z]\\w*"}),{cN:"params",b:"\\(",eW:!0,c:i}].concat(i)},e.CNM,e.ASM,e.QSM,{cN:"string",b:t,e:r,c:[a],r:5}])}}),hljs.registerLanguage("makefile",function(e){var t={cN:"variable",b:/\$\(/,e:/\)/,c:[e.BE]};return{aliases:["mk","mak"],c:[e.HCM,{b:/^\w+\s*\W*=/,rB:!0,r:0,starts:{cN:"constant",e:/\s*\W*=/,eE:!0,starts:{e:/$/,r:0,c:[t]}}},{cN:"title",b:/^[\w]+:\s*$/},{cN:"phony",b:/^\.PHONY:/,e:/$/,k:".PHONY",l:/[\.\w]+/},{b:/^\t+/,e:/$/,r:0,c:[e.QSM,t]}]}}),hljs.registerLanguage("mathematica",function(e){return{aliases:["mma"],l:"(\\$|\\b)"+e.IR+"\\b",k:"AbelianGroup Abort AbortKernels AbortProtect Above Abs Absolute AbsoluteCorrelation AbsoluteCorrelationFunction AbsoluteCurrentValue AbsoluteDashing AbsoluteFileName AbsoluteOptions AbsolutePointSize AbsoluteThickness AbsoluteTime AbsoluteTiming AccountingForm Accumulate Accuracy AccuracyGoal ActionDelay ActionMenu ActionMenuBox ActionMenuBoxOptions Active ActiveItem ActiveStyle AcyclicGraphQ AddOnHelpPath AddTo AdjacencyGraph AdjacencyList AdjacencyMatrix AdjustmentBox AdjustmentBoxOptions AdjustTimeSeriesForecast AffineTransform After AiryAi AiryAiPrime AiryAiZero AiryBi AiryBiPrime AiryBiZero AlgebraicIntegerQ AlgebraicNumber AlgebraicNumberDenominator AlgebraicNumberNorm AlgebraicNumberPolynomial AlgebraicNumberTrace AlgebraicRules AlgebraicRulesData Algebraics AlgebraicUnitQ Alignment AlignmentMarker AlignmentPoint All AllowedDimensions AllowGroupClose AllowInlineCells AllowKernelInitialization AllowReverseGroupClose AllowScriptLevelChange AlphaChannel AlternatingGroup AlternativeHypothesis Alternatives AmbientLight Analytic AnchoredSearch And AndersonDarlingTest AngerJ AngleBracket AngularGauge Animate AnimationCycleOffset AnimationCycleRepetitions AnimationDirection AnimationDisplayTime AnimationRate AnimationRepetitions AnimationRunning Animator AnimatorBox AnimatorBoxOptions AnimatorElements Annotation Annuity AnnuityDue Antialiasing Antisymmetric Apart ApartSquareFree Appearance AppearanceElements AppellF1 Append AppendTo Apply ArcCos ArcCosh ArcCot ArcCoth ArcCsc ArcCsch ArcSec ArcSech ArcSin ArcSinDistribution ArcSinh ArcTan ArcTanh Arg ArgMax ArgMin ArgumentCountQ ARIMAProcess ArithmeticGeometricMean ARMAProcess ARProcess Array ArrayComponents ArrayDepth ArrayFlatten ArrayPad ArrayPlot ArrayQ ArrayReshape ArrayRules Arrays Arrow Arrow3DBox ArrowBox Arrowheads AspectRatio AspectRatioFixed Assert Assuming Assumptions AstronomicalData Asynchronous AsynchronousTaskObject AsynchronousTasks AtomQ Attributes AugmentedSymmetricPolynomial AutoAction AutoDelete AutoEvaluateEvents AutoGeneratedPackage AutoIndent AutoIndentSpacings AutoItalicWords AutoloadPath AutoMatch Automatic AutomaticImageSize AutoMultiplicationSymbol AutoNumberFormatting AutoOpenNotebooks AutoOpenPalettes AutorunSequencing AutoScaling AutoScroll AutoSpacing AutoStyleOptions AutoStyleWords Axes AxesEdge AxesLabel AxesOrigin AxesStyle Axis BabyMonsterGroupB Back Background BackgroundTasksSettings Backslash Backsubstitution Backward Band BandpassFilter BandstopFilter BarabasiAlbertGraphDistribution BarChart BarChart3D BarLegend BarlowProschanImportance BarnesG BarOrigin BarSpacing BartlettHannWindow BartlettWindow BaseForm Baseline BaselinePosition BaseStyle BatesDistribution BattleLemarieWavelet Because BeckmannDistribution Beep Before Begin BeginDialogPacket BeginFrontEndInteractionPacket BeginPackage BellB BellY Below BenfordDistribution BeniniDistribution BenktanderGibratDistribution BenktanderWeibullDistribution BernoulliB BernoulliDistribution BernoulliGraphDistribution BernoulliProcess BernsteinBasis BesselFilterModel BesselI BesselJ BesselJZero BesselK BesselY BesselYZero Beta BetaBinomialDistribution BetaDistribution BetaNegativeBinomialDistribution BetaPrimeDistribution BetaRegularized BetweennessCentrality BezierCurve BezierCurve3DBox BezierCurve3DBoxOptions BezierCurveBox BezierCurveBoxOptions BezierFunction BilateralFilter Binarize BinaryFormat BinaryImageQ BinaryRead BinaryReadList BinaryWrite BinCounts BinLists Binomial BinomialDistribution BinomialProcess BinormalDistribution BiorthogonalSplineWavelet BipartiteGraphQ BirnbaumImportance BirnbaumSaundersDistribution BitAnd BitClear BitGet BitLength BitNot BitOr BitSet BitShiftLeft BitShiftRight BitXor Black BlackmanHarrisWindow BlackmanNuttallWindow BlackmanWindow Blank BlankForm BlankNullSequence BlankSequence Blend Block BlockRandom BlomqvistBeta BlomqvistBetaTest Blue Blur BodePlot BohmanWindow Bold Bookmarks Boole BooleanConsecutiveFunction BooleanConvert BooleanCountingFunction BooleanFunction BooleanGraph BooleanMaxterms BooleanMinimize BooleanMinterms Booleans BooleanTable BooleanVariables BorderDimensions BorelTannerDistribution Bottom BottomHatTransform BoundaryStyle Bounds Box BoxBaselineShift BoxData BoxDimensions Boxed Boxes BoxForm BoxFormFormatTypes BoxFrame BoxID BoxMargins BoxMatrix BoxRatios BoxRotation BoxRotationPoint BoxStyle BoxWhiskerChart Bra BracketingBar BraKet BrayCurtisDistance BreadthFirstScan Break Brown BrownForsytheTest BrownianBridgeProcess BrowserCategory BSplineBasis BSplineCurve BSplineCurve3DBox BSplineCurveBox BSplineCurveBoxOptions BSplineFunction BSplineSurface BSplineSurface3DBox BubbleChart BubbleChart3D BubbleScale BubbleSizes BulletGauge BusinessDayQ ButterflyGraph ButterworthFilterModel Button ButtonBar ButtonBox ButtonBoxOptions ButtonCell ButtonContents ButtonData ButtonEvaluator ButtonExpandable ButtonFrame ButtonFunction ButtonMargins ButtonMinHeight ButtonNote ButtonNotebook ButtonSource ButtonStyle ButtonStyleMenuListing Byte ByteCount ByteOrdering C CachedValue CacheGraphics CalendarData CalendarType CallPacket CanberraDistance Cancel CancelButton CandlestickChart Cap CapForm CapitalDifferentialD CardinalBSplineBasis CarmichaelLambda Cases Cashflow Casoratian Catalan CatalanNumber Catch CauchyDistribution CauchyWindow CayleyGraph CDF CDFDeploy CDFInformation CDFWavelet Ceiling Cell CellAutoOverwrite CellBaseline CellBoundingBox CellBracketOptions CellChangeTimes CellContents CellContext CellDingbat CellDynamicExpression CellEditDuplicate CellElementsBoundingBox CellElementSpacings CellEpilog CellEvaluationDuplicate CellEvaluationFunction CellEventActions CellFrame CellFrameColor CellFrameLabelMargins CellFrameLabels CellFrameMargins CellGroup CellGroupData CellGrouping CellGroupingRules CellHorizontalScrolling CellID CellLabel CellLabelAutoDelete CellLabelMargins CellLabelPositioning CellMargins CellObject CellOpen CellPrint CellProlog Cells CellSize CellStyle CellTags CellularAutomaton CensoredDistribution Censoring Center CenterDot CentralMoment CentralMomentGeneratingFunction CForm ChampernowneNumber ChanVeseBinarize Character CharacterEncoding CharacterEncodingsPath CharacteristicFunction CharacteristicPolynomial CharacterRange Characters ChartBaseStyle ChartElementData ChartElementDataFunction ChartElementFunction ChartElements ChartLabels ChartLayout ChartLegends ChartStyle Chebyshev1FilterModel Chebyshev2FilterModel ChebyshevDistance ChebyshevT ChebyshevU Check CheckAbort CheckAll Checkbox CheckboxBar CheckboxBox CheckboxBoxOptions ChemicalData ChessboardDistance ChiDistribution ChineseRemainder ChiSquareDistribution ChoiceButtons ChoiceDialog CholeskyDecomposition Chop Circle CircleBox CircleDot CircleMinus CirclePlus CircleTimes CirculantGraph CityData Clear ClearAll ClearAttributes ClearSystemCache ClebschGordan ClickPane Clip ClipboardNotebook ClipFill ClippingStyle ClipPlanes ClipRange Clock ClockGauge ClockwiseContourIntegral Close Closed CloseKernels ClosenessCentrality Closing ClosingAutoSave ClosingEvent ClusteringComponents CMYKColor Coarse Coefficient CoefficientArrays CoefficientDomain CoefficientList CoefficientRules CoifletWavelet Collect Colon ColonForm ColorCombine ColorConvert ColorData ColorDataFunction ColorFunction ColorFunctionScaling Colorize ColorNegate ColorOutput ColorProfileData ColorQuantize ColorReplace ColorRules ColorSelectorSettings ColorSeparate ColorSetter ColorSetterBox ColorSetterBoxOptions ColorSlider ColorSpace Column ColumnAlignments ColumnBackgrounds ColumnForm ColumnLines ColumnsEqual ColumnSpacings ColumnWidths CommonDefaultFormatTypes Commonest CommonestFilter CommonUnits CommunityBoundaryStyle CommunityGraphPlot CommunityLabels CommunityRegionStyle CompatibleUnitQ CompilationOptions CompilationTarget Compile Compiled CompiledFunction Complement CompleteGraph CompleteGraphQ CompleteKaryTree CompletionsListPacket Complex Complexes ComplexExpand ComplexInfinity ComplexityFunction ComponentMeasurements ComponentwiseContextMenu Compose ComposeList ComposeSeries Composition CompoundExpression CompoundPoissonDistribution CompoundPoissonProcess CompoundRenewalProcess Compress CompressedData Condition ConditionalExpression Conditioned Cone ConeBox ConfidenceLevel ConfidenceRange ConfidenceTransform ConfigurationPath Congruent Conjugate ConjugateTranspose Conjunction Connect ConnectedComponents ConnectedGraphQ ConnesWindow ConoverTest ConsoleMessage ConsoleMessagePacket ConsolePrint Constant ConstantArray Constants ConstrainedMax ConstrainedMin ContentPadding ContentsBoundingBox ContentSelectable ContentSize Context ContextMenu Contexts ContextToFilename ContextToFileName Continuation Continue ContinuedFraction ContinuedFractionK ContinuousAction ContinuousMarkovProcess ContinuousTimeModelQ ContinuousWaveletData ContinuousWaveletTransform ContourDetect ContourGraphics ContourIntegral ContourLabels ContourLines ContourPlot ContourPlot3D Contours ContourShading ContourSmoothing ContourStyle ContraharmonicMean Control ControlActive ControlAlignment ControllabilityGramian ControllabilityMatrix ControllableDecomposition ControllableModelQ ControllerDuration ControllerInformation ControllerInformationData ControllerLinking ControllerManipulate ControllerMethod ControllerPath ControllerState ControlPlacement ControlsRendering ControlType Convergents ConversionOptions ConversionRules ConvertToBitmapPacket ConvertToPostScript ConvertToPostScriptPacket Convolve ConwayGroupCo1 ConwayGroupCo2 ConwayGroupCo3 CoordinateChartData CoordinatesToolOptions CoordinateTransform CoordinateTransformData CoprimeQ Coproduct CopulaDistribution Copyable CopyDirectory CopyFile CopyTag CopyToClipboard CornerFilter CornerNeighbors Correlation CorrelationDistance CorrelationFunction CorrelationTest Cos Cosh CoshIntegral CosineDistance CosineWindow CosIntegral Cot Coth Count CounterAssignments CounterBox CounterBoxOptions CounterClockwiseContourIntegral CounterEvaluator CounterFunction CounterIncrements CounterStyle CounterStyleMenuListing CountRoots CountryData Covariance CovarianceEstimatorFunction CovarianceFunction CoxianDistribution CoxIngersollRossProcess CoxModel CoxModelFit CramerVonMisesTest CreateArchive CreateDialog CreateDirectory CreateDocument CreateIntermediateDirectories CreatePalette CreatePalettePacket CreateScheduledTask CreateTemporary CreateWindow CriticalityFailureImportance CriticalitySuccessImportance CriticalSection Cross CrossingDetect CrossMatrix Csc Csch CubeRoot Cubics Cuboid CuboidBox Cumulant CumulantGeneratingFunction Cup CupCap Curl CurlyDoubleQuote CurlyQuote CurrentImage CurrentlySpeakingPacket CurrentValue CurvatureFlowFilter CurveClosed Cyan CycleGraph CycleIndexPolynomial Cycles CyclicGroup Cyclotomic Cylinder CylinderBox CylindricalDecomposition D DagumDistribution DamerauLevenshteinDistance DampingFactor Darker Dashed Dashing DataCompression DataDistribution DataRange DataReversed Date DateDelimiters DateDifference DateFunction DateList DateListLogPlot DateListPlot DatePattern DatePlus DateRange DateString DateTicksFormat DaubechiesWavelet DavisDistribution DawsonF DayCount DayCountConvention DayMatchQ DayName DayPlus DayRange DayRound DeBruijnGraph Debug DebugTag Decimal DeclareKnownSymbols DeclarePackage Decompose Decrement DedekindEta Default DefaultAxesStyle DefaultBaseStyle DefaultBoxStyle DefaultButton DefaultColor DefaultControlPlacement DefaultDuplicateCellStyle DefaultDuration DefaultElement DefaultFaceGridsStyle DefaultFieldHintStyle DefaultFont DefaultFontProperties DefaultFormatType DefaultFormatTypeForStyle DefaultFrameStyle DefaultFrameTicksStyle DefaultGridLinesStyle DefaultInlineFormatType DefaultInputFormatType DefaultLabelStyle DefaultMenuStyle DefaultNaturalLanguage DefaultNewCellStyle DefaultNewInlineCellStyle DefaultNotebook DefaultOptions DefaultOutputFormatType DefaultStyle DefaultStyleDefinitions DefaultTextFormatType DefaultTextInlineFormatType DefaultTicksStyle DefaultTooltipStyle DefaultValues Defer DefineExternal DefineInputStreamMethod DefineOutputStreamMethod Definition Degree DegreeCentrality DegreeGraphDistribution DegreeLexicographic DegreeReverseLexicographic Deinitialization Del Deletable Delete DeleteBorderComponents DeleteCases DeleteContents DeleteDirectory DeleteDuplicates DeleteFile DeleteSmallComponents DeleteWithContents DeletionWarning Delimiter DelimiterFlashTime DelimiterMatching Delimiters Denominator DensityGraphics DensityHistogram DensityPlot DependentVariables Deploy Deployed Depth DepthFirstScan Derivative DerivativeFilter DescriptorStateSpace DesignMatrix Det DGaussianWavelet DiacriticalPositioning Diagonal DiagonalMatrix Dialog DialogIndent DialogInput DialogLevel DialogNotebook DialogProlog DialogReturn DialogSymbols Diamond DiamondMatrix DiceDissimilarity DictionaryLookup DifferenceDelta DifferenceOrder DifferenceRoot DifferenceRootReduce Differences DifferentialD DifferentialRoot DifferentialRootReduce DifferentiatorFilter DigitBlock DigitBlockMinimum DigitCharacter DigitCount DigitQ DihedralGroup Dilation Dimensions DiracComb DiracDelta DirectedEdge DirectedEdges DirectedGraph DirectedGraphQ DirectedInfinity Direction Directive Directory DirectoryName DirectoryQ DirectoryStack DirichletCharacter DirichletConvolve DirichletDistribution DirichletL DirichletTransform DirichletWindow DisableConsolePrintPacket DiscreteChirpZTransform DiscreteConvolve DiscreteDelta DiscreteHadamardTransform DiscreteIndicator DiscreteLQEstimatorGains DiscreteLQRegulatorGains DiscreteLyapunovSolve DiscreteMarkovProcess DiscretePlot DiscretePlot3D DiscreteRatio DiscreteRiccatiSolve DiscreteShift DiscreteTimeModelQ DiscreteUniformDistribution DiscreteVariables DiscreteWaveletData DiscreteWaveletPacketTransform DiscreteWaveletTransform Discriminant Disjunction Disk DiskBox DiskMatrix Dispatch DispersionEstimatorFunction Display DisplayAllSteps DisplayEndPacket DisplayFlushImagePacket DisplayForm DisplayFunction DisplayPacket DisplayRules DisplaySetSizePacket DisplayString DisplayTemporary DisplayWith DisplayWithRef DisplayWithVariable DistanceFunction DistanceTransform Distribute Distributed DistributedContexts DistributeDefinitions DistributionChart DistributionDomain DistributionFitTest DistributionParameterAssumptions DistributionParameterQ Dithering Div Divergence Divide DivideBy Dividers Divisible Divisors DivisorSigma DivisorSum DMSList DMSString Do DockedCells DocumentNotebook DominantColors DOSTextFormat Dot DotDashed DotEqual Dotted DoubleBracketingBar DoubleContourIntegral DoubleDownArrow DoubleLeftArrow DoubleLeftRightArrow DoubleLeftTee DoubleLongLeftArrow DoubleLongLeftRightArrow DoubleLongRightArrow DoubleRightArrow DoubleRightTee DoubleUpArrow DoubleUpDownArrow DoubleVerticalBar DoublyInfinite Down DownArrow DownArrowBar DownArrowUpArrow DownLeftRightVector DownLeftTeeVector DownLeftVector DownLeftVectorBar DownRightTeeVector DownRightVector DownRightVectorBar Downsample DownTee DownTeeArrow DownValues DragAndDrop DrawEdges DrawFrontFaces DrawHighlighted Drop DSolve Dt DualLinearProgramming DualSystemsModel DumpGet DumpSave DuplicateFreeQ Dynamic DynamicBox DynamicBoxOptions DynamicEvaluationTimeout DynamicLocation DynamicModule DynamicModuleBox DynamicModuleBoxOptions DynamicModuleParent DynamicModuleValues DynamicName DynamicNamespace DynamicReference DynamicSetting DynamicUpdating DynamicWrapper DynamicWrapperBox DynamicWrapperBoxOptions E EccentricityCentrality EdgeAdd EdgeBetweennessCentrality EdgeCapacity EdgeCapForm EdgeColor EdgeConnectivity EdgeCost EdgeCount EdgeCoverQ EdgeDashing EdgeDelete EdgeDetect EdgeForm EdgeIndex EdgeJoinForm EdgeLabeling EdgeLabels EdgeLabelStyle EdgeList EdgeOpacity EdgeQ EdgeRenderingFunction EdgeRules EdgeShapeFunction EdgeStyle EdgeThickness EdgeWeight Editable EditButtonSettings EditCellTagsSettings EditDistance EffectiveInterest Eigensystem Eigenvalues EigenvectorCentrality Eigenvectors Element ElementData Eliminate EliminationOrder EllipticE EllipticExp EllipticExpPrime EllipticF EllipticFilterModel EllipticK EllipticLog EllipticNomeQ EllipticPi EllipticReducedHalfPeriods EllipticTheta EllipticThetaPrime EmitSound EmphasizeSyntaxErrors EmpiricalDistribution Empty EmptyGraphQ EnableConsolePrintPacket Enabled Encode End EndAdd EndDialogPacket EndFrontEndInteractionPacket EndOfFile EndOfLine EndOfString EndPackage EngineeringForm Enter EnterExpressionPacket EnterTextPacket Entropy EntropyFilter Environment Epilog Equal EqualColumns EqualRows EqualTilde EquatedTo Equilibrium EquirippleFilterKernel Equivalent Erf Erfc Erfi ErlangB ErlangC ErlangDistribution Erosion ErrorBox ErrorBoxOptions ErrorNorm ErrorPacket ErrorsDialogSettings EstimatedDistribution EstimatedProcess EstimatorGains EstimatorRegulator EuclideanDistance EulerE EulerGamma EulerianGraphQ EulerPhi Evaluatable Evaluate Evaluated EvaluatePacket EvaluationCell EvaluationCompletionAction EvaluationElements EvaluationMode EvaluationMonitor EvaluationNotebook EvaluationObject EvaluationOrder Evaluator EvaluatorNames EvenQ EventData EventEvaluator EventHandler EventHandlerTag EventLabels ExactBlackmanWindow ExactNumberQ ExactRootIsolation ExampleData Except ExcludedForms ExcludePods Exclusions ExclusionsStyle Exists Exit ExitDialog Exp Expand ExpandAll ExpandDenominator ExpandFileName ExpandNumerator Expectation ExpectationE ExpectedValue ExpGammaDistribution ExpIntegralE ExpIntegralEi Exponent ExponentFunction ExponentialDistribution ExponentialFamily ExponentialGeneratingFunction ExponentialMovingAverage ExponentialPowerDistribution ExponentPosition ExponentStep Export ExportAutoReplacements ExportPacket ExportString Expression ExpressionCell ExpressionPacket ExpToTrig ExtendedGCD Extension ExtentElementFunction ExtentMarkers ExtentSize ExternalCall ExternalDataCharacterEncoding Extract ExtractArchive ExtremeValueDistribution FaceForm FaceGrids FaceGridsStyle Factor FactorComplete Factorial Factorial2 FactorialMoment FactorialMomentGeneratingFunction FactorialPower FactorInteger FactorList FactorSquareFree FactorSquareFreeList FactorTerms FactorTermsList Fail FailureDistribution False FARIMAProcess FEDisableConsolePrintPacket FeedbackSector FeedbackSectorStyle FeedbackType FEEnableConsolePrintPacket Fibonacci FieldHint FieldHintStyle FieldMasked FieldSize File FileBaseName FileByteCount FileDate FileExistsQ FileExtension FileFormat FileHash FileInformation FileName FileNameDepth FileNameDialogSettings FileNameDrop FileNameJoin FileNames FileNameSetter FileNameSplit FileNameTake FilePrint FileType FilledCurve FilledCurveBox Filling FillingStyle FillingTransform FilterRules FinancialBond FinancialData FinancialDerivative FinancialIndicator Find FindArgMax FindArgMin FindClique FindClusters FindCurvePath FindDistributionParameters FindDivisions FindEdgeCover FindEdgeCut FindEulerianCycle FindFaces FindFile FindFit FindGeneratingFunction FindGeoLocation FindGeometricTransform FindGraphCommunities FindGraphIsomorphism FindGraphPartition FindHamiltonianCycle FindIndependentEdgeSet FindIndependentVertexSet FindInstance FindIntegerNullVector FindKClan FindKClique FindKClub FindKPlex FindLibrary FindLinearRecurrence FindList FindMaximum FindMaximumFlow FindMaxValue FindMinimum FindMinimumCostFlow FindMinimumCut FindMinValue FindPermutation FindPostmanTour FindProcessParameters FindRoot FindSequenceFunction FindSettings FindShortestPath FindShortestTour FindThreshold FindVertexCover FindVertexCut Fine FinishDynamic FiniteAbelianGroupCount FiniteGroupCount FiniteGroupData First FirstPassageTimeDistribution FischerGroupFi22 FischerGroupFi23 FischerGroupFi24Prime FisherHypergeometricDistribution FisherRatioTest FisherZDistribution Fit FitAll FittedModel FixedPoint FixedPointList FlashSelection Flat Flatten FlattenAt FlatTopWindow FlipView Floor FlushPrintOutputPacket Fold FoldList Font FontColor FontFamily FontForm FontName FontOpacity FontPostScriptName FontProperties FontReencoding FontSize FontSlant FontSubstitutions FontTracking FontVariations FontWeight For ForAll Format FormatRules FormatType FormatTypeAutoConvert FormatValues FormBox FormBoxOptions FortranForm Forward ForwardBackward Fourier FourierCoefficient FourierCosCoefficient FourierCosSeries FourierCosTransform FourierDCT FourierDCTFilter FourierDCTMatrix FourierDST FourierDSTMatrix FourierMatrix FourierParameters FourierSequenceTransform FourierSeries FourierSinCoefficient FourierSinSeries FourierSinTransform FourierTransform FourierTrigSeries FractionalBrownianMotionProcess FractionalPart FractionBox FractionBoxOptions FractionLine Frame FrameBox FrameBoxOptions Framed FrameInset FrameLabel Frameless FrameMargins FrameStyle FrameTicks FrameTicksStyle FRatioDistribution FrechetDistribution FreeQ FrequencySamplingFilterKernel FresnelC FresnelS Friday FrobeniusNumber FrobeniusSolve FromCharacterCode FromCoefficientRules FromContinuedFraction FromDate FromDigits FromDMS Front FrontEndDynamicExpression FrontEndEventActions FrontEndExecute FrontEndObject FrontEndResource FrontEndResourceString FrontEndStackSize FrontEndToken FrontEndTokenExecute FrontEndValueCache FrontEndVersion FrontFaceColor FrontFaceOpacity Full FullAxes FullDefinition FullForm FullGraphics FullOptions FullSimplify Function FunctionExpand FunctionInterpolation FunctionSpace FussellVeselyImportance GaborFilter GaborMatrix GaborWavelet GainMargins GainPhaseMargins Gamma GammaDistribution GammaRegularized GapPenalty Gather GatherBy GaugeFaceElementFunction GaugeFaceStyle GaugeFrameElementFunction GaugeFrameSize GaugeFrameStyle GaugeLabels GaugeMarkers GaugeStyle GaussianFilter GaussianIntegers GaussianMatrix GaussianWindow GCD GegenbauerC General GeneralizedLinearModelFit GenerateConditions GeneratedCell GeneratedParameters GeneratingFunction Generic GenericCylindricalDecomposition GenomeData GenomeLookup GeodesicClosing GeodesicDilation GeodesicErosion GeodesicOpening GeoDestination GeodesyData GeoDirection GeoDistance GeoGridPosition GeometricBrownianMotionProcess GeometricDistribution GeometricMean GeometricMeanFilter GeometricTransformation GeometricTransformation3DBox GeometricTransformation3DBoxOptions GeometricTransformationBox GeometricTransformationBoxOptions GeoPosition GeoPositionENU GeoPositionXYZ GeoProjectionData GestureHandler GestureHandlerTag Get GetBoundingBoxSizePacket GetContext GetEnvironment GetFileName GetFrontEndOptionsDataPacket GetLinebreakInformationPacket GetMenusPacket GetPageBreakInformationPacket Glaisher GlobalClusteringCoefficient GlobalPreferences GlobalSession Glow GoldenRatio GompertzMakehamDistribution GoodmanKruskalGamma GoodmanKruskalGammaTest Goto Grad Gradient GradientFilter GradientOrientationFilter Graph GraphAssortativity GraphCenter GraphComplement GraphData GraphDensity GraphDiameter GraphDifference GraphDisjointUnion GraphDistance GraphDistanceMatrix GraphElementData GraphEmbedding GraphHighlight GraphHighlightStyle GraphHub Graphics Graphics3D Graphics3DBox Graphics3DBoxOptions GraphicsArray GraphicsBaseline GraphicsBox GraphicsBoxOptions GraphicsColor GraphicsColumn GraphicsComplex GraphicsComplex3DBox GraphicsComplex3DBoxOptions GraphicsComplexBox GraphicsComplexBoxOptions GraphicsContents GraphicsData GraphicsGrid GraphicsGridBox GraphicsGroup GraphicsGroup3DBox GraphicsGroup3DBoxOptions GraphicsGroupBox GraphicsGroupBoxOptions GraphicsGrouping GraphicsHighlightColor GraphicsRow GraphicsSpacing GraphicsStyle GraphIntersection GraphLayout GraphLinkEfficiency GraphPeriphery GraphPlot GraphPlot3D GraphPower GraphPropertyDistribution GraphQ GraphRadius GraphReciprocity GraphRoot GraphStyle GraphUnion Gray GrayLevel GreatCircleDistance Greater GreaterEqual GreaterEqualLess GreaterFullEqual GreaterGreater GreaterLess GreaterSlantEqual GreaterTilde Green Grid GridBaseline GridBox GridBoxAlignment GridBoxBackground GridBoxDividers GridBoxFrame GridBoxItemSize GridBoxItemStyle GridBoxOptions GridBoxSpacings GridCreationSettings GridDefaultElement GridElementStyleOptions GridFrame GridFrameMargins GridGraph GridLines GridLinesStyle GroebnerBasis GroupActionBase GroupCentralizer GroupElementFromWord GroupElementPosition GroupElementQ GroupElements GroupElementToWord GroupGenerators GroupMultiplicationTable GroupOrbits GroupOrder GroupPageBreakWithin GroupSetwiseStabilizer GroupStabilizer GroupStabilizerChain Gudermannian GumbelDistribution HaarWavelet HadamardMatrix HalfNormalDistribution HamiltonianGraphQ HammingDistance HammingWindow HankelH1 HankelH2 HankelMatrix HannPoissonWindow HannWindow HaradaNortonGroupHN HararyGraph HarmonicMean HarmonicMeanFilter HarmonicNumber Hash HashTable Haversine HazardFunction Head HeadCompose Heads HeavisideLambda HeavisidePi HeavisideTheta HeldGroupHe HeldPart HelpBrowserLookup HelpBrowserNotebook HelpBrowserSettings HermiteDecomposition HermiteH HermitianMatrixQ HessenbergDecomposition Hessian HexadecimalCharacter Hexahedron HexahedronBox HexahedronBoxOptions HiddenSurface HighlightGraph HighlightImage HighpassFilter HigmanSimsGroupHS HilbertFilter HilbertMatrix Histogram Histogram3D HistogramDistribution HistogramList HistogramTransform HistogramTransformInterpolation HitMissTransform HITSCentrality HodgeDual HoeffdingD HoeffdingDTest Hold HoldAll HoldAllComplete HoldComplete HoldFirst HoldForm HoldPattern HoldRest HolidayCalendar HomeDirectory HomePage Horizontal HorizontalForm HorizontalGauge HorizontalScrollPosition HornerForm HotellingTSquareDistribution HoytDistribution HTMLSave Hue HumpDownHump HumpEqual HurwitzLerchPhi HurwitzZeta HyperbolicDistribution HypercubeGraph HyperexponentialDistribution Hyperfactorial Hypergeometric0F1 Hypergeometric0F1Regularized Hypergeometric1F1 Hypergeometric1F1Regularized Hypergeometric2F1 Hypergeometric2F1Regularized HypergeometricDistribution HypergeometricPFQ HypergeometricPFQRegularized HypergeometricU Hyperlink HyperlinkCreationSettings Hyphenation HyphenationOptions HypoexponentialDistribution HypothesisTestData I Identity IdentityMatrix If IgnoreCase Im Image Image3D Image3DSlices ImageAccumulate ImageAdd ImageAdjust ImageAlign ImageApply ImageAspectRatio ImageAssemble ImageCache ImageCacheValid ImageCapture ImageChannels ImageClip ImageColorSpace ImageCompose ImageConvolve ImageCooccurrence ImageCorners ImageCorrelate ImageCorrespondingPoints ImageCrop ImageData ImageDataPacket ImageDeconvolve ImageDemosaic ImageDifference ImageDimensions ImageDistance ImageEffect ImageFeatureTrack ImageFileApply ImageFileFilter ImageFileScan ImageFilter ImageForestingComponents ImageForwardTransformation ImageHistogram ImageKeypoints ImageLevels ImageLines ImageMargins ImageMarkers ImageMeasurements ImageMultiply ImageOffset ImagePad ImagePadding ImagePartition ImagePeriodogram ImagePerspectiveTransformation ImageQ ImageRangeCache ImageReflect ImageRegion ImageResize ImageResolution ImageRotate ImageRotated ImageScaled ImageScan ImageSize ImageSizeAction ImageSizeCache ImageSizeMultipliers ImageSizeRaw ImageSubtract ImageTake ImageTransformation ImageTrim ImageType ImageValue ImageValuePositions Implies Import ImportAutoReplacements ImportString ImprovementImportance In IncidenceGraph IncidenceList IncidenceMatrix IncludeConstantBasis IncludeFileExtension IncludePods IncludeSingularTerm Increment Indent IndentingNewlineSpacings IndentMaxFraction IndependenceTest IndependentEdgeSetQ IndependentUnit IndependentVertexSetQ Indeterminate IndexCreationOptions Indexed IndexGraph IndexTag Inequality InexactNumberQ InexactNumbers Infinity Infix Information Inherited InheritScope Initialization InitializationCell InitializationCellEvaluation InitializationCellWarning InlineCounterAssignments InlineCounterIncrements InlineRules Inner Inpaint Input InputAliases InputAssumptions InputAutoReplacements InputField InputFieldBox InputFieldBoxOptions InputForm InputGrouping InputNamePacket InputNotebook InputPacket InputSettings InputStream InputString InputStringPacket InputToBoxFormPacket Insert InsertionPointObject InsertResults Inset Inset3DBox Inset3DBoxOptions InsetBox InsetBoxOptions Install InstallService InString Integer IntegerDigits IntegerExponent IntegerLength IntegerPart IntegerPartitions IntegerQ Integers IntegerString Integral Integrate Interactive InteractiveTradingChart Interlaced Interleaving InternallyBalancedDecomposition InterpolatingFunction InterpolatingPolynomial Interpolation InterpolationOrder InterpolationPoints InterpolationPrecision Interpretation InterpretationBox InterpretationBoxOptions InterpretationFunction InterpretTemplate InterquartileRange Interrupt InterruptSettings Intersection Interval IntervalIntersection IntervalMemberQ IntervalUnion Inverse InverseBetaRegularized InverseCDF InverseChiSquareDistribution InverseContinuousWaveletTransform InverseDistanceTransform InverseEllipticNomeQ InverseErf InverseErfc InverseFourier InverseFourierCosTransform InverseFourierSequenceTransform InverseFourierSinTransform InverseFourierTransform InverseFunction InverseFunctions InverseGammaDistribution InverseGammaRegularized InverseGaussianDistribution InverseGudermannian InverseHaversine InverseJacobiCD InverseJacobiCN InverseJacobiCS InverseJacobiDC InverseJacobiDN InverseJacobiDS InverseJacobiNC InverseJacobiND InverseJacobiNS InverseJacobiSC InverseJacobiSD InverseJacobiSN InverseLaplaceTransform InversePermutation InverseRadon InverseSeries InverseSurvivalFunction InverseWaveletTransform InverseWeierstrassP InverseZTransform Invisible InvisibleApplication InvisibleTimes IrreduciblePolynomialQ IsolatingInterval IsomorphicGraphQ IsotopeData Italic Item ItemBox ItemBoxOptions ItemSize ItemStyle ItoProcess JaccardDissimilarity JacobiAmplitude Jacobian JacobiCD JacobiCN JacobiCS JacobiDC JacobiDN JacobiDS JacobiNC JacobiND JacobiNS JacobiP JacobiSC JacobiSD JacobiSN JacobiSymbol JacobiZeta JankoGroupJ1 JankoGroupJ2 JankoGroupJ3 JankoGroupJ4 JarqueBeraALMTest JohnsonDistribution Join Joined JoinedCurve JoinedCurveBox JoinForm JordanDecomposition JordanModelDecomposition K KagiChart KaiserBesselWindow KaiserWindow KalmanEstimator KalmanFilter KarhunenLoeveDecomposition KaryTree KatzCentrality KCoreComponents KDistribution KelvinBei KelvinBer KelvinKei KelvinKer KendallTau KendallTauTest KernelExecute KernelMixtureDistribution KernelObject Kernels Ket Khinchin KirchhoffGraph KirchhoffMatrix KleinInvariantJ KnightTourGraph KnotData KnownUnitQ KolmogorovSmirnovTest KroneckerDelta KroneckerModelDecomposition KroneckerProduct KroneckerSymbol KuiperTest KumaraswamyDistribution Kurtosis KuwaharaFilter Label Labeled LabeledSlider LabelingFunction LabelStyle LaguerreL LambdaComponents LambertW LanczosWindow LandauDistribution Language LanguageCategory LaplaceDistribution LaplaceTransform Laplacian LaplacianFilter LaplacianGaussianFilter Large Larger Last Latitude LatitudeLongitude LatticeData LatticeReduce Launch LaunchKernels LayeredGraphPlot LayerSizeFunction LayoutInformation LCM LeafCount LeapYearQ LeastSquares LeastSquaresFilterKernel Left LeftArrow LeftArrowBar LeftArrowRightArrow LeftDownTeeVector LeftDownVector LeftDownVectorBar LeftRightArrow LeftRightVector LeftTee LeftTeeArrow LeftTeeVector LeftTriangle LeftTriangleBar LeftTriangleEqual LeftUpDownVector LeftUpTeeVector LeftUpVector LeftUpVectorBar LeftVector LeftVectorBar LegendAppearance Legended LegendFunction LegendLabel LegendLayout LegendMargins LegendMarkers LegendMarkerSize LegendreP LegendreQ LegendreType Length LengthWhile LerchPhi Less LessEqual LessEqualGreater LessFullEqual LessGreater LessLess LessSlantEqual LessTilde LetterCharacter LetterQ Level LeveneTest LeviCivitaTensor LevyDistribution Lexicographic LibraryFunction LibraryFunctionError LibraryFunctionInformation LibraryFunctionLoad LibraryFunctionUnload LibraryLoad LibraryUnload LicenseID LiftingFilterData LiftingWaveletTransform LightBlue LightBrown LightCyan Lighter LightGray LightGreen Lighting LightingAngle LightMagenta LightOrange LightPink LightPurple LightRed LightSources LightYellow Likelihood Limit LimitsPositioning LimitsPositioningTokens LindleyDistribution Line Line3DBox LinearFilter LinearFractionalTransform LinearModelFit LinearOffsetFunction LinearProgramming LinearRecurrence LinearSolve LinearSolveFunction LineBox LineBreak LinebreakAdjustments LineBreakChart LineBreakWithin LineColor LineForm LineGraph LineIndent LineIndentMaxFraction LineIntegralConvolutionPlot LineIntegralConvolutionScale LineLegend LineOpacity LineSpacing LineWrapParts LinkActivate LinkClose LinkConnect LinkConnectedQ LinkCreate LinkError LinkFlush LinkFunction LinkHost LinkInterrupt LinkLaunch LinkMode LinkObject LinkOpen LinkOptions LinkPatterns LinkProtocol LinkRead LinkReadHeld LinkReadyQ Links LinkWrite LinkWriteHeld LiouvilleLambda List Listable ListAnimate ListContourPlot ListContourPlot3D ListConvolve ListCorrelate ListCurvePathPlot ListDeconvolve ListDensityPlot Listen ListFourierSequenceTransform ListInterpolation ListLineIntegralConvolutionPlot ListLinePlot ListLogLinearPlot ListLogLogPlot ListLogPlot ListPicker ListPickerBox ListPickerBoxBackground ListPickerBoxOptions ListPlay ListPlot ListPlot3D ListPointPlot3D ListPolarPlot ListQ ListStreamDensityPlot ListStreamPlot ListSurfacePlot3D ListVectorDensityPlot ListVectorPlot ListVectorPlot3D ListZTransform Literal LiteralSearch LocalClusteringCoefficient LocalizeVariables LocationEquivalenceTest LocationTest Locator LocatorAutoCreate LocatorBox LocatorBoxOptions LocatorCentering LocatorPane LocatorPaneBox LocatorPaneBoxOptions LocatorRegion Locked Log Log10 Log2 LogBarnesG LogGamma LogGammaDistribution LogicalExpand LogIntegral LogisticDistribution LogitModelFit LogLikelihood LogLinearPlot LogLogisticDistribution LogLogPlot LogMultinormalDistribution LogNormalDistribution LogPlot LogRankTest LogSeriesDistribution LongEqual Longest LongestAscendingSequence LongestCommonSequence LongestCommonSequencePositions LongestCommonSubsequence LongestCommonSubsequencePositions LongestMatch LongForm Longitude LongLeftArrow LongLeftRightArrow LongRightArrow Loopback LoopFreeGraphQ LowerCaseQ LowerLeftArrow LowerRightArrow LowerTriangularize LowpassFilter LQEstimatorGains LQGRegulator LQOutputRegulatorGains LQRegulatorGains LUBackSubstitution LucasL LuccioSamiComponents LUDecomposition LyapunovSolve LyonsGroupLy MachineID MachineName MachineNumberQ MachinePrecision MacintoshSystemPageSetup Magenta Magnification Magnify MainSolve MaintainDynamicCaches Majority MakeBoxes MakeExpression MakeRules MangoldtLambda ManhattanDistance Manipulate Manipulator MannWhitneyTest MantissaExponent Manual Map MapAll MapAt MapIndexed MAProcess MapThread MarcumQ MardiaCombinedTest MardiaKurtosisTest MardiaSkewnessTest MarginalDistribution MarkovProcessProperties Masking MatchingDissimilarity MatchLocalNameQ MatchLocalNames MatchQ Material MathematicaNotation MathieuC MathieuCharacteristicA MathieuCharacteristicB MathieuCharacteristicExponent MathieuCPrime MathieuGroupM11 MathieuGroupM12 MathieuGroupM22 MathieuGroupM23 MathieuGroupM24 MathieuS MathieuSPrime MathMLForm MathMLText Matrices MatrixExp MatrixForm MatrixFunction MatrixLog MatrixPlot MatrixPower MatrixQ MatrixRank Max MaxBend MaxDetect MaxExtraBandwidths MaxExtraConditions MaxFeatures MaxFilter Maximize MaxIterations MaxMemoryUsed MaxMixtureKernels MaxPlotPoints MaxPoints MaxRecursion MaxStableDistribution MaxStepFraction MaxSteps MaxStepSize MaxValue MaxwellDistribution McLaughlinGroupMcL Mean MeanClusteringCoefficient MeanDegreeConnectivity MeanDeviation MeanFilter MeanGraphDistance MeanNeighborDegree MeanShift MeanShiftFilter Median MedianDeviation MedianFilter Medium MeijerG MeixnerDistribution MemberQ MemoryConstrained MemoryInUse Menu MenuAppearance MenuCommandKey MenuEvaluator MenuItem MenuPacket MenuSortingValue MenuStyle MenuView MergeDifferences Mesh MeshFunctions MeshRange MeshShading MeshStyle Message MessageDialog MessageList MessageName MessageOptions MessagePacket Messages MessagesNotebook MetaCharacters MetaInformation Method MethodOptions MexicanHatWavelet MeyerWavelet Min MinDetect MinFilter MinimalPolynomial MinimalStateSpaceModel Minimize Minors MinRecursion MinSize MinStableDistribution Minus MinusPlus MinValue Missing MissingDataMethod MittagLefflerE MixedRadix MixedRadixQuantity MixtureDistribution Mod Modal Mode Modular ModularLambda Module Modulus MoebiusMu Moment Momentary MomentConvert MomentEvaluate MomentGeneratingFunction Monday Monitor MonomialList MonomialOrder MonsterGroupM MorletWavelet MorphologicalBinarize MorphologicalBranchPoints MorphologicalComponents MorphologicalEulerNumber MorphologicalGraph MorphologicalPerimeter MorphologicalTransform Most MouseAnnotation MouseAppearance MouseAppearanceTag MouseButtons Mouseover MousePointerNote MousePosition MovingAverage MovingMedian MoyalDistribution MultiedgeStyle MultilaunchWarning MultiLetterItalics MultiLetterStyle MultilineFunction Multinomial MultinomialDistribution MultinormalDistribution MultiplicativeOrder Multiplicity Multiselection MultivariateHypergeometricDistribution MultivariatePoissonDistribution MultivariateTDistribution N NakagamiDistribution NameQ Names NamespaceBox Nand NArgMax NArgMin NBernoulliB NCache NDSolve NDSolveValue Nearest NearestFunction NeedCurrentFrontEndPackagePacket NeedCurrentFrontEndSymbolsPacket NeedlemanWunschSimilarity Needs Negative NegativeBinomialDistribution NegativeMultinomialDistribution NeighborhoodGraph Nest NestedGreaterGreater NestedLessLess NestedScriptRules NestList NestWhile NestWhileList NevilleThetaC NevilleThetaD NevilleThetaN NevilleThetaS NewPrimitiveStyle NExpectation Next NextPrime NHoldAll NHoldFirst NHoldRest NicholsGridLines NicholsPlot NIntegrate NMaximize NMaxValue NMinimize NMinValue NominalVariables NonAssociative NoncentralBetaDistribution NoncentralChiSquareDistribution NoncentralFRatioDistribution NoncentralStudentTDistribution NonCommutativeMultiply NonConstants None NonlinearModelFit NonlocalMeansFilter NonNegative NonPositive Nor NorlundB Norm Normal NormalDistribution NormalGrouping Normalize NormalizedSquaredEuclideanDistance NormalsFunction NormFunction Not NotCongruent NotCupCap NotDoubleVerticalBar Notebook NotebookApply NotebookAutoSave NotebookClose NotebookConvertSettings NotebookCreate NotebookCreateReturnObject NotebookDefault NotebookDelete NotebookDirectory NotebookDynamicExpression NotebookEvaluate NotebookEventActions NotebookFileName NotebookFind NotebookFindReturnObject NotebookGet NotebookGetLayoutInformationPacket NotebookGetMisspellingsPacket NotebookInformation NotebookInterfaceObject NotebookLocate NotebookObject NotebookOpen NotebookOpenReturnObject NotebookPath NotebookPrint NotebookPut NotebookPutReturnObject NotebookRead NotebookResetGeneratedCells Notebooks NotebookSave NotebookSaveAs NotebookSelection NotebookSetupLayoutInformationPacket NotebooksMenu NotebookWrite NotElement NotEqualTilde NotExists NotGreater NotGreaterEqual NotGreaterFullEqual NotGreaterGreater NotGreaterLess NotGreaterSlantEqual NotGreaterTilde NotHumpDownHump NotHumpEqual NotLeftTriangle NotLeftTriangleBar NotLeftTriangleEqual NotLess NotLessEqual NotLessFullEqual NotLessGreater NotLessLess NotLessSlantEqual NotLessTilde NotNestedGreaterGreater NotNestedLessLess NotPrecedes NotPrecedesEqual NotPrecedesSlantEqual NotPrecedesTilde NotReverseElement NotRightTriangle NotRightTriangleBar NotRightTriangleEqual NotSquareSubset NotSquareSubsetEqual NotSquareSuperset NotSquareSupersetEqual NotSubset NotSubsetEqual NotSucceeds NotSucceedsEqual NotSucceedsSlantEqual NotSucceedsTilde NotSuperset NotSupersetEqual NotTilde NotTildeEqual NotTildeFullEqual NotTildeTilde NotVerticalBar NProbability NProduct NProductFactors NRoots NSolve NSum NSumTerms Null NullRecords NullSpace NullWords Number NumberFieldClassNumber NumberFieldDiscriminant NumberFieldFundamentalUnits NumberFieldIntegralBasis NumberFieldNormRepresentatives NumberFieldRegulator NumberFieldRootsOfUnity NumberFieldSignature NumberForm NumberFormat NumberMarks NumberMultiplier NumberPadding NumberPoint NumberQ NumberSeparator NumberSigns NumberString Numerator NumericFunction NumericQ NuttallWindow NValues NyquistGridLines NyquistPlot O ObservabilityGramian ObservabilityMatrix ObservableDecomposition ObservableModelQ OddQ Off Offset OLEData On ONanGroupON OneIdentity Opacity Open OpenAppend Opener OpenerBox OpenerBoxOptions OpenerView OpenFunctionInspectorPacket Opening OpenRead OpenSpecialOptions OpenTemporary OpenWrite Operate OperatingSystem OptimumFlowData Optional OptionInspectorSettings OptionQ Options OptionsPacket OptionsPattern OptionValue OptionValueBox OptionValueBoxOptions Or Orange Order OrderDistribution OrderedQ Ordering Orderless OrnsteinUhlenbeckProcess Orthogonalize Out Outer OutputAutoOverwrite OutputControllabilityMatrix OutputControllableModelQ OutputForm OutputFormData OutputGrouping OutputMathEditExpression OutputNamePacket OutputResponse OutputSizeLimit OutputStream Over OverBar OverDot Overflow OverHat Overlaps Overlay OverlayBox OverlayBoxOptions Overscript OverscriptBox OverscriptBoxOptions OverTilde OverVector OwenT OwnValues PackingMethod PaddedForm Padding PadeApproximant PadLeft PadRight PageBreakAbove PageBreakBelow PageBreakWithin PageFooterLines PageFooters PageHeaderLines PageHeaders PageHeight PageRankCentrality PageWidth PairedBarChart PairedHistogram PairedSmoothHistogram PairedTTest PairedZTest PaletteNotebook PalettePath Pane PaneBox PaneBoxOptions Panel PanelBox PanelBoxOptions Paneled PaneSelector PaneSelectorBox PaneSelectorBoxOptions PaperWidth ParabolicCylinderD ParagraphIndent ParagraphSpacing ParallelArray ParallelCombine ParallelDo ParallelEvaluate Parallelization Parallelize ParallelMap ParallelNeeds ParallelProduct ParallelSubmit ParallelSum ParallelTable ParallelTry Parameter ParameterEstimator ParameterMixtureDistribution ParameterVariables ParametricFunction ParametricNDSolve ParametricNDSolveValue ParametricPlot ParametricPlot3D ParentConnect ParentDirectory ParentForm Parenthesize ParentList ParetoDistribution Part PartialCorrelationFunction PartialD ParticleData Partition PartitionsP PartitionsQ ParzenWindow PascalDistribution PassEventsDown PassEventsUp Paste PasteBoxFormInlineCells PasteButton Path PathGraph PathGraphQ Pattern PatternSequence PatternTest PauliMatrix PaulWavelet Pause PausedTime PDF PearsonChiSquareTest PearsonCorrelationTest PearsonDistribution PerformanceGoal PeriodicInterpolation Periodogram PeriodogramArray PermutationCycles PermutationCyclesQ PermutationGroup PermutationLength PermutationList PermutationListQ PermutationMax PermutationMin PermutationOrder PermutationPower PermutationProduct PermutationReplace Permutations PermutationSupport Permute PeronaMalikFilter Perpendicular PERTDistribution PetersenGraph PhaseMargins Pi Pick PIDData PIDDerivativeFilter PIDFeedforward PIDTune Piecewise PiecewiseExpand PieChart PieChart3D PillaiTrace PillaiTraceTest Pink Pivoting PixelConstrained PixelValue PixelValuePositions Placed Placeholder PlaceholderReplace Plain PlanarGraphQ Play PlayRange Plot Plot3D Plot3Matrix PlotDivision PlotJoined PlotLabel PlotLayout PlotLegends PlotMarkers PlotPoints PlotRange PlotRangeClipping PlotRangePadding PlotRegion PlotStyle Plus PlusMinus Pochhammer PodStates PodWidth Point Point3DBox PointBox PointFigureChart PointForm PointLegend PointSize PoissonConsulDistribution PoissonDistribution PoissonProcess PoissonWindow PolarAxes PolarAxesOrigin PolarGridLines PolarPlot PolarTicks PoleZeroMarkers PolyaAeppliDistribution PolyGamma Polygon Polygon3DBox Polygon3DBoxOptions PolygonBox PolygonBoxOptions PolygonHoleScale PolygonIntersections PolygonScale PolyhedronData PolyLog PolynomialExtendedGCD PolynomialForm PolynomialGCD PolynomialLCM PolynomialMod PolynomialQ PolynomialQuotient PolynomialQuotientRemainder PolynomialReduce PolynomialRemainder Polynomials PopupMenu PopupMenuBox PopupMenuBoxOptions PopupView PopupWindow Position Positive PositiveDefiniteMatrixQ PossibleZeroQ Postfix PostScript Power PowerDistribution PowerExpand PowerMod PowerModList PowerSpectralDensity PowersRepresentations PowerSymmetricPolynomial Precedence PrecedenceForm Precedes PrecedesEqual PrecedesSlantEqual PrecedesTilde Precision PrecisionGoal PreDecrement PredictionRoot PreemptProtect PreferencesPath Prefix PreIncrement Prepend PrependTo PreserveImageOptions Previous PriceGraphDistribution PrimaryPlaceholder Prime PrimeNu PrimeOmega PrimePi PrimePowerQ PrimeQ Primes PrimeZetaP PrimitiveRoot PrincipalComponents PrincipalValue Print PrintAction PrintForm PrintingCopies PrintingOptions PrintingPageRange PrintingStartingPageNumber PrintingStyleEnvironment PrintPrecision PrintTemporary Prism PrismBox PrismBoxOptions PrivateCellOptions PrivateEvaluationOptions PrivateFontOptions PrivateFrontEndOptions PrivateNotebookOptions PrivatePaths Probability ProbabilityDistribution ProbabilityPlot ProbabilityPr ProbabilityScalePlot ProbitModelFit ProcessEstimator ProcessParameterAssumptions ProcessParameterQ ProcessStateDomain ProcessTimeDomain Product ProductDistribution ProductLog ProgressIndicator ProgressIndicatorBox ProgressIndicatorBoxOptions Projection Prolog PromptForm Properties Property PropertyList PropertyValue Proportion Proportional Protect Protected ProteinData Pruning PseudoInverse Purple Put PutAppend Pyramid PyramidBox PyramidBoxOptions QBinomial QFactorial QGamma QHypergeometricPFQ QPochhammer QPolyGamma QRDecomposition QuadraticIrrationalQ Quantile QuantilePlot Quantity QuantityForm QuantityMagnitude QuantityQ QuantityUnit Quartics QuartileDeviation Quartiles QuartileSkewness QueueingNetworkProcess QueueingProcess QueueProperties Quiet Quit Quotient QuotientRemainder RadialityCentrality RadicalBox RadicalBoxOptions RadioButton RadioButtonBar RadioButtonBox RadioButtonBoxOptions Radon RamanujanTau RamanujanTauL RamanujanTauTheta RamanujanTauZ Random RandomChoice RandomComplex RandomFunction RandomGraph RandomImage RandomInteger RandomPermutation RandomPrime RandomReal RandomSample RandomSeed RandomVariate RandomWalkProcess Range RangeFilter RangeSpecification RankedMax RankedMin Raster Raster3D Raster3DBox Raster3DBoxOptions RasterArray RasterBox RasterBoxOptions Rasterize RasterSize Rational RationalFunctions Rationalize Rationals Ratios Raw RawArray RawBoxes RawData RawMedium RayleighDistribution Re Read ReadList ReadProtected Real RealBlockDiagonalForm RealDigits RealExponent Reals Reap Record RecordLists RecordSeparators Rectangle RectangleBox RectangleBoxOptions RectangleChart RectangleChart3D RecurrenceFilter RecurrenceTable RecurringDigitsForm Red Reduce RefBox ReferenceLineStyle ReferenceMarkers ReferenceMarkerStyle Refine ReflectionMatrix ReflectionTransform Refresh RefreshRate RegionBinarize RegionFunction RegionPlot RegionPlot3D RegularExpression Regularization Reinstall Release ReleaseHold ReliabilityDistribution ReliefImage ReliefPlot Remove RemoveAlphaChannel RemoveAsynchronousTask Removed RemoveInputStreamMethod RemoveOutputStreamMethod RemoveProperty RemoveScheduledTask RenameDirectory RenameFile RenderAll RenderingOptions RenewalProcess RenkoChart Repeated RepeatedNull RepeatedString Replace ReplaceAll ReplaceHeldPart ReplaceImageValue ReplaceList ReplacePart ReplacePixelValue ReplaceRepeated Resampling Rescale RescalingTransform ResetDirectory ResetMenusPacket ResetScheduledTask Residue Resolve Rest Resultant ResumePacket Return ReturnExpressionPacket ReturnInputFormPacket ReturnPacket ReturnTextPacket Reverse ReverseBiorthogonalSplineWavelet ReverseElement ReverseEquilibrium ReverseGraph ReverseUpEquilibrium RevolutionAxis RevolutionPlot3D RGBColor RiccatiSolve RiceDistribution RidgeFilter RiemannR RiemannSiegelTheta RiemannSiegelZ Riffle Right RightArrow RightArrowBar RightArrowLeftArrow RightCosetRepresentative RightDownTeeVector RightDownVector RightDownVectorBar RightTee RightTeeArrow RightTeeVector RightTriangle RightTriangleBar RightTriangleEqual RightUpDownVector RightUpTeeVector RightUpVector RightUpVectorBar RightVector RightVectorBar RiskAchievementImportance RiskReductionImportance RogersTanimotoDissimilarity Root RootApproximant RootIntervals RootLocusPlot RootMeanSquare RootOfUnityQ RootReduce Roots RootSum Rotate RotateLabel RotateLeft RotateRight RotationAction RotationBox RotationBoxOptions RotationMatrix RotationTransform Round RoundImplies RoundingRadius Row RowAlignments RowBackgrounds RowBox RowHeights RowLines RowMinHeight RowReduce RowsEqual RowSpacings RSolve RudvalisGroupRu Rule RuleCondition RuleDelayed RuleForm RulerUnits Run RunScheduledTask RunThrough RuntimeAttributes RuntimeOptions RussellRaoDissimilarity SameQ SameTest SampleDepth SampledSoundFunction SampledSoundList SampleRate SamplingPeriod SARIMAProcess SARMAProcess SatisfiabilityCount SatisfiabilityInstances SatisfiableQ Saturday Save Saveable SaveAutoDelete SaveDefinitions SawtoothWave Scale Scaled ScaleDivisions ScaledMousePosition ScaleOrigin ScalePadding ScaleRanges ScaleRangeStyle ScalingFunctions ScalingMatrix ScalingTransform Scan ScheduledTaskActiveQ ScheduledTaskData ScheduledTaskObject ScheduledTasks SchurDecomposition ScientificForm ScreenRectangle ScreenStyleEnvironment ScriptBaselineShifts ScriptLevel ScriptMinSize ScriptRules ScriptSizeMultipliers Scrollbars ScrollingOptions ScrollPosition Sec Sech SechDistribution SectionGrouping SectorChart SectorChart3D SectorOrigin SectorSpacing SeedRandom Select Selectable SelectComponents SelectedCells SelectedNotebook Selection SelectionAnimate SelectionCell SelectionCellCreateCell SelectionCellDefaultStyle SelectionCellParentStyle SelectionCreateCell SelectionDebuggerTag SelectionDuplicateCell SelectionEvaluate SelectionEvaluateCreateCell SelectionMove SelectionPlaceholder SelectionSetStyle SelectWithContents SelfLoops SelfLoopStyle SemialgebraicComponentInstances SendMail Sequence SequenceAlignment SequenceForm SequenceHold SequenceLimit Series SeriesCoefficient SeriesData SessionTime Set SetAccuracy SetAlphaChannel SetAttributes Setbacks SetBoxFormNamesPacket SetDelayed SetDirectory SetEnvironment SetEvaluationNotebook SetFileDate SetFileLoadingContext SetNotebookStatusLine SetOptions SetOptionsPacket SetPrecision SetProperty SetSelectedNotebook SetSharedFunction SetSharedVariable SetSpeechParametersPacket SetStreamPosition SetSystemOptions Setter SetterBar SetterBox SetterBoxOptions Setting SetValue Shading Shallow ShannonWavelet ShapiroWilkTest Share Sharpen ShearingMatrix ShearingTransform ShenCastanMatrix Short ShortDownArrow Shortest ShortestMatch ShortestPathFunction ShortLeftArrow ShortRightArrow ShortUpArrow Show ShowAutoStyles ShowCellBracket ShowCellLabel ShowCellTags ShowClosedCellArea ShowContents ShowControls ShowCursorTracker ShowGroupOpenCloseIcon ShowGroupOpener ShowInvisibleCharacters ShowPageBreaks ShowPredictiveInterface ShowSelection ShowShortBoxForm ShowSpecialCharacters ShowStringCharacters ShowSyntaxStyles ShrinkingDelay ShrinkWrapBoundingBox SiegelTheta SiegelTukeyTest Sign Signature SignedRankTest SignificanceLevel SignPadding SignTest SimilarityRules SimpleGraph SimpleGraphQ Simplify Sin Sinc SinghMaddalaDistribution SingleEvaluation SingleLetterItalics SingleLetterStyle SingularValueDecomposition SingularValueList SingularValuePlot SingularValues Sinh SinhIntegral SinIntegral SixJSymbol Skeleton SkeletonTransform SkellamDistribution Skewness SkewNormalDistribution Skip SliceDistribution Slider Slider2D Slider2DBox Slider2DBoxOptions SliderBox SliderBoxOptions SlideView Slot SlotSequence Small SmallCircle Smaller SmithDelayCompensator SmithWatermanSimilarity SmoothDensityHistogram SmoothHistogram SmoothHistogram3D SmoothKernelDistribution SocialMediaData Socket SokalSneathDissimilarity Solve SolveAlways SolveDelayed Sort SortBy Sound SoundAndGraphics SoundNote SoundVolume Sow Space SpaceForm Spacer Spacings Span SpanAdjustments SpanCharacterRounding SpanFromAbove SpanFromBoth SpanFromLeft SpanLineThickness SpanMaxSize SpanMinSize SpanningCharacters SpanSymmetric SparseArray SpatialGraphDistribution Speak SpeakTextPacket SpearmanRankTest SpearmanRho Spectrogram SpectrogramArray Specularity SpellingCorrection SpellingDictionaries SpellingDictionariesPath SpellingOptions SpellingSuggestionsPacket Sphere SphereBox SphericalBesselJ SphericalBesselY SphericalHankelH1 SphericalHankelH2 SphericalHarmonicY SphericalPlot3D SphericalRegion SpheroidalEigenvalue SpheroidalJoiningFactor SpheroidalPS SpheroidalPSPrime SpheroidalQS SpheroidalQSPrime SpheroidalRadialFactor SpheroidalS1 SpheroidalS1Prime SpheroidalS2 SpheroidalS2Prime Splice SplicedDistribution SplineClosed SplineDegree SplineKnots SplineWeights Split SplitBy SpokenString Sqrt SqrtBox SqrtBoxOptions Square SquaredEuclideanDistance SquareFreeQ SquareIntersection SquaresR SquareSubset SquareSubsetEqual SquareSuperset SquareSupersetEqual SquareUnion SquareWave StabilityMargins StabilityMarginsStyle StableDistribution Stack StackBegin StackComplete StackInhibit StandardDeviation StandardDeviationFilter StandardForm Standardize StandbyDistribution Star StarGraph StartAsynchronousTask StartingStepSize StartOfLine StartOfString StartScheduledTask StartupSound StateDimensions StateFeedbackGains StateOutputEstimator StateResponse StateSpaceModel StateSpaceRealization StateSpaceTransform StationaryDistribution StationaryWaveletPacketTransform StationaryWaveletTransform StatusArea StatusCentrality StepMonitor StieltjesGamma StirlingS1 StirlingS2 StopAsynchronousTask StopScheduledTask StrataVariables StratonovichProcess StreamColorFunction StreamColorFunctionScaling StreamDensityPlot StreamPlot StreamPoints StreamPosition Streams StreamScale StreamStyle String StringBreak StringByteCount StringCases StringCount StringDrop StringExpression StringForm StringFormat StringFreeQ StringInsert StringJoin StringLength StringMatchQ StringPosition StringQ StringReplace StringReplaceList StringReplacePart StringReverse StringRotateLeft StringRotateRight StringSkeleton StringSplit StringTake StringToStream StringTrim StripBoxes StripOnInput StripWrapperBoxes StrokeForm StructuralImportance StructuredArray StructuredSelection StruveH StruveL Stub StudentTDistribution Style StyleBox StyleBoxAutoDelete StyleBoxOptions StyleData StyleDefinitions StyleForm StyleKeyMapping StyleMenuListing StyleNameDialogSettings StyleNames StylePrint StyleSheetPath Subfactorial Subgraph SubMinus SubPlus SubresultantPolynomialRemainders SubresultantPolynomials Subresultants Subscript SubscriptBox SubscriptBoxOptions Subscripted Subset SubsetEqual Subsets SubStar Subsuperscript SubsuperscriptBox SubsuperscriptBoxOptions Subtract SubtractFrom SubValues Succeeds SucceedsEqual SucceedsSlantEqual SucceedsTilde SuchThat Sum SumConvergence Sunday SuperDagger SuperMinus SuperPlus Superscript SuperscriptBox SuperscriptBoxOptions Superset SupersetEqual SuperStar Surd SurdForm SurfaceColor SurfaceGraphics SurvivalDistribution SurvivalFunction SurvivalModel SurvivalModelFit SuspendPacket SuzukiDistribution SuzukiGroupSuz SwatchLegend Switch Symbol SymbolName SymletWavelet Symmetric SymmetricGroup SymmetricMatrixQ SymmetricPolynomial SymmetricReduction Symmetrize SymmetrizedArray SymmetrizedArrayRules SymmetrizedDependentComponents SymmetrizedIndependentComponents SymmetrizedReplacePart SynchronousInitialization SynchronousUpdating Syntax SyntaxForm SyntaxInformation SyntaxLength SyntaxPacket SyntaxQ SystemDialogInput SystemException SystemHelpPath SystemInformation SystemInformationData SystemOpen SystemOptions SystemsModelDelay SystemsModelDelayApproximate SystemsModelDelete SystemsModelDimensions SystemsModelExtract SystemsModelFeedbackConnect SystemsModelLabels SystemsModelOrder SystemsModelParallelConnect SystemsModelSeriesConnect SystemsModelStateFeedbackConnect SystemStub Tab TabFilling Table TableAlignments TableDepth TableDirections TableForm TableHeadings TableSpacing TableView TableViewBox TabSpacings TabView TabViewBox TabViewBoxOptions TagBox TagBoxNote TagBoxOptions TaggingRules TagSet TagSetDelayed TagStyle TagUnset Take TakeWhile Tally Tan Tanh TargetFunctions TargetUnits TautologyQ TelegraphProcess TemplateBox TemplateBoxOptions TemplateSlotSequence TemporalData Temporary TemporaryVariable TensorContract TensorDimensions TensorExpand TensorProduct TensorQ TensorRank TensorReduce TensorSymmetry TensorTranspose TensorWedge Tetrahedron TetrahedronBox TetrahedronBoxOptions TeXForm TeXSave Text Text3DBox Text3DBoxOptions TextAlignment TextBand TextBoundingBox TextBox TextCell TextClipboardType TextData TextForm TextJustification TextLine TextPacket TextParagraph TextRecognize TextRendering TextStyle Texture TextureCoordinateFunction TextureCoordinateScaling Therefore ThermometerGauge Thick Thickness Thin Thinning ThisLink ThompsonGroupTh Thread ThreeJSymbol Threshold Through Throw Thumbnail Thursday Ticks TicksStyle Tilde TildeEqual TildeFullEqual TildeTilde TimeConstrained TimeConstraint Times TimesBy TimeSeriesForecast TimeSeriesInvertibility TimeUsed TimeValue TimeZone Timing Tiny TitleGrouping TitsGroupT ToBoxes ToCharacterCode ToColor ToContinuousTimeModel ToDate ToDiscreteTimeModel ToeplitzMatrix ToExpression ToFileName Together Toggle ToggleFalse Toggler TogglerBar TogglerBox TogglerBoxOptions ToHeldExpression ToInvertibleTimeSeries TokenWords Tolerance ToLowerCase ToNumberField TooBig Tooltip TooltipBox TooltipBoxOptions TooltipDelay TooltipStyle Top TopHatTransform TopologicalSort ToRadicals ToRules ToString Total TotalHeight TotalVariationFilter TotalWidth TouchscreenAutoZoom TouchscreenControlPlacement ToUpperCase Tr Trace TraceAbove TraceAction TraceBackward TraceDepth TraceDialog TraceForward TraceInternal TraceLevel TraceOff TraceOn TraceOriginal TracePrint TraceScan TrackedSymbols TradingChart TraditionalForm TraditionalFunctionNotation TraditionalNotation TraditionalOrder TransferFunctionCancel TransferFunctionExpand TransferFunctionFactor TransferFunctionModel TransferFunctionPoles TransferFunctionTransform TransferFunctionZeros TransformationFunction TransformationFunctions TransformationMatrix TransformedDistribution TransformedField Translate TranslationTransform TransparentColor Transpose TreeForm TreeGraph TreeGraphQ TreePlot TrendStyle TriangleWave TriangularDistribution Trig TrigExpand TrigFactor TrigFactorList Trigger TrigReduce TrigToExp TrimmedMean True TrueQ TruncatedDistribution TsallisQExponentialDistribution TsallisQGaussianDistribution TTest Tube TubeBezierCurveBox TubeBezierCurveBoxOptions TubeBox TubeBSplineCurveBox TubeBSplineCurveBoxOptions Tuesday TukeyLambdaDistribution TukeyWindow Tuples TuranGraph TuringMachine Transparent UnateQ Uncompress Undefined UnderBar Underflow Underlined Underoverscript UnderoverscriptBox UnderoverscriptBoxOptions Underscript UnderscriptBox UnderscriptBoxOptions UndirectedEdge UndirectedGraph UndirectedGraphQ UndocumentedTestFEParserPacket UndocumentedTestGetSelectionPacket Unequal Unevaluated UniformDistribution UniformGraphDistribution UniformSumDistribution Uninstall Union UnionPlus Unique UnitBox UnitConvert UnitDimensions Unitize UnitRootTest UnitSimplify UnitStep UnitTriangle UnitVector Unprotect UnsameQ UnsavedVariables Unset UnsetShared UntrackedVariables Up UpArrow UpArrowBar UpArrowDownArrow Update UpdateDynamicObjects UpdateDynamicObjectsSynchronous UpdateInterval UpDownArrow UpEquilibrium UpperCaseQ UpperLeftArrow UpperRightArrow UpperTriangularize Upsample UpSet UpSetDelayed UpTee UpTeeArrow UpValues URL URLFetch URLFetchAsynchronous URLSave URLSaveAsynchronous UseGraphicsRange Using UsingFrontEnd V2Get ValidationLength Value ValueBox ValueBoxOptions ValueForm ValueQ ValuesData Variables Variance VarianceEquivalenceTest VarianceEstimatorFunction VarianceGammaDistribution VarianceTest VectorAngle VectorColorFunction VectorColorFunctionScaling VectorDensityPlot VectorGlyphData VectorPlot VectorPlot3D VectorPoints VectorQ Vectors VectorScale VectorStyle Vee Verbatim Verbose VerboseConvertToPostScriptPacket VerifyConvergence VerifySolutions VerifyTestAssumptions Version VersionNumber VertexAdd VertexCapacity VertexColors VertexComponent VertexConnectivity VertexCoordinateRules VertexCoordinates VertexCorrelationSimilarity VertexCosineSimilarity VertexCount VertexCoverQ VertexDataCoordinates VertexDegree VertexDelete VertexDiceSimilarity VertexEccentricity VertexInComponent VertexInDegree VertexIndex VertexJaccardSimilarity VertexLabeling VertexLabels VertexLabelStyle VertexList VertexNormals VertexOutComponent VertexOutDegree VertexQ VertexRenderingFunction VertexReplace VertexShape VertexShapeFunction VertexSize VertexStyle VertexTextureCoordinates VertexWeight Vertical VerticalBar VerticalForm VerticalGauge VerticalSeparator VerticalSlider VerticalTilde ViewAngle ViewCenter ViewMatrix ViewPoint ViewPointSelectorSettings ViewPort ViewRange ViewVector ViewVertical VirtualGroupData Visible VisibleCell VoigtDistribution VonMisesDistribution WaitAll WaitAsynchronousTask WaitNext WaitUntil WakebyDistribution WalleniusHypergeometricDistribution WaringYuleDistribution WatershedComponents WatsonUSquareTest WattsStrogatzGraphDistribution WaveletBestBasis WaveletFilterCoefficients WaveletImagePlot WaveletListPlot WaveletMapIndexed WaveletMatrixPlot WaveletPhi WaveletPsi WaveletScale WaveletScalogram WaveletThreshold WeaklyConnectedComponents WeaklyConnectedGraphQ WeakStationarity WeatherData WeberE Wedge Wednesday WeibullDistribution WeierstrassHalfPeriods WeierstrassInvariants WeierstrassP WeierstrassPPrime WeierstrassSigma WeierstrassZeta WeightedAdjacencyGraph WeightedAdjacencyMatrix WeightedData WeightedGraphQ Weights WelchWindow WheelGraph WhenEvent Which While White Whitespace WhitespaceCharacter WhittakerM WhittakerW WienerFilter WienerProcess WignerD WignerSemicircleDistribution WilksW WilksWTest WindowClickSelect WindowElements WindowFloating WindowFrame WindowFrameElements WindowMargins WindowMovable WindowOpacity WindowSelected WindowSize WindowStatusArea WindowTitle WindowToolbars WindowWidth With WolframAlpha WolframAlphaDate WolframAlphaQuantity WolframAlphaResult Word WordBoundary WordCharacter WordData WordSearch WordSeparators WorkingPrecision Write WriteString Wronskian XMLElement XMLObject Xnor Xor Yellow YuleDissimilarity ZernikeR ZeroSymmetric ZeroTest ZeroWidthTimes Zeta ZetaZero ZipfDistribution ZTest ZTransform $Aborted $ActivationGroupID $ActivationKey $ActivationUserRegistered $AddOnsDirectory $AssertFunction $Assumptions $AsynchronousTask $BaseDirectory $BatchInput $BatchOutput $BoxForms $ByteOrdering $Canceled $CharacterEncoding $CharacterEncodings $CommandLine $CompilationTarget $ConditionHold $ConfiguredKernels $Context $ContextPath $ControlActiveSetting $CreationDate $CurrentLink $DateStringFormat $DefaultFont $DefaultFrontEnd $DefaultImagingDevice $DefaultPath $Display $DisplayFunction $DistributedContexts $DynamicEvaluation $Echo $Epilog $ExportFormats $Failed $FinancialDataSource $FormatType $FrontEnd $FrontEndSession $GeoLocation $HistoryLength $HomeDirectory $HTTPCookies $IgnoreEOF $ImagingDevices $ImportFormats $InitialDirectory $Input $InputFileName $InputStreamMethods $Inspector $InstallationDate $InstallationDirectory $InterfaceEnvironment $IterationLimit $KernelCount $KernelID $Language $LaunchDirectory $LibraryPath $LicenseExpirationDate $LicenseID $LicenseProcesses $LicenseServer $LicenseSubprocesses $LicenseType $Line $Linked $LinkSupported $LoadedFiles $MachineAddresses $MachineDomain $MachineDomains $MachineEpsilon $MachineID $MachineName $MachinePrecision $MachineType $MaxExtraPrecision $MaxLicenseProcesses $MaxLicenseSubprocesses $MaxMachineNumber $MaxNumber $MaxPiecewiseCases $MaxPrecision $MaxRootDegree $MessageGroups $MessageList $MessagePrePrint $Messages $MinMachineNumber $MinNumber $MinorReleaseNumber $MinPrecision $ModuleNumber $NetworkLicense $NewMessage $NewSymbol $Notebooks $NumberMarks $Off $OperatingSystem $Output $OutputForms $OutputSizeLimit $OutputStreamMethods $Packages $ParentLink $ParentProcessID $PasswordFile $PatchLevelID $Path $PathnameSeparator $PerformanceGoal $PipeSupported $Post $Pre $PreferencesDirectory $PrePrint $PreRead $PrintForms $PrintLiteral $ProcessID $ProcessorCount $ProcessorType $ProductInformation $ProgramName $RandomState $RecursionLimit $ReleaseNumber $RootDirectory $ScheduledTask $ScriptCommandLine $SessionID $SetParentLink $SharedFunctions $SharedVariables $SoundDisplay $SoundDisplayFunction $SuppressInputFormHeads $SynchronousEvaluation $SyntaxHandler $System $SystemCharacterEncoding $SystemID $SystemWordLength $TemporaryDirectory $TemporaryPrefix $TextStyle $TimedOut $TimeUnit $TimeZone $TopDirectory $TraceOff $TraceOn $TracePattern $TracePostAction $TracePreAction $Urgent $UserAddOnsDirectory $UserBaseDirectory $UserDocumentsDirectory $UserName $Version $VersionNumber",
-c:[{cN:"comment",b:/\(\*/,e:/\*\)/},e.ASM,e.QSM,e.CNM,{cN:"list",b:/\{/,e:/\}/,i:/:/}]}}),hljs.registerLanguage("matlab",function(e){var t=[e.CNM,{cN:"string",b:"'",e:"'",c:[e.BE,{b:"''"}]}],r={r:0,c:[{cN:"operator",b:/'['\.]*/}]};return{k:{keyword:"break case catch classdef continue else elseif end enumerated events for function global if methods otherwise parfor persistent properties return spmd switch try while",built_in:"sin sind sinh asin asind asinh cos cosd cosh acos acosd acosh tan tand tanh atan atand atan2 atanh sec secd sech asec asecd asech csc cscd csch acsc acscd acsch cot cotd coth acot acotd acoth hypot exp expm1 log log1p log10 log2 pow2 realpow reallog realsqrt sqrt nthroot nextpow2 abs angle complex conj imag real unwrap isreal cplxpair fix floor ceil round mod rem sign airy besselj bessely besselh besseli besselk beta betainc betaln ellipj ellipke erf erfc erfcx erfinv expint gamma gammainc gammaln psi legendre cross dot factor isprime primes gcd lcm rat rats perms nchoosek factorial cart2sph cart2pol pol2cart sph2cart hsv2rgb rgb2hsv zeros ones eye repmat rand randn linspace logspace freqspace meshgrid accumarray size length ndims numel disp isempty isequal isequalwithequalnans cat reshape diag blkdiag tril triu fliplr flipud flipdim rot90 find sub2ind ind2sub bsxfun ndgrid permute ipermute shiftdim circshift squeeze isscalar isvector ans eps realmax realmin pi i inf nan isnan isinf isfinite j why compan gallery hadamard hankel hilb invhilb magic pascal rosser toeplitz vander wilkinson"},i:'(//|"|#|/\\*|\\s+/\\w+)',c:[{cN:"function",bK:"function",e:"$",c:[e.UTM,{cN:"params",b:"\\(",e:"\\)"},{cN:"params",b:"\\[",e:"\\]"}]},{b:/[a-zA-Z_][a-zA-Z_0-9]*'['\.]*/,rB:!0,r:0,c:[{b:/[a-zA-Z_][a-zA-Z_0-9]*/,r:0},r.c[0]]},{cN:"matrix",b:"\\[",e:"\\]",c:t,r:0,starts:r},{cN:"cell",b:"\\{",e:/}/,c:t,r:0,starts:r},{b:/\)/,r:0,starts:r},e.C("^\\s*\\%\\{\\s*$","^\\s*\\%\\}\\s*$"),e.C("\\%","$")].concat(t)}}),hljs.registerLanguage("mel",function(e){return{k:"int float string vector matrix if else switch case default while do for in break continue global proc return about abs addAttr addAttributeEditorNodeHelp addDynamic addNewShelfTab addPP addPanelCategory addPrefixToName advanceToNextDrivenKey affectedNet affects aimConstraint air alias aliasAttr align alignCtx alignCurve alignSurface allViewFit ambientLight angle angleBetween animCone animCurveEditor animDisplay animView annotate appendStringArray applicationName applyAttrPreset applyTake arcLenDimContext arcLengthDimension arclen arrayMapper art3dPaintCtx artAttrCtx artAttrPaintVertexCtx artAttrSkinPaintCtx artAttrTool artBuildPaintMenu artFluidAttrCtx artPuttyCtx artSelectCtx artSetPaintCtx artUserPaintCtx assignCommand assignInputDevice assignViewportFactories attachCurve attachDeviceAttr attachSurface attrColorSliderGrp attrCompatibility attrControlGrp attrEnumOptionMenu attrEnumOptionMenuGrp attrFieldGrp attrFieldSliderGrp attrNavigationControlGrp attrPresetEditWin attributeExists attributeInfo attributeMenu attributeQuery autoKeyframe autoPlace bakeClip bakeFluidShading bakePartialHistory bakeResults bakeSimulation basename basenameEx batchRender bessel bevel bevelPlus binMembership bindSkin blend2 blendShape blendShapeEditor blendShapePanel blendTwoAttr blindDataType boneLattice boundary boxDollyCtx boxZoomCtx bufferCurve buildBookmarkMenu buildKeyframeMenu button buttonManip CBG cacheFile cacheFileCombine cacheFileMerge cacheFileTrack camera cameraView canCreateManip canvas capitalizeString catch catchQuiet ceil changeSubdivComponentDisplayLevel changeSubdivRegion channelBox character characterMap characterOutlineEditor characterize chdir checkBox checkBoxGrp checkDefaultRenderGlobals choice circle circularFillet clamp clear clearCache clip clipEditor clipEditorCurrentTimeCtx clipSchedule clipSchedulerOutliner clipTrimBefore closeCurve closeSurface cluster cmdFileOutput cmdScrollFieldExecuter cmdScrollFieldReporter cmdShell coarsenSubdivSelectionList collision color colorAtPoint colorEditor colorIndex colorIndexSliderGrp colorSliderButtonGrp colorSliderGrp columnLayout commandEcho commandLine commandPort compactHairSystem componentEditor compositingInterop computePolysetVolume condition cone confirmDialog connectAttr connectControl connectDynamic connectJoint connectionInfo constrain constrainValue constructionHistory container containsMultibyte contextInfo control convertFromOldLayers convertIffToPsd convertLightmap convertSolidTx convertTessellation convertUnit copyArray copyFlexor copyKey copySkinWeights cos cpButton cpCache cpClothSet cpCollision cpConstraint cpConvClothToMesh cpForces cpGetSolverAttr cpPanel cpProperty cpRigidCollisionFilter cpSeam cpSetEdit cpSetSolverAttr cpSolver cpSolverTypes cpTool cpUpdateClothUVs createDisplayLayer createDrawCtx createEditor createLayeredPsdFile createMotionField createNewShelf createNode createRenderLayer createSubdivRegion cross crossProduct ctxAbort ctxCompletion ctxEditMode ctxTraverse currentCtx currentTime currentTimeCtx currentUnit curve curveAddPtCtx curveCVCtx curveEPCtx curveEditorCtx curveIntersect curveMoveEPCtx curveOnSurface curveSketchCtx cutKey cycleCheck cylinder dagPose date defaultLightListCheckBox defaultNavigation defineDataServer defineVirtualDevice deformer deg_to_rad delete deleteAttr deleteShadingGroupsAndMaterials deleteShelfTab deleteUI deleteUnusedBrushes delrandstr detachCurve detachDeviceAttr detachSurface deviceEditor devicePanel dgInfo dgdirty dgeval dgtimer dimWhen directKeyCtx directionalLight dirmap dirname disable disconnectAttr disconnectJoint diskCache displacementToPoly displayAffected displayColor displayCull displayLevelOfDetail displayPref displayRGBColor displaySmoothness displayStats displayString displaySurface distanceDimContext distanceDimension doBlur dolly dollyCtx dopeSheetEditor dot dotProduct doubleProfileBirailSurface drag dragAttrContext draggerContext dropoffLocator duplicate duplicateCurve duplicateSurface dynCache dynControl dynExport dynExpression dynGlobals dynPaintEditor dynParticleCtx dynPref dynRelEdPanel dynRelEditor dynamicLoad editAttrLimits editDisplayLayerGlobals editDisplayLayerMembers editRenderLayerAdjustment editRenderLayerGlobals editRenderLayerMembers editor editorTemplate effector emit emitter enableDevice encodeString endString endsWith env equivalent equivalentTol erf error eval evalDeferred evalEcho event exactWorldBoundingBox exclusiveLightCheckBox exec executeForEachObject exists exp expression expressionEditorListen extendCurve extendSurface extrude fcheck fclose feof fflush fgetline fgetword file fileBrowserDialog fileDialog fileExtension fileInfo filetest filletCurve filter filterCurve filterExpand filterStudioImport findAllIntersections findAnimCurves findKeyframe findMenuItem findRelatedSkinCluster finder firstParentOf fitBspline flexor floatEq floatField floatFieldGrp floatScrollBar floatSlider floatSlider2 floatSliderButtonGrp floatSliderGrp floor flow fluidCacheInfo fluidEmitter fluidVoxelInfo flushUndo fmod fontDialog fopen formLayout format fprint frameLayout fread freeFormFillet frewind fromNativePath fwrite gamma gauss geometryConstraint getApplicationVersionAsFloat getAttr getClassification getDefaultBrush getFileList getFluidAttr getInputDeviceRange getMayaPanelTypes getModifiers getPanel getParticleAttr getPluginResource getenv getpid glRender glRenderEditor globalStitch gmatch goal gotoBindPose grabColor gradientControl gradientControlNoAttr graphDollyCtx graphSelectContext graphTrackCtx gravity grid gridLayout group groupObjectsByName HfAddAttractorToAS HfAssignAS HfBuildEqualMap HfBuildFurFiles HfBuildFurImages HfCancelAFR HfConnectASToHF HfCreateAttractor HfDeleteAS HfEditAS HfPerformCreateAS HfRemoveAttractorFromAS HfSelectAttached HfSelectAttractors HfUnAssignAS hardenPointCurve hardware hardwareRenderPanel headsUpDisplay headsUpMessage help helpLine hermite hide hilite hitTest hotBox hotkey hotkeyCheck hsv_to_rgb hudButton hudSlider hudSliderButton hwReflectionMap hwRender hwRenderLoad hyperGraph hyperPanel hyperShade hypot iconTextButton iconTextCheckBox iconTextRadioButton iconTextRadioCollection iconTextScrollList iconTextStaticLabel ikHandle ikHandleCtx ikHandleDisplayScale ikSolver ikSplineHandleCtx ikSystem ikSystemInfo ikfkDisplayMethod illustratorCurves image imfPlugins inheritTransform insertJoint insertJointCtx insertKeyCtx insertKnotCurve insertKnotSurface instance instanceable instancer intField intFieldGrp intScrollBar intSlider intSliderGrp interToUI internalVar intersect iprEngine isAnimCurve isConnected isDirty isParentOf isSameObject isTrue isValidObjectName isValidString isValidUiName isolateSelect itemFilter itemFilterAttr itemFilterRender itemFilterType joint jointCluster jointCtx jointDisplayScale jointLattice keyTangent keyframe keyframeOutliner keyframeRegionCurrentTimeCtx keyframeRegionDirectKeyCtx keyframeRegionDollyCtx keyframeRegionInsertKeyCtx keyframeRegionMoveKeyCtx keyframeRegionScaleKeyCtx keyframeRegionSelectKeyCtx keyframeRegionSetKeyCtx keyframeRegionTrackCtx keyframeStats lassoContext lattice latticeDeformKeyCtx launch launchImageEditor layerButton layeredShaderPort layeredTexturePort layout layoutDialog lightList lightListEditor lightListPanel lightlink lineIntersection linearPrecision linstep listAnimatable listAttr listCameras listConnections listDeviceAttachments listHistory listInputDeviceAxes listInputDeviceButtons listInputDevices listMenuAnnotation listNodeTypes listPanelCategories listRelatives listSets listTransforms listUnselected listerEditor loadFluid loadNewShelf loadPlugin loadPluginLanguageResources loadPrefObjects localizedPanelLabel lockNode loft log longNameOf lookThru ls lsThroughFilter lsType lsUI Mayatomr mag makeIdentity makeLive makePaintable makeRoll makeSingleSurface makeTubeOn makebot manipMoveContext manipMoveLimitsCtx manipOptions manipRotateContext manipRotateLimitsCtx manipScaleContext manipScaleLimitsCtx marker match max memory menu menuBarLayout menuEditor menuItem menuItemToShelf menuSet menuSetPref messageLine min minimizeApp mirrorJoint modelCurrentTimeCtx modelEditor modelPanel mouse movIn movOut move moveIKtoFK moveKeyCtx moveVertexAlongDirection multiProfileBirailSurface mute nParticle nameCommand nameField namespace namespaceInfo newPanelItems newton nodeCast nodeIconButton nodeOutliner nodePreset nodeType noise nonLinear normalConstraint normalize nurbsBoolean nurbsCopyUVSet nurbsCube nurbsEditUV nurbsPlane nurbsSelect nurbsSquare nurbsToPoly nurbsToPolygonsPref nurbsToSubdiv nurbsToSubdivPref nurbsUVSet nurbsViewDirectionVector objExists objectCenter objectLayer objectType objectTypeUI obsoleteProc oceanNurbsPreviewPlane offsetCurve offsetCurveOnSurface offsetSurface openGLExtension openMayaPref optionMenu optionMenuGrp optionVar orbit orbitCtx orientConstraint outlinerEditor outlinerPanel overrideModifier paintEffectsDisplay pairBlend palettePort paneLayout panel panelConfiguration panelHistory paramDimContext paramDimension paramLocator parent parentConstraint particle particleExists particleInstancer particleRenderInfo partition pasteKey pathAnimation pause pclose percent performanceOptions pfxstrokes pickWalk picture pixelMove planarSrf plane play playbackOptions playblast plugAttr plugNode pluginInfo pluginResourceUtil pointConstraint pointCurveConstraint pointLight pointMatrixMult pointOnCurve pointOnSurface pointPosition poleVectorConstraint polyAppend polyAppendFacetCtx polyAppendVertex polyAutoProjection polyAverageNormal polyAverageVertex polyBevel polyBlendColor polyBlindData polyBoolOp polyBridgeEdge polyCacheMonitor polyCheck polyChipOff polyClipboard polyCloseBorder polyCollapseEdge polyCollapseFacet polyColorBlindData polyColorDel polyColorPerVertex polyColorSet polyCompare polyCone polyCopyUV polyCrease polyCreaseCtx polyCreateFacet polyCreateFacetCtx polyCube polyCut polyCutCtx polyCylinder polyCylindricalProjection polyDelEdge polyDelFacet polyDelVertex polyDuplicateAndConnect polyDuplicateEdge polyEditUV polyEditUVShell polyEvaluate polyExtrudeEdge polyExtrudeFacet polyExtrudeVertex polyFlipEdge polyFlipUV polyForceUV polyGeoSampler polyHelix polyInfo polyInstallAction polyLayoutUV polyListComponentConversion polyMapCut polyMapDel polyMapSew polyMapSewMove polyMergeEdge polyMergeEdgeCtx polyMergeFacet polyMergeFacetCtx polyMergeUV polyMergeVertex polyMirrorFace polyMoveEdge polyMoveFacet polyMoveFacetUV polyMoveUV polyMoveVertex polyNormal polyNormalPerVertex polyNormalizeUV polyOptUvs polyOptions polyOutput polyPipe polyPlanarProjection polyPlane polyPlatonicSolid polyPoke polyPrimitive polyPrism polyProjection polyPyramid polyQuad polyQueryBlindData polyReduce polySelect polySelectConstraint polySelectConstraintMonitor polySelectCtx polySelectEditCtx polySeparate polySetToFaceNormal polySewEdge polyShortestPathCtx polySmooth polySoftEdge polySphere polySphericalProjection polySplit polySplitCtx polySplitEdge polySplitRing polySplitVertex polyStraightenUVBorder polySubdivideEdge polySubdivideFacet polyToSubdiv polyTorus polyTransfer polyTriangulate polyUVSet polyUnite polyWedgeFace popen popupMenu pose pow preloadRefEd print progressBar progressWindow projFileViewer projectCurve projectTangent projectionContext projectionManip promptDialog propModCtx propMove psdChannelOutliner psdEditTextureFile psdExport psdTextureFile putenv pwd python querySubdiv quit rad_to_deg radial radioButton radioButtonGrp radioCollection radioMenuItemCollection rampColorPort rand randomizeFollicles randstate rangeControl readTake rebuildCurve rebuildSurface recordAttr recordDevice redo reference referenceEdit referenceQuery refineSubdivSelectionList refresh refreshAE registerPluginResource rehash reloadImage removeJoint removeMultiInstance removePanelCategory rename renameAttr renameSelectionList renameUI render renderGlobalsNode renderInfo renderLayerButton renderLayerParent renderLayerPostProcess renderLayerUnparent renderManip renderPartition renderQualityNode renderSettings renderThumbnailUpdate renderWindowEditor renderWindowSelectContext renderer reorder reorderDeformers requires reroot resampleFluid resetAE resetPfxToPolyCamera resetTool resolutionNode retarget reverseCurve reverseSurface revolve rgb_to_hsv rigidBody rigidSolver roll rollCtx rootOf rot rotate rotationInterpolation roundConstantRadius rowColumnLayout rowLayout runTimeCommand runup sampleImage saveAllShelves saveAttrPreset saveFluid saveImage saveInitialState saveMenu savePrefObjects savePrefs saveShelf saveToolSettings scale scaleBrushBrightness scaleComponents scaleConstraint scaleKey scaleKeyCtx sceneEditor sceneUIReplacement scmh scriptCtx scriptEditorInfo scriptJob scriptNode scriptTable scriptToShelf scriptedPanel scriptedPanelType scrollField scrollLayout sculpt searchPathArray seed selLoadSettings select selectContext selectCurveCV selectKey selectKeyCtx selectKeyframeRegionCtx selectMode selectPref selectPriority selectType selectedNodes selectionConnection separator setAttr setAttrEnumResource setAttrMapping setAttrNiceNameResource setConstraintRestPosition setDefaultShadingGroup setDrivenKeyframe setDynamic setEditCtx setEditor setFluidAttr setFocus setInfinity setInputDeviceMapping setKeyCtx setKeyPath setKeyframe setKeyframeBlendshapeTargetWts setMenuMode setNodeNiceNameResource setNodeTypeFlag setParent setParticleAttr setPfxToPolyCamera setPluginResource setProject setStampDensity setStartupMessage setState setToolTo setUITemplate setXformManip sets shadingConnection shadingGeometryRelCtx shadingLightRelCtx shadingNetworkCompare shadingNode shapeCompare shelfButton shelfLayout shelfTabLayout shellField shortNameOf showHelp showHidden showManipCtx showSelectionInTitle showShadingGroupAttrEditor showWindow sign simplify sin singleProfileBirailSurface size sizeBytes skinCluster skinPercent smoothCurve smoothTangentSurface smoothstep snap2to2 snapKey snapMode snapTogetherCtx snapshot soft softMod softModCtx sort sound soundControl source spaceLocator sphere sphrand spotLight spotLightPreviewPort spreadSheetEditor spring sqrt squareSurface srtContext stackTrace startString startsWith stitchAndExplodeShell stitchSurface stitchSurfacePoints strcmp stringArrayCatenate stringArrayContains stringArrayCount stringArrayInsertAtIndex stringArrayIntersector stringArrayRemove stringArrayRemoveAtIndex stringArrayRemoveDuplicates stringArrayRemoveExact stringArrayToString stringToStringArray strip stripPrefixFromName stroke subdAutoProjection subdCleanTopology subdCollapse subdDuplicateAndConnect subdEditUV subdListComponentConversion subdMapCut subdMapSewMove subdMatchTopology subdMirror subdToBlind subdToPoly subdTransferUVsToCache subdiv subdivCrease subdivDisplaySmoothness substitute substituteAllString substituteGeometry substring surface surfaceSampler surfaceShaderList swatchDisplayPort switchTable symbolButton symbolCheckBox sysFile system tabLayout tan tangentConstraint texLatticeDeformContext texManipContext texMoveContext texMoveUVShellContext texRotateContext texScaleContext texSelectContext texSelectShortestPathCtx texSmudgeUVContext texWinToolCtx text textCurves textField textFieldButtonGrp textFieldGrp textManip textScrollList textToShelf textureDisplacePlane textureHairColor texturePlacementContext textureWindow threadCount threePointArcCtx timeControl timePort timerX toNativePath toggle toggleAxis toggleWindowVisibility tokenize tokenizeList tolerance tolower toolButton toolCollection toolDropped toolHasOptions toolPropertyWindow torus toupper trace track trackCtx transferAttributes transformCompare transformLimits translator trim trunc truncateFluidCache truncateHairCache tumble tumbleCtx turbulence twoPointArcCtx uiRes uiTemplate unassignInputDevice undo undoInfo ungroup uniform unit unloadPlugin untangleUV untitledFileName untrim upAxis updateAE userCtx uvLink uvSnapshot validateShelfName vectorize view2dToolCtx viewCamera viewClipPlane viewFit viewHeadOn viewLookAt viewManip viewPlace viewSet visor volumeAxis vortex waitCursor warning webBrowser webBrowserPrefs whatIs window windowPref wire wireContext workspace wrinkle wrinkleContext writeTake xbmLangPathList xform",i:"</",c:[e.CNM,e.ASM,e.QSM,{cN:"string",b:"`",e:"`",c:[e.BE]},{cN:"variable",v:[{b:"\\$\\d"},{b:"[\\$\\%\\@](\\^\\w\\b|#\\w+|[^\\s\\w{]|{\\w+}|\\w+)"},{b:"\\*(\\^\\w\\b|#\\w+|[^\\s\\w{]|{\\w+}|\\w+)",r:0}]},e.CLCM,e.CBCM]}}),hljs.registerLanguage("mercury",function(e){var t={keyword:"module use_module import_module include_module end_module initialise mutable initialize finalize finalise interface implementation pred mode func type inst solver any_pred any_func is semidet det nondet multi erroneous failure cc_nondet cc_multi typeclass instance where pragma promise external trace atomic or_else require_complete_switch require_det require_semidet require_multi require_nondet require_cc_multi require_cc_nondet require_erroneous require_failure",pragma:"inline no_inline type_spec source_file fact_table obsolete memo loop_check minimal_model terminates does_not_terminate check_termination promise_equivalent_clauses",preprocessor:"foreign_proc foreign_decl foreign_code foreign_type foreign_import_module foreign_export_enum foreign_export foreign_enum may_call_mercury will_not_call_mercury thread_safe not_thread_safe maybe_thread_safe promise_pure promise_semipure tabled_for_io local untrailed trailed attach_to_io_state can_pass_as_mercury_type stable will_not_throw_exception may_modify_trail will_not_modify_trail may_duplicate may_not_duplicate affects_liveness does_not_affect_liveness doesnt_affect_liveness no_sharing unknown_sharing sharing",built_in:"some all not if then else true fail false try catch catch_any semidet_true semidet_false semidet_fail impure_true impure semipure"},r={cN:"label",b:"XXX",e:"$",eW:!0,r:0},a=e.inherit(e.CLCM,{b:"%"}),i=e.inherit(e.CBCM,{r:0});a.c.push(r),i.c.push(r);var n={cN:"number",b:"0'.\\|0[box][0-9a-fA-F]*"},o=e.inherit(e.ASM,{r:0}),s=e.inherit(e.QSM,{r:0}),l={cN:"constant",b:"\\\\[abfnrtv]\\|\\\\x[0-9a-fA-F]*\\\\\\|%[-+# *.0-9]*[dioxXucsfeEgGp]",r:0};s.c.push(l);var c={cN:"built_in",v:[{b:"<=>"},{b:"<=",r:0},{b:"=>",r:0},{b:"/\\\\"},{b:"\\\\/"}]},d={cN:"built_in",v:[{b:":-\\|-->"},{b:"=",r:0}]};return{aliases:["m","moo"],k:t,c:[c,d,a,i,n,e.NM,o,s,{b:/:-/}]}}),hljs.registerLanguage("mizar",function(e){return{k:"environ vocabularies notations constructors definitions registrations theorems schemes requirements begin end definition registration cluster existence pred func defpred deffunc theorem proof let take assume then thus hence ex for st holds consider reconsider such that and in provided of as from be being by means equals implies iff redefine define now not or attr is mode suppose per cases set thesis contradiction scheme reserve struct correctness compatibility coherence symmetry assymetry reflexivity irreflexivity connectedness uniqueness commutativity idempotence involutiveness projectivity",c:[e.C("::","$")]}}),hljs.registerLanguage("monkey",function(e){var t={cN:"number",r:0,v:[{b:"[$][a-fA-F0-9]+"},e.NM]};return{cI:!0,k:{keyword:"public private property continue exit extern new try catch eachin not abstract final select case default const local global field end if then else elseif endif while wend repeat until forever for to step next return module inline throw",built_in:"DebugLog DebugStop Error Print ACos ACosr ASin ASinr ATan ATan2 ATan2r ATanr Abs Abs Ceil Clamp Clamp Cos Cosr Exp Floor Log Max Max Min Min Pow Sgn Sgn Sin Sinr Sqrt Tan Tanr Seed PI HALFPI TWOPI",literal:"true false null and or shl shr mod"},c:[e.C("#rem","#end"),e.C("'","$",{r:0}),{cN:"function",bK:"function method",e:"[(=:]|$",i:/\n/,c:[e.UTM]},{cN:"class",bK:"class interface",e:"$",c:[{bK:"extends implements"},e.UTM]},{cN:"variable",b:"\\b(self|super)\\b"},{cN:"preprocessor",bK:"import",e:"$"},{cN:"preprocessor",b:"\\s*#",e:"$",k:"if else elseif endif end then"},{cN:"pi",b:"^\\s*strict\\b"},{bK:"alias",e:"=",c:[e.UTM]},e.QSM,t]}}),hljs.registerLanguage("nginx",function(e){var t={cN:"variable",v:[{b:/\$\d+/},{b:/\$\{/,e:/}/},{b:"[\\$\\@]"+e.UIR}]},r={eW:!0,l:"[a-z/_]+",k:{built_in:"on off yes no true false none blocked debug info notice warn error crit select break last permanent redirect kqueue rtsig epoll poll /dev/poll"},r:0,i:"=>",c:[e.HCM,{cN:"string",c:[e.BE,t],v:[{b:/"/,e:/"/},{b:/'/,e:/'/}]},{cN:"url",b:"([a-z]+):/",e:"\\s",eW:!0,eE:!0,c:[t]},{cN:"regexp",c:[e.BE,t],v:[{b:"\\s\\^",e:"\\s|{|;",rE:!0},{b:"~\\*?\\s+",e:"\\s|{|;",rE:!0},{b:"\\*(\\.[a-z\\-]+)+"},{b:"([a-z\\-]+\\.)+\\*"}]},{cN:"number",b:"\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d{1,5})?\\b"},{cN:"number",b:"\\b\\d+[kKmMgGdshdwy]*\\b",r:0},t]};return{aliases:["nginxconf"],c:[e.HCM,{b:e.UIR+"\\s",e:";|{",rB:!0,c:[{cN:"title",b:e.UIR,starts:r}],r:0}],i:"[^\\s\\}]"}}),hljs.registerLanguage("nimrod",function(e){return{aliases:["nim"],k:{keyword:"addr and as asm bind block break|0 case|0 cast const|0 continue|0 converter discard distinct|10 div do elif else|0 end|0 enum|0 except export finally for from generic if|0 import|0 in include|0 interface is isnot|10 iterator|10 let|0 macro method|10 mixin mod nil not notin|10 object|0 of or out proc|10 ptr raise ref|10 return shl shr static template|10 try|0 tuple type|0 using|0 var|0 when while|0 with without xor yield",literal:"shared guarded stdin stdout stderr result|10 true false"},c:[{cN:"decorator",b:/{\./,e:/\.}/,r:10},{cN:"string",b:/[a-zA-Z]\w*"/,e:/"/,c:[{b:/""/}]},{cN:"string",b:/([a-zA-Z]\w*)?"""/,e:/"""/},e.QSM,{cN:"type",b:/\b[A-Z]\w+\b/,r:0},{cN:"type",b:/\b(int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|float|float32|float64|bool|char|string|cstring|pointer|expr|stmt|void|auto|any|range|array|openarray|varargs|seq|set|clong|culong|cchar|cschar|cshort|cint|csize|clonglong|cfloat|cdouble|clongdouble|cuchar|cushort|cuint|culonglong|cstringarray|semistatic)\b/},{cN:"number",b:/\b(0[xX][0-9a-fA-F][_0-9a-fA-F]*)('?[iIuU](8|16|32|64))?/,r:0},{cN:"number",b:/\b(0o[0-7][_0-7]*)('?[iIuUfF](8|16|32|64))?/,r:0},{cN:"number",b:/\b(0(b|B)[01][_01]*)('?[iIuUfF](8|16|32|64))?/,r:0},{cN:"number",b:/\b(\d[_\d]*)('?[iIuUfF](8|16|32|64))?/,r:0},e.HCM]}}),hljs.registerLanguage("nix",function(e){var t={keyword:"rec with let in inherit assert if else then",constant:"true false or and null",built_in:"import abort baseNameOf dirOf isNull builtins map removeAttrs throw toString derivation"},r={cN:"subst",b:/\$\{/,e:/}/,k:t},a={cN:"variable",b:/[a-zA-Z0-9-_]+(\s*=)/},i={cN:"string",b:"''",e:"''",c:[r]},n={cN:"string",b:'"',e:'"',c:[r]},o=[e.NM,e.HCM,e.CBCM,i,n,a];return r.c=o,{aliases:["nixos"],k:t,c:o}}),hljs.registerLanguage("nsis",function(e){var t={cN:"symbol",b:"\\$(ADMINTOOLS|APPDATA|CDBURN_AREA|CMDLINE|COMMONFILES32|COMMONFILES64|COMMONFILES|COOKIES|DESKTOP|DOCUMENTS|EXEDIR|EXEFILE|EXEPATH|FAVORITES|FONTS|HISTORY|HWNDPARENT|INSTDIR|INTERNET_CACHE|LANGUAGE|LOCALAPPDATA|MUSIC|NETHOOD|OUTDIR|PICTURES|PLUGINSDIR|PRINTHOOD|PROFILE|PROGRAMFILES32|PROGRAMFILES64|PROGRAMFILES|QUICKLAUNCH|RECENT|RESOURCES_LOCALIZED|RESOURCES|SENDTO|SMPROGRAMS|SMSTARTUP|STARTMENU|SYSDIR|TEMP|TEMPLATES|VIDEOS|WINDIR)"},r={cN:"constant",b:"\\$+{[a-zA-Z0-9_]+}"},a={cN:"variable",b:"\\$+[a-zA-Z0-9_]+",i:"\\(\\){}"},i={cN:"constant",b:"\\$+\\([a-zA-Z0-9_]+\\)"},n={cN:"params",b:"(ARCHIVE|FILE_ATTRIBUTE_ARCHIVE|FILE_ATTRIBUTE_NORMAL|FILE_ATTRIBUTE_OFFLINE|FILE_ATTRIBUTE_READONLY|FILE_ATTRIBUTE_SYSTEM|FILE_ATTRIBUTE_TEMPORARY|HKCR|HKCU|HKDD|HKEY_CLASSES_ROOT|HKEY_CURRENT_CONFIG|HKEY_CURRENT_USER|HKEY_DYN_DATA|HKEY_LOCAL_MACHINE|HKEY_PERFORMANCE_DATA|HKEY_USERS|HKLM|HKPD|HKU|IDABORT|IDCANCEL|IDIGNORE|IDNO|IDOK|IDRETRY|IDYES|MB_ABORTRETRYIGNORE|MB_DEFBUTTON1|MB_DEFBUTTON2|MB_DEFBUTTON3|MB_DEFBUTTON4|MB_ICONEXCLAMATION|MB_ICONINFORMATION|MB_ICONQUESTION|MB_ICONSTOP|MB_OK|MB_OKCANCEL|MB_RETRYCANCEL|MB_RIGHT|MB_RTLREADING|MB_SETFOREGROUND|MB_TOPMOST|MB_USERICON|MB_YESNO|NORMAL|OFFLINE|READONLY|SHCTX|SHELL_CONTEXT|SYSTEM|TEMPORARY)"},o={cN:"constant",b:"\\!(addincludedir|addplugindir|appendfile|cd|define|delfile|echo|else|endif|error|execute|finalize|getdllversionsystem|ifdef|ifmacrodef|ifmacrondef|ifndef|if|include|insertmacro|macroend|macro|makensis|packhdr|searchparse|searchreplace|tempfile|undef|verbose|warning)"};return{cI:!1,k:{keyword:"Abort AddBrandingImage AddSize AllowRootDirInstall AllowSkipFiles AutoCloseWindow BGFont BGGradient BrandingText BringToFront Call CallInstDLL Caption ChangeUI CheckBitmap ClearErrors CompletedText ComponentText CopyFiles CRCCheck CreateDirectory CreateFont CreateShortCut Delete DeleteINISec DeleteINIStr DeleteRegKey DeleteRegValue DetailPrint DetailsButtonText DirText DirVar DirVerify EnableWindow EnumRegKey EnumRegValue Exch Exec ExecShell ExecWait ExpandEnvStrings File FileBufSize FileClose FileErrorText FileOpen FileRead FileReadByte FileReadUTF16LE FileReadWord FileSeek FileWrite FileWriteByte FileWriteUTF16LE FileWriteWord FindClose FindFirst FindNext FindWindow FlushINI FunctionEnd GetCurInstType GetCurrentAddress GetDlgItem GetDLLVersion GetDLLVersionLocal GetErrorLevel GetFileTime GetFileTimeLocal GetFullPathName GetFunctionAddress GetInstDirError GetLabelAddress GetTempFileName Goto HideWindow Icon IfAbort IfErrors IfFileExists IfRebootFlag IfSilent InitPluginsDir InstallButtonText InstallColors InstallDir InstallDirRegKey InstProgressFlags InstType InstTypeGetText InstTypeSetText IntCmp IntCmpU IntFmt IntOp IsWindow LangString LicenseBkColor LicenseData LicenseForceSelection LicenseLangString LicenseText LoadLanguageFile LockWindow LogSet LogText ManifestDPIAware ManifestSupportedOS MessageBox MiscButtonText Name Nop OutFile Page PageCallbacks PageExEnd Pop Push Quit ReadEnvStr ReadINIStr ReadRegDWORD ReadRegStr Reboot RegDLL Rename RequestExecutionLevel ReserveFile Return RMDir SearchPath SectionEnd SectionGetFlags SectionGetInstTypes SectionGetSize SectionGetText SectionGroupEnd SectionIn SectionSetFlags SectionSetInstTypes SectionSetSize SectionSetText SendMessage SetAutoClose SetBrandingImage SetCompress SetCompressor SetCompressorDictSize SetCtlColors SetCurInstType SetDatablockOptimize SetDateSave SetDetailsPrint SetDetailsView SetErrorLevel SetErrors SetFileAttributes SetFont SetOutPath SetOverwrite SetPluginUnload SetRebootFlag SetRegView SetShellVarContext SetSilent ShowInstDetails ShowUninstDetails ShowWindow SilentInstall SilentUnInstall Sleep SpaceTexts StrCmp StrCmpS StrCpy StrLen SubCaption SubSectionEnd Unicode UninstallButtonText UninstallCaption UninstallIcon UninstallSubCaption UninstallText UninstPage UnRegDLL Var VIAddVersionKey VIFileVersion VIProductVersion WindowIcon WriteINIStr WriteRegBin WriteRegDWORD WriteRegExpandStr WriteRegStr WriteUninstaller XPStyle",literal:"admin all auto both colored current false force hide highest lastused leave listonly none normal notset off on open print show silent silentlog smooth textonly true user "},c:[e.HCM,e.CBCM,{cN:"string",b:'"',e:'"',i:"\\n",c:[{cN:"symbol",b:"\\$(\\\\(n|r|t)|\\$)"},t,r,a,i]},e.C(";","$",{r:0}),{cN:"function",bK:"Function PageEx Section SectionGroup SubSection",e:"$"},o,r,a,i,n,e.NM,{cN:"literal",b:e.IR+"::"+e.IR}]}}),hljs.registerLanguage("objectivec",function(e){var t={cN:"built_in",b:"(AV|CA|CF|CG|CI|MK|MP|NS|UI)\\w+"},r={keyword:"int float while char export sizeof typedef const struct for union unsigned long volatile static bool mutable if do return goto void enum else break extern asm case short default double register explicit signed typename this switch continue wchar_t inline readonly assign readwrite self @synchronized id typeof nonatomic super unichar IBOutlet IBAction strong weak copy in out inout bycopy byref oneway __strong __weak __block __autoreleasing @private @protected @public @try @property @end @throw @catch @finally @autoreleasepool @synthesize @dynamic @selector @optional @required",literal:"false true FALSE TRUE nil YES NO NULL",built_in:"BOOL dispatch_once_t dispatch_queue_t dispatch_sync dispatch_async dispatch_once"},a=/[a-zA-Z@][a-zA-Z0-9_]*/,i="@interface @class @protocol @implementation";return{aliases:["m","mm","objc","obj-c"],k:r,l:a,i:"</",c:[t,e.CLCM,e.CBCM,e.CNM,e.QSM,{cN:"string",v:[{b:'@"',e:'"',i:"\\n",c:[e.BE]},{b:"'",e:"[^\\\\]'",i:"[^\\\\][^']"}]},{cN:"preprocessor",b:"#",e:"$",c:[{cN:"title",v:[{b:'"',e:'"'},{b:"<",e:">"}]}]},{cN:"class",b:"("+i.split(" ").join("|")+")\\b",e:"({|$)",eE:!0,k:i,l:a,c:[e.UTM]},{cN:"variable",b:"\\."+e.UIR,r:0}]}}),hljs.registerLanguage("ocaml",function(e){return{aliases:["ml"],k:{keyword:"and as assert asr begin class constraint do done downto else end exception external for fun function functor if in include inherit! inherit initializer land lazy let lor lsl lsr lxor match method!|10 method mod module mutable new object of open! open or private rec sig struct then to try type val! val virtual when while with parser value",built_in:"array bool bytes char exn|5 float int int32 int64 list lazy_t|5 nativeint|5 string unit in_channel out_channel ref",literal:"true false"},i:/\/\/|>>/,l:"[a-z_]\\w*!?",c:[{cN:"literal",b:"\\[(\\|\\|)?\\]|\\(\\)"},e.C("\\(\\*","\\*\\)",{c:["self"]}),{cN:"symbol",b:"'[A-Za-z_](?!')[\\w']*"},{cN:"tag",b:"`[A-Z][\\w']*"},{cN:"type",b:"\\b[A-Z][\\w']*",r:0},{b:"[a-z_]\\w*'[\\w']*"},e.inherit(e.ASM,{cN:"char",r:0}),e.inherit(e.QSM,{i:null}),{cN:"number",b:"\\b(0[xX][a-fA-F0-9_]+[Lln]?|0[oO][0-7_]+[Lln]?|0[bB][01_]+[Lln]?|[0-9][0-9_]*([Lln]|(\\.[0-9_]*)?([eE][-+]?[0-9_]+)?)?)",r:0},{b:/[-=]>/}]}}),hljs.registerLanguage("oxygene",function(e){var t="abstract add and array as asc aspect assembly async begin break block by case class concat const copy constructor continue create default delegate desc distinct div do downto dynamic each else empty end ensure enum equals event except exit extension external false final finalize finalizer finally flags for forward from function future global group has if implementation implements implies in index inherited inline interface into invariants is iterator join locked locking loop matching method mod module namespace nested new nil not notify nullable of old on operator or order out override parallel params partial pinned private procedure property protected public queryable raise read readonly record reintroduce remove repeat require result reverse sealed select self sequence set shl shr skip static step soft take then to true try tuple type union unit unsafe until uses using var virtual raises volatile where while with write xor yield await mapped deprecated stdcall cdecl pascal register safecall overload library platform reference packed strict published autoreleasepool selector strong weak unretained",r=e.C("{","}",{
-r:0}),a=e.C("\\(\\*","\\*\\)",{r:10}),i={cN:"string",b:"'",e:"'",c:[{b:"''"}]},n={cN:"string",b:"(#\\d+)+"},o={cN:"function",bK:"function constructor destructor procedure method",e:"[:;]",k:"function constructor|10 destructor|10 procedure|10 method|10",c:[e.TM,{cN:"params",b:"\\(",e:"\\)",k:t,c:[i,n]},r,a]};return{cI:!0,k:t,i:'("|\\$[G-Zg-z]|\\/\\*|</|=>|->)',c:[r,a,e.CLCM,i,n,e.NM,o,{cN:"class",b:"=\\bclass\\b",e:"end;",k:t,c:[i,n,r,a,e.CLCM,o]}]}}),hljs.registerLanguage("parser3",function(e){var t=e.C("{","}",{c:["self"]});return{sL:"xml",r:0,c:[e.C("^#","$"),e.C("\\^rem{","}",{r:10,c:[t]}),{cN:"preprocessor",b:"^@(?:BASE|USE|CLASS|OPTIONS)$",r:10},{cN:"title",b:"@[\\w\\-]+\\[[\\w^;\\-]*\\](?:\\[[\\w^;\\-]*\\])?(?:.*)$"},{cN:"variable",b:"\\$\\{?[\\w\\-\\.\\:]+\\}?"},{cN:"keyword",b:"\\^[\\w\\-\\.\\:]+"},{cN:"number",b:"\\^#[0-9a-fA-F]+"},e.CNM]}}),hljs.registerLanguage("perl",function(e){var t="getpwent getservent quotemeta msgrcv scalar kill dbmclose undef lc ma syswrite tr send umask sysopen shmwrite vec qx utime local oct semctl localtime readpipe do return format read sprintf dbmopen pop getpgrp not getpwnam rewinddir qqfileno qw endprotoent wait sethostent bless s|0 opendir continue each sleep endgrent shutdown dump chomp connect getsockname die socketpair close flock exists index shmgetsub for endpwent redo lstat msgctl setpgrp abs exit select print ref gethostbyaddr unshift fcntl syscall goto getnetbyaddr join gmtime symlink semget splice x|0 getpeername recv log setsockopt cos last reverse gethostbyname getgrnam study formline endhostent times chop length gethostent getnetent pack getprotoent getservbyname rand mkdir pos chmod y|0 substr endnetent printf next open msgsnd readdir use unlink getsockopt getpriority rindex wantarray hex system getservbyport endservent int chr untie rmdir prototype tell listen fork shmread ucfirst setprotoent else sysseek link getgrgid shmctl waitpid unpack getnetbyname reset chdir grep split require caller lcfirst until warn while values shift telldir getpwuid my getprotobynumber delete and sort uc defined srand accept package seekdir getprotobyname semop our rename seek if q|0 chroot sysread setpwent no crypt getc chown sqrt write setnetent setpriority foreach tie sin msgget map stat getlogin unless elsif truncate exec keys glob tied closedirioctl socket readlink eval xor readline binmode setservent eof ord bind alarm pipe atan2 getgrent exp time push setgrent gt lt or ne m|0 break given say state when",r={cN:"subst",b:"[$@]\\{",e:"\\}",k:t},a={b:"->{",e:"}"},i={cN:"variable",v:[{b:/\$\d/},{b:/[\$%@](\^\w\b|#\w+(::\w+)*|{\w+}|\w+(::\w*)*)/},{b:/[\$%@][^\s\w{]/,r:0}]},n=e.C("^(__END__|__DATA__)","\\n$",{r:5}),o=[e.BE,r,i],s=[i,e.HCM,n,e.C("^\\=\\w","\\=cut",{eW:!0}),a,{cN:"string",c:o,v:[{b:"q[qwxr]?\\s*\\(",e:"\\)",r:5},{b:"q[qwxr]?\\s*\\[",e:"\\]",r:5},{b:"q[qwxr]?\\s*\\{",e:"\\}",r:5},{b:"q[qwxr]?\\s*\\|",e:"\\|",r:5},{b:"q[qwxr]?\\s*\\<",e:"\\>",r:5},{b:"qw\\s+q",e:"q",r:5},{b:"'",e:"'",c:[e.BE]},{b:'"',e:'"'},{b:"`",e:"`",c:[e.BE]},{b:"{\\w+}",c:[],r:0},{b:"-?\\w+\\s*\\=\\>",c:[],r:0}]},{cN:"number",b:"(\\b0[0-7_]+)|(\\b0x[0-9a-fA-F_]+)|(\\b[1-9][0-9_]*(\\.[0-9_]+)?)|[0_]\\b",r:0},{b:"(\\/\\/|"+e.RSR+"|\\b(split|return|print|reverse|grep)\\b)\\s*",k:"split return print reverse grep",r:0,c:[e.HCM,n,{cN:"regexp",b:"(s|tr|y)/(\\\\.|[^/])*/(\\\\.|[^/])*/[a-z]*",r:10},{cN:"regexp",b:"(m|qr)?/",e:"/[a-z]*",c:[e.BE],r:0}]},{cN:"sub",bK:"sub",e:"(\\s*\\(.*?\\))?[;{]",r:5},{cN:"operator",b:"-\\w\\b",r:0}];return r.c=s,a.c=s,{aliases:["pl"],k:t,c:s}}),hljs.registerLanguage("pf",function(e){var t={cN:"variable",b:/\$[\w\d#@][\w\d_]*/},r={cN:"variable",b:/</,e:/>/};return{aliases:["pf.conf"],l:/[a-z0-9_<>-]+/,k:{built_in:"block match pass load anchor|5 antispoof|10 set table",keyword:"in out log quick on rdomain inet inet6 proto from port os to routeallow-opts divert-packet divert-reply divert-to flags group icmp-typeicmp6-type label once probability recieved-on rtable prio queuetos tag tagged user keep fragment for os dropaf-to|10 binat-to|10 nat-to|10 rdr-to|10 bitmask least-stats random round-robinsource-hash static-portdup-to reply-to route-toparent bandwidth default min max qlimitblock-policy debug fingerprints hostid limit loginterface optimizationreassemble ruleset-optimization basic none profile skip state-defaultsstate-policy timeoutconst counters persistno modulate synproxy state|5 floating if-bound no-sync pflow|10 sloppysource-track global rule max-src-nodes max-src-states max-src-connmax-src-conn-rate overload flushscrub|5 max-mss min-ttl no-df|10 random-id",literal:"all any no-route self urpf-failed egress|5 unknown"},c:[e.HCM,e.NM,e.QSM,t,r]}}),hljs.registerLanguage("php",function(e){var t={cN:"variable",b:"\\$+[a-zA-Z_-ÿ][a-zA-Z0-9_-ÿ]*"},r={cN:"preprocessor",b:/<\?(php)?|\?>/},a={cN:"string",c:[e.BE,r],v:[{b:'b"',e:'"'},{b:"b'",e:"'"},e.inherit(e.ASM,{i:null}),e.inherit(e.QSM,{i:null})]},i={v:[e.BNM,e.CNM]};return{aliases:["php3","php4","php5","php6"],cI:!0,k:"and include_once list abstract global private echo interface as static endswitch array null if endwhile or const for endforeach self var while isset public protected exit foreach throw elseif include __FILE__ empty require_once do xor return parent clone use __CLASS__ __LINE__ else break print eval new catch __METHOD__ case exception default die require __FUNCTION__ enddeclare final try switch continue endfor endif declare unset true false trait goto instanceof insteadof __DIR__ __NAMESPACE__ yield finally",c:[e.CLCM,e.HCM,e.C("/\\*","\\*/",{c:[{cN:"phpdoc",b:"\\s@[A-Za-z]+"},r]}),e.C("__halt_compiler.+?;",!1,{eW:!0,k:"__halt_compiler",l:e.UIR}),{cN:"string",b:"<<<['\"]?\\w+['\"]?$",e:"^\\w+;",c:[e.BE]},r,t,{b:/(::|->)+[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/},{cN:"function",bK:"function",e:/[;{]/,eE:!0,i:"\\$|\\[|%",c:[e.UTM,{cN:"params",b:"\\(",e:"\\)",c:["self",t,e.CBCM,a,i]}]},{cN:"class",bK:"class interface",e:"{",eE:!0,i:/[:\(\$"]/,c:[{bK:"extends implements"},e.UTM]},{bK:"namespace",e:";",i:/[\.']/,c:[e.UTM]},{bK:"use",e:";",c:[e.UTM]},{b:"=>"},a,i]}}),hljs.registerLanguage("powershell",function(e){var t={b:"`[\\s\\S]",r:0},r={cN:"variable",v:[{b:/\$[\w\d][\w\d_:]*/}]},a={cN:"string",b:/"/,e:/"/,c:[t,r,{cN:"variable",b:/\$[A-z]/,e:/[^A-z]/}]},i={cN:"string",b:/'/,e:/'/};return{aliases:["ps"],l:/-?[A-z\.\-]+/,cI:!0,k:{keyword:"if else foreach return function do while until elseif begin for trap data dynamicparam end break throw param continue finally in switch exit filter try process catch",literal:"$null $true $false",built_in:"Add-Content Add-History Add-Member Add-PSSnapin Clear-Content Clear-Item Clear-Item Property Clear-Variable Compare-Object ConvertFrom-SecureString Convert-Path ConvertTo-Html ConvertTo-SecureString Copy-Item Copy-ItemProperty Export-Alias Export-Clixml Export-Console Export-Csv ForEach-Object Format-Custom Format-List Format-Table Format-Wide Get-Acl Get-Alias Get-AuthenticodeSignature Get-ChildItem Get-Command Get-Content Get-Credential Get-Culture Get-Date Get-EventLog Get-ExecutionPolicy Get-Help Get-History Get-Host Get-Item Get-ItemProperty Get-Location Get-Member Get-PfxCertificate Get-Process Get-PSDrive Get-PSProvider Get-PSSnapin Get-Service Get-TraceSource Get-UICulture Get-Unique Get-Variable Get-WmiObject Group-Object Import-Alias Import-Clixml Import-Csv Invoke-Expression Invoke-History Invoke-Item Join-Path Measure-Command Measure-Object Move-Item Move-ItemProperty New-Alias New-Item New-ItemProperty New-Object New-PSDrive New-Service New-TimeSpan New-Variable Out-Default Out-File Out-Host Out-Null Out-Printer Out-String Pop-Location Push-Location Read-Host Remove-Item Remove-ItemProperty Remove-PSDrive Remove-PSSnapin Remove-Variable Rename-Item Rename-ItemProperty Resolve-Path Restart-Service Resume-Service Select-Object Select-String Set-Acl Set-Alias Set-AuthenticodeSignature Set-Content Set-Date Set-ExecutionPolicy Set-Item Set-ItemProperty Set-Location Set-PSDebug Set-Service Set-TraceSource Set-Variable Sort-Object Split-Path Start-Service Start-Sleep Start-Transcript Stop-Process Stop-Service Stop-Transcript Suspend-Service Tee-Object Test-Path Trace-Command Update-FormatData Update-TypeData Where-Object Write-Debug Write-Error Write-Host Write-Output Write-Progress Write-Verbose Write-Warning",operator:"-ne -eq -lt -gt -ge -le -not -like -notlike -match -notmatch -contains -notcontains -in -notin -replace"},c:[e.HCM,e.NM,a,i,r]}}),hljs.registerLanguage("processing",function(e){return{k:{keyword:"BufferedReader PVector PFont PImage PGraphics HashMap boolean byte char color double float int long String Array FloatDict FloatList IntDict IntList JSONArray JSONObject Object StringDict StringList Table TableRow XML false synchronized int abstract float private char boolean static null if const for true while long throw strictfp finally protected import native final return void enum else break transient new catch instanceof byte super volatile case assert short package default double public try this switch continue throws protected public private",constant:"P2D P3D HALF_PI PI QUARTER_PI TAU TWO_PI",variable:"displayHeight displayWidth mouseY mouseX mousePressed pmouseX pmouseY key keyCode pixels focused frameCount frameRate height width",title:"setup draw",built_in:"size createGraphics beginDraw createShape loadShape PShape arc ellipse line point quad rect triangle bezier bezierDetail bezierPoint bezierTangent curve curveDetail curvePoint curveTangent curveTightness shape shapeMode beginContour beginShape bezierVertex curveVertex endContour endShape quadraticVertex vertex ellipseMode noSmooth rectMode smooth strokeCap strokeJoin strokeWeight mouseClicked mouseDragged mouseMoved mousePressed mouseReleased mouseWheel keyPressed keyPressedkeyReleased keyTyped print println save saveFrame day hour millis minute month second year background clear colorMode fill noFill noStroke stroke alpha blue brightness color green hue lerpColor red saturation modelX modelY modelZ screenX screenY screenZ ambient emissive shininess specular add createImage beginCamera camera endCamera frustum ortho perspective printCamera printProjection cursor frameRate noCursor exit loop noLoop popStyle pushStyle redraw binary boolean byte char float hex int str unbinary unhex join match matchAll nf nfc nfp nfs split splitTokens trim append arrayCopy concat expand reverse shorten sort splice subset box sphere sphereDetail createInput createReader loadBytes loadJSONArray loadJSONObject loadStrings loadTable loadXML open parseXML saveTable selectFolder selectInput beginRaw beginRecord createOutput createWriter endRaw endRecord PrintWritersaveBytes saveJSONArray saveJSONObject saveStream saveStrings saveXML selectOutput popMatrix printMatrix pushMatrix resetMatrix rotate rotateX rotateY rotateZ scale shearX shearY translate ambientLight directionalLight lightFalloff lights lightSpecular noLights normal pointLight spotLight image imageMode loadImage noTint requestImage tint texture textureMode textureWrap blend copy filter get loadPixels set updatePixels blendMode loadShader PShaderresetShader shader createFont loadFont text textFont textAlign textLeading textMode textSize textWidth textAscent textDescent abs ceil constrain dist exp floor lerp log mag map max min norm pow round sq sqrt acos asin atan atan2 cos degrees radians sin tan noise noiseDetail noiseSeed random randomGaussian randomSeed"},c:[e.CLCM,e.CBCM,e.ASM,e.QSM,e.CNM]}}),hljs.registerLanguage("profile",function(e){return{c:[e.CNM,{cN:"built_in",b:"{",e:"}$",eB:!0,eE:!0,c:[e.ASM,e.QSM],r:0},{cN:"filename",b:"[a-zA-Z_][\\da-zA-Z_]+\\.[\\da-zA-Z_]{1,3}",e:":",eE:!0},{cN:"header",b:"(ncalls|tottime|cumtime)",e:"$",k:"ncalls tottime|10 cumtime|10 filename",r:10},{cN:"summary",b:"function calls",e:"$",c:[e.CNM],r:10},e.ASM,e.QSM,{cN:"function",b:"\\(",e:"\\)$",c:[e.UTM],r:0}]}}),hljs.registerLanguage("prolog",function(e){var t={cN:"atom",b:/[a-z][A-Za-z0-9_]*/,r:0},r={cN:"name",v:[{b:/[A-Z][a-zA-Z0-9_]*/},{b:/_[A-Za-z0-9_]*/}],r:0},a={b:/\(/,e:/\)/,r:0},i={b:/\[/,e:/\]/},n={cN:"comment",b:/%/,e:/$/,c:[e.PWM]},o={cN:"string",b:/`/,e:/`/,c:[e.BE]},s={cN:"string",b:/0\'(\\\'|.)/},l={cN:"string",b:/0\'\\s/},c={b:/:-/},d=[t,r,a,c,i,n,e.CBCM,e.QSM,e.ASM,o,s,l,e.CNM];return a.c=d,i.c=d,{c:d.concat([{b:/\.$/}])}}),hljs.registerLanguage("protobuf",function(e){return{k:{keyword:"package import option optional required repeated group",built_in:"double float int32 int64 uint32 uint64 sint32 sint64 fixed32 fixed64 sfixed32 sfixed64 bool string bytes",literal:"true false"},c:[e.QSM,e.NM,e.CLCM,{cN:"class",bK:"message enum service",e:/\{/,i:/\n/,c:[e.inherit(e.TM,{starts:{eW:!0,eE:!0}})]},{cN:"function",bK:"rpc",e:/;/,eE:!0,k:"rpc returns"},{cN:"constant",b:/^\s*[A-Z_]+/,e:/\s*=/,eE:!0}]}}),hljs.registerLanguage("puppet",function(e){var t="augeas computer cron exec file filebucket host interface k5login macauthorization mailalias maillist mcx mount nagios_command nagios_contact nagios_contactgroup nagios_host nagios_hostdependency nagios_hostescalation nagios_hostextinfo nagios_hostgroup nagios_service firewall nagios_servicedependency nagios_serviceescalation nagios_serviceextinfo nagios_servicegroup nagios_timeperiod notify package resources router schedule scheduled_task selboolean selmodule service ssh_authorized_key sshkey stage tidy user vlan yumrepo zfs zone zpool",r="alias audit before loglevel noop require subscribe tag owner ensure group mode name|0 changes context force incl lens load_path onlyif provider returns root show_diff type_check en_address ip_address realname command environment hour monute month monthday special target weekday creates cwd ogoutput refresh refreshonly tries try_sleep umask backup checksum content ctime force ignore links mtime purge recurse recurselimit replace selinux_ignore_defaults selrange selrole seltype seluser source souirce_permissions sourceselect validate_cmd validate_replacement allowdupe attribute_membership auth_membership forcelocal gid ia_load_module members system host_aliases ip allowed_trunk_vlans description device_url duplex encapsulation etherchannel native_vlan speed principals allow_root auth_class auth_type authenticate_user k_of_n mechanisms rule session_owner shared options device fstype enable hasrestart directory present absent link atboot blockdevice device dump pass remounts poller_tag use message withpath adminfile allow_virtual allowcdrom category configfiles flavor install_options instance package_settings platform responsefile status uninstall_options vendor unless_system_user unless_uid binary control flags hasstatus manifest pattern restart running start stop allowdupe auths expiry gid groups home iterations key_membership keys managehome membership password password_max_age password_min_age profile_membership profiles project purge_ssh_keys role_membership roles salt shell uid baseurl cost descr enabled enablegroups exclude failovermethod gpgcheck gpgkey http_caching include includepkgs keepalive metadata_expire metalink mirrorlist priority protect proxy proxy_password proxy_username repo_gpgcheck s3_enabled skip_if_unavailable sslcacert sslclientcert sslclientkey sslverify mounted",a={keyword:"and case class default define else elsif false if in import enherits node or true undef unless main settings $string "+t,literal:r,built_in:"architecture augeasversion blockdevices boardmanufacturer boardproductname boardserialnumber cfkey dhcp_servers domain ec2_ ec2_userdata facterversion filesystems ldom fqdn gid hardwareisa hardwaremodel hostname id|0 interfaces ipaddress ipaddress_ ipaddress6 ipaddress6_ iphostnumber is_virtual kernel kernelmajversion kernelrelease kernelversion kernelrelease kernelversion lsbdistcodename lsbdistdescription lsbdistid lsbdistrelease lsbmajdistrelease lsbminordistrelease lsbrelease macaddress macaddress_ macosx_buildversion macosx_productname macosx_productversion macosx_productverson_major macosx_productversion_minor manufacturer memoryfree memorysize netmask metmask_ network_ operatingsystem operatingsystemmajrelease operatingsystemrelease osfamily partitions path physicalprocessorcount processor processorcount productname ps puppetversion rubysitedir rubyversion selinux selinux_config_mode selinux_config_policy selinux_current_mode selinux_current_mode selinux_enforced selinux_policyversion serialnumber sp_ sshdsakey sshecdsakey sshrsakey swapencrypted swapfree swapsize timezone type uniqueid uptime uptime_days uptime_hours uptime_seconds uuid virtual vlans xendomains zfs_version zonenae zones zpool_version"},i=e.C("#","$"),n={cN:"string",c:[e.BE],v:[{b:/'/,e:/'/},{b:/"/,e:/"/}]},o=[n,i,{cN:"keyword",bK:"class",e:"$|;",i:/=/,c:[e.inherit(e.TM,{b:"(::)?[A-Za-z_]\\w*(::\\w+)*"}),i,n]},{cN:"keyword",b:"([a-zA-Z_(::)]+ *\\{)",c:[n,i],r:0},{cN:"keyword",b:"(\\}|\\{)",r:0},{cN:"function",b:"[a-zA-Z_]+\\s*=>"},{cN:"constant",b:"(::)?(\\b[A-Z][a-z_]*(::)?)+",r:0},{cN:"number",b:"(\\b0[0-7_]+)|(\\b0x[0-9a-fA-F_]+)|(\\b[1-9][0-9_]*(\\.[0-9_]+)?)|[0_]\\b",r:0}];return{aliases:["pp"],k:a,c:o}}),hljs.registerLanguage("python",function(e){var t={cN:"prompt",b:/^(>>>|\.\.\.) /},r={cN:"string",c:[e.BE],v:[{b:/(u|b)?r?'''/,e:/'''/,c:[t],r:10},{b:/(u|b)?r?"""/,e:/"""/,c:[t],r:10},{b:/(u|r|ur)'/,e:/'/,r:10},{b:/(u|r|ur)"/,e:/"/,r:10},{b:/(b|br)'/,e:/'/},{b:/(b|br)"/,e:/"/},e.ASM,e.QSM]},a={cN:"number",r:0,v:[{b:e.BNR+"[lLjJ]?"},{b:"\\b(0o[0-7]+)[lLjJ]?"},{b:e.CNR+"[lLjJ]?"}]},i={cN:"params",b:/\(/,e:/\)/,c:["self",t,a,r]};return{aliases:["py","gyp"],k:{keyword:"and elif is global as in if from raise for except finally print import pass return exec else break not with class assert yield try while continue del or def lambda nonlocal|10 None True False",built_in:"Ellipsis NotImplemented"},i:/(<\/|->|\?)/,c:[t,a,r,e.HCM,{v:[{cN:"function",bK:"def",r:10},{cN:"class",bK:"class"}],e:/:/,i:/[${=;\n,]/,c:[e.UTM,i]},{cN:"decorator",b:/@/,e:/$/},{b:/\b(print|exec)\(/}]}}),hljs.registerLanguage("q",function(e){var t={keyword:"do while select delete by update from",constant:"0b 1b",built_in:"neg not null string reciprocal floor ceiling signum mod xbar xlog and or each scan over prior mmu lsq inv md5 ltime gtime count first var dev med cov cor all any rand sums prds mins maxs fills deltas ratios avgs differ prev next rank reverse iasc idesc asc desc msum mcount mavg mdev xrank mmin mmax xprev rotate distinct group where flip type key til get value attr cut set upsert raze union inter except cross sv vs sublist enlist read0 read1 hopen hclose hdel hsym hcount peach system ltrim rtrim trim lower upper ssr view tables views cols xcols keys xkey xcol xasc xdesc fkeys meta lj aj aj0 ij pj asof uj ww wj wj1 fby xgroup ungroup ej save load rsave rload show csv parse eval min max avg wavg wsum sin cos tan sum",typename:"`float `double int `timestamp `timespan `datetime `time `boolean `symbol `char `byte `short `long `real `month `date `minute `second `guid"};return{aliases:["k","kdb"],k:t,l:/\b(`?)[A-Za-z0-9_]+\b/,c:[e.CLCM,e.QSM,e.CNM]}}),hljs.registerLanguage("r",function(e){var t="([a-zA-Z]|\\.[a-zA-Z.])[a-zA-Z0-9._]*";return{c:[e.HCM,{b:t,l:t,k:{keyword:"function if in break next repeat else for return switch while try tryCatch stop warning require library attach detach source setMethod setGeneric setGroupGeneric setClass ...",literal:"NULL NA TRUE FALSE T F Inf NaN NA_integer_|10 NA_real_|10 NA_character_|10 NA_complex_|10"},r:0},{cN:"number",b:"0[xX][0-9a-fA-F]+[Li]?\\b",r:0},{cN:"number",b:"\\d+(?:[eE][+\\-]?\\d*)?L\\b",r:0},{cN:"number",b:"\\d+\\.(?!\\d)(?:i\\b)?",r:0},{cN:"number",b:"\\d+(?:\\.\\d*)?(?:[eE][+\\-]?\\d*)?i?\\b",r:0},{cN:"number",b:"\\.\\d+(?:[eE][+\\-]?\\d*)?i?\\b",r:0},{b:"`",e:"`",r:0},{cN:"string",c:[e.BE],v:[{b:'"',e:'"'},{b:"'",e:"'"}]}]}}),hljs.registerLanguage("rib",function(e){return{k:"ArchiveRecord AreaLightSource Atmosphere Attribute AttributeBegin AttributeEnd Basis Begin Blobby Bound Clipping ClippingPlane Color ColorSamples ConcatTransform Cone CoordinateSystem CoordSysTransform CropWindow Curves Cylinder DepthOfField Detail DetailRange Disk Displacement Display End ErrorHandler Exposure Exterior Format FrameAspectRatio FrameBegin FrameEnd GeneralPolygon GeometricApproximation Geometry Hider Hyperboloid Identity Illuminate Imager Interior LightSource MakeCubeFaceEnvironment MakeLatLongEnvironment MakeShadow MakeTexture Matte MotionBegin MotionEnd NuPatch ObjectBegin ObjectEnd ObjectInstance Opacity Option Orientation Paraboloid Patch PatchMesh Perspective PixelFilter PixelSamples PixelVariance Points PointsGeneralPolygons PointsPolygons Polygon Procedural Projection Quantize ReadArchive RelativeDetail ReverseOrientation Rotate Scale ScreenWindow ShadingInterpolation ShadingRate Shutter Sides Skew SolidBegin SolidEnd Sphere SubdivisionMesh Surface TextureCoordinates Torus Transform TransformBegin TransformEnd TransformPoints Translate TrimCurve WorldBegin WorldEnd",i:"</",c:[e.HCM,e.CNM,e.ASM,e.QSM]}}),hljs.registerLanguage("roboconf",function(e){var t="[a-zA-Z-_][^\n{\r\n]+\\{";return{aliases:["graph","instances"],cI:!0,k:"import",c:[{cN:"facet",b:"^facet "+t,e:"}",k:"facet installer exports children extends",c:[e.HCM]},{cN:"instance-of",b:"^instance of "+t,e:"}",k:"name count channels instance-data instance-state instance of",c:[{cN:"keyword",b:"[a-zA-Z-_]+( |	)*:"},e.HCM]},{cN:"component",b:"^"+t,e:"}",l:"\\(?[a-zA-Z]+\\)?",k:"installer exports children extends imports facets alias (optional)",c:[{cN:"string",b:"\\.[a-zA-Z-_]+",e:"\\s|,|;",eE:!0},e.HCM]},e.HCM]}}),hljs.registerLanguage("rsl",function(e){return{k:{keyword:"float color point normal vector matrix while for if do return else break extern continue",built_in:"abs acos ambient area asin atan atmosphere attribute calculatenormal ceil cellnoise clamp comp concat cos degrees depth Deriv diffuse distance Du Dv environment exp faceforward filterstep floor format fresnel incident length lightsource log match max min mod noise normalize ntransform opposite option phong pnoise pow printf ptlined radians random reflect refract renderinfo round setcomp setxcomp setycomp setzcomp shadow sign sin smoothstep specular specularbrdf spline sqrt step tan texture textureinfo trace transform vtransform xcomp ycomp zcomp"},i:"</",c:[e.CLCM,e.CBCM,e.QSM,e.ASM,e.CNM,{cN:"preprocessor",b:"#",e:"$"},{cN:"shader",bK:"surface displacement light volume imager",e:"\\("},{cN:"shading",bK:"illuminate illuminance gather",e:"\\("}]}}),hljs.registerLanguage("ruleslanguage",function(e){return{k:{keyword:"BILL_PERIOD BILL_START BILL_STOP RS_EFFECTIVE_START RS_EFFECTIVE_STOP RS_JURIS_CODE RS_OPCO_CODE INTDADDATTRIBUTE|5 INTDADDVMSG|5 INTDBLOCKOP|5 INTDBLOCKOPNA|5 INTDCLOSE|5 INTDCOUNT|5 INTDCOUNTSTATUSCODE|5 INTDCREATEMASK|5 INTDCREATEDAYMASK|5 INTDCREATEFACTORMASK|5 INTDCREATEHANDLE|5 INTDCREATEOVERRIDEDAYMASK|5 INTDCREATEOVERRIDEMASK|5 INTDCREATESTATUSCODEMASK|5 INTDCREATETOUPERIOD|5 INTDDELETE|5 INTDDIPTEST|5 INTDEXPORT|5 INTDGETERRORCODE|5 INTDGETERRORMESSAGE|5 INTDISEQUAL|5 INTDJOIN|5 INTDLOAD|5 INTDLOADACTUALCUT|5 INTDLOADDATES|5 INTDLOADHIST|5 INTDLOADLIST|5 INTDLOADLISTDATES|5 INTDLOADLISTENERGY|5 INTDLOADLISTHIST|5 INTDLOADRELATEDCHANNEL|5 INTDLOADSP|5 INTDLOADSTAGING|5 INTDLOADUOM|5 INTDLOADUOMDATES|5 INTDLOADUOMHIST|5 INTDLOADVERSION|5 INTDOPEN|5 INTDREADFIRST|5 INTDREADNEXT|5 INTDRECCOUNT|5 INTDRELEASE|5 INTDREPLACE|5 INTDROLLAVG|5 INTDROLLPEAK|5 INTDSCALAROP|5 INTDSCALE|5 INTDSETATTRIBUTE|5 INTDSETDSTPARTICIPANT|5 INTDSETSTRING|5 INTDSETVALUE|5 INTDSETVALUESTATUS|5 INTDSHIFTSTARTTIME|5 INTDSMOOTH|5 INTDSORT|5 INTDSPIKETEST|5 INTDSUBSET|5 INTDTOU|5 INTDTOURELEASE|5 INTDTOUVALUE|5 INTDUPDATESTATS|5 INTDVALUE|5 STDEV INTDDELETEEX|5 INTDLOADEXACTUAL|5 INTDLOADEXCUT|5 INTDLOADEXDATES|5 INTDLOADEX|5 INTDLOADEXRELATEDCHANNEL|5 INTDSAVEEX|5 MVLOAD|5 MVLOADACCT|5 MVLOADACCTDATES|5 MVLOADACCTHIST|5 MVLOADDATES|5 MVLOADHIST|5 MVLOADLIST|5 MVLOADLISTDATES|5 MVLOADLISTHIST|5 IF FOR NEXT DONE SELECT END CALL ABORT CLEAR CHANNEL FACTOR LIST NUMBER OVERRIDE SET WEEK DISTRIBUTIONNODE ELSE WHEN THEN OTHERWISE IENUM CSV INCLUDE LEAVE RIDER SAVE DELETE NOVALUE SECTION WARN SAVE_UPDATE DETERMINANT LABEL REPORT REVENUE EACH IN FROM TOTAL CHARGE BLOCK AND OR CSV_FILE RATE_CODE AUXILIARY_DEMAND UIDACCOUNT RS BILL_PERIOD_SELECT HOURS_PER_MONTH INTD_ERROR_STOP SEASON_SCHEDULE_NAME ACCOUNTFACTOR ARRAYUPPERBOUND CALLSTOREDPROC GETADOCONNECTION GETCONNECT GETDATASOURCE GETQUALIFIER GETUSERID HASVALUE LISTCOUNT LISTOP LISTUPDATE LISTVALUE PRORATEFACTOR RSPRORATE SETBINPATH SETDBMONITOR WQ_OPEN BILLINGHOURS DATE DATEFROMFLOAT DATETIMEFROMSTRING DATETIMETOSTRING DATETOFLOAT DAY DAYDIFF DAYNAME DBDATETIME HOUR MINUTE MONTH MONTHDIFF MONTHHOURS MONTHNAME ROUNDDATE SAMEWEEKDAYLASTYEAR SECOND WEEKDAY WEEKDIFF YEAR YEARDAY YEARSTR COMPSUM HISTCOUNT HISTMAX HISTMIN HISTMINNZ HISTVALUE MAXNRANGE MAXRANGE MINRANGE COMPIKVA COMPKVA COMPKVARFROMKQKW COMPLF IDATTR FLAG LF2KW LF2KWH MAXKW POWERFACTOR READING2USAGE AVGSEASON MAXSEASON MONTHLYMERGE SEASONVALUE SUMSEASON ACCTREADDATES ACCTTABLELOAD CONFIGADD CONFIGGET CREATEOBJECT CREATEREPORT EMAILCLIENT EXPBLKMDMUSAGE EXPMDMUSAGE EXPORT_USAGE FACTORINEFFECT GETUSERSPECIFIEDSTOP INEFFECT ISHOLIDAY RUNRATE SAVE_PROFILE SETREPORTTITLE USEREXIT WATFORRUNRATE TO TABLE ACOS ASIN ATAN ATAN2 BITAND CEIL COS COSECANT COSH COTANGENT DIVQUOT DIVREM EXP FABS FLOOR FMOD FREPM FREXPN LOG LOG10 MAX MAXN MIN MINNZ MODF POW ROUND ROUND2VALUE ROUNDINT SECANT SIN SINH SQROOT TAN TANH FLOAT2STRING FLOAT2STRINGNC INSTR LEFT LEN LTRIM MID RIGHT RTRIM STRING STRINGNC TOLOWER TOUPPER TRIM NUMDAYS READ_DATE STAGING",built_in:"IDENTIFIER OPTIONS XML_ELEMENT XML_OP XML_ELEMENT_OF DOMDOCCREATE DOMDOCLOADFILE DOMDOCLOADXML DOMDOCSAVEFILE DOMDOCGETROOT DOMDOCADDPI DOMNODEGETNAME DOMNODEGETTYPE DOMNODEGETVALUE DOMNODEGETCHILDCT DOMNODEGETFIRSTCHILD DOMNODEGETSIBLING DOMNODECREATECHILDELEMENT DOMNODESETATTRIBUTE DOMNODEGETCHILDELEMENTCT DOMNODEGETFIRSTCHILDELEMENT DOMNODEGETSIBLINGELEMENT DOMNODEGETATTRIBUTECT DOMNODEGETATTRIBUTEI DOMNODEGETATTRIBUTEBYNAME DOMNODEGETBYNAME"},c:[e.CLCM,e.CBCM,e.ASM,e.QSM,e.CNM,{cN:"array",b:"#[a-zA-Z .]+"}]}}),hljs.registerLanguage("rust",function(e){var t=e.inherit(e.CBCM);return t.c.push("self"),{aliases:["rs"],k:{keyword:"alignof as be box break const continue crate do else enum extern false fn for if impl in let loop match mod mut offsetof once priv proc pub pure ref return self sizeof static struct super trait true type typeof unsafe unsized use virtual while yield int i8 i16 i32 i64 uint u8 u32 u64 float f32 f64 str char bool",built_in:"assert! assert_eq! bitflags! bytes! cfg! col! concat! concat_idents! debug_assert! debug_assert_eq! env! panic! file! format! format_args! include_bin! include_str! line! local_data_key! module_path! option_env! print! println! select! stringify! try! unimplemented! unreachable! vec! write! writeln!"},l:e.IR+"!?",i:"</",c:[e.CLCM,t,e.inherit(e.QSM,{i:null}),{cN:"string",b:/r(#*)".*?"\1(?!#)/},{cN:"string",b:/'\\?(x\w{2}|u\w{4}|U\w{8}|.)'/},{b:/'[a-zA-Z_][a-zA-Z0-9_]*/},{cN:"number",b:/\b(0[xbo][A-Fa-f0-9_]+|\d[\d_]*(\.[0-9_]+)?([eE][+-]?[0-9_]+)?)([uif](8|16|32|64|size))?/,r:0},{cN:"function",bK:"fn",e:"(\\(|<)",eE:!0,c:[e.UTM]},{cN:"preprocessor",b:"#\\!?\\[",e:"\\]"},{bK:"type",e:"(=|<)",c:[e.UTM],i:"\\S"},{bK:"trait enum",e:"({|<)",c:[e.UTM],i:"\\S"},{b:e.IR+"::"},{b:"->"}]}}),hljs.registerLanguage("scala",function(e){var t={cN:"annotation",b:"@[A-Za-z]+"},r={cN:"string",b:'u?r?"""',e:'"""',r:10},a={cN:"symbol",b:"'\\w[\\w\\d_]*(?!')"},i={cN:"type",b:"\\b[A-Z][A-Za-z0-9_]*",r:0},n={cN:"title",b:/[^0-9\n\t "'(),.`{}\[\]:;][^\n\t "'(),.`{}\[\]:;]+|[^0-9\n\t "'(),.`{}\[\]:;=]/,r:0},o={cN:"class",bK:"class object trait type",e:/[:={\[(\n;]/,c:[{cN:"keyword",bK:"extends with",r:10},n]},s={cN:"function",bK:"def val",e:/[:={\[(\n;]/,c:[n]};return{k:{literal:"true false null",keyword:"type yield lazy override def with val var sealed abstract private trait object if forSome for while throw finally protected extends import final return else break new catch super class case package default try this match continue throws implicit"},c:[e.CLCM,e.CBCM,r,e.QSM,a,i,s,o,e.CNM,t]}}),hljs.registerLanguage("scheme",function(e){var t="[^\\(\\)\\[\\]\\{\\}\",'`;#|\\\\\\s]+",r="(\\-|\\+)?\\d+([./]\\d+)?",a=r+"[+\\-]"+r+"i",i={built_in:"case-lambda call/cc class define-class exit-handler field import inherit init-field interface let*-values let-values let/ec mixin opt-lambda override protect provide public rename require require-for-syntax syntax syntax-case syntax-error unit/sig unless when with-syntax and begin call-with-current-continuation call-with-input-file call-with-output-file case cond define define-syntax delay do dynamic-wind else for-each if lambda let let* let-syntax letrec letrec-syntax map or syntax-rules ' * + , ,@ - ... / ; < <= = => > >= ` abs acos angle append apply asin assoc assq assv atan boolean? caar cadr call-with-input-file call-with-output-file call-with-values car cdddar cddddr cdr ceiling char->integer char-alphabetic? char-ci<=? char-ci<? char-ci=? char-ci>=? char-ci>? char-downcase char-lower-case? char-numeric? char-ready? char-upcase char-upper-case? char-whitespace? char<=? char<? char=? char>=? char>? char? close-input-port close-output-port complex? cons cos current-input-port current-output-port denominator display eof-object? eq? equal? eqv? eval even? exact->inexact exact? exp expt floor force gcd imag-part inexact->exact inexact? input-port? integer->char integer? interaction-environment lcm length list list->string list->vector list-ref list-tail list? load log magnitude make-polar make-rectangular make-string make-vector max member memq memv min modulo negative? newline not null-environment null? number->string number? numerator odd? open-input-file open-output-file output-port? pair? peek-char port? positive? procedure? quasiquote quote quotient rational? rationalize read read-char real-part real? remainder reverse round scheme-report-environment set! set-car! set-cdr! sin sqrt string string->list string->number string->symbol string-append string-ci<=? string-ci<? string-ci=? string-ci>=? string-ci>? string-copy string-fill! string-length string-ref string-set! string<=? string<? string=? string>=? string>? string? substring symbol->string symbol? tan transcript-off transcript-on truncate values vector vector->list vector-fill! vector-length vector-ref vector-set! with-input-from-file with-output-to-file write write-char zero?"},n={cN:"shebang",b:"^#!",e:"$"},o={cN:"literal",b:"(#t|#f|#\\\\"+t+"|#\\\\.)"},s={cN:"number",v:[{b:r,r:0},{b:a,r:0},{b:"#b[0-1]+(/[0-1]+)?"},{b:"#o[0-7]+(/[0-7]+)?"},{b:"#x[0-9a-f]+(/[0-9a-f]+)?"}]},l=e.QSM,c=[e.C(";","$",{r:0}),e.C("#\\|","\\|#")],d={b:t,r:0},p={cN:"variable",b:"'"+t},u={eW:!0,r:0},m={cN:"list",v:[{b:"\\(",e:"\\)"},{b:"\\[",e:"\\]"}],c:[{cN:"keyword",b:t,l:t,k:i},u]};return u.c=[o,s,l,d,p,m].concat(c),{i:/\S/,c:[n,s,l,p,m].concat(c)}}),hljs.registerLanguage("scilab",function(e){var t=[e.CNM,{cN:"string",b:"'|\"",e:"'|\"",c:[e.BE,{b:"''"}]}];return{aliases:["sci"],k:{keyword:"abort break case clear catch continue do elseif else endfunction end for functionglobal if pause return resume select try then while%f %F %t %T %pi %eps %inf %nan %e %i %z %s",built_in:"abs and acos asin atan ceil cd chdir clearglobal cosh cos cumprod deff disp errorexec execstr exists exp eye gettext floor fprintf fread fsolve imag isdef isemptyisinfisnan isvector lasterror length load linspace list listfiles log10 log2 logmax min msprintf mclose mopen ones or pathconvert poly printf prod pwd rand realround sinh sin size gsort sprintf sqrt strcat strcmps tring sum system tanh tantype typename warning zeros matrix"},i:'("|#|/\\*|\\s+/\\w+)',c:[{cN:"function",bK:"function endfunction",e:"$",k:"function endfunction|10",c:[e.UTM,{cN:"params",b:"\\(",e:"\\)"}]},{cN:"transposed_variable",b:"[a-zA-Z_][a-zA-Z_0-9]*('+[\\.']*|[\\.']+)",e:"",r:0},{cN:"matrix",b:"\\[",e:"\\]'*[\\.']*",r:0,c:t},e.C("//","$")].concat(t)
-}}),hljs.registerLanguage("scss",function(e){{var t="[a-zA-Z-][a-zA-Z0-9_-]*",r={cN:"variable",b:"(\\$"+t+")\\b"},a={cN:"function",b:t+"\\(",rB:!0,eE:!0,e:"\\("},i={cN:"hexcolor",b:"#[0-9A-Fa-f]+"};({cN:"attribute",b:"[A-Z\\_\\.\\-]+",e:":",eE:!0,i:"[^\\s]",starts:{cN:"value",eW:!0,eE:!0,c:[a,i,e.CSSNM,e.QSM,e.ASM,e.CBCM,{cN:"important",b:"!important"}]}})}return{cI:!0,i:"[=/|']",c:[e.CLCM,e.CBCM,a,{cN:"id",b:"\\#[A-Za-z0-9_-]+",r:0},{cN:"class",b:"\\.[A-Za-z0-9_-]+",r:0},{cN:"attr_selector",b:"\\[",e:"\\]",i:"$"},{cN:"tag",b:"\\b(a|abbr|acronym|address|area|article|aside|audio|b|base|big|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|command|datalist|dd|del|details|dfn|div|dl|dt|em|embed|fieldset|figcaption|figure|footer|form|frame|frameset|(h[1-6])|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|keygen|label|legend|li|link|map|mark|meta|meter|nav|noframes|noscript|object|ol|optgroup|option|output|p|param|pre|progress|q|rp|rt|ruby|samp|script|section|select|small|span|strike|strong|style|sub|sup|table|tbody|td|textarea|tfoot|th|thead|time|title|tr|tt|ul|var|video)\\b",r:0},{cN:"pseudo",b:":(visited|valid|root|right|required|read-write|read-only|out-range|optional|only-of-type|only-child|nth-of-type|nth-last-of-type|nth-last-child|nth-child|not|link|left|last-of-type|last-child|lang|invalid|indeterminate|in-range|hover|focus|first-of-type|first-line|first-letter|first-child|first|enabled|empty|disabled|default|checked|before|after|active)"},{cN:"pseudo",b:"::(after|before|choices|first-letter|first-line|repeat-index|repeat-item|selection|value)"},r,{cN:"attribute",b:"\\b(z-index|word-wrap|word-spacing|word-break|width|widows|white-space|visibility|vertical-align|unicode-bidi|transition-timing-function|transition-property|transition-duration|transition-delay|transition|transform-style|transform-origin|transform|top|text-underline-position|text-transform|text-shadow|text-rendering|text-overflow|text-indent|text-decoration-style|text-decoration-line|text-decoration-color|text-decoration|text-align-last|text-align|tab-size|table-layout|right|resize|quotes|position|pointer-events|perspective-origin|perspective|page-break-inside|page-break-before|page-break-after|padding-top|padding-right|padding-left|padding-bottom|padding|overflow-y|overflow-x|overflow-wrap|overflow|outline-width|outline-style|outline-offset|outline-color|outline|orphans|order|opacity|object-position|object-fit|normal|none|nav-up|nav-right|nav-left|nav-index|nav-down|min-width|min-height|max-width|max-height|mask|marks|margin-top|margin-right|margin-left|margin-bottom|margin|list-style-type|list-style-position|list-style-image|list-style|line-height|letter-spacing|left|justify-content|initial|inherit|ime-mode|image-orientation|image-resolution|image-rendering|icon|hyphens|height|font-weight|font-variant-ligatures|font-variant|font-style|font-stretch|font-size-adjust|font-size|font-language-override|font-kerning|font-feature-settings|font-family|font|float|flex-wrap|flex-shrink|flex-grow|flex-flow|flex-direction|flex-basis|flex|filter|empty-cells|display|direction|cursor|counter-reset|counter-increment|content|column-width|column-span|column-rule-width|column-rule-style|column-rule-color|column-rule|column-gap|column-fill|column-count|columns|color|clip-path|clip|clear|caption-side|break-inside|break-before|break-after|box-sizing|box-shadow|box-decoration-break|bottom|border-width|border-top-width|border-top-style|border-top-right-radius|border-top-left-radius|border-top-color|border-top|border-style|border-spacing|border-right-width|border-right-style|border-right-color|border-right|border-radius|border-left-width|border-left-style|border-left-color|border-left|border-image-width|border-image-source|border-image-slice|border-image-repeat|border-image-outset|border-image|border-color|border-collapse|border-bottom-width|border-bottom-style|border-bottom-right-radius|border-bottom-left-radius|border-bottom-color|border-bottom|border|background-size|background-repeat|background-position|background-origin|background-image|background-color|background-clip|background-attachment|background-blend-mode|background|backface-visibility|auto|animation-timing-function|animation-play-state|animation-name|animation-iteration-count|animation-fill-mode|animation-duration|animation-direction|animation-delay|animation|align-self|align-items|align-content)\\b",i:"[^\\s]"},{cN:"value",b:"\\b(whitespace|wait|w-resize|visible|vertical-text|vertical-ideographic|uppercase|upper-roman|upper-alpha|underline|transparent|top|thin|thick|text|text-top|text-bottom|tb-rl|table-header-group|table-footer-group|sw-resize|super|strict|static|square|solid|small-caps|separate|se-resize|scroll|s-resize|rtl|row-resize|ridge|right|repeat|repeat-y|repeat-x|relative|progress|pointer|overline|outside|outset|oblique|nowrap|not-allowed|normal|none|nw-resize|no-repeat|no-drop|newspaper|ne-resize|n-resize|move|middle|medium|ltr|lr-tb|lowercase|lower-roman|lower-alpha|loose|list-item|line|line-through|line-edge|lighter|left|keep-all|justify|italic|inter-word|inter-ideograph|inside|inset|inline|inline-block|inherit|inactive|ideograph-space|ideograph-parenthesis|ideograph-numeric|ideograph-alpha|horizontal|hidden|help|hand|groove|fixed|ellipsis|e-resize|double|dotted|distribute|distribute-space|distribute-letter|distribute-all-lines|disc|disabled|default|decimal|dashed|crosshair|collapse|col-resize|circle|char|center|capitalize|break-word|break-all|bottom|both|bolder|bold|block|bidi-override|below|baseline|auto|always|all-scroll|absolute|table|table-cell)\\b"},{cN:"value",b:":",e:";",c:[a,r,i,e.CSSNM,e.QSM,e.ASM,{cN:"important",b:"!important"}]},{cN:"at_rule",b:"@",e:"[{;]",k:"mixin include extend for if else each while charset import debug media page content font-face namespace warn",c:[a,r,e.QSM,e.ASM,i,e.CSSNM,{cN:"preprocessor",b:"\\s[A-Za-z0-9_.-]+",r:0}]}]}}),hljs.registerLanguage("smali",function(e){var t=["add","and","cmp","cmpg","cmpl","const","div","double","float","goto","if","int","long","move","mul","neg","new","nop","not","or","rem","return","shl","shr","sput","sub","throw","ushr","xor"],r=["aget","aput","array","check","execute","fill","filled","goto/16","goto/32","iget","instance","invoke","iput","monitor","packed","sget","sparse"],a=["transient","constructor","abstract","final","synthetic","public","private","protected","static","bridge","system"];return{aliases:["smali"],c:[{cN:"string",b:'"',e:'"',r:0},e.C("#","$",{r:0}),{cN:"keyword",b:"\\s*\\.end\\s[a-zA-Z0-9]*",r:1},{cN:"keyword",b:"^[ ]*\\.[a-zA-Z]*",r:0},{cN:"keyword",b:"\\s:[a-zA-Z_0-9]*",r:0},{cN:"keyword",b:"\\s("+a.join("|")+")",r:1},{cN:"keyword",b:"\\[",r:0},{cN:"instruction",b:"\\s("+t.join("|")+")\\s",r:1},{cN:"instruction",b:"\\s("+t.join("|")+")((\\-|/)[a-zA-Z0-9]+)+\\s",r:10},{cN:"instruction",b:"\\s("+r.join("|")+")((\\-|/)[a-zA-Z0-9]+)*\\s",r:10},{cN:"class",b:"L[^(;:\n]*;",r:0},{cN:"function",b:'( |->)[^(\n ;"]*\\(',r:0},{cN:"function",b:"\\)",r:0},{cN:"variable",b:"[vp][0-9]+",r:0}]}}),hljs.registerLanguage("smalltalk",function(e){var t="[a-z][a-zA-Z0-9_]*",r={cN:"char",b:"\\$.{1}"},a={cN:"symbol",b:"#"+e.UIR};return{aliases:["st"],k:"self super nil true false thisContext",c:[e.C('"','"'),e.ASM,{cN:"class",b:"\\b[A-Z][A-Za-z0-9_]*",r:0},{cN:"method",b:t+":",r:0},e.CNM,a,r,{cN:"localvars",b:"\\|[ ]*"+t+"([ ]+"+t+")*[ ]*\\|",rB:!0,e:/\|/,i:/\S/,c:[{b:"(\\|[ ]*)?"+t}]},{cN:"array",b:"\\#\\(",e:"\\)",c:[e.ASM,r,e.CNM,a]}]}}),hljs.registerLanguage("sml",function(e){return{aliases:["ml"],k:{keyword:"abstype and andalso as case datatype do else end eqtype exception fn fun functor handle if in include infix infixr let local nonfix of op open orelse raise rec sharing sig signature struct structure then type val with withtype where while",built_in:"array bool char exn int list option order real ref string substring vector unit word",literal:"true false NONE SOME LESS EQUAL GREATER nil"},i:/\/\/|>>/,l:"[a-z_]\\w*!?",c:[{cN:"literal",b:"\\[(\\|\\|)?\\]|\\(\\)"},e.C("\\(\\*","\\*\\)",{c:["self"]}),{cN:"symbol",b:"'[A-Za-z_](?!')[\\w']*"},{cN:"tag",b:"`[A-Z][\\w']*"},{cN:"type",b:"\\b[A-Z][\\w']*",r:0},{b:"[a-z_]\\w*'[\\w']*"},e.inherit(e.ASM,{cN:"char",r:0}),e.inherit(e.QSM,{i:null}),{cN:"number",b:"\\b(0[xX][a-fA-F0-9_]+[Lln]?|0[oO][0-7_]+[Lln]?|0[bB][01_]+[Lln]?|[0-9][0-9_]*([Lln]|(\\.[0-9_]*)?([eE][-+]?[0-9_]+)?)?)",r:0},{b:/[-=]>/}]}}),hljs.registerLanguage("sql",function(e){var t=e.C("--","$");return{cI:!0,i:/[<>]/,c:[{cN:"operator",bK:"begin end start commit rollback savepoint lock alter create drop rename call delete do handler insert load replace select truncate update set show pragma grant merge describe use explain help declare prepare execute deallocate savepoint release unlock purge reset change stop analyze cache flush optimize repair kill install uninstall checksum restore check backup revoke",e:/;/,eW:!0,k:{keyword:"abs absolute acos action add adddate addtime aes_decrypt aes_encrypt after aggregate all allocate alter analyze and any are as asc ascii asin assertion at atan atan2 atn2 authorization authors avg backup before begin benchmark between bin binlog bit_and bit_count bit_length bit_or bit_xor both by cache call cascade cascaded case cast catalog ceil ceiling chain change changed char_length character_length charindex charset check checksum checksum_agg choose close coalesce coercibility collate collation collationproperty column columns columns_updated commit compress concat concat_ws concurrent connect connection connection_id consistent constraint constraints continue contributors conv convert convert_tz corresponding cos cot count count_big crc32 create cross cume_dist curdate current current_date current_time current_timestamp current_user cursor curtime data database databases datalength date_add date_format date_sub dateadd datediff datefromparts datename datepart datetime2fromparts datetimeoffsetfromparts day dayname dayofmonth dayofweek dayofyear deallocate declare decode default deferrable deferred degrees delayed delete des_decrypt des_encrypt des_key_file desc describe descriptor diagnostics difference disconnect distinct distinctrow div do domain double drop dumpfile each else elt enclosed encode encrypt end end-exec engine engines eomonth errors escape escaped event eventdata events except exception exec execute exists exp explain export_set extended external extract fast fetch field fields find_in_set first first_value floor flush for force foreign format found found_rows from from_base64 from_days from_unixtime full function get get_format get_lock getdate getutcdate global go goto grant grants greatest group group_concat grouping grouping_id gtid_subset gtid_subtract handler having help hex high_priority hosts hour ident_current ident_incr ident_seed identified identity if ifnull ignore iif ilike immediate in index indicator inet6_aton inet6_ntoa inet_aton inet_ntoa infile initially inner innodb input insert install instr intersect into is is_free_lock is_ipv4 is_ipv4_compat is_ipv4_mapped is_not is_not_null is_used_lock isdate isnull isolation join key kill language last last_day last_insert_id last_value lcase lead leading least leaves left len lenght level like limit lines ln load load_file local localtime localtimestamp locate lock log log10 log2 logfile logs low_priority lower lpad ltrim make_set makedate maketime master master_pos_wait match matched max md5 medium merge microsecond mid min minute mod mode module month monthname mutex name_const names national natural nchar next no no_write_to_binlog not now nullif nvarchar oct octet_length of old_password on only open optimize option optionally or ord order outer outfile output pad parse partial partition password patindex percent_rank percentile_cont percentile_disc period_add period_diff pi plugin position pow power pragma precision prepare preserve primary prior privileges procedure procedure_analyze processlist profile profiles public publishingservername purge quarter query quick quote quotename radians rand read references regexp relative relaylog release release_lock rename repair repeat replace replicate reset restore restrict return returns reverse revoke right rlike rollback rollup round row row_count rows rpad rtrim savepoint schema scroll sec_to_time second section select serializable server session session_user set sha sha1 sha2 share show sign sin size slave sleep smalldatetimefromparts snapshot some soname soundex sounds_like space sql sql_big_result sql_buffer_result sql_cache sql_calc_found_rows sql_no_cache sql_small_result sql_variant_property sqlstate sqrt square start starting status std stddev stddev_pop stddev_samp stdev stdevp stop str str_to_date straight_join strcmp string stuff subdate substr substring subtime subtring_index sum switchoffset sysdate sysdatetime sysdatetimeoffset system_user sysutcdatetime table tables tablespace tan temporary terminated tertiary_weights then time time_format time_to_sec timediff timefromparts timestamp timestampadd timestampdiff timezone_hour timezone_minute to to_base64 to_days to_seconds todatetimeoffset trailing transaction translation trigger trigger_nestlevel triggers trim truncate try_cast try_convert try_parse ucase uncompress uncompressed_length unhex unicode uninstall union unique unix_timestamp unknown unlock update upgrade upped upper usage use user user_resources using utc_date utc_time utc_timestamp uuid uuid_short validate_password_strength value values var var_pop var_samp variables variance varp version view warnings week weekday weekofyear weight_string when whenever where with work write xml xor year yearweek zon",literal:"true false null",built_in:"array bigint binary bit blob boolean char character date dec decimal float int integer interval number numeric real serial smallint varchar varying int8 serial8 text"},c:[{cN:"string",b:"'",e:"'",c:[e.BE,{b:"''"}]},{cN:"string",b:'"',e:'"',c:[e.BE,{b:'""'}]},{cN:"string",b:"`",e:"`",c:[e.BE]},e.CNM,e.CBCM,t]},e.CBCM,t]}}),hljs.registerLanguage("stata",function(e){return{aliases:["do","ado"],cI:!0,k:"if else in foreach for forv forva forval forvalu forvalue forvalues by bys bysort xi quietly qui capture about ac ac_7 acprplot acprplot_7 adjust ado adopath adoupdate alpha ameans an ano anov anova anova_estat anova_terms anovadef aorder ap app appe appen append arch arch_dr arch_estat arch_p archlm areg areg_p args arima arima_dr arima_estat arima_p as asmprobit asmprobit_estat asmprobit_lf asmprobit_mfx__dlg asmprobit_p ass asse asser assert avplot avplot_7 avplots avplots_7 bcskew0 bgodfrey binreg bip0_lf biplot bipp_lf bipr_lf bipr_p biprobit bitest bitesti bitowt blogit bmemsize boot bootsamp bootstrap bootstrap_8 boxco_l boxco_p boxcox boxcox_6 boxcox_p bprobit br break brier bro brow brows browse brr brrstat bs bs_7 bsampl_w bsample bsample_7 bsqreg bstat bstat_7 bstat_8 bstrap bstrap_7 ca ca_estat ca_p cabiplot camat canon canon_8 canon_8_p canon_estat canon_p cap caprojection capt captu captur capture cat cc cchart cchart_7 cci cd censobs_table centile cf char chdir checkdlgfiles checkestimationsample checkhlpfiles checksum chelp ci cii cl class classutil clear cli clis clist clo clog clog_lf clog_p clogi clogi_sw clogit clogit_lf clogit_p clogitp clogl_sw cloglog clonevar clslistarray cluster cluster_measures cluster_stop cluster_tree cluster_tree_8 clustermat cmdlog cnr cnre cnreg cnreg_p cnreg_sw cnsreg codebook collaps4 collapse colormult_nb colormult_nw compare compress conf confi confir confirm conren cons const constr constra constrai constrain constraint continue contract copy copyright copysource cor corc corr corr2data corr_anti corr_kmo corr_smc corre correl correla correlat correlate corrgram cou coun count cox cox_p cox_sw coxbase coxhaz coxvar cprplot cprplot_7 crc cret cretu cretur creturn cross cs cscript cscript_log csi ct ct_is ctset ctst_5 ctst_st cttost cumsp cumsp_7 cumul cusum cusum_7 cutil d datasig datasign datasigna datasignat datasignatu datasignatur datasignature datetof db dbeta de dec deco decod decode deff des desc descr descri describ describe destring dfbeta dfgls dfuller di di_g dir dirstats dis discard disp disp_res disp_s displ displa display distinct do doe doed doedi doedit dotplot dotplot_7 dprobit drawnorm drop ds ds_util dstdize duplicates durbina dwstat dydx e ed edi edit egen eivreg emdef en enc enco encod encode eq erase ereg ereg_lf ereg_p ereg_sw ereghet ereghet_glf ereghet_glf_sh ereghet_gp ereghet_ilf ereghet_ilf_sh ereghet_ip eret eretu eretur ereturn err erro error est est_cfexist est_cfname est_clickable est_expand est_hold est_table est_unhold est_unholdok estat estat_default estat_summ estat_vce_only esti estimates etodow etof etomdy ex exi exit expand expandcl fac fact facto factor factor_estat factor_p factor_pca_rotated factor_rotate factormat fcast fcast_compute fcast_graph fdades fdadesc fdadescr fdadescri fdadescrib fdadescribe fdasav fdasave fdause fh_st file open file read file close file filefilter fillin find_hlp_file findfile findit findit_7 fit fl fli flis flist for5_0 form forma format fpredict frac_154 frac_adj frac_chk frac_cox frac_ddp frac_dis frac_dv frac_in frac_mun frac_pp frac_pq frac_pv frac_wgt frac_xo fracgen fracplot fracplot_7 fracpoly fracpred fron_ex fron_hn fron_p fron_tn fron_tn2 frontier ftodate ftoe ftomdy ftowdate g gamhet_glf gamhet_gp gamhet_ilf gamhet_ip gamma gamma_d2 gamma_p gamma_sw gammahet gdi_hexagon gdi_spokes ge gen gene gener genera generat generate genrank genstd genvmean gettoken gl gladder gladder_7 glim_l01 glim_l02 glim_l03 glim_l04 glim_l05 glim_l06 glim_l07 glim_l08 glim_l09 glim_l10 glim_l11 glim_l12 glim_lf glim_mu glim_nw1 glim_nw2 glim_nw3 glim_p glim_v1 glim_v2 glim_v3 glim_v4 glim_v5 glim_v6 glim_v7 glm glm_6 glm_p glm_sw glmpred glo glob globa global glogit glogit_8 glogit_p gmeans gnbre_lf gnbreg gnbreg_5 gnbreg_p gomp_lf gompe_sw gomper_p gompertz gompertzhet gomphet_glf gomphet_glf_sh gomphet_gp gomphet_ilf gomphet_ilf_sh gomphet_ip gphdot gphpen gphprint gprefs gprobi_p gprobit gprobit_8 gr gr7 gr_copy gr_current gr_db gr_describe gr_dir gr_draw gr_draw_replay gr_drop gr_edit gr_editviewopts gr_example gr_example2 gr_export gr_print gr_qscheme gr_query gr_read gr_rename gr_replay gr_save gr_set gr_setscheme gr_table gr_undo gr_use graph graph7 grebar greigen greigen_7 greigen_8 grmeanby grmeanby_7 gs_fileinfo gs_filetype gs_graphinfo gs_stat gsort gwood h hadimvo hareg hausman haver he heck_d2 heckma_p heckman heckp_lf heckpr_p heckprob hel help hereg hetpr_lf hetpr_p hetprob hettest hexdump hilite hist hist_7 histogram hlogit hlu hmeans hotel hotelling hprobit hreg hsearch icd9 icd9_ff icd9p iis impute imtest inbase include inf infi infil infile infix inp inpu input ins insheet insp inspe inspec inspect integ inten intreg intreg_7 intreg_p intrg2_ll intrg_ll intrg_ll2 ipolate iqreg ir irf irf_create irfm iri is_svy is_svysum isid istdize ivprob_1_lf ivprob_lf ivprobit ivprobit_p ivreg ivreg_footnote ivtob_1_lf ivtob_lf ivtobit ivtobit_p jackknife jacknife jknife jknife_6 jknife_8 jkstat joinby kalarma1 kap kap_3 kapmeier kappa kapwgt kdensity kdensity_7 keep ksm ksmirnov ktau kwallis l la lab labe label labelbook ladder levels levelsof leverage lfit lfit_p li lincom line linktest lis list lloghet_glf lloghet_glf_sh lloghet_gp lloghet_ilf lloghet_ilf_sh lloghet_ip llogi_sw llogis_p llogist llogistic llogistichet lnorm_lf lnorm_sw lnorma_p lnormal lnormalhet lnormhet_glf lnormhet_glf_sh lnormhet_gp lnormhet_ilf lnormhet_ilf_sh lnormhet_ip lnskew0 loadingplot loc loca local log logi logis_lf logistic logistic_p logit logit_estat logit_p loglogs logrank loneway lookfor lookup lowess lowess_7 lpredict lrecomp lroc lroc_7 lrtest ls lsens lsens_7 lsens_x lstat ltable ltable_7 ltriang lv lvr2plot lvr2plot_7 m ma mac macr macro makecns man manova manova_estat manova_p manovatest mantel mark markin markout marksample mat mat_capp mat_order mat_put_rr mat_rapp mata mata_clear mata_describe mata_drop mata_matdescribe mata_matsave mata_matuse mata_memory mata_mlib mata_mosave mata_rename mata_which matalabel matcproc matlist matname matr matri matrix matrix_input__dlg matstrik mcc mcci md0_ md1_ md1debug_ md2_ md2debug_ mds mds_estat mds_p mdsconfig mdslong mdsmat mdsshepard mdytoe mdytof me_derd mean means median memory memsize meqparse mer merg merge mfp mfx mhelp mhodds minbound mixed_ll mixed_ll_reparm mkassert mkdir mkmat mkspline ml ml_5 ml_adjs ml_bhhhs ml_c_d ml_check ml_clear ml_cnt ml_debug ml_defd ml_e0 ml_e0_bfgs ml_e0_cycle ml_e0_dfp ml_e0i ml_e1 ml_e1_bfgs ml_e1_bhhh ml_e1_cycle ml_e1_dfp ml_e2 ml_e2_cycle ml_ebfg0 ml_ebfr0 ml_ebfr1 ml_ebh0q ml_ebhh0 ml_ebhr0 ml_ebr0i ml_ecr0i ml_edfp0 ml_edfr0 ml_edfr1 ml_edr0i ml_eds ml_eer0i ml_egr0i ml_elf ml_elf_bfgs ml_elf_bhhh ml_elf_cycle ml_elf_dfp ml_elfi ml_elfs ml_enr0i ml_enrr0 ml_erdu0 ml_erdu0_bfgs ml_erdu0_bhhh ml_erdu0_bhhhq ml_erdu0_cycle ml_erdu0_dfp ml_erdu0_nrbfgs ml_exde ml_footnote ml_geqnr ml_grad0 ml_graph ml_hbhhh ml_hd0 ml_hold ml_init ml_inv ml_log ml_max ml_mlout ml_mlout_8 ml_model ml_nb0 ml_opt ml_p ml_plot ml_query ml_rdgrd ml_repor ml_s_e ml_score ml_searc ml_technique ml_unhold mleval mlf_ mlmatbysum mlmatsum mlog mlogi mlogit mlogit_footnote mlogit_p mlopts mlsum mlvecsum mnl0_ mor more mov move mprobit mprobit_lf mprobit_p mrdu0_ mrdu1_ mvdecode mvencode mvreg mvreg_estat n nbreg nbreg_al nbreg_lf nbreg_p nbreg_sw nestreg net newey newey_7 newey_p news nl nl_7 nl_9 nl_9_p nl_p nl_p_7 nlcom nlcom_p nlexp2 nlexp2_7 nlexp2a nlexp2a_7 nlexp3 nlexp3_7 nlgom3 nlgom3_7 nlgom4 nlgom4_7 nlinit nllog3 nllog3_7 nllog4 nllog4_7 nlog_rd nlogit nlogit_p nlogitgen nlogittree nlpred no nobreak noi nois noisi noisil noisily note notes notes_dlg nptrend numlabel numlist odbc old_ver olo olog ologi ologi_sw ologit ologit_p ologitp on one onew onewa oneway op_colnm op_comp op_diff op_inv op_str opr opro oprob oprob_sw oprobi oprobi_p oprobit oprobitp opts_exclusive order orthog orthpoly ou out outf outfi outfil outfile outs outsh outshe outshee outsheet ovtest pac pac_7 palette parse parse_dissim pause pca pca_8 pca_display pca_estat pca_p pca_rotate pcamat pchart pchart_7 pchi pchi_7 pcorr pctile pentium pergram pergram_7 permute permute_8 personal peto_st pkcollapse pkcross pkequiv pkexamine pkexamine_7 pkshape pksumm pksumm_7 pl plo plot plugin pnorm pnorm_7 poisgof poiss_lf poiss_sw poisso_p poisson poisson_estat post postclose postfile postutil pperron pr prais prais_e prais_e2 prais_p predict predictnl preserve print pro prob probi probit probit_estat probit_p proc_time procoverlay procrustes procrustes_estat procrustes_p profiler prog progr progra program prop proportion prtest prtesti pwcorr pwd q\\s qby qbys qchi qchi_7 qladder qladder_7 qnorm qnorm_7 qqplot qqplot_7 qreg qreg_c qreg_p qreg_sw qu quadchk quantile quantile_7 que quer query range ranksum ratio rchart rchart_7 rcof recast reclink recode reg reg3 reg3_p regdw regr regre regre_p2 regres regres_p regress regress_estat regriv_p remap ren rena renam rename renpfix repeat replace report reshape restore ret retu retur return rm rmdir robvar roccomp roccomp_7 roccomp_8 rocf_lf rocfit rocfit_8 rocgold rocplot rocplot_7 roctab roctab_7 rolling rologit rologit_p rot rota rotat rotate rotatemat rreg rreg_p ru run runtest rvfplot rvfplot_7 rvpplot rvpplot_7 sa safesum sample sampsi sav save savedresults saveold sc sca scal scala scalar scatter scm_mine sco scob_lf scob_p scobi_sw scobit scor score scoreplot scoreplot_help scree screeplot screeplot_help sdtest sdtesti se search separate seperate serrbar serrbar_7 serset set set_defaults sfrancia sh she shel shell shewhart shewhart_7 signestimationsample signrank signtest simul simul_7 simulate simulate_8 sktest sleep slogit slogit_d2 slogit_p smooth snapspan so sor sort spearman spikeplot spikeplot_7 spikeplt spline_x split sqreg sqreg_p sret sretu sretur sreturn ssc st st_ct st_hc st_hcd st_hcd_sh st_is st_issys st_note st_promo st_set st_show st_smpl st_subid stack statsby statsby_8 stbase stci stci_7 stcox stcox_estat stcox_fr stcox_fr_ll stcox_p stcox_sw stcoxkm stcoxkm_7 stcstat stcurv stcurve stcurve_7 stdes stem stepwise stereg stfill stgen stir stjoin stmc stmh stphplot stphplot_7 stphtest stphtest_7 stptime strate strate_7 streg streg_sw streset sts sts_7 stset stsplit stsum sttocc sttoct stvary stweib su suest suest_8 sum summ summa summar summari summariz summarize sunflower sureg survcurv survsum svar svar_p svmat svy svy_disp svy_dreg svy_est svy_est_7 svy_estat svy_get svy_gnbreg_p svy_head svy_header svy_heckman_p svy_heckprob_p svy_intreg_p svy_ivreg_p svy_logistic_p svy_logit_p svy_mlogit_p svy_nbreg_p svy_ologit_p svy_oprobit_p svy_poisson_p svy_probit_p svy_regress_p svy_sub svy_sub_7 svy_x svy_x_7 svy_x_p svydes svydes_8 svygen svygnbreg svyheckman svyheckprob svyintreg svyintreg_7 svyintrg svyivreg svylc svylog_p svylogit svymarkout svymarkout_8 svymean svymlog svymlogit svynbreg svyolog svyologit svyoprob svyoprobit svyopts svypois svypois_7 svypoisson svyprobit svyprobt svyprop svyprop_7 svyratio svyreg svyreg_p svyregress svyset svyset_7 svyset_8 svytab svytab_7 svytest svytotal sw sw_8 swcnreg swcox swereg swilk swlogis swlogit swologit swoprbt swpois swprobit swqreg swtobit swweib symmetry symmi symplot symplot_7 syntax sysdescribe sysdir sysuse szroeter ta tab tab1 tab2 tab_or tabd tabdi tabdis tabdisp tabi table tabodds tabodds_7 tabstat tabu tabul tabula tabulat tabulate te tempfile tempname tempvar tes test testnl testparm teststd tetrachoric time_it timer tis tob tobi tobit tobit_p tobit_sw token tokeni tokeniz tokenize tostring total translate translator transmap treat_ll treatr_p treatreg trim trnb_cons trnb_mean trpoiss_d2 trunc_ll truncr_p truncreg tsappend tset tsfill tsline tsline_ex tsreport tsrevar tsrline tsset tssmooth tsunab ttest ttesti tut_chk tut_wait tutorial tw tware_st two twoway twoway__fpfit_serset twoway__function_gen twoway__histogram_gen twoway__ipoint_serset twoway__ipoints_serset twoway__kdensity_gen twoway__lfit_serset twoway__normgen_gen twoway__pci_serset twoway__qfit_serset twoway__scatteri_serset twoway__sunflower_gen twoway_ksm_serset ty typ type typeof u unab unabbrev unabcmd update us use uselabel var var_mkcompanion var_p varbasic varfcast vargranger varirf varirf_add varirf_cgraph varirf_create varirf_ctable varirf_describe varirf_dir varirf_drop varirf_erase varirf_graph varirf_ograph varirf_rename varirf_set varirf_table varlist varlmar varnorm varsoc varstable varstable_w varstable_w2 varwle vce vec vec_fevd vec_mkphi vec_p vec_p_w vecirf_create veclmar veclmar_w vecnorm vecnorm_w vecrank vecstable verinst vers versi versio version view viewsource vif vwls wdatetof webdescribe webseek webuse weib1_lf weib2_lf weib_lf weib_lf0 weibhet_glf weibhet_glf_sh weibhet_glfa weibhet_glfa_sh weibhet_gp weibhet_ilf weibhet_ilf_sh weibhet_ilfa weibhet_ilfa_sh weibhet_ip weibu_sw weibul_p weibull weibull_c weibull_s weibullhet wh whelp whi which whil while wilc_st wilcoxon win wind windo window winexec wntestb wntestb_7 wntestq xchart xchart_7 xcorr xcorr_7 xi xi_6 xmlsav xmlsave xmluse xpose xsh xshe xshel xshell xt_iis xt_tis xtab_p xtabond xtbin_p xtclog xtcloglog xtcloglog_8 xtcloglog_d2 xtcloglog_pa_p xtcloglog_re_p xtcnt_p xtcorr xtdata xtdes xtfront_p xtfrontier xtgee xtgee_elink xtgee_estat xtgee_makeivar xtgee_p xtgee_plink xtgls xtgls_p xthaus xthausman xtht_p xthtaylor xtile xtint_p xtintreg xtintreg_8 xtintreg_d2 xtintreg_p xtivp_1 xtivp_2 xtivreg xtline xtline_ex xtlogit xtlogit_8 xtlogit_d2 xtlogit_fe_p xtlogit_pa_p xtlogit_re_p xtmixed xtmixed_estat xtmixed_p xtnb_fe xtnb_lf xtnbreg xtnbreg_pa_p xtnbreg_refe_p xtpcse xtpcse_p xtpois xtpoisson xtpoisson_d2 xtpoisson_pa_p xtpoisson_refe_p xtpred xtprobit xtprobit_8 xtprobit_d2 xtprobit_re_p xtps_fe xtps_lf xtps_ren xtps_ren_8 xtrar_p xtrc xtrc_p xtrchh xtrefe_p xtreg xtreg_be xtreg_fe xtreg_ml xtreg_pa_p xtreg_re xtregar xtrere_p xtset xtsf_ll xtsf_llti xtsum xttab xttest0 xttobit xttobit_8 xttobit_p xttrans yx yxview__barlike_draw yxview_area_draw yxview_bar_draw yxview_dot_draw yxview_dropline_draw yxview_function_draw yxview_iarrow_draw yxview_ilabels_draw yxview_normal_draw yxview_pcarrow_draw yxview_pcbarrow_draw yxview_pccapsym_draw yxview_pcscatter_draw yxview_pcspike_draw yxview_rarea_draw yxview_rbar_draw yxview_rbarm_draw yxview_rcap_draw yxview_rcapsym_draw yxview_rconnected_draw yxview_rline_draw yxview_rscatter_draw yxview_rspike_draw yxview_spike_draw yxview_sunflower_draw zap_s zinb zinb_llf zinb_plf zip zip_llf zip_p zip_plf zt_ct_5 zt_hc_5 zt_hcd_5 zt_is_5 zt_iss_5 zt_sho_5 zt_smp_5 ztbase_5 ztcox_5 ztdes_5 ztereg_5 ztfill_5 ztgen_5 ztir_5 ztjoin_5 ztnb ztnb_p ztp ztp_p zts_5 ztset_5 ztspli_5 ztsum_5 zttoct_5 ztvary_5 ztweib_5",c:[{cN:"label",v:[{b:"\\$\\{?[a-zA-Z0-9_]+\\}?"},{b:"`[a-zA-Z0-9_]+'"}]},{cN:"string",v:[{b:'`"[^\r\n]*?"\''},{b:'"[^\r\n"]*"'}]},{cN:"literal",v:[{b:"\\b(abs|acos|asin|atan|atan2|atanh|ceil|cloglog|comb|cos|digamma|exp|floor|invcloglog|invlogit|ln|lnfact|lnfactorial|lngamma|log|log10|max|min|mod|reldif|round|sign|sin|sqrt|sum|tan|tanh|trigamma|trunc|betaden|Binomial|binorm|binormal|chi2|chi2tail|dgammapda|dgammapdada|dgammapdadx|dgammapdx|dgammapdxdx|F|Fden|Ftail|gammaden|gammap|ibeta|invbinomial|invchi2|invchi2tail|invF|invFtail|invgammap|invibeta|invnchi2|invnFtail|invnibeta|invnorm|invnormal|invttail|nbetaden|nchi2|nFden|nFtail|nibeta|norm|normal|normalden|normd|npnchi2|tden|ttail|uniform|abbrev|char|index|indexnot|length|lower|ltrim|match|plural|proper|real|regexm|regexr|regexs|reverse|rtrim|string|strlen|strlower|strltrim|strmatch|strofreal|strpos|strproper|strreverse|strrtrim|strtrim|strupper|subinstr|subinword|substr|trim|upper|word|wordcount|_caller|autocode|byteorder|chop|clip|cond|e|epsdouble|epsfloat|group|inlist|inrange|irecode|matrix|maxbyte|maxdouble|maxfloat|maxint|maxlong|mi|minbyte|mindouble|minfloat|minint|minlong|missing|r|recode|replay|return|s|scalar|d|date|day|dow|doy|halfyear|mdy|month|quarter|week|year|d|daily|dofd|dofh|dofm|dofq|dofw|dofy|h|halfyearly|hofd|m|mofd|monthly|q|qofd|quarterly|tin|twithin|w|weekly|wofd|y|yearly|yh|ym|yofd|yq|yw|cholesky|colnumb|colsof|corr|det|diag|diag0cnt|el|get|hadamard|I|inv|invsym|issym|issymmetric|J|matmissing|matuniform|mreldif|nullmat|rownumb|rowsof|sweep|syminv|trace|vec|vecdiag)(?=\\(|$)"}]},e.C("^[ 	]*\\*.*$",!1),e.CLCM,e.CBCM]}}),hljs.registerLanguage("step21",function(e){var t="[A-Z_][A-Z0-9_.]*",r="END-ISO-10303-21;",a={literal:"",built_in:"",keyword:"HEADER ENDSEC DATA"},i={cN:"preprocessor",b:"ISO-10303-21;",r:10},n=[e.CLCM,e.CBCM,e.C("/\\*\\*!","\\*/"),e.CNM,e.inherit(e.ASM,{i:null}),e.inherit(e.QSM,{i:null}),{cN:"string",b:"'",e:"'"},{cN:"label",v:[{b:"#",e:"\\d+",i:"\\W"}]}];return{aliases:["p21","step","stp"],cI:!0,l:t,k:a,c:[{cN:"preprocessor",b:r,r:10},i].concat(n)}}),hljs.registerLanguage("stylus",function(e){var t={cN:"variable",b:"\\$"+e.IR},r={cN:"hexcolor",b:"#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})",r:10},a=["charset","css","debug","extend","font-face","for","import","include","media","mixin","page","warn","while"],i=["after","before","first-letter","first-line","active","first-child","focus","hover","lang","link","visited"],n=["a","abbr","address","article","aside","audio","b","blockquote","body","button","canvas","caption","cite","code","dd","del","details","dfn","div","dl","dt","em","fieldset","figcaption","figure","footer","form","h1","h2","h3","h4","h5","h6","header","hgroup","html","i","iframe","img","input","ins","kbd","label","legend","li","mark","menu","nav","object","ol","p","q","quote","samp","section","span","strong","summary","sup","table","tbody","td","textarea","tfoot","th","thead","time","tr","ul","var","video"],o="[\\.\\s\\n\\[\\:,]",s=["align-content","align-items","align-self","animation","animation-delay","animation-direction","animation-duration","animation-fill-mode","animation-iteration-count","animation-name","animation-play-state","animation-timing-function","auto","backface-visibility","background","background-attachment","background-clip","background-color","background-image","background-origin","background-position","background-repeat","background-size","border","border-bottom","border-bottom-color","border-bottom-left-radius","border-bottom-right-radius","border-bottom-style","border-bottom-width","border-collapse","border-color","border-image","border-image-outset","border-image-repeat","border-image-slice","border-image-source","border-image-width","border-left","border-left-color","border-left-style","border-left-width","border-radius","border-right","border-right-color","border-right-style","border-right-width","border-spacing","border-style","border-top","border-top-color","border-top-left-radius","border-top-right-radius","border-top-style","border-top-width","border-width","bottom","box-decoration-break","box-shadow","box-sizing","break-after","break-before","break-inside","caption-side","clear","clip","clip-path","color","column-count","column-fill","column-gap","column-rule","column-rule-color","column-rule-style","column-rule-width","column-span","column-width","columns","content","counter-increment","counter-reset","cursor","direction","display","empty-cells","filter","flex","flex-basis","flex-direction","flex-flow","flex-grow","flex-shrink","flex-wrap","float","font","font-family","font-feature-settings","font-kerning","font-language-override","font-size","font-size-adjust","font-stretch","font-style","font-variant","font-variant-ligatures","font-weight","height","hyphens","icon","image-orientation","image-rendering","image-resolution","ime-mode","inherit","initial","justify-content","left","letter-spacing","line-height","list-style","list-style-image","list-style-position","list-style-type","margin","margin-bottom","margin-left","margin-right","margin-top","marks","mask","max-height","max-width","min-height","min-width","nav-down","nav-index","nav-left","nav-right","nav-up","none","normal","object-fit","object-position","opacity","order","orphans","outline","outline-color","outline-offset","outline-style","outline-width","overflow","overflow-wrap","overflow-x","overflow-y","padding","padding-bottom","padding-left","padding-right","padding-top","page-break-after","page-break-before","page-break-inside","perspective","perspective-origin","pointer-events","position","quotes","resize","right","tab-size","table-layout","text-align","text-align-last","text-decoration","text-decoration-color","text-decoration-line","text-decoration-style","text-indent","text-overflow","text-rendering","text-shadow","text-transform","text-underline-position","top","transform","transform-origin","transform-style","transition","transition-delay","transition-duration","transition-property","transition-timing-function","unicode-bidi","vertical-align","visibility","white-space","widows","width","word-break","word-spacing","word-wrap","z-index"],l=["\\{","\\}","\\?","(\\bReturn\\b)","(\\bEnd\\b)","(\\bend\\b)",";","#\\s","\\*\\s","===\\s","\\|","%"];
-
-return{aliases:["styl"],cI:!1,i:"("+l.join("|")+")",k:"if else for in",c:[e.QSM,e.ASM,e.CLCM,e.CBCM,r,{b:"\\.[a-zA-Z][a-zA-Z0-9_-]*"+o,rB:!0,c:[{cN:"class",b:"\\.[a-zA-Z][a-zA-Z0-9_-]*"}]},{b:"\\#[a-zA-Z][a-zA-Z0-9_-]*"+o,rB:!0,c:[{cN:"id",b:"\\#[a-zA-Z][a-zA-Z0-9_-]*"}]},{b:"\\b("+n.join("|")+")"+o,rB:!0,c:[{cN:"tag",b:"\\b[a-zA-Z][a-zA-Z0-9_-]*"}]},{cN:"pseudo",b:"&?:?:\\b("+i.join("|")+")"+o},{cN:"at_rule",b:"@("+a.join("|")+")\\b"},t,e.CSSNM,e.NM,{cN:"function",b:"\\b[a-zA-Z][a-zA-Z0-9_-]*\\(.*\\)",i:"[\\n]",rB:!0,c:[{cN:"title",b:"\\b[a-zA-Z][a-zA-Z0-9_-]*"},{cN:"params",b:/\(/,e:/\)/,c:[r,t,e.ASM,e.CSSNM,e.NM,e.QSM]}]},{cN:"attribute",b:"\\b("+s.reverse().join("|")+")\\b"}]}}),hljs.registerLanguage("swift",function(e){var t={keyword:"class deinit enum extension func import init let protocol static struct subscript typealias var break case continue default do else fallthrough if in for return switch where while as dynamicType is new super self Self Type __COLUMN__ __FILE__ __FUNCTION__ __LINE__ associativity didSet get infix inout left mutating none nonmutating operator override postfix precedence prefix right set unowned unowned safe unsafe weak willSet",literal:"true false nil",built_in:"abs advance alignof alignofValue assert bridgeFromObjectiveC bridgeFromObjectiveCUnconditional bridgeToObjectiveC bridgeToObjectiveCUnconditional c contains count countElements countLeadingZeros debugPrint debugPrintln distance dropFirst dropLast dump encodeBitsAsWords enumerate equal false filter find getBridgedObjectiveCType getVaList indices insertionSort isBridgedToObjectiveC isBridgedVerbatimToObjectiveC isUniquelyReferenced join lexicographicalCompare map max maxElement min minElement nil numericCast partition posix print println quickSort reduce reflect reinterpretCast reverse roundUpToAlignment sizeof sizeofValue sort split startsWith strideof strideofValue swap swift toString transcode true underestimateCount unsafeReflect withExtendedLifetime withObjectAtPlusZero withUnsafePointer withUnsafePointerToObject withUnsafePointers withVaList"},r={cN:"type",b:"\\b[A-Z][\\w']*",r:0},a=e.C("/\\*","\\*/",{c:["self"]}),i={cN:"subst",b:/\\\(/,e:"\\)",k:t,c:[]},n={cN:"number",b:"\\b([\\d_]+(\\.[\\deE_]+)?|0x[a-fA-F0-9_]+(\\.[a-fA-F0-9p_]+)?|0b[01_]+|0o[0-7_]+)\\b",r:0},o=e.inherit(e.QSM,{c:[i,e.BE]});return i.c=[n],{k:t,c:[o,e.CLCM,a,r,n,{cN:"func",bK:"func",e:"{",eE:!0,c:[e.inherit(e.TM,{b:/[A-Za-z$_][0-9A-Za-z$_]*/,i:/\(/}),{cN:"generics",b:/</,e:/>/,i:/>/},{cN:"params",b:/\(/,e:/\)/,endsParent:!0,k:t,c:["self",n,o,e.CBCM,{b:":"}],i:/["']/}],i:/\[|%/},{cN:"class",bK:"struct protocol class extension enum",k:t,e:"\\{",eE:!0,c:[e.inherit(e.TM,{b:/[A-Za-z$_][0-9A-Za-z$_]*/})]},{cN:"preprocessor",b:"(@assignment|@class_protocol|@exported|@final|@lazy|@noreturn|@NSCopying|@NSManaged|@objc|@optional|@required|@auto_closure|@noreturn|@IBAction|@IBDesignable|@IBInspectable|@IBOutlet|@infix|@prefix|@postfix)"}]}}),hljs.registerLanguage("tcl",function(e){return{aliases:["tk"],k:"after append apply array auto_execok auto_import auto_load auto_mkindex auto_mkindex_old auto_qualify auto_reset bgerror binary break catch cd chan clock close concat continue dde dict encoding eof error eval exec exit expr fblocked fconfigure fcopy file fileevent filename flush for foreach format gets glob global history http if incr info interp join lappend|10 lassign|10 lindex|10 linsert|10 list llength|10 load lrange|10 lrepeat|10 lreplace|10 lreverse|10 lsearch|10 lset|10 lsort|10 mathfunc mathop memory msgcat namespace open package parray pid pkg::create pkg_mkIndex platform platform::shell proc puts pwd read refchan regexp registry regsub|10 rename return safe scan seek set socket source split string subst switch tcl_endOfWord tcl_findLibrary tcl_startOfNextWord tcl_startOfPreviousWord tcl_wordBreakAfter tcl_wordBreakBefore tcltest tclvars tell time tm trace unknown unload unset update uplevel upvar variable vwait while",c:[e.C(";[ \\t]*#","$"),e.C("^[ \\t]*#","$"),{bK:"proc",e:"[\\{]",eE:!0,c:[{cN:"symbol",b:"[ \\t\\n\\r]+(::)?[a-zA-Z_]((::)?[a-zA-Z0-9_])*",e:"[ \\t\\n\\r]",eW:!0,eE:!0}]},{cN:"variable",eE:!0,v:[{b:"\\$(\\{)?(::)?[a-zA-Z_]((::)?[a-zA-Z0-9_])*\\(([a-zA-Z0-9_])*\\)",e:"[^a-zA-Z0-9_\\}\\$]"},{b:"\\$(\\{)?(::)?[a-zA-Z_]((::)?[a-zA-Z0-9_])*",e:"(\\))?[^a-zA-Z0-9_\\}\\$]"}]},{cN:"string",c:[e.BE],v:[e.inherit(e.ASM,{i:null}),e.inherit(e.QSM,{i:null})]},{cN:"number",v:[e.BNM,e.CNM]}]}}),hljs.registerLanguage("tex",function(e){var t={cN:"command",b:"\\\\[a-zA-Zа-яА-я]+[\\*]?"},r={cN:"command",b:"\\\\[^a-zA-Zа-яА-я0-9]"},a={cN:"special",b:"[{}\\[\\]\\&#~]",r:0};return{c:[{b:"\\\\[a-zA-Zа-яА-я]+[\\*]? *= *-?\\d*\\.?\\d+(pt|pc|mm|cm|in|dd|cc|ex|em)?",rB:!0,c:[t,r,{cN:"number",b:" *=",e:"-?\\d*\\.?\\d+(pt|pc|mm|cm|in|dd|cc|ex|em)?",eB:!0}],r:10},t,r,a,{cN:"formula",b:"\\$\\$",e:"\\$\\$",c:[t,r,a],r:0},{cN:"formula",b:"\\$",e:"\\$",c:[t,r,a],r:0},e.C("%","$",{r:0})]}}),hljs.registerLanguage("thrift",function(e){var t="bool byte i16 i32 i64 double string binary";return{k:{keyword:"namespace const typedef struct enum service exception void oneway set list map required optional",built_in:t,literal:"true false"},c:[e.QSM,e.NM,e.CLCM,e.CBCM,{cN:"class",bK:"struct enum service exception",e:/\{/,i:/\n/,c:[e.inherit(e.TM,{starts:{eW:!0,eE:!0}})]},{b:"\\b(set|list|map)\\s*<",e:">",k:t,c:["self"]}]}}),hljs.registerLanguage("twig",function(e){var t={cN:"params",b:"\\(",e:"\\)"},r="attribute block constant cycle date dump include max min parent random range source template_from_string",a={cN:"function",bK:r,r:0,c:[t]},i={cN:"filter",b:/\|[A-Za-z_]+:?/,k:"abs batch capitalize convert_encoding date date_modify default escape first format join json_encode keys last length lower merge nl2br number_format raw replace reverse round slice sort split striptags title trim upper url_encode",c:[a]},n="autoescape block do embed extends filter flush for if import include macro sandbox set spaceless use verbatim";return n=n+" "+n.split(" ").map(function(e){return"end"+e}).join(" "),{aliases:["craftcms"],cI:!0,sL:"xml",subLanguageMode:"continuous",c:[e.C(/\{#/,/#}/),{cN:"template_tag",b:/\{%/,e:/%}/,k:n,c:[i,a]},{cN:"variable",b:/\{\{/,e:/}}/,c:[i,a]}]}}),hljs.registerLanguage("typescript",function(e){return{aliases:["ts"],k:{keyword:"in if for while finally var new function|0 do return void else break catch instanceof with throw case default try this switch continue typeof delete let yield const class public private get set super interface extendsstatic constructor implements enum export import declare type protected",literal:"true false null undefined NaN Infinity",built_in:"eval isFinite isNaN parseFloat parseInt decodeURI decodeURIComponent encodeURI encodeURIComponent escape unescape Object Function Boolean Error EvalError InternalError RangeError ReferenceError StopIteration SyntaxError TypeError URIError Number Math Date String RegExp Array Float32Array Float64Array Int16Array Int32Array Int8Array Uint16Array Uint32Array Uint8Array Uint8ClampedArray ArrayBuffer DataView JSON Intl arguments require module console window document any number boolean string void"},c:[{cN:"pi",b:/^\s*('|")use strict('|")/,r:0},e.ASM,e.QSM,e.CLCM,e.CBCM,e.CNM,{b:"("+e.RSR+"|\\b(case|return|throw)\\b)\\s*",k:"return throw case",c:[e.CLCM,e.CBCM,e.RM,{b:/</,e:/>;/,r:0,sL:"xml"}],r:0},{cN:"function",bK:"function",e:/\{/,eE:!0,c:[e.inherit(e.TM,{b:/[A-Za-z$_][0-9A-Za-z$_]*/}),{cN:"params",b:/\(/,e:/\)/,c:[e.CLCM,e.CBCM],i:/["'\(]/}],i:/\[|%/,r:0},{cN:"constructor",bK:"constructor",e:/\{/,eE:!0,r:10},{cN:"module",bK:"module",e:/\{/,eE:!0},{cN:"interface",bK:"interface",e:/\{/,eE:!0},{b:/\$[(.]/},{b:"\\."+e.IR,r:0}]}}),hljs.registerLanguage("vala",function(e){return{k:{keyword:"char uchar unichar int uint long ulong short ushort int8 int16 int32 int64 uint8 uint16 uint32 uint64 float double bool struct enum string void weak unowned owned async signal static abstract interface override while do for foreach else switch case break default return try catch public private protected internal using new this get set const stdout stdin stderr var",built_in:"DBus GLib CCode Gee Object",literal:"false true null"},c:[{cN:"class",bK:"class interface delegate namespace",e:"{",eE:!0,i:"[^,:\\n\\s\\.]",c:[e.UTM]},e.CLCM,e.CBCM,{cN:"string",b:'"""',e:'"""',r:5},e.ASM,e.QSM,e.CNM,{cN:"preprocessor",b:"^#",e:"$",r:2},{cN:"constant",b:" [A-Z_]+ ",r:0}]}}),hljs.registerLanguage("vbnet",function(e){return{aliases:["vb"],cI:!0,k:{keyword:"addhandler addressof alias and andalso aggregate ansi as assembly auto binary by byref byval call case catch class compare const continue custom declare default delegate dim distinct do each equals else elseif end enum erase error event exit explicit finally for friend from function get global goto group handles if implements imports in inherits interface into is isfalse isnot istrue join key let lib like loop me mid mod module mustinherit mustoverride mybase myclass namespace narrowing new next not notinheritable notoverridable of off on operator option optional or order orelse overloads overridable overrides paramarray partial preserve private property protected public raiseevent readonly redim rem removehandler resume return select set shadows shared skip static step stop structure strict sub synclock take text then throw to try unicode until using when where while widening with withevents writeonly xor",built_in:"boolean byte cbool cbyte cchar cdate cdec cdbl char cint clng cobj csbyte cshort csng cstr ctype date decimal directcast double gettype getxmlnamespace iif integer long object sbyte short single string trycast typeof uinteger ulong ushort",literal:"true false nothing"},i:"//|{|}|endif|gosub|variant|wend",c:[e.inherit(e.QSM,{c:[{b:'""'}]}),e.C("'","$",{rB:!0,c:[{cN:"xmlDocTag",b:"'''|<!--|-->",c:[e.PWM]},{cN:"xmlDocTag",b:"</?",e:">",c:[e.PWM]}]}),e.CNM,{cN:"preprocessor",b:"#",e:"$",k:"if else elseif end region externalsource"}]}}),hljs.registerLanguage("vbscript",function(e){return{aliases:["vbs"],cI:!0,k:{keyword:"call class const dim do loop erase execute executeglobal exit for each next function if then else on error option explicit new private property let get public randomize redim rem select case set stop sub while wend with end to elseif is or xor and not class_initialize class_terminate default preserve in me byval byref step resume goto",built_in:"lcase month vartype instrrev ubound setlocale getobject rgb getref string weekdayname rnd dateadd monthname now day minute isarray cbool round formatcurrency conversions csng timevalue second year space abs clng timeserial fixs len asc isempty maths dateserial atn timer isobject filter weekday datevalue ccur isdate instr datediff formatdatetime replace isnull right sgn array snumeric log cdbl hex chr lbound msgbox ucase getlocale cos cdate cbyte rtrim join hour oct typename trim strcomp int createobject loadpicture tan formatnumber mid scriptenginebuildversion scriptengine split scriptengineminorversion cint sin datepart ltrim sqr scriptenginemajorversion time derived eval date formatpercent exp inputbox left ascw chrw regexp server response request cstr err",literal:"true false null nothing empty"},i:"//",c:[e.inherit(e.QSM,{c:[{b:'""'}]}),e.C(/'/,/$/,{r:0}),e.CNM]}}),hljs.registerLanguage("vbscript-html",function(e){return{sL:"xml",subLanguageMode:"continuous",c:[{b:"<%",e:"%>",sL:"vbscript"}]}}),hljs.registerLanguage("verilog",function(e){return{aliases:["v"],cI:!0,k:{keyword:"always and assign begin buf bufif0 bufif1 case casex casez cmos deassign default defparam disable edge else end endcase endfunction endmodule endprimitive endspecify endtable endtask event for force forever fork function if ifnone initial inout input join macromodule module nand negedge nmos nor not notif0 notif1 or output parameter pmos posedge primitive pulldown pullup rcmos release repeat rnmos rpmos rtran rtranif0 rtranif1 specify specparam table task timescale tran tranif0 tranif1 wait while xnor xor",typename:"highz0 highz1 integer large medium pull0 pull1 real realtime reg scalared signed small strong0 strong1 supply0 supply0 supply1 supply1 time tri tri0 tri1 triand trior trireg vectored wand weak0 weak1 wire wor"},c:[e.CBCM,e.CLCM,e.QSM,{cN:"number",b:"\\b(\\d+'(b|h|o|d|B|H|O|D))?[0-9xzXZ]+",c:[e.BE],r:0},{cN:"typename",b:"\\.\\w+",r:0},{cN:"value",b:"#\\((?!parameter).+\\)"},{cN:"keyword",b:"\\+|-|\\*|/|%|<|>|=|#|`|\\!|&|\\||@|:|\\^|~|\\{|\\}",r:0}]}}),hljs.registerLanguage("vhdl",function(e){var t="\\d(_|\\d)*",r="[eE][-+]?"+t,a=t+"(\\."+t+")?("+r+")?",i="\\w+",n=t+"#"+i+"(\\."+i+")?#("+r+")?",o="\\b("+n+"|"+a+")";return{cI:!0,k:{keyword:"abs access after alias all and architecture array assert attribute begin block body buffer bus case component configuration constant context cover disconnect downto default else elsif end entity exit fairness file for force function generate generic group guarded if impure in inertial inout is label library linkage literal loop map mod nand new next nor not null of on open or others out package port postponed procedure process property protected pure range record register reject release rem report restrict restrict_guarantee return rol ror select sequence severity shared signal sla sll sra srl strong subtype then to transport type unaffected units until use variable vmode vprop vunit wait when while with xnor xor",typename:"boolean bit character severity_level integer time delay_length natural positive string bit_vector file_open_kind file_open_status std_ulogic std_ulogic_vector std_logic std_logic_vector unsigned signed boolean_vector integer_vector real_vector time_vector"},i:"{",c:[e.CBCM,e.C("--","$"),e.QSM,{cN:"number",b:o,r:0},{cN:"literal",b:"'(U|X|0|1|Z|W|L|H|-)'",c:[e.BE]},{cN:"attribute",b:"'[A-Za-z](_?[A-Za-z0-9])*",c:[e.BE]}]}}),hljs.registerLanguage("vim",function(e){return{l:/[!#@\w]+/,k:{keyword:"N|0 P|0 X|0 a|0 ab abc abo al am an|0 ar arga argd arge argdo argg argl argu as au aug aun b|0 bN ba bad bd be bel bf bl bm bn bo bp br brea breaka breakd breakl bro bufdo buffers bun bw c|0 cN cNf ca cabc caddb cad caddf cal cat cb cc ccl cd ce cex cf cfir cgetb cgete cg changes chd che checkt cl cla clo cm cmapc cme cn cnew cnf cno cnorea cnoreme co col colo com comc comp con conf cope cp cpf cq cr cs cst cu cuna cunme cw d|0 delm deb debugg delc delf dif diffg diffo diffp diffpu diffs diffthis dig di dl dell dj dli do doautoa dp dr ds dsp e|0 ea ec echoe echoh echom echon el elsei em en endfo endf endt endw ene ex exe exi exu f|0 files filet fin fina fini fir fix fo foldc foldd folddoc foldo for fu g|0 go gr grepa gu gv ha h|0 helpf helpg helpt hi hid his i|0 ia iabc if ij il im imapc ime ino inorea inoreme int is isp iu iuna iunme j|0 ju k|0 keepa kee keepj lN lNf l|0 lad laddb laddf la lan lat lb lc lch lcl lcs le lefta let lex lf lfir lgetb lgete lg lgr lgrepa lh ll lla lli lmak lm lmapc lne lnew lnf ln loadk lo loc lockv lol lope lp lpf lr ls lt lu lua luad luaf lv lvimgrepa lw m|0 ma mak map mapc marks mat me menut mes mk mks mksp mkv mkvie mod mz mzf nbc nb nbs n|0 new nm nmapc nme nn nnoreme noa no noh norea noreme norm nu nun nunme ol o|0 om omapc ome on ono onoreme opt ou ounme ow p|0 profd prof pro promptr pc ped pe perld po popu pp pre prev ps pt ptN ptf ptj ptl ptn ptp ptr pts pu pw py3 python3 py3d py3f py pyd pyf q|0 quita qa r|0 rec red redi redr redraws reg res ret retu rew ri rightb rub rubyd rubyf rund ru rv s|0 sN san sa sal sav sb sbN sba sbf sbl sbm sbn sbp sbr scrip scripte scs se setf setg setl sf sfir sh sim sig sil sl sla sm smap smapc sme sn sni sno snor snoreme sor so spelld spe spelli spellr spellu spellw sp spr sre st sta startg startr star stopi stj sts sun sunm sunme sus sv sw sy synti sync t|0 tN tabN tabc tabdo tabe tabf tabfir tabl tabm tabnew tabn tabo tabp tabr tabs tab ta tags tc tcld tclf te tf th tj tl tm tn to tp tr try ts tu u|0 undoj undol una unh unl unlo unm unme uns up v|0 ve verb vert vim vimgrepa vi viu vie vm vmapc vme vne vn vnoreme vs vu vunme windo w|0 wN wa wh wi winc winp wn wp wq wqa ws wu wv x|0 xa xmapc xm xme xn xnoreme xu xunme y|0 z|0 ~ Next Print append abbreviate abclear aboveleft all amenu anoremenu args argadd argdelete argedit argglobal arglocal argument ascii autocmd augroup aunmenu buffer bNext ball badd bdelete behave belowright bfirst blast bmodified bnext botright bprevious brewind break breakadd breakdel breaklist browse bunload bwipeout change cNext cNfile cabbrev cabclear caddbuffer caddexpr caddfile call catch cbuffer cclose center cexpr cfile cfirst cgetbuffer cgetexpr cgetfile chdir checkpath checktime clist clast close cmap cmapclear cmenu cnext cnewer cnfile cnoremap cnoreabbrev cnoremenu copy colder colorscheme command comclear compiler continue confirm copen cprevious cpfile cquit crewind cscope cstag cunmap cunabbrev cunmenu cwindow delete delmarks debug debuggreedy delcommand delfunction diffupdate diffget diffoff diffpatch diffput diffsplit digraphs display deletel djump dlist doautocmd doautoall deletep drop dsearch dsplit edit earlier echo echoerr echohl echomsg else elseif emenu endif endfor endfunction endtry endwhile enew execute exit exusage file filetype find finally finish first fixdel fold foldclose folddoopen folddoclosed foldopen function global goto grep grepadd gui gvim hardcopy help helpfind helpgrep helptags highlight hide history insert iabbrev iabclear ijump ilist imap imapclear imenu inoremap inoreabbrev inoremenu intro isearch isplit iunmap iunabbrev iunmenu join jumps keepalt keepmarks keepjumps lNext lNfile list laddexpr laddbuffer laddfile last language later lbuffer lcd lchdir lclose lcscope left leftabove lexpr lfile lfirst lgetbuffer lgetexpr lgetfile lgrep lgrepadd lhelpgrep llast llist lmake lmap lmapclear lnext lnewer lnfile lnoremap loadkeymap loadview lockmarks lockvar lolder lopen lprevious lpfile lrewind ltag lunmap luado luafile lvimgrep lvimgrepadd lwindow move mark make mapclear match menu menutranslate messages mkexrc mksession mkspell mkvimrc mkview mode mzscheme mzfile nbclose nbkey nbsart next nmap nmapclear nmenu nnoremap nnoremenu noautocmd noremap nohlsearch noreabbrev noremenu normal number nunmap nunmenu oldfiles open omap omapclear omenu only onoremap onoremenu options ounmap ounmenu ownsyntax print profdel profile promptfind promptrepl pclose pedit perl perldo pop popup ppop preserve previous psearch ptag ptNext ptfirst ptjump ptlast ptnext ptprevious ptrewind ptselect put pwd py3do py3file python pydo pyfile quit quitall qall read recover redo redir redraw redrawstatus registers resize retab return rewind right rightbelow ruby rubydo rubyfile rundo runtime rviminfo substitute sNext sandbox sargument sall saveas sbuffer sbNext sball sbfirst sblast sbmodified sbnext sbprevious sbrewind scriptnames scriptencoding scscope set setfiletype setglobal setlocal sfind sfirst shell simalt sign silent sleep slast smagic smapclear smenu snext sniff snomagic snoremap snoremenu sort source spelldump spellgood spellinfo spellrepall spellundo spellwrong split sprevious srewind stop stag startgreplace startreplace startinsert stopinsert stjump stselect sunhide sunmap sunmenu suspend sview swapname syntax syntime syncbind tNext tabNext tabclose tabedit tabfind tabfirst tablast tabmove tabnext tabonly tabprevious tabrewind tag tcl tcldo tclfile tearoff tfirst throw tjump tlast tmenu tnext topleft tprevious trewind tselect tunmenu undo undojoin undolist unabbreviate unhide unlet unlockvar unmap unmenu unsilent update vglobal version verbose vertical vimgrep vimgrepadd visual viusage view vmap vmapclear vmenu vnew vnoremap vnoremenu vsplit vunmap vunmenu write wNext wall while winsize wincmd winpos wnext wprevious wqall wsverb wundo wviminfo xit xall xmapclear xmap xmenu xnoremap xnoremenu xunmap xunmenu yank",built_in:"abs acos add and append argc argidx argv asin atan atan2 browse browsedir bufexists buflisted bufloaded bufname bufnr bufwinnr byte2line byteidx call ceil changenr char2nr cindent clearmatches col complete complete_add complete_check confirm copy cos cosh count cscope_connection cursor deepcopy delete did_filetype diff_filler diff_hlID empty escape eval eventhandler executable exists exp expand extend feedkeys filereadable filewritable filter finddir findfile float2nr floor fmod fnameescape fnamemodify foldclosed foldclosedend foldlevel foldtext foldtextresult foreground function garbagecollect get getbufline getbufvar getchar getcharmod getcmdline getcmdpos getcmdtype getcwd getfontname getfperm getfsize getftime getftype getline getloclist getmatches getpid getpos getqflist getreg getregtype gettabvar gettabwinvar getwinposx getwinposy getwinvar glob globpath has has_key haslocaldir hasmapto histadd histdel histget histnr hlexists hlID hostname iconv indent index input inputdialog inputlist inputrestore inputsave inputsecret insert invert isdirectory islocked items join keys len libcall libcallnr line line2byte lispindent localtime log log10 luaeval map maparg mapcheck match matchadd matcharg matchdelete matchend matchlist matchstr max min mkdir mode mzeval nextnonblank nr2char or pathshorten pow prevnonblank printf pumvisible py3eval pyeval range readfile reltime reltimestr remote_expr remote_foreground remote_peek remote_read remote_send remove rename repeat resolve reverse round screenattr screenchar screencol screenrow search searchdecl searchpair searchpairpos searchpos server2client serverlist setbufvar setcmdpos setline setloclist setmatches setpos setqflist setreg settabvar settabwinvar setwinvar sha256 shellescape shiftwidth simplify sin sinh sort soundfold spellbadword spellsuggest split sqrt str2float str2nr strchars strdisplaywidth strftime stridx string strlen strpart strridx strtrans strwidth submatch substitute synconcealed synID synIDattr synIDtrans synstack system tabpagebuflist tabpagenr tabpagewinnr tagfiles taglist tan tanh tempname tolower toupper tr trunc type undofile undotree values virtcol visualmode wildmenumode winbufnr wincol winheight winline winnr winrestcmd winrestview winsaveview winwidth writefile xor"},i:/[{:]/,c:[e.NM,e.ASM,{cN:"string",b:/"((\\")|[^"\n])*("|\n)/},{cN:"variable",b:/[bwtglsav]:[\w\d_]*/},{cN:"function",bK:"function function!",e:"$",r:0,c:[e.TM,{cN:"params",b:"\\(",e:"\\)"}]}]}}),hljs.registerLanguage("x86asm",function(e){return{cI:!0,l:"\\.?"+e.IR,k:{keyword:"lock rep repe repz repne repnz xaquire xrelease bnd nobnd aaa aad aam aas adc add and arpl bb0_reset bb1_reset bound bsf bsr bswap bt btc btr bts call cbw cdq cdqe clc cld cli clts cmc cmp cmpsb cmpsd cmpsq cmpsw cmpxchg cmpxchg486 cmpxchg8b cmpxchg16b cpuid cpu_read cpu_write cqo cwd cwde daa das dec div dmint emms enter equ f2xm1 fabs fadd faddp fbld fbstp fchs fclex fcmovb fcmovbe fcmove fcmovnb fcmovnbe fcmovne fcmovnu fcmovu fcom fcomi fcomip fcomp fcompp fcos fdecstp fdisi fdiv fdivp fdivr fdivrp femms feni ffree ffreep fiadd ficom ficomp fidiv fidivr fild fimul fincstp finit fist fistp fisttp fisub fisubr fld fld1 fldcw fldenv fldl2e fldl2t fldlg2 fldln2 fldpi fldz fmul fmulp fnclex fndisi fneni fninit fnop fnsave fnstcw fnstenv fnstsw fpatan fprem fprem1 fptan frndint frstor fsave fscale fsetpm fsin fsincos fsqrt fst fstcw fstenv fstp fstsw fsub fsubp fsubr fsubrp ftst fucom fucomi fucomip fucomp fucompp fxam fxch fxtract fyl2x fyl2xp1 hlt ibts icebp idiv imul in inc incbin insb insd insw int int01 int1 int03 int3 into invd invpcid invlpg invlpga iret iretd iretq iretw jcxz jecxz jrcxz jmp jmpe lahf lar lds lea leave les lfence lfs lgdt lgs lidt lldt lmsw loadall loadall286 lodsb lodsd lodsq lodsw loop loope loopne loopnz loopz lsl lss ltr mfence monitor mov movd movq movsb movsd movsq movsw movsx movsxd movzx mul mwait neg nop not or out outsb outsd outsw packssdw packsswb packuswb paddb paddd paddsb paddsiw paddsw paddusb paddusw paddw pand pandn pause paveb pavgusb pcmpeqb pcmpeqd pcmpeqw pcmpgtb pcmpgtd pcmpgtw pdistib pf2id pfacc pfadd pfcmpeq pfcmpge pfcmpgt pfmax pfmin pfmul pfrcp pfrcpit1 pfrcpit2 pfrsqit1 pfrsqrt pfsub pfsubr pi2fd pmachriw pmaddwd pmagw pmulhriw pmulhrwa pmulhrwc pmulhw pmullw pmvgezb pmvlzb pmvnzb pmvzb pop popa popad popaw popf popfd popfq popfw por prefetch prefetchw pslld psllq psllw psrad psraw psrld psrlq psrlw psubb psubd psubsb psubsiw psubsw psubusb psubusw psubw punpckhbw punpckhdq punpckhwd punpcklbw punpckldq punpcklwd push pusha pushad pushaw pushf pushfd pushfq pushfw pxor rcl rcr rdshr rdmsr rdpmc rdtsc rdtscp ret retf retn rol ror rdm rsdc rsldt rsm rsts sahf sal salc sar sbb scasb scasd scasq scasw sfence sgdt shl shld shr shrd sidt sldt skinit smi smint smintold smsw stc std sti stosb stosd stosq stosw str sub svdc svldt svts swapgs syscall sysenter sysexit sysret test ud0 ud1 ud2b ud2 ud2a umov verr verw fwait wbinvd wrshr wrmsr xadd xbts xchg xlatb xlat xor cmove cmovz cmovne cmovnz cmova cmovnbe cmovae cmovnb cmovb cmovnae cmovbe cmovna cmovg cmovnle cmovge cmovnl cmovl cmovnge cmovle cmovng cmovc cmovnc cmovo cmovno cmovs cmovns cmovp cmovpe cmovnp cmovpo je jz jne jnz ja jnbe jae jnb jb jnae jbe jna jg jnle jge jnl jl jnge jle jng jc jnc jo jno js jns jpo jnp jpe jp sete setz setne setnz seta setnbe setae setnb setnc setb setnae setcset setbe setna setg setnle setge setnl setl setnge setle setng sets setns seto setno setpe setp setpo setnp addps addss andnps andps cmpeqps cmpeqss cmpleps cmpless cmpltps cmpltss cmpneqps cmpneqss cmpnleps cmpnless cmpnltps cmpnltss cmpordps cmpordss cmpunordps cmpunordss cmpps cmpss comiss cvtpi2ps cvtps2pi cvtsi2ss cvtss2si cvttps2pi cvttss2si divps divss ldmxcsr maxps maxss minps minss movaps movhps movlhps movlps movhlps movmskps movntps movss movups mulps mulss orps rcpps rcpss rsqrtps rsqrtss shufps sqrtps sqrtss stmxcsr subps subss ucomiss unpckhps unpcklps xorps fxrstor fxrstor64 fxsave fxsave64 xgetbv xsetbv xsave xsave64 xsaveopt xsaveopt64 xrstor xrstor64 prefetchnta prefetcht0 prefetcht1 prefetcht2 maskmovq movntq pavgb pavgw pextrw pinsrw pmaxsw pmaxub pminsw pminub pmovmskb pmulhuw psadbw pshufw pf2iw pfnacc pfpnacc pi2fw pswapd maskmovdqu clflush movntdq movnti movntpd movdqa movdqu movdq2q movq2dq paddq pmuludq pshufd pshufhw pshuflw pslldq psrldq psubq punpckhqdq punpcklqdq addpd addsd andnpd andpd cmpeqpd cmpeqsd cmplepd cmplesd cmpltpd cmpltsd cmpneqpd cmpneqsd cmpnlepd cmpnlesd cmpnltpd cmpnltsd cmpordpd cmpordsd cmpunordpd cmpunordsd cmppd comisd cvtdq2pd cvtdq2ps cvtpd2dq cvtpd2pi cvtpd2ps cvtpi2pd cvtps2dq cvtps2pd cvtsd2si cvtsd2ss cvtsi2sd cvtss2sd cvttpd2pi cvttpd2dq cvttps2dq cvttsd2si divpd divsd maxpd maxsd minpd minsd movapd movhpd movlpd movmskpd movupd mulpd mulsd orpd shufpd sqrtpd sqrtsd subpd subsd ucomisd unpckhpd unpcklpd xorpd addsubpd addsubps haddpd haddps hsubpd hsubps lddqu movddup movshdup movsldup clgi stgi vmcall vmclear vmfunc vmlaunch vmload vmmcall vmptrld vmptrst vmread vmresume vmrun vmsave vmwrite vmxoff vmxon invept invvpid pabsb pabsw pabsd palignr phaddw phaddd phaddsw phsubw phsubd phsubsw pmaddubsw pmulhrsw pshufb psignb psignw psignd extrq insertq movntsd movntss lzcnt blendpd blendps blendvpd blendvps dppd dpps extractps insertps movntdqa mpsadbw packusdw pblendvb pblendw pcmpeqq pextrb pextrd pextrq phminposuw pinsrb pinsrd pinsrq pmaxsb pmaxsd pmaxud pmaxuw pminsb pminsd pminud pminuw pmovsxbw pmovsxbd pmovsxbq pmovsxwd pmovsxwq pmovsxdq pmovzxbw pmovzxbd pmovzxbq pmovzxwd pmovzxwq pmovzxdq pmuldq pmulld ptest roundpd roundps roundsd roundss crc32 pcmpestri pcmpestrm pcmpistri pcmpistrm pcmpgtq popcnt getsec pfrcpv pfrsqrtv movbe aesenc aesenclast aesdec aesdeclast aesimc aeskeygenassist vaesenc vaesenclast vaesdec vaesdeclast vaesimc vaeskeygenassist vaddpd vaddps vaddsd vaddss vaddsubpd vaddsubps vandpd vandps vandnpd vandnps vblendpd vblendps vblendvpd vblendvps vbroadcastss vbroadcastsd vbroadcastf128 vcmpeq_ospd vcmpeqpd vcmplt_ospd vcmpltpd vcmple_ospd vcmplepd vcmpunord_qpd vcmpunordpd vcmpneq_uqpd vcmpneqpd vcmpnlt_uspd vcmpnltpd vcmpnle_uspd vcmpnlepd vcmpord_qpd vcmpordpd vcmpeq_uqpd vcmpnge_uspd vcmpngepd vcmpngt_uspd vcmpngtpd vcmpfalse_oqpd vcmpfalsepd vcmpneq_oqpd vcmpge_ospd vcmpgepd vcmpgt_ospd vcmpgtpd vcmptrue_uqpd vcmptruepd vcmplt_oqpd vcmple_oqpd vcmpunord_spd vcmpneq_uspd vcmpnlt_uqpd vcmpnle_uqpd vcmpord_spd vcmpeq_uspd vcmpnge_uqpd vcmpngt_uqpd vcmpfalse_ospd vcmpneq_ospd vcmpge_oqpd vcmpgt_oqpd vcmptrue_uspd vcmppd vcmpeq_osps vcmpeqps vcmplt_osps vcmpltps vcmple_osps vcmpleps vcmpunord_qps vcmpunordps vcmpneq_uqps vcmpneqps vcmpnlt_usps vcmpnltps vcmpnle_usps vcmpnleps vcmpord_qps vcmpordps vcmpeq_uqps vcmpnge_usps vcmpngeps vcmpngt_usps vcmpngtps vcmpfalse_oqps vcmpfalseps vcmpneq_oqps vcmpge_osps vcmpgeps vcmpgt_osps vcmpgtps vcmptrue_uqps vcmptrueps vcmplt_oqps vcmple_oqps vcmpunord_sps vcmpneq_usps vcmpnlt_uqps vcmpnle_uqps vcmpord_sps vcmpeq_usps vcmpnge_uqps vcmpngt_uqps vcmpfalse_osps vcmpneq_osps vcmpge_oqps vcmpgt_oqps vcmptrue_usps vcmpps vcmpeq_ossd vcmpeqsd vcmplt_ossd vcmpltsd vcmple_ossd vcmplesd vcmpunord_qsd vcmpunordsd vcmpneq_uqsd vcmpneqsd vcmpnlt_ussd vcmpnltsd vcmpnle_ussd vcmpnlesd vcmpord_qsd vcmpordsd vcmpeq_uqsd vcmpnge_ussd vcmpngesd vcmpngt_ussd vcmpngtsd vcmpfalse_oqsd vcmpfalsesd vcmpneq_oqsd vcmpge_ossd vcmpgesd vcmpgt_ossd vcmpgtsd vcmptrue_uqsd vcmptruesd vcmplt_oqsd vcmple_oqsd vcmpunord_ssd vcmpneq_ussd vcmpnlt_uqsd vcmpnle_uqsd vcmpord_ssd vcmpeq_ussd vcmpnge_uqsd vcmpngt_uqsd vcmpfalse_ossd vcmpneq_ossd vcmpge_oqsd vcmpgt_oqsd vcmptrue_ussd vcmpsd vcmpeq_osss vcmpeqss vcmplt_osss vcmpltss vcmple_osss vcmpless vcmpunord_qss vcmpunordss vcmpneq_uqss vcmpneqss vcmpnlt_usss vcmpnltss vcmpnle_usss vcmpnless vcmpord_qss vcmpordss vcmpeq_uqss vcmpnge_usss vcmpngess vcmpngt_usss vcmpngtss vcmpfalse_oqss vcmpfalsess vcmpneq_oqss vcmpge_osss vcmpgess vcmpgt_osss vcmpgtss vcmptrue_uqss vcmptruess vcmplt_oqss vcmple_oqss vcmpunord_sss vcmpneq_usss vcmpnlt_uqss vcmpnle_uqss vcmpord_sss vcmpeq_usss vcmpnge_uqss vcmpngt_uqss vcmpfalse_osss vcmpneq_osss vcmpge_oqss vcmpgt_oqss vcmptrue_usss vcmpss vcomisd vcomiss vcvtdq2pd vcvtdq2ps vcvtpd2dq vcvtpd2ps vcvtps2dq vcvtps2pd vcvtsd2si vcvtsd2ss vcvtsi2sd vcvtsi2ss vcvtss2sd vcvtss2si vcvttpd2dq vcvttps2dq vcvttsd2si vcvttss2si vdivpd vdivps vdivsd vdivss vdppd vdpps vextractf128 vextractps vhaddpd vhaddps vhsubpd vhsubps vinsertf128 vinsertps vlddqu vldqqu vldmxcsr vmaskmovdqu vmaskmovps vmaskmovpd vmaxpd vmaxps vmaxsd vmaxss vminpd vminps vminsd vminss vmovapd vmovaps vmovd vmovq vmovddup vmovdqa vmovqqa vmovdqu vmovqqu vmovhlps vmovhpd vmovhps vmovlhps vmovlpd vmovlps vmovmskpd vmovmskps vmovntdq vmovntqq vmovntdqa vmovntpd vmovntps vmovsd vmovshdup vmovsldup vmovss vmovupd vmovups vmpsadbw vmulpd vmulps vmulsd vmulss vorpd vorps vpabsb vpabsw vpabsd vpacksswb vpackssdw vpackuswb vpackusdw vpaddb vpaddw vpaddd vpaddq vpaddsb vpaddsw vpaddusb vpaddusw vpalignr vpand vpandn vpavgb vpavgw vpblendvb vpblendw vpcmpestri vpcmpestrm vpcmpistri vpcmpistrm vpcmpeqb vpcmpeqw vpcmpeqd vpcmpeqq vpcmpgtb vpcmpgtw vpcmpgtd vpcmpgtq vpermilpd vpermilps vperm2f128 vpextrb vpextrw vpextrd vpextrq vphaddw vphaddd vphaddsw vphminposuw vphsubw vphsubd vphsubsw vpinsrb vpinsrw vpinsrd vpinsrq vpmaddwd vpmaddubsw vpmaxsb vpmaxsw vpmaxsd vpmaxub vpmaxuw vpmaxud vpminsb vpminsw vpminsd vpminub vpminuw vpminud vpmovmskb vpmovsxbw vpmovsxbd vpmovsxbq vpmovsxwd vpmovsxwq vpmovsxdq vpmovzxbw vpmovzxbd vpmovzxbq vpmovzxwd vpmovzxwq vpmovzxdq vpmulhuw vpmulhrsw vpmulhw vpmullw vpmulld vpmuludq vpmuldq vpor vpsadbw vpshufb vpshufd vpshufhw vpshuflw vpsignb vpsignw vpsignd vpslldq vpsrldq vpsllw vpslld vpsllq vpsraw vpsrad vpsrlw vpsrld vpsrlq vptest vpsubb vpsubw vpsubd vpsubq vpsubsb vpsubsw vpsubusb vpsubusw vpunpckhbw vpunpckhwd vpunpckhdq vpunpckhqdq vpunpcklbw vpunpcklwd vpunpckldq vpunpcklqdq vpxor vrcpps vrcpss vrsqrtps vrsqrtss vroundpd vroundps vroundsd vroundss vshufpd vshufps vsqrtpd vsqrtps vsqrtsd vsqrtss vstmxcsr vsubpd vsubps vsubsd vsubss vtestps vtestpd vucomisd vucomiss vunpckhpd vunpckhps vunpcklpd vunpcklps vxorpd vxorps vzeroall vzeroupper pclmullqlqdq pclmulhqlqdq pclmullqhqdq pclmulhqhqdq pclmulqdq vpclmullqlqdq vpclmulhqlqdq vpclmullqhqdq vpclmulhqhqdq vpclmulqdq vfmadd132ps vfmadd132pd vfmadd312ps vfmadd312pd vfmadd213ps vfmadd213pd vfmadd123ps vfmadd123pd vfmadd231ps vfmadd231pd vfmadd321ps vfmadd321pd vfmaddsub132ps vfmaddsub132pd vfmaddsub312ps vfmaddsub312pd vfmaddsub213ps vfmaddsub213pd vfmaddsub123ps vfmaddsub123pd vfmaddsub231ps vfmaddsub231pd vfmaddsub321ps vfmaddsub321pd vfmsub132ps vfmsub132pd vfmsub312ps vfmsub312pd vfmsub213ps vfmsub213pd vfmsub123ps vfmsub123pd vfmsub231ps vfmsub231pd vfmsub321ps vfmsub321pd vfmsubadd132ps vfmsubadd132pd vfmsubadd312ps vfmsubadd312pd vfmsubadd213ps vfmsubadd213pd vfmsubadd123ps vfmsubadd123pd vfmsubadd231ps vfmsubadd231pd vfmsubadd321ps vfmsubadd321pd vfnmadd132ps vfnmadd132pd vfnmadd312ps vfnmadd312pd vfnmadd213ps vfnmadd213pd vfnmadd123ps vfnmadd123pd vfnmadd231ps vfnmadd231pd vfnmadd321ps vfnmadd321pd vfnmsub132ps vfnmsub132pd vfnmsub312ps vfnmsub312pd vfnmsub213ps vfnmsub213pd vfnmsub123ps vfnmsub123pd vfnmsub231ps vfnmsub231pd vfnmsub321ps vfnmsub321pd vfmadd132ss vfmadd132sd vfmadd312ss vfmadd312sd vfmadd213ss vfmadd213sd vfmadd123ss vfmadd123sd vfmadd231ss vfmadd231sd vfmadd321ss vfmadd321sd vfmsub132ss vfmsub132sd vfmsub312ss vfmsub312sd vfmsub213ss vfmsub213sd vfmsub123ss vfmsub123sd vfmsub231ss vfmsub231sd vfmsub321ss vfmsub321sd vfnmadd132ss vfnmadd132sd vfnmadd312ss vfnmadd312sd vfnmadd213ss vfnmadd213sd vfnmadd123ss vfnmadd123sd vfnmadd231ss vfnmadd231sd vfnmadd321ss vfnmadd321sd vfnmsub132ss vfnmsub132sd vfnmsub312ss vfnmsub312sd vfnmsub213ss vfnmsub213sd vfnmsub123ss vfnmsub123sd vfnmsub231ss vfnmsub231sd vfnmsub321ss vfnmsub321sd rdfsbase rdgsbase rdrand wrfsbase wrgsbase vcvtph2ps vcvtps2ph adcx adox rdseed clac stac xstore xcryptecb xcryptcbc xcryptctr xcryptcfb xcryptofb montmul xsha1 xsha256 llwpcb slwpcb lwpval lwpins vfmaddpd vfmaddps vfmaddsd vfmaddss vfmaddsubpd vfmaddsubps vfmsubaddpd vfmsubaddps vfmsubpd vfmsubps vfmsubsd vfmsubss vfnmaddpd vfnmaddps vfnmaddsd vfnmaddss vfnmsubpd vfnmsubps vfnmsubsd vfnmsubss vfrczpd vfrczps vfrczsd vfrczss vpcmov vpcomb vpcomd vpcomq vpcomub vpcomud vpcomuq vpcomuw vpcomw vphaddbd vphaddbq vphaddbw vphadddq vphaddubd vphaddubq vphaddubw vphaddudq vphadduwd vphadduwq vphaddwd vphaddwq vphsubbw vphsubdq vphsubwd vpmacsdd vpmacsdqh vpmacsdql vpmacssdd vpmacssdqh vpmacssdql vpmacsswd vpmacssww vpmacswd vpmacsww vpmadcsswd vpmadcswd vpperm vprotb vprotd vprotq vprotw vpshab vpshad vpshaq vpshaw vpshlb vpshld vpshlq vpshlw vbroadcasti128 vpblendd vpbroadcastb vpbroadcastw vpbroadcastd vpbroadcastq vpermd vpermpd vpermps vpermq vperm2i128 vextracti128 vinserti128 vpmaskmovd vpmaskmovq vpsllvd vpsllvq vpsravd vpsrlvd vpsrlvq vgatherdpd vgatherqpd vgatherdps vgatherqps vpgatherdd vpgatherqd vpgatherdq vpgatherqq xabort xbegin xend xtest andn bextr blci blcic blsi blsic blcfill blsfill blcmsk blsmsk blsr blcs bzhi mulx pdep pext rorx sarx shlx shrx tzcnt tzmsk t1mskc valignd valignq vblendmpd vblendmps vbroadcastf32x4 vbroadcastf64x4 vbroadcasti32x4 vbroadcasti64x4 vcompresspd vcompressps vcvtpd2udq vcvtps2udq vcvtsd2usi vcvtss2usi vcvttpd2udq vcvttps2udq vcvttsd2usi vcvttss2usi vcvtudq2pd vcvtudq2ps vcvtusi2sd vcvtusi2ss vexpandpd vexpandps vextractf32x4 vextractf64x4 vextracti32x4 vextracti64x4 vfixupimmpd vfixupimmps vfixupimmsd vfixupimmss vgetexppd vgetexpps vgetexpsd vgetexpss vgetmantpd vgetmantps vgetmantsd vgetmantss vinsertf32x4 vinsertf64x4 vinserti32x4 vinserti64x4 vmovdqa32 vmovdqa64 vmovdqu32 vmovdqu64 vpabsq vpandd vpandnd vpandnq vpandq vpblendmd vpblendmq vpcmpltd vpcmpled vpcmpneqd vpcmpnltd vpcmpnled vpcmpd vpcmpltq vpcmpleq vpcmpneqq vpcmpnltq vpcmpnleq vpcmpq vpcmpequd vpcmpltud vpcmpleud vpcmpnequd vpcmpnltud vpcmpnleud vpcmpud vpcmpequq vpcmpltuq vpcmpleuq vpcmpnequq vpcmpnltuq vpcmpnleuq vpcmpuq vpcompressd vpcompressq vpermi2d vpermi2pd vpermi2ps vpermi2q vpermt2d vpermt2pd vpermt2ps vpermt2q vpexpandd vpexpandq vpmaxsq vpmaxuq vpminsq vpminuq vpmovdb vpmovdw vpmovqb vpmovqd vpmovqw vpmovsdb vpmovsdw vpmovsqb vpmovsqd vpmovsqw vpmovusdb vpmovusdw vpmovusqb vpmovusqd vpmovusqw vpord vporq vprold vprolq vprolvd vprolvq vprord vprorq vprorvd vprorvq vpscatterdd vpscatterdq vpscatterqd vpscatterqq vpsraq vpsravq vpternlogd vpternlogq vptestmd vptestmq vptestnmd vptestnmq vpxord vpxorq vrcp14pd vrcp14ps vrcp14sd vrcp14ss vrndscalepd vrndscaleps vrndscalesd vrndscaless vrsqrt14pd vrsqrt14ps vrsqrt14sd vrsqrt14ss vscalefpd vscalefps vscalefsd vscalefss vscatterdpd vscatterdps vscatterqpd vscatterqps vshuff32x4 vshuff64x2 vshufi32x4 vshufi64x2 kandnw kandw kmovw knotw kortestw korw kshiftlw kshiftrw kunpckbw kxnorw kxorw vpbroadcastmb2q vpbroadcastmw2d vpconflictd vpconflictq vplzcntd vplzcntq vexp2pd vexp2ps vrcp28pd vrcp28ps vrcp28sd vrcp28ss vrsqrt28pd vrsqrt28ps vrsqrt28sd vrsqrt28ss vgatherpf0dpd vgatherpf0dps vgatherpf0qpd vgatherpf0qps vgatherpf1dpd vgatherpf1dps vgatherpf1qpd vgatherpf1qps vscatterpf0dpd vscatterpf0dps vscatterpf0qpd vscatterpf0qps vscatterpf1dpd vscatterpf1dps vscatterpf1qpd vscatterpf1qps prefetchwt1 bndmk bndcl bndcu bndcn bndmov bndldx bndstx sha1rnds4 sha1nexte sha1msg1 sha1msg2 sha256rnds2 sha256msg1 sha256msg2 hint_nop0 hint_nop1 hint_nop2 hint_nop3 hint_nop4 hint_nop5 hint_nop6 hint_nop7 hint_nop8 hint_nop9 hint_nop10 hint_nop11 hint_nop12 hint_nop13 hint_nop14 hint_nop15 hint_nop16 hint_nop17 hint_nop18 hint_nop19 hint_nop20 hint_nop21 hint_nop22 hint_nop23 hint_nop24 hint_nop25 hint_nop26 hint_nop27 hint_nop28 hint_nop29 hint_nop30 hint_nop31 hint_nop32 hint_nop33 hint_nop34 hint_nop35 hint_nop36 hint_nop37 hint_nop38 hint_nop39 hint_nop40 hint_nop41 hint_nop42 hint_nop43 hint_nop44 hint_nop45 hint_nop46 hint_nop47 hint_nop48 hint_nop49 hint_nop50 hint_nop51 hint_nop52 hint_nop53 hint_nop54 hint_nop55 hint_nop56 hint_nop57 hint_nop58 hint_nop59 hint_nop60 hint_nop61 hint_nop62 hint_nop63",
-literal:"ip eip rip al ah bl bh cl ch dl dh sil dil bpl spl r8b r9b r10b r11b r12b r13b r14b r15b ax bx cx dx si di bp sp r8w r9w r10w r11w r12w r13w r14w r15w eax ebx ecx edx esi edi ebp esp eip r8d r9d r10d r11d r12d r13d r14d r15d rax rbx rcx rdx rsi rdi rbp rsp r8 r9 r10 r11 r12 r13 r14 r15 cs ds es fs gs ss st st0 st1 st2 st3 st4 st5 st6 st7 mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7 xmm0  xmm1  xmm2  xmm3  xmm4  xmm5  xmm6  xmm7  xmm8  xmm9 xmm10  xmm11 xmm12 xmm13 xmm14 xmm15 xmm16 xmm17 xmm18 xmm19 xmm20 xmm21 xmm22 xmm23 xmm24 xmm25 xmm26 xmm27 xmm28 xmm29 xmm30 xmm31 ymm0  ymm1  ymm2  ymm3  ymm4  ymm5  ymm6  ymm7  ymm8  ymm9 ymm10  ymm11 ymm12 ymm13 ymm14 ymm15 ymm16 ymm17 ymm18 ymm19 ymm20 ymm21 ymm22 ymm23 ymm24 ymm25 ymm26 ymm27 ymm28 ymm29 ymm30 ymm31 zmm0  zmm1  zmm2  zmm3  zmm4  zmm5  zmm6  zmm7  zmm8  zmm9 zmm10  zmm11 zmm12 zmm13 zmm14 zmm15 zmm16 zmm17 zmm18 zmm19 zmm20 zmm21 zmm22 zmm23 zmm24 zmm25 zmm26 zmm27 zmm28 zmm29 zmm30 zmm31 k0 k1 k2 k3 k4 k5 k6 k7 bnd0 bnd1 bnd2 bnd3 cr0 cr1 cr2 cr3 cr4 cr8 dr0 dr1 dr2 dr3 dr8 tr3 tr4 tr5 tr6 tr7 r0 r1 r2 r3 r4 r5 r6 r7 r0b r1b r2b r3b r4b r5b r6b r7b r0w r1w r2w r3w r4w r5w r6w r7w r0d r1d r2d r3d r4d r5d r6d r7d r0h r1h r2h r3h r0l r1l r2l r3l r4l r5l r6l r7l r8l r9l r10l r11l r12l r13l r14l r15l",pseudo:"db dw dd dq dt ddq do dy dz resb resw resd resq rest resdq reso resy resz incbin equ times",preprocessor:"%define %xdefine %+ %undef %defstr %deftok %assign %strcat %strlen %substr %rotate %elif %else %endif %ifmacro %ifctx %ifidn %ifidni %ifid %ifnum %ifstr %iftoken %ifempty %ifenv %error %warning %fatal %rep %endrep %include %push %pop %repl %pathsearch %depend %use %arg %stacksize %local %line %comment %endcomment .nolist byte word dword qword nosplit rel abs seg wrt strict near far a32 ptr __FILE__ __LINE__ __SECT__  __BITS__ __OUTPUT_FORMAT__ __DATE__ __TIME__ __DATE_NUM__ __TIME_NUM__ __UTC_DATE__ __UTC_TIME__ __UTC_DATE_NUM__ __UTC_TIME_NUM__  __PASS__ struc endstruc istruc at iend align alignb sectalign daz nodaz up down zero default option assume public ",built_in:"bits use16 use32 use64 default section segment absolute extern global common cpu float __utf16__ __utf16le__ __utf16be__ __utf32__ __utf32le__ __utf32be__ __float8__ __float16__ __float32__ __float64__ __float80m__ __float80e__ __float128l__ __float128h__ __Infinity__ __QNaN__ __SNaN__ Inf NaN QNaN SNaN float8 float16 float32 float64 float80m float80e float128l float128h __FLOAT_DAZ__ __FLOAT_ROUND__ __FLOAT__"},c:[e.C(";","$",{r:0}),{cN:"number",b:"\\b(?:([0-9][0-9_]*)?\\.[0-9_]*(?:[eE][+-]?[0-9_]+)?|(0[Xx])?[0-9][0-9_]*\\.?[0-9_]*(?:[pP](?:[+-]?[0-9_]+)?)?)\\b",r:0},{cN:"number",b:"\\$[0-9][0-9A-Fa-f]*",r:0},{cN:"number",b:"\\b(?:[0-9A-Fa-f][0-9A-Fa-f_]*[HhXx]|[0-9][0-9_]*[DdTt]?|[0-7][0-7_]*[QqOo]|[0-1][0-1_]*[BbYy])\\b"},{cN:"number",b:"\\b(?:0[HhXx][0-9A-Fa-f_]+|0[DdTt][0-9_]+|0[QqOo][0-7_]+|0[BbYy][0-1_]+)\\b"},e.QSM,{cN:"string",b:"'",e:"[^\\\\]'",r:0},{cN:"string",b:"`",e:"[^\\\\]`",r:0},{cN:"string",b:"\\.[A-Za-z0-9]+",r:0},{cN:"label",b:"^\\s*[A-Za-z._?][A-Za-z0-9_$#@~.?]*(:|\\s+label)",r:0},{cN:"label",b:"^\\s*%%[A-Za-z0-9_$#@~.?]*:",r:0},{cN:"argument",b:"%[0-9]+",r:0},{cN:"built_in",b:"%!S+",r:0}]}}),hljs.registerLanguage("xl",function(e){var t="ObjectLoader Animate MovieCredits Slides Filters Shading Materials LensFlare Mapping VLCAudioVideo StereoDecoder PointCloud NetworkAccess RemoteControl RegExp ChromaKey Snowfall NodeJS Speech Charts",r={keyword:"if then else do while until for loop import with is as where when by data constant",literal:"true false nil",type:"integer real text name boolean symbol infix prefix postfix block tree",built_in:"in mod rem and or xor not abs sign floor ceil sqrt sin cos tan asin acos atan exp expm1 log log2 log10 log1p pi at",module:t,id:"text_length text_range text_find text_replace contains page slide basic_slide title_slide title subtitle fade_in fade_out fade_at clear_color color line_color line_width texture_wrap texture_transform texture scale_?x scale_?y scale_?z? translate_?x translate_?y translate_?z? rotate_?x rotate_?y rotate_?z? rectangle circle ellipse sphere path line_to move_to quad_to curve_to theme background contents locally time mouse_?x mouse_?y mouse_buttons"},a={cN:"constant",b:"[A-Z][A-Z_0-9]+",r:0},i={cN:"variable",b:"([A-Z][a-z_0-9]+)+",r:0},n={cN:"id",b:"[a-z][a-z_0-9]+",r:0},o={cN:"string",b:'"',e:'"',i:"\\n"},s={cN:"string",b:"'",e:"'",i:"\\n"},l={cN:"string",b:"<<",e:">>"},c={cN:"number",b:"[0-9]+#[0-9A-Z_]+(\\.[0-9-A-Z_]+)?#?([Ee][+-]?[0-9]+)?",r:10},d={cN:"import",bK:"import",e:"$",k:{keyword:"import",module:t},r:0,c:[o]},p={cN:"function",b:"[a-z].*->"};return{aliases:["tao"],l:/[a-zA-Z][a-zA-Z0-9_?]*/,k:r,c:[e.CLCM,e.CBCM,o,s,l,p,d,a,i,n,c,e.NM]}});
 /*!
  * Knockout JavaScript library v3.2.0
  * (c) Steven Sanderson - http://knockoutjs.com/
@@ -46106,107 +51210,3 @@ ko.exportSymbol('nativeTemplateEngine', ko.nativeTemplateEngine);
  */
 
 !function(a){var b=function(){"use strict";return{isMsie:function(){return/(msie|trident)/i.test(navigator.userAgent)?navigator.userAgent.match(/(msie |rv:)(\d+(.\d+)?)/i)[2]:!1},isBlankString:function(a){return!a||/^\s*$/.test(a)},escapeRegExChars:function(a){return a.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g,"\\$&")},isString:function(a){return"string"==typeof a},isNumber:function(a){return"number"==typeof a},isArray:a.isArray,isFunction:a.isFunction,isObject:a.isPlainObject,isUndefined:function(a){return"undefined"==typeof a},toStr:function(a){return b.isUndefined(a)||null===a?"":a+""},bind:a.proxy,each:function(b,c){function d(a,b){return c(b,a)}a.each(b,d)},map:a.map,filter:a.grep,every:function(b,c){var d=!0;return b?(a.each(b,function(a,e){return(d=c.call(null,e,a,b))?void 0:!1}),!!d):d},some:function(b,c){var d=!1;return b?(a.each(b,function(a,e){return(d=c.call(null,e,a,b))?!1:void 0}),!!d):d},mixin:a.extend,getUniqueId:function(){var a=0;return function(){return a++}}(),templatify:function(b){function c(){return String(b)}return a.isFunction(b)?b:c},defer:function(a){setTimeout(a,0)},debounce:function(a,b,c){var d,e;return function(){var f,g,h=this,i=arguments;return f=function(){d=null,c||(e=a.apply(h,i))},g=c&&!d,clearTimeout(d),d=setTimeout(f,b),g&&(e=a.apply(h,i)),e}},throttle:function(a,b){var c,d,e,f,g,h;return g=0,h=function(){g=new Date,e=null,f=a.apply(c,d)},function(){var i=new Date,j=b-(i-g);return c=this,d=arguments,0>=j?(clearTimeout(e),e=null,g=i,f=a.apply(c,d)):e||(e=setTimeout(h,j)),f}},noop:function(){}}}(),c=function(){return{wrapper:'<span class="twitter-typeahead"></span>',dropdown:'<span class="tt-dropdown-menu"></span>',dataset:'<div class="tt-dataset-%CLASS%"></div>',suggestions:'<span class="tt-suggestions"></span>',suggestion:'<div class="tt-suggestion"></div>'}}(),d=function(){"use strict";var a={wrapper:{position:"relative",display:"inline-block"},hint:{position:"absolute",top:"0",left:"0",borderColor:"transparent",boxShadow:"none",opacity:"1"},input:{position:"relative",verticalAlign:"top",backgroundColor:"transparent"},inputWithNoHint:{position:"relative",verticalAlign:"top"},dropdown:{position:"absolute",top:"100%",left:"0",zIndex:"100",display:"none"},suggestions:{display:"block"},suggestion:{whiteSpace:"nowrap",cursor:"pointer"},suggestionChild:{whiteSpace:"normal"},ltr:{left:"0",right:"auto"},rtl:{left:"auto",right:" 0"}};return b.isMsie()&&b.mixin(a.input,{backgroundImage:"url(data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7)"}),b.isMsie()&&b.isMsie()<=7&&b.mixin(a.input,{marginTop:"-1px"}),a}(),e=function(){"use strict";function c(b){b&&b.el||a.error("EventBus initialized without el"),this.$el=a(b.el)}var d="typeahead:";return b.mixin(c.prototype,{trigger:function(a){var b=[].slice.call(arguments,1);this.$el.trigger(d+a,b)}}),c}(),f=function(){"use strict";function a(a,b,c,d){var e;if(!c)return this;for(b=b.split(i),c=d?h(c,d):c,this._callbacks=this._callbacks||{};e=b.shift();)this._callbacks[e]=this._callbacks[e]||{sync:[],async:[]},this._callbacks[e][a].push(c);return this}function b(b,c,d){return a.call(this,"async",b,c,d)}function c(b,c,d){return a.call(this,"sync",b,c,d)}function d(a){var b;if(!this._callbacks)return this;for(a=a.split(i);b=a.shift();)delete this._callbacks[b];return this}function e(a){var b,c,d,e,g;if(!this._callbacks)return this;for(a=a.split(i),d=[].slice.call(arguments,1);(b=a.shift())&&(c=this._callbacks[b]);)e=f(c.sync,this,[b].concat(d)),g=f(c.async,this,[b].concat(d)),e()&&j(g);return this}function f(a,b,c){function d(){for(var d,e=0,f=a.length;!d&&f>e;e+=1)d=a[e].apply(b,c)===!1;return!d}return d}function g(){var a;return a=window.setImmediate?function(a){setImmediate(function(){a()})}:function(a){setTimeout(function(){a()},0)}}function h(a,b){return a.bind?a.bind(b):function(){a.apply(b,[].slice.call(arguments,0))}}var i=/\s+/,j=g();return{onSync:c,onAsync:b,off:d,trigger:e}}(),g=function(a){"use strict";function c(a,c,d){for(var e,f=[],g=0,h=a.length;h>g;g++)f.push(b.escapeRegExChars(a[g]));return e=d?"\\b("+f.join("|")+")\\b":"("+f.join("|")+")",c?new RegExp(e):new RegExp(e,"i")}var d={node:null,pattern:null,tagName:"strong",className:null,wordsOnly:!1,caseSensitive:!1};return function(e){function f(b){var c,d,f;return(c=h.exec(b.data))&&(f=a.createElement(e.tagName),e.className&&(f.className=e.className),d=b.splitText(c.index),d.splitText(c[0].length),f.appendChild(d.cloneNode(!0)),b.parentNode.replaceChild(f,d)),!!c}function g(a,b){for(var c,d=3,e=0;e<a.childNodes.length;e++)c=a.childNodes[e],c.nodeType===d?e+=b(c)?1:0:g(c,b)}var h;e=b.mixin({},d,e),e.node&&e.pattern&&(e.pattern=b.isArray(e.pattern)?e.pattern:[e.pattern],h=c(e.pattern,e.caseSensitive,e.wordsOnly),g(e.node,f))}}(window.document),h=function(){"use strict";function c(c){var e,f,g,i,j=this;c=c||{},c.input||a.error("input is missing"),e=b.bind(this._onBlur,this),f=b.bind(this._onFocus,this),g=b.bind(this._onKeydown,this),i=b.bind(this._onInput,this),this.$hint=a(c.hint),this.$input=a(c.input).on("blur.tt",e).on("focus.tt",f).on("keydown.tt",g),0===this.$hint.length&&(this.setHint=this.getHint=this.clearHint=this.clearHintIfInvalid=b.noop),b.isMsie()?this.$input.on("keydown.tt keypress.tt cut.tt paste.tt",function(a){h[a.which||a.keyCode]||b.defer(b.bind(j._onInput,j,a))}):this.$input.on("input.tt",i),this.query=this.$input.val(),this.$overflowHelper=d(this.$input)}function d(b){return a('<pre aria-hidden="true"></pre>').css({position:"absolute",visibility:"hidden",whiteSpace:"pre",fontFamily:b.css("font-family"),fontSize:b.css("font-size"),fontStyle:b.css("font-style"),fontVariant:b.css("font-variant"),fontWeight:b.css("font-weight"),wordSpacing:b.css("word-spacing"),letterSpacing:b.css("letter-spacing"),textIndent:b.css("text-indent"),textRendering:b.css("text-rendering"),textTransform:b.css("text-transform")}).insertAfter(b)}function e(a,b){return c.normalizeQuery(a)===c.normalizeQuery(b)}function g(a){return a.altKey||a.ctrlKey||a.metaKey||a.shiftKey}var h;return h={9:"tab",27:"esc",37:"left",39:"right",13:"enter",38:"up",40:"down"},c.normalizeQuery=function(a){return(a||"").replace(/^\s*/g,"").replace(/\s{2,}/g," ")},b.mixin(c.prototype,f,{_onBlur:function(){this.resetInputValue(),this.trigger("blurred")},_onFocus:function(){this.trigger("focused")},_onKeydown:function(a){var b=h[a.which||a.keyCode];this._managePreventDefault(b,a),b&&this._shouldTrigger(b,a)&&this.trigger(b+"Keyed",a)},_onInput:function(){this._checkInputValue()},_managePreventDefault:function(a,b){var c,d,e;switch(a){case"tab":d=this.getHint(),e=this.getInputValue(),c=d&&d!==e&&!g(b);break;case"up":case"down":c=!g(b);break;default:c=!1}c&&b.preventDefault()},_shouldTrigger:function(a,b){var c;switch(a){case"tab":c=!g(b);break;default:c=!0}return c},_checkInputValue:function(){var a,b,c;a=this.getInputValue(),b=e(a,this.query),c=b?this.query.length!==a.length:!1,this.query=a,b?c&&this.trigger("whitespaceChanged",this.query):this.trigger("queryChanged",this.query)},focus:function(){this.$input.focus()},blur:function(){this.$input.blur()},getQuery:function(){return this.query},setQuery:function(a){this.query=a},getInputValue:function(){return this.$input.val()},setInputValue:function(a,b){this.$input.val(a),b?this.clearHint():this._checkInputValue()},resetInputValue:function(){this.setInputValue(this.query,!0)},getHint:function(){return this.$hint.val()},setHint:function(a){this.$hint.val(a)},clearHint:function(){this.setHint("")},clearHintIfInvalid:function(){var a,b,c,d;a=this.getInputValue(),b=this.getHint(),c=a!==b&&0===b.indexOf(a),d=""!==a&&c&&!this.hasOverflow(),!d&&this.clearHint()},getLanguageDirection:function(){return(this.$input.css("direction")||"ltr").toLowerCase()},hasOverflow:function(){var a=this.$input.width()-2;return this.$overflowHelper.text(this.getInputValue()),this.$overflowHelper.width()>=a},isCursorAtEnd:function(){var a,c,d;return a=this.$input.val().length,c=this.$input[0].selectionStart,b.isNumber(c)?c===a:document.selection?(d=document.selection.createRange(),d.moveStart("character",-a),a===d.text.length):!0},destroy:function(){this.$hint.off(".tt"),this.$input.off(".tt"),this.$hint=this.$input=this.$overflowHelper=null}}),c}(),i=function(){"use strict";function e(d){d=d||{},d.templates=d.templates||{},d.source||a.error("missing source"),d.name&&!j(d.name)&&a.error("invalid dataset name: "+d.name),this.query=null,this.highlight=!!d.highlight,this.name=d.name||b.getUniqueId(),this.source=d.source,this.displayFn=h(d.display||d.displayKey),this.templates=i(d.templates,this.displayFn),this.$el=a(c.dataset.replace("%CLASS%",this.name))}function h(a){function c(b){return b[a]}return a=a||"value",b.isFunction(a)?a:c}function i(a,c){function d(a){return"<p>"+c(a)+"</p>"}return{empty:a.empty&&b.templatify(a.empty),header:a.header&&b.templatify(a.header),footer:a.footer&&b.templatify(a.footer),suggestion:a.suggestion||d}}function j(a){return/^[_a-zA-Z0-9-]+$/.test(a)}var k="ttDataset",l="ttValue",m="ttDatum";return e.extractDatasetName=function(b){return a(b).data(k)},e.extractValue=function(b){return a(b).data(l)},e.extractDatum=function(b){return a(b).data(m)},b.mixin(e.prototype,f,{_render:function(e,f){function h(){return p.templates.empty({query:e,isEmpty:!0})}function i(){function h(b){var e;return e=a(c.suggestion).append(p.templates.suggestion(b)).data(k,p.name).data(l,p.displayFn(b)).data(m,b),e.children().each(function(){a(this).css(d.suggestionChild)}),e}var i,j;return i=a(c.suggestions).css(d.suggestions),j=b.map(f,h),i.append.apply(i,j),p.highlight&&g({className:"tt-highlight",node:i[0],pattern:e}),i}function j(){return p.templates.header({query:e,isEmpty:!o})}function n(){return p.templates.footer({query:e,isEmpty:!o})}if(this.$el){var o,p=this;this.$el.empty(),o=f&&f.length,!o&&this.templates.empty?this.$el.html(h()).prepend(p.templates.header?j():null).append(p.templates.footer?n():null):o&&this.$el.html(i()).prepend(p.templates.header?j():null).append(p.templates.footer?n():null),this.trigger("rendered")}},getRoot:function(){return this.$el},update:function(a){function b(b){c.canceled||a!==c.query||c._render(a,b)}var c=this;this.query=a,this.canceled=!1,this.source(a,b)},cancel:function(){this.canceled=!0},clear:function(){this.cancel(),this.$el.empty(),this.trigger("rendered")},isEmpty:function(){return this.$el.is(":empty")},destroy:function(){this.$el=null}}),e}(),j=function(){"use strict";function c(c){var d,f,g,h=this;c=c||{},c.menu||a.error("menu is required"),this.isOpen=!1,this.isEmpty=!0,this.datasets=b.map(c.datasets,e),d=b.bind(this._onSuggestionClick,this),f=b.bind(this._onSuggestionMouseEnter,this),g=b.bind(this._onSuggestionMouseLeave,this),this.$menu=a(c.menu).on("click.tt",".tt-suggestion",d).on("mouseenter.tt",".tt-suggestion",f).on("mouseleave.tt",".tt-suggestion",g),b.each(this.datasets,function(a){h.$menu.append(a.getRoot()),a.onSync("rendered",h._onRendered,h)})}function e(a){return new i(a)}return b.mixin(c.prototype,f,{_onSuggestionClick:function(b){this.trigger("suggestionClicked",a(b.currentTarget))},_onSuggestionMouseEnter:function(b){this._removeCursor(),this._setCursor(a(b.currentTarget),!0)},_onSuggestionMouseLeave:function(){this._removeCursor()},_onRendered:function(){function a(a){return a.isEmpty()}this.isEmpty=b.every(this.datasets,a),this.isEmpty?this._hide():this.isOpen&&this._show(),this.trigger("datasetRendered")},_hide:function(){this.$menu.hide()},_show:function(){this.$menu.css("display","block")},_getSuggestions:function(){return this.$menu.find(".tt-suggestion")},_getCursor:function(){return this.$menu.find(".tt-cursor").first()},_setCursor:function(a,b){a.first().addClass("tt-cursor"),!b&&this.trigger("cursorMoved")},_removeCursor:function(){this._getCursor().removeClass("tt-cursor")},_moveCursor:function(a){var b,c,d,e;if(this.isOpen){if(c=this._getCursor(),b=this._getSuggestions(),this._removeCursor(),d=b.index(c)+a,d=(d+1)%(b.length+1)-1,-1===d)return void this.trigger("cursorRemoved");-1>d&&(d=b.length-1),this._setCursor(e=b.eq(d)),this._ensureVisible(e)}},_ensureVisible:function(a){var b,c,d,e;b=a.position().top,c=b+a.outerHeight(!0),d=this.$menu.scrollTop(),e=this.$menu.height()+parseInt(this.$menu.css("paddingTop"),10)+parseInt(this.$menu.css("paddingBottom"),10),0>b?this.$menu.scrollTop(d+b):c>e&&this.$menu.scrollTop(d+(c-e))},close:function(){this.isOpen&&(this.isOpen=!1,this._removeCursor(),this._hide(),this.trigger("closed"))},open:function(){this.isOpen||(this.isOpen=!0,!this.isEmpty&&this._show(),this.trigger("opened"))},setLanguageDirection:function(a){this.$menu.css("ltr"===a?d.ltr:d.rtl)},moveCursorUp:function(){this._moveCursor(-1)},moveCursorDown:function(){this._moveCursor(1)},getDatumForSuggestion:function(a){var b=null;return a.length&&(b={raw:i.extractDatum(a),value:i.extractValue(a),datasetName:i.extractDatasetName(a)}),b},getDatumForCursor:function(){return this.getDatumForSuggestion(this._getCursor().first())},getDatumForTopSuggestion:function(){return this.getDatumForSuggestion(this._getSuggestions().first())},update:function(a){function c(b){b.update(a)}b.each(this.datasets,c)},empty:function(){function a(a){a.clear()}b.each(this.datasets,a),this.isEmpty=!0},isVisible:function(){return this.isOpen&&!this.isEmpty},destroy:function(){function a(a){a.destroy()}this.$menu.off(".tt"),this.$menu=null,b.each(this.datasets,a)}}),c}(),k=function(){"use strict";function f(c){var d,f,i;c=c||{},c.input||a.error("missing input"),this.isActivated=!1,this.autoselect=!!c.autoselect,this.minLength=b.isNumber(c.minLength)?c.minLength:1,this.$node=g(c.input,c.withHint),d=this.$node.find(".tt-dropdown-menu"),f=this.$node.find(".tt-input"),i=this.$node.find(".tt-hint"),f.on("blur.tt",function(a){var c,e,g;c=document.activeElement,e=d.is(c),g=d.has(c).length>0,b.isMsie()&&(e||g)&&(a.preventDefault(),a.stopImmediatePropagation(),b.defer(function(){f.focus()}))}),d.on("mousedown.tt",function(a){a.preventDefault()}),this.eventBus=c.eventBus||new e({el:f}),this.dropdown=new j({menu:d,datasets:c.datasets}).onSync("suggestionClicked",this._onSuggestionClicked,this).onSync("cursorMoved",this._onCursorMoved,this).onSync("cursorRemoved",this._onCursorRemoved,this).onSync("opened",this._onOpened,this).onSync("closed",this._onClosed,this).onAsync("datasetRendered",this._onDatasetRendered,this),this.input=new h({input:f,hint:i}).onSync("focused",this._onFocused,this).onSync("blurred",this._onBlurred,this).onSync("enterKeyed",this._onEnterKeyed,this).onSync("tabKeyed",this._onTabKeyed,this).onSync("escKeyed",this._onEscKeyed,this).onSync("upKeyed",this._onUpKeyed,this).onSync("downKeyed",this._onDownKeyed,this).onSync("leftKeyed",this._onLeftKeyed,this).onSync("rightKeyed",this._onRightKeyed,this).onSync("queryChanged",this._onQueryChanged,this).onSync("whitespaceChanged",this._onWhitespaceChanged,this),this._setLanguageDirection()}function g(b,e){var f,g,h,j;f=a(b),g=a(c.wrapper).css(d.wrapper),h=a(c.dropdown).css(d.dropdown),j=f.clone().css(d.hint).css(i(f)),j.val("").removeData().addClass("tt-hint").removeAttr("id name placeholder required").prop("readonly",!0).attr({autocomplete:"off",spellcheck:"false",tabindex:-1}),f.data(l,{dir:f.attr("dir"),autocomplete:f.attr("autocomplete"),spellcheck:f.attr("spellcheck"),style:f.attr("style")}),f.addClass("tt-input").attr({autocomplete:"off",spellcheck:!1}).css(e?d.input:d.inputWithNoHint);try{!f.attr("dir")&&f.attr("dir","auto")}catch(k){}return f.wrap(g).parent().prepend(e?j:null).append(h)}function i(a){return{backgroundAttachment:a.css("background-attachment"),backgroundClip:a.css("background-clip"),backgroundColor:a.css("background-color"),backgroundImage:a.css("background-image"),backgroundOrigin:a.css("background-origin"),backgroundPosition:a.css("background-position"),backgroundRepeat:a.css("background-repeat"),backgroundSize:a.css("background-size")}}function k(a){var c=a.find(".tt-input");b.each(c.data(l),function(a,d){b.isUndefined(a)?c.removeAttr(d):c.attr(d,a)}),c.detach().removeData(l).removeClass("tt-input").insertAfter(a),a.remove()}var l="ttAttrs";return b.mixin(f.prototype,{_onSuggestionClicked:function(a,b){var c;(c=this.dropdown.getDatumForSuggestion(b))&&this._select(c)},_onCursorMoved:function(){var a=this.dropdown.getDatumForCursor();this.input.setInputValue(a.value,!0),this.eventBus.trigger("cursorchanged",a.raw,a.datasetName)},_onCursorRemoved:function(){this.input.resetInputValue(),this._updateHint()},_onDatasetRendered:function(){this._updateHint()},_onOpened:function(){this._updateHint(),this.eventBus.trigger("opened")},_onClosed:function(){this.input.clearHint(),this.eventBus.trigger("closed")},_onFocused:function(){this.isActivated=!0,this.dropdown.open()},_onBlurred:function(){this.isActivated=!1,this.dropdown.empty(),this.dropdown.close()},_onEnterKeyed:function(a,b){var c,d;c=this.dropdown.getDatumForCursor(),d=this.dropdown.getDatumForTopSuggestion(),c?(this._select(c),b.preventDefault()):this.autoselect&&d&&(this._select(d),b.preventDefault())},_onTabKeyed:function(a,b){var c;(c=this.dropdown.getDatumForCursor())?(this._select(c),b.preventDefault()):this._autocomplete(!0)},_onEscKeyed:function(){this.dropdown.close(),this.input.resetInputValue()},_onUpKeyed:function(){var a=this.input.getQuery();this.dropdown.isEmpty&&a.length>=this.minLength?this.dropdown.update(a):this.dropdown.moveCursorUp(),this.dropdown.open()},_onDownKeyed:function(){var a=this.input.getQuery();this.dropdown.isEmpty&&a.length>=this.minLength?this.dropdown.update(a):this.dropdown.moveCursorDown(),this.dropdown.open()},_onLeftKeyed:function(){"rtl"===this.dir&&this._autocomplete()},_onRightKeyed:function(){"ltr"===this.dir&&this._autocomplete()},_onQueryChanged:function(a,b){this.input.clearHintIfInvalid(),b.length>=this.minLength?this.dropdown.update(b):this.dropdown.empty(),this.dropdown.open(),this._setLanguageDirection()},_onWhitespaceChanged:function(){this._updateHint(),this.dropdown.open()},_setLanguageDirection:function(){var a;this.dir!==(a=this.input.getLanguageDirection())&&(this.dir=a,this.$node.css("direction",a),this.dropdown.setLanguageDirection(a))},_updateHint:function(){var a,c,d,e,f,g;a=this.dropdown.getDatumForTopSuggestion(),a&&this.dropdown.isVisible()&&!this.input.hasOverflow()?(c=this.input.getInputValue(),d=h.normalizeQuery(c),e=b.escapeRegExChars(d),f=new RegExp("^(?:"+e+")(.+$)","i"),g=f.exec(a.value),g?this.input.setHint(c+g[1]):this.input.clearHint()):this.input.clearHint()},_autocomplete:function(a){var b,c,d,e;b=this.input.getHint(),c=this.input.getQuery(),d=a||this.input.isCursorAtEnd(),b&&c!==b&&d&&(e=this.dropdown.getDatumForTopSuggestion(),e&&this.input.setInputValue(e.value),this.eventBus.trigger("autocompleted",e.raw,e.datasetName))},_select:function(a){this.input.setQuery(a.value),this.input.setInputValue(a.value,!0),this._setLanguageDirection(),this.eventBus.trigger("selected",a.raw,a.datasetName),this.dropdown.close(),b.defer(b.bind(this.dropdown.empty,this.dropdown))},open:function(){this.dropdown.open()},close:function(){this.dropdown.close()},setVal:function(a){a=b.toStr(a),this.isActivated?this.input.setInputValue(a):(this.input.setQuery(a),this.input.setInputValue(a,!0)),this._setLanguageDirection()},getVal:function(){return this.input.getQuery()},destroy:function(){this.input.destroy(),this.dropdown.destroy(),k(this.$node),this.$node=null}}),f}();!function(){"use strict";var c,d,f;c=a.fn.typeahead,d="ttTypeahead",f={initialize:function(c,f){function g(){var g,h,i=a(this);b.each(f,function(a){a.highlight=!!c.highlight}),h=new k({input:i,eventBus:g=new e({el:i}),withHint:b.isUndefined(c.hint)?!0:!!c.hint,minLength:c.minLength,autoselect:c.autoselect,datasets:f}),i.data(d,h)}return f=b.isArray(f)?f:[].slice.call(arguments,1),c=c||{},this.each(g)},open:function(){function b(){var b,c=a(this);(b=c.data(d))&&b.open()}return this.each(b)},close:function(){function b(){var b,c=a(this);(b=c.data(d))&&b.close()}return this.each(b)},val:function(b){function c(){var c,e=a(this);(c=e.data(d))&&c.setVal(b)}function e(a){var b,c;return(b=a.data(d))&&(c=b.getVal()),c}return arguments.length?this.each(c):e(this.first())},destroy:function(){function b(){var b,c=a(this);(b=c.data(d))&&(b.destroy(),c.removeData(d))}return this.each(b)}},a.fn.typeahead=function(b){var c;return f[b]&&"initialize"!==b?(c=this.filter(function(){return!!a(this).data(d)}),f[b].apply(c,[].slice.call(arguments,1))):f.initialize.apply(this,arguments)},a.fn.typeahead.noConflict=function(){return a.fn.typeahead=c,this}}()}(window.jQuery);
-// Generated by CoffeeScript 1.9.1
-(function() {
-  var _builderCache, argsRegExp, compileBuilder, createBuilder, createBuilders, diecut, isArray,
-    slice = [].slice;
-
-  argsRegExp = /\$(\d+)/g;
-
-  isArray = function(a) {
-    return a && a.constructor === Array;
-  };
-
-  compileBuilder = function(template) {
-    var attributes, beginTag, classes, closeTag, id, indexOfAttributes, indexOfId, ref, tagName, tagNameAndClasses;
-    template = template.trim();
-    if (0 <= (indexOfAttributes = template.indexOf(' '))) {
-      tagNameAndClasses = template.substr(0, indexOfAttributes);
-      attributes = template.substr(indexOfAttributes);
-    } else {
-      tagNameAndClasses = template;
-    }
-    ref = tagNameAndClasses.split(/\.+/g), tagName = ref[0], classes = 2 <= ref.length ? slice.call(ref, 1) : [];
-    if (0 <= (indexOfId = tagName.indexOf('#'))) {
-      id = tagName.substr(indexOfId + 1);
-      tagName = tagName.substr(0, indexOfId);
-    }
-    if (tagName === '') {
-      tagName = 'div';
-    }
-    beginTag = "<" + tagName;
-    if (id) {
-      beginTag += " id=\"" + id + "\"";
-    }
-    if (classes.length) {
-      beginTag += " class=\"" + (classes.join(' ')) + "\"";
-    }
-    if (attributes) {
-      beginTag += attributes;
-    }
-    beginTag += ">";
-    closeTag = "</" + tagName + ">";
-    return function() {
-      var args, content, contents, tag;
-      contents = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-      if (contents == null) {
-        contents = '';
-      }
-      content = contents.constructor === Array ? contents.join('') : contents;
-      tag = args.length ? beginTag.replace(argsRegExp, function(match, submatch) {
-        var argIndex;
-        if ((argIndex = parseInt(submatch)) > 0) {
-          return args[argIndex - 1];
-        } else {
-          return '';
-        }
-      }) : beginTag;
-      return tag + content + closeTag;
-    };
-  };
-
-  _builderCache = {};
-
-  createBuilder = function(template) {
-    var cached;
-    if (template == null) {
-      template = 'div';
-    }
-    if (cached = _builderCache[template]) {
-      return cached;
-    } else {
-      return _builderCache[template] = compileBuilder(template);
-    }
-  };
-
-  createBuilders = function(templates) {
-    var i, len, results, template;
-    results = [];
-    for (i = 0, len = templates.length; i < len; i++) {
-      template = templates[i];
-      results.push(createBuilder(template || null));
-    }
-    return results;
-  };
-
-  diecut = function() {
-    var templates;
-    templates = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-    if (templates.length > 1) {
-      return createBuilders(templates);
-    } else {
-      return createBuilder(templates[0]);
-    }
-  };
-
-  if ((typeof module !== "undefined" && module !== null ? module.exports : void 0) != null) {
-    module.exports = diecut;
-  } else {
-    window.diecut = diecut;
-  }
-
-}).call(this);
-
-(function(){var n,t,e,r,i,o,u,a,s,c,l,f,h,d,p,v,g,m,w,b,y,k,x,C,S,q,N,W,T,O,E,Y,X,I,M,z,A,P,F,j,L,R,B,V,D,H,G,U,K,J,Q,Z,nn,tn,en,rn,on,un,an,sn,cn,ln,fn,hn,dn,pn,vn,gn,mn,wn,bn,yn,_n,kn,xn,Cn,Sn,qn,Nn,Wn,Tn,On,En,Yn,Xn,In,Mn,zn,An,Pn,Fn,jn,Ln,Rn,Bn,Vn,Dn,Hn,$n,Gn,Un,Kn,Jn,Qn,Zn,nt,tt,et,rt,it,ot,ut,at,st,ct,lt,ft,ht,dt,pt,vt,gt,mt,wt,bt,yt,_t,kt,xt,Ct,St,qt,Nt,Wt,Tt,Ot,Et,Yt,Xt,It,Mt,zt,At,Pt,Ft,jt,Lt,Rt,Bt,Vt,Dt,Ht,$t,Gt,Ut,Kt,Jt,Qt,Zt,ne,te,ee,re,ie,oe,ue,ae,se,ce,le,fe,he,de,pe,ve,ge,me,we,be,ye,_e,ke,xe,Ce,Se,qe,Ne,We,Te,Oe,Ee,Ye,Xe,Ie,Me,ze,Ae,Pe,Fe,je,Le,Re,Be,Ve,De,He,$e,Ge,Ue,Ke,Je,Qe,Ze,nr,tr,er,rr,ir,or,ur,ar,sr,cr,lr,fr,hr,dr,pr,vr,gr,mr,wr,br,yr,_r,kr,xr,Cr,Sr,qr,Nr,Wr,Tr,Or,Er,Yr,Xr,Ir,Mr,zr,Ar,Pr,Fr,jr,Lr,Rr,Br,Vr,Dr,Hr,$r,Gr,Ur,Kr,Jr,Qr,Zr,ni,ti,ei,ri,ii,oi,ui,ai,si,ci,li,fi,hi,di,pi,vi,gi,mi,wi,bi,yi,_i,ki,xi,Ci,Si,qi,Ni,Wi,Ti,Oi,Ei,Yi,Xi,Ii,Mi,zi,Ai,Pi,Fi,ji,Li,Ri,Bi,Vi,Di,Hi,$i,Gi,Ui,Ki,Ji,Qi,Zi,no,to,eo,ro,io,oo,uo,ao,so,co,lo,fo,ho,po,vo,go,mo,wo,bo,yo,_o,ko,xo,Co,So,qo,No,Wo,To,Oo,Eo,Yo,Xo,Io,Mo,zo,Ao,Po,Fo,jo,Lo,Ro,Bo,Vo,Do,Ho,$o,Go,Uo,Ko,Jo,Qo,Zo,nu,tu,eu,ru,iu,ou,uu,au,su,cu,lu,fu,hu,du,pu,vu,gu,mu,wu,bu,yu,_u,ku,xu,Cu,Su,qu,Nu,Wu,Tu,Ou=[].slice,Eu=function(n,t){function e(){this.constructor=n}for(var r in t)Yu.call(t,r)&&(n[r]=t[r]);return e.prototype=t.prototype,n.prototype=new e,n.__super__=t.prototype,n},Yu={}.hasOwnProperty;Wu=Math.PI,Tu=2*Wu,fn=Wu/2,Nu=1e-6,Q=Nu*Nu,$n=Wu/180,B=180/Wu,Pt=Math.tan(30*$n),_t=Math.sqrt(3),C=16581375,Rt="transparent",On="&middot;",At="undefined",Yt="null",Wt="Boolean",zt="String",Xt="Number",Et="Function",It="Object",Nt="Array",qt="Arguments",Tt="Date",Mt="RegExp",Ot="Error",Su=function(n){var t;if(t=Object.prototype.toString.call(n),null===n)return Yt;if(void 0===n)return At;if(n===!0||n===!1||"[object Boolean]"===t)return Wt;switch(t){case"[object String]":return zt;case"[object Number]":return Xt;case"[object Function]":return Et;case"[object Object]":return It;case"[object Array]":return Nt;case"[object Arguments]":return qt;case"[object Date]":return Tt;case"[object RegExp]":return Mt;case"[object Error]":return Ot;default:return t}},Tn=function(){function n(n,t){this.match=n,this.func=t}return n}(),Er=function(){var n,t;return n=function(t){var e,r,i;switch(r=Su(t)){case At:return function(n){return void 0===n};case Yt:return function(n){return null===n};case Wt:return function(n){return t===Boolean||n===t};case zt:return function(n){return t===String||n===t};case Xt:return function(n){return t===Number||n===t||_.isNaN(n)&&_.isNaN(t)};case Mt:return function(){return t===RegExp};case Error:return function(){return t===Error};case Tt:return function(n){return t===Date||n===t};case Nt:return 1===t.length&&Et===(i=Su(t[0]))?(e=n(t[0]),function(n){var t,r,i;if(Nt!==Su(n))return!1;for(t=0,r=n.length;r>t;t++)if(i=n[t],!e(i))return!1;return!0}):function(n){return t===Array||be(t,n)};case Et:return function(n){var e;return n instanceof t?!0:n&&n.constructor===t?!0:(e=Su(n),t===Boolean&&e===Wt||t===String&&e===zt||t===Number&&e===Xt)};case It:return function(n){var e,r;for(e in t)if(r=t[e],n[e]!==r)return!1;return!0};default:return function(){return!1}}},t=function(t){var e;return e=_.map(t,n),function(n){var t,r,i,o;if(0===n.length)return!1;if(n.length!==e.length)return!1;for(r=i=0,o=e.length;o>i;r=++i)if(t=e[r],!t(n[r]))return!1;return!0}},function(){var n,e;return n=1<=arguments.length?Ou.call(arguments,0):[],e=_.map(n,function(n){var e,r,i;return i=2<=n.length?Ou.call(n,0,r=n.length-1):(r=0,[]),e=n[r++],new Tn(t(i),e)}),function(){var n,t,r,i;for(n=1<=arguments.length?Ou.call(arguments,0):[],t=0,r=e.length;r>t;t++)if(i=e[t],i.match(n))return i.func.apply(null,n);throw new Error("Pattern match failure for args [ "+_.map(n,function(n){return""+n+":"+Su(n)}).join(", ")+" ]")}}}(),we=function(n,t){return new(n.bind.apply(n,[null].concat(t)))},m=function(){function n(n,t){this.put=n,this.test=t}return n}(),Wn=function(){function n(n,t){this.put=n,this.test=t}return n}(),gt=function(){function n(n,t){this.width=n,this.height=t}return n}(),Kn=function(){function n(n,t,e,r){this.left=n,this.top=t,this.width=e,this.height=r}return n}(),ee=function(){function n(n,t,e,r,i,o,u){this.name=n,this.label=t,this.type=e,this.at=r,this.count=i,this.domain=o,this.format=u}return n}(),nn=function(n){function t(n,e,r,i,o,u,a,s){this.valueAt=o,t.__super__.constructor.call(this,n,e,r,i,u,a,s)}return Eu(t,n),t}(ee),xn=function(n){function t(n,e,r,i,o,u){t.__super__.constructor.call(this,n,e,It,r,i,o,u)}return Eu(t,n),t}(ee),cn=function(){function n(){}return n}(),an=function(){function n(n,t,e,r,i,o,u,a,s){this.label=n,this.vectors=t,this.schema=e,this.indices=r,this.cube=i,this.at=o,this.evaluate=u,this.attach=a,this.metadata=s}return n}(),Bt=function(){function n(n){this.value=n}return n}(),En=function(n){function t(n){t.__super__.constructor.call(this,n)}return Eu(t,n),t}(Bt),kt=function(n){function t(n){t.__super__.constructor.call(this,n)}return Eu(t,n),t}(Bt),R=function(n){function t(n){t.__super__.constructor.call(this,n)}return Eu(t,n),t}(Bt),a=function(n){function t(n){t.__super__.constructor.call(this,n)}return Eu(t,n),t}(Bt),en=function(){function n(n){this.name=n}return n}(),Cn=function(n){function t(n){this.evaluate=n}return Eu(t,n),t}(en),Qn=function(n){function t(n){this.evaluate=n}return Eu(t,n),t}(en),rn=function(){function n(n,t){this.color=n,this.opacity=t}return n}(),xt=function(){function n(n,t,e){this.color=n,this.opacity=t,this.size=e}return n}(),ct=function(){function n(n){this.fields=n}return n}(),Un=function(){function n(n){this.index=n}return n}(),Nn=function(){function n(){}return n}(),Fn=function(n){function t(n,t,e,r,i,o,u,a,s){this.position=n,this.shape=t,this.size=e,this.fillColor=r,this.fillOpacity=i,this.strokeColor=o,this.strokeOpacity=u,this.lineWidth=a,this.tooltip=s}return Eu(t,n),t}(Nn),In=function(n){function t(n,t,e,r,i){this.position=n,this.strokeColor=t,this.strokeOpacity=e,this.lineWidth=r,this.tooltip=i}return Eu(t,n),t}(Nn),tt=function(n){function t(n,t,e,r,i){this.position=n,this.strokeColor=t,this.strokeOpacity=e,this.lineWidth=r,this.tooltip=i}return Eu(t,n),t}(Nn),Jn=function(n){function t(n,t,e,r,i,o,u,a,s){this.position=n,this.width=t,this.height=e,this.fillColor=r,this.fillOpacity=i,this.strokeColor=o,this.strokeOpacity=u,this.lineWidth=a,this.tooltip=s}return Eu(t,n),t}(Nn),e=function(){function n(){}return n}(),yn=function(n){function t(n,t,e,r){this.position=n,this.strokeColor=t,this.strokeOpacity=e,this.lineWidth=r}return Eu(t,n),t}(e),t=function(){function n(){}return n}(),bn=function(n){function t(n,t,e,r,i){this.slope=n,this.intercept=t,this.strokeColor=e,this.strokeOpacity=r,this.lineWidth=i,this.render=su}return Eu(t,n),t}(t),qn=function(){function n(){}return n}(),Ln=function(n){function t(n,t,e,r,i,o,u,a,s,c,l){this.space=n,this.positionX=t,this.positionY=e,this.shape=r,this.size=i,this.fillColor=o,this.fillOpacity=u,this.strokeColor=a,this.strokeOpacity=s,this.lineWidth=c,this.tooltip=l,this.geometry=jn}return Eu(t,n),t}(qn),it=function(n){function t(n,t,e,r,i,o,u,a,s,c,l,f){this.space=n,this.q0=t,this.q1=e,this.q2=r,this.q3=i,this.qn=o,this.positionY=u,this.height=a,this.strokeColor=s,this.strokeOpacity=c,this.lineWidth=l,this.tooltip=f,this.geometry=rt}return Eu(t,n),t}(qn),at=function(n){function t(n,t,e,r,i,o,u,a,s,c,l,f){this.space=n,this.positionX=t,this.q0=e,this.q1=r,this.q2=i,this.q3=o,this.qn=u,this.width=a,this.strokeColor=s,this.strokeOpacity=c,this.lineWidth=l,this.tooltip=f,this.geometry=ut}return Eu(t,n),t}(qn),y=function(n){function t(n,t,e,r,i,o,u,a,s,c,l){this.space=n,this.positionX=t,this.positionY1=e,this.positionY2=r,this.width=i,this.fillColor=o,this.fillOpacity=u,this.strokeColor=a,this.strokeOpacity=s,this.lineWidth=c,this.tooltip=l,this.geometry=b}return Eu(t,n),t}(qn),u=function(n){function t(n,t,e,r,i,u,a,s,c,l,f){this.space=n,this.positionX1=t,this.positionX2=e,this.positionY=r,this.height=i,this.fillColor=u,this.fillOpacity=a,this.strokeColor=s,this.strokeOpacity=c,this.lineWidth=l,this.tooltip=f,this.geometry=o}return Eu(t,n),t}(qn),zn=function(n){function t(n,t,e,r,i,o,u){this.space=n,this.positionX=t,this.positionY=e,this.strokeColor=r,this.strokeOpacity=i,this.lineWidth=o,this.tooltip=u,this.geometry=Mn}return Eu(t,n),t}(qn),J=function(){function n(){}return n}(),Pn=function(n){function t(n,t,e,r,i,o,u,a,s,c,l,f){this.positionX=n,this.positionY=t,this.shape=e,this.size=r,this.fill=i,this.fillColor=o,this.fillOpacity=u,this.stroke=a,this.strokeColor=s,this.strokeOpacity=c,this.lineWidth=l,this.tooltip=f}return Eu(t,n),t}(J),et=function(n){function t(n,t,e,r,i,o,u,a,s,c,l,f){this.q0=n,this.q1=t,this.q2=e,this.q3=r,this.qn=i,this.positionY=o,this.height=u,this.stroke=a,this.strokeColor=s,this.strokeOpacity=c,this.lineWidth=l,this.tooltip=f}return Eu(t,n),t}(J),ot=function(n){function t(n,t,e,r,i,o,u,a,s,c,l,f){this.positionX=n,this.q0=t,this.q1=e,this.q2=r,this.q3=i,this.qn=o,this.width=u,this.stroke=a,this.strokeColor=s,this.strokeOpacity=c,this.lineWidth=l,this.tooltip=f}return Eu(t,n),t}(J),w=function(n){function t(n,t,e,r,i,o,u,a,s,c,l,f){this.positionX=n,this.positionY1=t,this.positionY2=e,this.width=r,this.fill=i,this.fillColor=o,this.fillOpacity=u,this.stroke=a,this.strokeColor=s,this.strokeOpacity=c,this.lineWidth=l,this.tooltip=f}return Eu(t,n),t}(J),i=function(n){function t(n,t,e,r,i,o,u,a,s,c,l,f){this.positionX1=n,this.positionX2=t,this.positionY=e,this.height=r,this.fill=i,this.fillColor=o,this.fillOpacity=u,this.stroke=a,this.strokeColor=s,this.strokeOpacity=c,this.lineWidth=l,this.tooltip=f}return Eu(t,n),t}(J),Xn=function(n){function t(n,t,e,r,i,o,u){this.positionX=n,this.positionY=t,this.stroke=e,this.strokeColor=r,this.strokeOpacity=i,this.lineWidth=o,this.tooltip=u}return Eu(t,n),t}(J),yt=function(){function n(n,t){this.x=n,this.y=t}return n}(),bt=function(){function n(n,t,e){this.type=n,this.vectors=t,this.domain=e}return n}(),r=function(){function n(){}return n}(),f=function(n){function t(n,t,e,r,i,o,u){this.type=n,this.label=t,this.scale=e,this.domain=r,this.range=i,this.rect=o,this.guide=u}return Eu(t,n),t}(r),Vn=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(r),kn=function(n){function t(n,t,e,r,i,o,u){this.type=n,this.label=t,this.scale=e,this.domain=r,this.range=i,this.rect=o,this.guide=u}return Eu(t,n),t}(Vn),Ft=function(){function n(n,t){this.value=n,this.label=t}return n}(),K=function(){function n(n,t){this.label=n,this.encode=t}return n}(),T=function(n){function t(n){this.value=n,t.__super__.constructor.call(this,"Constant",me(this.value))}return Eu(t,n),t}(K),Dt=function(n){function t(n,e,r){this.vector=r,t.__super__.constructor.call(this,n,e)}return Eu(t,n),t}(K),Lt=function(n){function t(n){this.vectors=n,t.__super__.constructor.call(this,"tooltips")}return Eu(t,n),t}(K),Bn=function(n){function t(n,e,r,i,o,u){this.domain=i,this.range=o,this.guide=u,t.__super__.constructor.call(this,n,e,r)}return Eu(t,n),t}(Dt),x=function(n){function t(n,e,r,i,o,u){this.domain=i,this.range=o,this.guide=u,t.__super__.constructor.call(this,n,e,r)}return Eu(t,n),t}(Dt),Yn=function(n){function t(n,e,r,i,o,u){this.domain=i,this.range=o,this.guide=u,t.__super__.constructor.call(this,n,e,r)}return Eu(t,n),t}(Dt),wt=function(n){function t(n,e,r,i,o,u){this.domain=i,this.range=o,this.guide=u,t.__super__.constructor.call(this,n,e,r)}return Eu(t,n),t}(Dt),dt=function(n){function t(n,e,r,i,o,u){this.domain=i,this.range=o,this.guide=u,t.__super__.constructor.call(this,n,e,r)}return Eu(t,n),t}(Dt),g=function(){function n(){}return n}(),k=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),F=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),Rn=function(n){function t(n){this.coordinates=n}return Eu(t,n),t}(g),on=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),un=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),Ct=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),St=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),mt=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),ue=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),pn=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),_n=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),ht=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),jt=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(g),W=function(n){function t(n){this.value=n}return Eu(t,n),t}(F),Vt=function(n){function t(n){this.field=n}return Eu(t,n),t}(F),O=function(n){function t(n){this.value=n}return Eu(t,n),t}(on),Ht=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(on),E=function(n){function t(n){this.value=n}return Eu(t,n),t}(un),$t=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(un),z=function(n){function t(n){this.value=n}return Eu(t,n),t}(Ct),Qt=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(Ct),A=function(n){function t(n){this.value=n}return Eu(t,n),t}(St),Zt=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(St),M=function(n){function t(n){this.value=n}return Eu(t,n),t}(mt),Jt=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(mt),P=function(n){function t(n){this.value=n}return Eu(t,n),t}(ue),te=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(ue),Y=function(n){function t(n){this.value=n}return Eu(t,n),t}(pn),Gt=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(pn),X=function(n){function t(n){this.value=n}return Eu(t,n),t}(_n),Ut=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(_n),I=function(n){function t(n){this.value=n}return Eu(t,n),t}(ht),Kt=function(n){function t(n,t){this.field=n,this.range=t}return Eu(t,n),t}(ht),ne=function(n){function t(n){this.fields=n}return Eu(t,n),t}(jt),Z=function(){function n(n,t){this.min=n,this.max=t}return n}(),G=function(){function n(n,t){this.min=n,this.max=t}return n}(),U=function(){function n(n,t){this.min=n,this.max=t}return n}(),Gn=function(){function n(){}return n}(),h=function(n){function t(n){this.values=n}return Eu(t,n),t}(Gn),Dn=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(Gn),ft=function(n){function t(n,t){this.min=n,this.max=t}return Eu(t,n),t}(Dn),H=function(n){function t(n,t,e){this.min=n,this.mid=t,this.max=e}return Eu(t,n),t}(Dn),q=function(n){function t(){return t.__super__.constructor.apply(this,arguments)}return Eu(t,n),t}(Gn),lt=function(n){function t(n,t){this.min=n,this.max=t}return Eu(t,n),t}(q),D=function(n){function t(n,t,e){this.min=n,this.mid=t,this.max=e}return Eu(t,n),t}(q),sn=function(){function n(n,t,e,r,i){this.encode=n,this.mask=t,this.highlight=e,this.render=r,this.select=i}return n}(),L=function(){function n(n){this.read=n}return n}(),l=function(){function n(n,t,e,r){this.element=n,this.context=t,this.bounds=e,this.ratio=r}return n}(),re=function(){function n(n,t,e,r,i,o,u,a,s,c,l){this.box=n,this.container=t,this.baseCanvas=e,this.highlightCanvas=r,this.hoverCanvas=i,this.maskCanvas=o,this.clipCanvas=u,this.marquee=a,this.tooltip=s,this.mask=c,this.clip=l}return n}(),gn=function(){function n(n,t,e,r,i,o){this.encodings=n,this.encoders=t,this.mask=e,this.highlight=r,this.render=i,this.select=o}return n}(),ie=function(){function n(n,t,e,r,i,o,u,a){this.viewport=n,this.frame=t,this.test=e,this.highlight=r,this.hover=i,this.selectAt=o,this.selectWithin=u,this.render=a}return n}(),An=function(){function n(n,t,e,r){this.element=n,this.subscribe=t,this.unsubscribe=e,this.highlight=r}return n}(),s=function(){function n(n,t){this.width=n,this.height=t}return n}(),Zn=function(){function n(n,t,e,r,i){this.center=n,this.left=t,this.top=e,this.right=r,this.bottom=i}return n}(),Sn=function(){function n(n,t,e,r){this.left=n,this.top=t,this.right=e,this.bottom=r}return n}(),c=function(){function n(n,t,e){var r;this.width=n,this.height=t,this.margin=e,this.regions=new Zn(r=new Kn(e.left,e.top,n-e.left-e.right,t-e.top-e.bottom),new Kn(0,e.top,e.left,r.height),new Kn(e.left+r.width,e.top,e.right,r.height),new Kn(e.left,0,r.width,e.top),new Kn(e.left,e.top+r.height,r.width,e.bottom))}return n}(),Hn=function(){function n(n,t,e,r){this.where=n,this.limit=t,this.group=e,this.having=r}return n}(),d=function(){function n(n,t){this.key=n,this.value=t}return n}(),n=new d(0,"All"),j=function(){function n(n,t,e,r){this.frame=n,this.hierarchy=t,this.cells=e,this.dimension=r}return n}(),mn=function(){function n(n,t,e){this.category=n,this.indices=t,this.children=e}return n}(),p=function(){function n(n,t){this.levels=n,this.indices=t}return n}(),tn=function(){function n(n,t,e,r,i){this.at=n,this.valueAt=t,this.count=e,this.domain=r,this.format=i}return n}(),ln=function(){function n(n){this.fields=n}return n}(),oe=function(){function n(n,t){this.fields=n,this.predicate=t}return n}(),wn=function(){function n(n,t){this.offset=n,this.length=t}return n}(),hn=function(){function n(n,t){this.fields=n,this.predicate=t}return n}(),vn=function(){function n(n,t){this.frame=n,this.index=t}return n}(),st=function(){function n(n,t){this.frame=n,this.indices=t}return n}(),V=function(){function n(n){this.frame=n}return n}(),N=function(){function n(n){this.vector=n}return n}(),dn=function(){function n(n){this.vector=n}return n}(),nt=function(){function n(n){this.index=n}return n}(),v=function(){function n(n,t){this.vector=n,this.index=t}return n}(),ke=function(n){var t;return t=parseFloat(n),_.isNaN(t)?void 0:t},_e=function(n){var t;return t=parseInt(n,10),_.isNaN(t)?void 0:t},ye=function(n){return null!=n?n:void 0},xu=function(n){return n*n},Ne=function(n,t){return function(e){return n>e?n:e>t?t:e}},qe=Ne(0,1),Or=8,Le=function(n){return n.slice(0)},Ci=function(n,t){var e,r,i,o,u,a,s,c;for(c=[],e=0,r=n.length;r>e;e++)for(a=n[e],u=t(a),o=0,i=u.length;i>o;o++)s=u[o],c.push(s);return c},Hi=function(){var n,t;return t=arguments[0],n=2<=arguments.length?Ou.call(arguments,1):[],function(){return t.apply(null,n)}},me=function(n){return function(){return n}},be=function(n,t){var e,r,i,o;if(n&&t&&n.length===t.length){for(e=r=0,i=n.length;i>r;e=++r)if(o=n[e],o!==t[e])return!1;return!0}return!1},bi=function(){var n,t,e,r,i,o,u,a,s;for(t=arguments[0],s=2<=arguments.length?Ou.call(arguments,1):[],e=[],r=0,i=t.length;i>r;r++)for(n=t[r],u=0,o=s.length;o>u;u++)a=s[u],n instanceof a&&e.push(n);return e},ki=function(){var n,t,e,r,i,o,u,a;for(t=arguments[0],a=2<=arguments.length?Ou.call(arguments,1):[],e=0,r=t.length;r>e;e++)for(n=t[e],o=0,i=a.length;i>o;o++)if(u=a[o],n instanceof u)return n},xi=function(n,t){var e,r,i,o;for(i=[],e=0,r=t.length;r>e;e++)o=t[e],i.push(ki(n,o));return i},rr=function(n,t){return t>n?new Z(n,t):new Z(t,n)},ze=function(n){var t,e,r,i,o;for(i=Number.POSITIVE_INFINITY,r=Number.NEGATIVE_INFINITY,t=0,e=n.length;e>t;t++)o=n[t],void 0!==o&&(i>=o&&(i=o),o>=r&&(r=o));return new Z(i,r)},Ae=function(n,t){var e,r,i,o,u,a;for(o=Number.POSITIVE_INFINITY,i=Number.NEGATIVE_INFINITY,e=r=0,u=n;u>=0?u>r:r>u;e=u>=0?++r:--r)void 0!==(a=t(e))&&(o>=a&&(o=a),a>=i&&(i=a));return new Z(o,i)},je=function(n){return function(t){return t.min>=n&&t.max>n?1:t.min<n&&t.max<=n?-1:0}},Fe=je(0),Xe=function(n,t){return new Z(Math.min(n.min,t.min),Math.max(n.max,t.max))},Xi=function(n){return function(t){return t.min>n&&t.max>n?new Z(n,t.max):t.min<n&&t.max<n?new Z(t.min,n):t}},Yi=Xi(0),jr=function(n,t,e){return $.ajax({dataType:n,url:t,success:function(n,t,r){return e(null,n)},error:function(n,t,r){return e(r)}})},fr=function(n,t,e){var r,i,o;return i=function(){return t.length},r=function(n){return t[n]},o=e?function(n){return e(t[n],n)}:r,new xn(n,n,r,i,t,o)},Nr=function(n,t,e,r){return le(n,n,t,e,r)},le=function(n,t,e,r,i){var o,u,a,s;return a=ze(r),u=function(){return r.length},o=function(n){return r[n]},s=i?function(n){return i(r[n],n)}:o,new ee(n,t,e,o,u,a,s)},sr=function(n,t,e,r,i,o){var u,a;return u=Ae(r,i),a=o?function(n){return o(i(n),n)}:i,new ee(n,t,e,i,r,u,a)},wi=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,p,v,g,m,w;for(o=0,i={},v=t(),s=new Array(v),c=function(){var n,t,r;for(r=[],n=0,t=e.length;t>n;n++)m=e[n],r.push(i[m]=new d(o++,m));return r}(),h=p=0,g=v;g>=0?g>p:p>g;h=g>=0?++p:--p)l=n(h),m=void 0!==l?l:"?",(a=i[m])||c.push(i[m]=a=new d(o++,m)),s[h]=a;return u=function(n){return s[n]},w=function(n){return s[n].value},f=r?function(n){return r(s[n].value)}:function(n){return void 0!==(m=s[n].value)?_.escape(m):m},new tn(u,w,t,c,f)},ir=function(n,t,e,r,i){var o,u,a;return u=function(){return e.length},o=function(n){return e[n]},a=wi(o,u,r||[],i),new nn(n,n,t,a.at,a.valueAt,u,a.domain,a.format)},Be=function(n,t){var e,r,i,o,u,a;return i="All",r=new d(0,i),a=function(n){return i},e=function(){return r},o=function(){return t},u=function(){return i},new nn(n,n,zt,e,a,o,[r],u)},ar=function(n,t,e,r,i){var o,u;return u=_.indexBy(t,function(n){return n.name}),o=new an(n,t,u,e,r,null,null,null,i||{}),o.evaluate=function(t){var e,i,a,s;return i=_.isArray(t)?t:[t],a=function(){var a,c,l;for(l=[],a=0,c=i.length;c>a;a++)if(e=i[a],e instanceof Cn)l.push(o.evaluate(e.evaluate(o)));else if(e instanceof Qn){if(!r)throw new Error("Cannot compute aggregate ["+e.name+"] on an unaggregated frame.");l.push(o.evaluate(e.evaluate(o,r)))}else{if(!(e instanceof en))throw new Error("Cannot evaluate ["+t+"] on frame ["+n+"].");if(!(s=u[e.name]))throw new Error("Vector ["+e.name+"] does not exist in frame ["+n+"].");l.push(s)}return l}(),_.flatten(a)},o.attach=function(e){if(u[e.name])throw new Error("Cannot attach vector ["+e.name+"]: a vector by that name already exists in frame ["+n+"]");return t.push(e),u[e.name]=e,e},o.exists=function(n){return u[n]?!0:!1},o},Ur=function(n){var t,e,r,i,o,u,a,s,c,l,f;for(f=new Array(n.indices.length),e=_.map(n.vectors,function(n){return n instanceof nn?n.valueAt:n.at}),c=n.indices,i=0,o=c.length;o>i;i++)for(r=c[i],f[r]=l=new Array(n.vectors.length),s=a=0,u=e.length;u>a;s=++a)t=e[s],l[s]=t(r);return f},wr=function(n){return new Hn(bi(n,oe),bi(n,wn),bi(n,ln),bi(n,hn))},ur=function(n){return _.map(n,function(n){return new en(n)})},or=function(n){return new Cn(function(t){var e,r,i,o,u,a,s,c,l;if(l=_.head(t.evaluate(n)),l instanceof nn)return n;for(a=l.count(),e=l.at,i=new Array(a),o=u=0,s=a;s>=0?s>u:u>s;o=s>=0?++u:--u)void 0!==(c=e(o))&&(i[o]=""+c);return t.attach(r=ir("factor("+l.label+")",zt,i)),[new en(r.name)]})},Ve=function(n){return new Cn(function(t){return t.attach(Be(n,t.indices.length)),[new en(n)]})},ao=Er([String,function(n){return ao(new en(n))}],[en,function(n){return or(n)}],[kt,function(n){var t;return t=n.value,Ve(t)}]),Cr=function(n,t){return new Cn(function(e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g,m,w,b,y,k,x,C,S,q,N,W;if(W=_.head(e.evaluate(n)),W instanceof nn)throw new Error("Cannot stack factor ["+W.label+"]: expecting vector.");for(g=W.count(),y=new Array(g),l=new Array(g),b="low("+W.name+", "+t+")",c="high("+W.name+", "+t+")",i=W.at,u=e.cube,t=Math.min(t,u.dimension),o=u.cells,w=s=0,r=new Array(t),C=e.indices,p=0,v=C.length;v>p;p++){for(f=C[p],m=o[f].levels,h=k=0,S=t;S>=0?S>k:k>S;h=S>=0?++k:--k)if(r[h]!==m[h].category){for(w=s=0,d=x=0,q=t;q>=0?q>x:x>q;d=q>=0?++x:--x)r[d]=m[d].category;break}N=i(f),0>N?(y[f]=w,l[f]=w+=N):(y[f]=s,l[f]=s+=N)}return a=function(n,t){return W.format(t)},e.attach(le(b,W.name,W.type,y,a)),e.attach(le(c,W.name,W.type,l,a)),[new en(b),new en(c)]})},Fo=Er([String,Number,function(n,t){return Fo(new en(n),t)}],[en,Number,function(n,t){return Cr(n,t)}]),Go=function(n){var t;return t=Ne(0,n.length-1),function(e){return n[t(-1+Math.round(e*n.length))]}},Pe=function(n){var t,e,r,i,o,u,a,s;return s=function(){var t,e,r;for(r=[],t=0,e=n.length;e>t;t++)a=n[t],(a||0===a)&&r.push(a);return r}(),s.sort(function(n,t){return n-t}),e=s[0],t=s[s.length-1],u=Go(s),r=u(.25),i=u(.5),o=u(.75),[e,r,i,o,t]},he=function(n){var t,e,r,i,o;for(i=0,t=0,e=0,r=n.length;r>e;e++)o=n[e],void 0!==o&&(i+=o,t++);return i/t},de=function(n){var t,e,r,i;for(t=0,e=0,r=n.length;r>e;e++)i=n[e],void 0!==i&&t++;return t},pe=function(n){var t,e,r,i;for(r=Number.NEGATIVE_INFINITY,t=0,e=n.length;e>t;t++)i=n[t],void 0!==i&&i>=r&&(r=i);return r},ve=function(n){var t,e,r,i;for(r=Number.POSITIVE_INFINITY,t=0,e=n.length;e>t;t++)i=n[t],void 0!==i&&r>=i&&(r=i);return r},ge=function(n){var t,e,r,i;for(r=0,t=0,e=n.length;e>t;t++)i=n[t],void 0!==i&&(r+=i);return r},Re=function(n,t,e,r,i){return new Qn(function(o,u){var a,s,c,l,f,h,d,p,v,g,m,w,b,y,k,x;if(m=t+"("+n.name+")",o.exists(m))return new en(m);for(x=_.head(u.frame.evaluate(n)),a=x.at,l=new Array(u.cells.length),w=u.cells,h=d=0,p=w.length;p>d;h=++d){for(s=w[h],k=[],b=s.indices,g=0,v=b.length;v>g;g++)f=b[g],void 0!==(y=a(f))&&k.push(y);l[h]=i(k)}return o.attach(c=Nr(m,e,l,r)),[new en(c.name)]})},Qi=function(n,t,e,r){return Er([String,function(i){return Re(new en(i),n,t,e,r)}],[en,function(i){return Re(i,n,t,e,r)}])},eo=Qi("count",Xt,_.identity,de),Zi=Qi("avg",Xt,_.identity,he),Co=Qi("max",Xt,_.identity,pe),So=Qi("min",Xt,_.identity,ve),Ro=Qi("sum",Xt,_.identity,ge),ho=function(){var n,t,e;return t=1<=arguments.length?Ou.call(arguments,0):[],e=function(){var e,r,i;for(i=[],e=0,r=t.length;r>e;e++)if(n=t[e],n instanceof en)i.push(n);else{if(!_.isString(n))throw new Error("Cannot group by ["+n+"]");i.push(new en(n))}return i}(),new ln(e)},Ji=Er([[String],Function,function(n,t){return new oe(ur(n),t)}]),Do=function(){var n,t,e;return e=2<=arguments.length?Ou.call(arguments,0,t=arguments.length-1):(t=0,[]),n=arguments[t++],Ji(e,n)},yo=Er([Number,Number,function(n,t){return new wn(n,t)}],[Number,function(n){return new wn(0,n)}]),Ki=Er([[String],Function,function(n,t){return new hn(ur(n),t)}],[[en],Function,function(n,t){return new hn(n,t)}]),vo=function(){var n,t,e;return e=2<=arguments.length?Ou.call(arguments,0,t=arguments.length-1):(t=0,[]),n=arguments[t++],Ki(e,n)},uo=function(n){return function(t){return t===n}},qo=function(n){return function(t){return t!==n}},xo=function(n){return function(t){return n>t}},po=function(n){return function(t){return t>n}},wo=function(n){return function(t){return n>=t}},fo=function(n){return function(t){return t>=n}},bo=function(n){if(Mt!==Su(n))throw new Error("like ["+n+"]: expecting RegExp");return function(t){return n.test(t)}},mo=function(n){return function(t){var e,r,i;for(r=0,i=n.length;i>r;r++)if(e=n[r],e===t)return!0;return!1}},No=function(n){return function(t){var e,r,i;for(r=0,i=n.length;i>r;r++)if(e=n[r],e===t)return!1;return!0}},Uo=function(t,e){var r,i,o,u,a,s,c,l,f,h,d;return c=e.where.length?ar(t.label,t.vectors,_i(t,e.where)):t,h=e.group.length?(s=Ci(e.group,function(n){return n.fields}),u=function(){var n,t,e;for(e=[],n=0,t=s.length;t>n;n++){if(a=s[n],d=_.head(c.evaluate(a)),!(d instanceof nn))throw new Error("Cannot group by ["+a.name+"]: not a Factor.");e.push(d)}return e}(),l={0:new mn(n,c.indices,{})},xe(l,u,0),i=[],Oe(l[0].children,s.length-1,i,0,new Array(s.length)),o=new j(c,l,i,s.length),r=fe(c.label+"'",o,u),e.having.length?ar(r.label,r.vectors,_i(r,e.having),r.cube):r):c,e.limit.length?(f=e.limit[e.limit.length-1],ar(h.label,h.vectors,h.indices.slice(f.offset,f.offset+f.length))):h},_i=function(n,t){var e,r,i,o,u,a,s,c,l,f,h,d,p,v,g,m;for(e=n.indices,l=0,f=t.length;f>l;l++){for(g=t[l],s=[],m=function(){var t,e,r,i;for(r=g.fields,i=[],e=0,t=r.length;t>e;e++)u=r[e],i.push(_.head(n.evaluate(u)));return i}(),o=_.map(m,function(n){return n instanceof nn?n.valueAt:n.at}),p=0,h=e.length;h>p;p++){for(a=e[p],r=new Array(m.length),c=v=0,d=o.length;d>v;c=++v)i=o[c],r[c]=i(a);g.predicate.apply(null,r)&&s.push(a)}e=s}return e},fe=function(n,t,e){var r,i,o;return r=_.range(t.cells.length),o=function(){var n,r,o;for(o=[],i=n=0,r=t.dimension;r>=0?r>n:n>r;i=r>=0?++n:--n)o.push(mi(t,e[i],i));return o}(),ar(n,o,r,t)},xe=function(n,t,e){var r,i,o,u,a,s,c,l,f,h;r=t[e].at;for(s in n){for(f=n[s],u=f.children,h=f.indices,c=0,l=h.length;l>c;c++)a=h[c],i=r(a),(o=u[i.key])||(u[i.key]=o=new mn(i,[],{})),o.indices.push(a);e<t.length-1&&xe(u,t,e+1)}},Oe=function(n,t,e,r,i){var o,u;for(o in n)u=n[o],i[r]=u,r===t?e.push(new p(Le(i),u.indices)):Oe(u.children,t,e,r+1,i)},mi=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v;for(a=new Array(n.cells.length),s={},c=[],p=n.cells,f=h=0,d=p.length;d>h;f=++h)o=p[f],a[f]=i=o.levels[e].category,s[i.value]||(s[i.value]=i,c.push(i));return r=function(n){return a[n]},v=function(n){return a[n].value},l=function(n){return a[n].value},u=function(){return a.length},new nn(t.label,t.label,t.type,r,v,u,c,l)},S={c10:["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"],c20:["#1f77b4","#aec7e8","#ff7f0e","#ffbb78","#2ca02c","#98df8a","#d62728","#ff9896","#9467bd","#c5b0d5","#8c564b","#c49c94","#e377c2","#f7b6d2","#7f7f7f","#c7c7c7","#bcbd22","#dbdb8d","#17becf","#9edae5"],c20b:["#393b79","#5254a3","#6b6ecf","#9c9ede","#637939","#8ca252","#b5cf6b","#cedb9c","#8c6d31","#bd9e39","#e7ba52","#e7cb94","#843c39","#ad494a","#d6616b","#e7969c","#7b4173","#a55194","#ce6dbd","#de9ed6"],c20c:["#3182bd","#6baed6","#9ecae1","#c6dbef","#e6550d","#fd8d3c","#fdae6b","#fdd0a2","#31a354","#74c476","#a1d99b","#c7e9c0","#756bb1","#9e9ac8","#bcbddc","#dadaeb","#636363","#969696","#bdbdbd","#d9d9d9"]},$i=function(n){return n>10?S.c20:S.c10},Te=function(n){var t,e,r,i;return i=n.rgb(),r=i[0],e=i[1],t=i[2],chroma.rgb(r,e,t)},Ye=function(n,t){return t>=0&&1>t?Te(n).alpha(t).css():n.css()},Lr=function(n,t,e,r){var i;return i=Math.sqrt(r/Wu),n.beginPath(),n.arc(t,e,i,0,Tu,!1),n.closePath()},Vr=function(n,t,e,r){var i;return i=.5*Math.sqrt(r),n.save(),n.translate(t,e),n.beginPath(),n.moveTo(i,i),n.lineTo(-i,i),n.lineTo(-i,-i),n.lineTo(i,-i),n.closePath(),n.restore()},Rr=function(n,t,e,r){var i,o;return i=.5*Math.sqrt(r/5),o=3*i,n.save(),n.translate(t,e),n.beginPath(),n.moveTo(o,i),n.lineTo(i,i),n.lineTo(i,o),n.lineTo(-i,o),n.lineTo(-i,i),n.lineTo(-o,i),n.lineTo(-o,-i),n.lineTo(-i,-i),n.lineTo(-i,-o),n.lineTo(i,-o),n.lineTo(i,-i),n.lineTo(o,-i),n.closePath(),n.restore()},Br=function(n,t,e,r){var i,o;return o=Math.sqrt(r/(2*Pt)),i=o*Pt,n.save(),n.translate(t,e),n.beginPath(),n.moveTo(i,0),n.lineTo(0,o),n.lineTo(-i,0),n.lineTo(0,-o),n.closePath(),n.restore()},Gr=function(n,t,e,r){var i,o;return i=Math.sqrt(r/_t),o=i*_t/2,n.save(),n.translate(t,e),n.beginPath(),n.moveTo(0,-o),n.lineTo(i,o),n.lineTo(-i,o),n.closePath(),n.restore()},Dr=function(n,t,e,r){var i,o;return i=Math.sqrt(r/_t),o=i*_t/2,n.save(),n.translate(t,e),n.beginPath(),n.moveTo(0,o),n.lineTo(i,-o),n.lineTo(-i,-o),n.closePath(),n.restore()},$r=function(n,t,e,r){var i,o;return o=Math.sqrt(r/_t),i=o*_t/2,n.save(),n.translate(t,e),n.beginPath(),n.moveTo(i,0),n.lineTo(-i,o),n.lineTo(-i,-o),n.closePath(),n.restore()},Hr=function(n,t,e,r){var i,o;return o=Math.sqrt(r/_t),i=o*_t/2,n.save(),n.translate(t,e),n.beginPath(),n.moveTo(-i,0),n.lineTo(i,-o),n.lineTo(i,o),n.closePath(),n.restore()},vt={circle:Lr,square:Vr,cross:Rr,diamond:Br,triangleUp:Gr,triangleDown:Dr,triangleLeft:Hr,triangleRight:$r},pt={c8:["circle","square","cross","diamond","triangleUp","triangleDown","triangleLeft","triangleRight"]},Gi=function(){return pt.c8},mu=function(n){return function(t){return void 0!==t?n(t):void 0}},pr=function(n,t){var e;return e=d3.scale.linear().domain([n.min,n.max]).range([t.min,t.max]).nice(),[mu(e),e.tickFormat,e.ticks]},vr=function(n,t){var e,r,i,o,u,a,s;for(r=0,e={},o=0,u=n.length;u>o;o++)i=n[o],e[i.key]=r++;return a=(t.max-t.min)/n.length/2,
-s=t.min,mu(function(n){return s+2*e[n.key]*a+a})},Ue=function(n,t){var e,r;return r=t.values,e=r.length,mu(function(n){return r[n.key%e]})},kr=function(n,t){return mu(d3.scale.linear().domain([n.min,n.max]).range([t.min,t.max]))},nr=function(n,t){return mu(d3.scale.linear().domain([n.min,n.mid,n.max]).range([t.min,t.mid,t.max]))},_r=function(n,t){return mu(chroma.scale([t.min,t.max]).domain([n.min,n.max]).mode("lch"))},Ze=function(n,t){var e,r;return e=chroma.scale([t.min,t.mid]).domain([n.min,n.mid]).mode("lch"),r=chroma.scale([t.mid,t.max]).domain([n.mid,n.max]).mode("lch"),function(t){return void 0!==t?t<n.mid?e(t):r(t):void 0}},Je=Er([ft,q,_r],[H,q,Ze]),lr=Er([ft,ft,kr],[H,H,nr]),Ce=function(n){var t;return t=n.toString(16),1===t.length?"0"+t:t},Ke=function(n){var t,e,r,i;return t=n.context,r=n.ratio,e=function(){return"#fff"},i=function(n,e){var i,o,u,a,s;return s=t.getImageData(n*r,e*r,1,1).data,a=s[0],u=s[1],o=s[2],i=s[3],255===a&&255===u&&255===o&&255===i},new m(e,i)},dr=function(n){var t,e,r,i,o,u;return e=n.context,o=n.ratio,t=0,r={},i=function(n){var e,i,o,u;return i=t++,t>=C&&(t=0),r[i]=n,u=i>>16&255,o=i>>8&255,e=255&i,"#"+Ce(u)+Ce(o)+Ce(e)},u=function(n,t){var i,u,a,s,c,l;return l=e.getImageData(n*o,t*o,1,1).data,c=l[0],s=l[1],u=l[2],i=l[3],255===i?(a=(c<<16)+(s<<8)+u,r[a]):void 0},new Wn(i,u)},ai=function(n,t){var e,r,i,o,u,a,s;return s=n.scale,r=n.domain,a=n.range,o=n.guide,u=t.label,e=t.at,i=function(n){return s(e(n))},new Bn(u,i,t,r,a,o)},ni=function(n,t){return new T(n.scale(t))},Zr=function(n,t){var e,r,i,o,u,a,s;return t instanceof Ht||t instanceof Qt?(s=_.head(n.evaluate(t.field)),s instanceof nn?(t.range||(t.range=new h($i(s.domain.length))),u=Ue(s.domain,t.range),e=s.at,i=function(n){return chroma(u(e(n)))},new x(s.label,i,s,s.domain,t.range,null)):(r=function(){switch(Fe(s.domain)){case 1:return new ft(s.domain.min,s.domain.max);case-1:return new ft(s.domain.min,s.domain.max);default:return new H(s.domain.min,0,s.domain.max)}}(),a=Fe(r),o=t.range?t.range instanceof D?r instanceof ft?1===a?new lt(t.range.mid,t.range.max):new lt(t.range.min,t.range.mid):t.range:(r instanceof H?r=new ft(r.min,r.max):void 0,t.range):r instanceof ft?1===a?new lt("#deebf7","#3182bd"):new lt("#e6550d","#fee6ce"):new D("#fc8d59","#ffffbf"),u=Je(r,o),e=s.at,i=function(n){return u(e(n))},new x(s.label,i,s,r,o,null))):new T(t.value)},ii=function(n,t){var e,r,i,o,u,a;if(t instanceof $t||t instanceof Zt){if(a=_.head(n.evaluate(t.field)),a instanceof nn)throw new Error("Could not encode opacity. Vector ["+a.label+"] is a Factor.");return r=new ft(a.domain.min,a.domain.max),o=t.range?new ft(qe(t.range.min),qe(t.range.max)):t.range=new ft(.05,1),u=lr(r,o),e=a.at,i=function(n){return u(e(n))},new Yn(a.label,i,a,r,o,null)}return new T(qe(t.value))},di=function(n,t){var e,r;return n&&t?(e=n.encode,r=t.encode,new Dt("("+n.label+", "+t.label+")",function(n){return Ye(e(n),r(n))})):void 0},gi=function(n,t){return function(e,r,i){var o,u,a,s,c,l;if(r instanceof n){if(l=_.head(e.evaluate(r.field)),l instanceof nn)throw new Error("Could not encode size. Vector ["+l.label+"] is a Factor.");return u=new ft(l.domain.min,l.domain.max),s=r.range?new ft(qe(r.range.min),qe(r.range.max)):r.range=new ft(.05,1),c=lr(u,s),o=l.at,a=function(n){return i*c(o(n))},new t(l.label,a,u,s,null)}return new T(i*qe(r.value))}},fi=gi(Jt,wt),vi=gi(te,wt),ei=gi(Gt,wt),Kr=function(n,t){var e,r,i,o,u,a;if(t instanceof Jt){if(a=_.head(n.evaluate(t.field)),a instanceof nn)throw new Error("Could not encode size. Vector ["+a.label+"] is a Factor.");return r=new ft(a.domain.min,a.domain.max),o=t.range?new ft(xu(t.range.min),xu(t.range.max)):t.range=new ft(xu(Or),xu(30)),u=lr(r,o),e=a.at,i=function(n){return u(e(n))},new wt(a.label,i,a,r,o,null)}return new T(xu(t.value))},ri=function(n,t){var e,r,i,o,u,a;if(t instanceof Ut){if(a=_.head(n.evaluate(t.field)),a instanceof nn)throw new Error("Could not encode lineWidth. Vector ["+a.label+"] is a Factor.");return r=new ft(a.domain.min,a.domain.max),o=t.range?new ft(t.range.min,t.range.max):t.range=new ft(1.5,15),u=lr(r,o),e=a.at,i=function(n){return u(e(n))},new wt(a.label,i,a,r,o,null)}return new T(t.value)},li=function(n,t){var e,r,i,o;if(t instanceof Kt){if(o=_.head(n.evaluate(t.field)),!(o instanceof nn))throw new Error("Could not encode shape. Vector ["+o.label+"] is not a Factor.");return t.range||(t.range=new h(Gi(o.domain.length))),i=Ue(o.domain,t.range),e=o.at,r=function(n){return vt[i(e(n))]},new dt(o.label,r,o,o.domain,t.range,null)}return new T(vt[t.value]||vt.circle)},pi=function(n,t){var e,r;return t?(r=function(){var r,i,o,u;for(o=t.fields,u=[],r=0,i=o.length;i>r;r++)e=o[r],u.push(_.head(n.evaluate(e)));return u}(),new Lt(r)):void 0},Ii=function(n,t){return[null!=n?n:new O(chroma(_.head(S.c10))),null!=t?t:new E(1)]},zi=function(n,t,e){return[null!=n?n:new z(chroma(_.head(S.c10))),null!=t?t:new A(1),null!=e?e:new X(1.5)]},Mi=function(n,t,e,r,i,o,u){var a,s,c,l;return a=n||t,s=e||r||i,a||s||(o&&(a=!0),u&&(s=!0)),a&&(c=Ii(n,t),n=c[0],t=c[1]),s&&(l=zi(e,r,i),e=l[0],r=l[1],i=l[2]),[n,t,e,r,i]},ti=function(n,t){var e,r;return t.fillColor||t.fillOpacity?[e=Zr(n,t.fillColor),r=ii(n,t.fillOpacity),di(e,r)]:[]},hi=function(n,t){var e,r;return t.strokeColor||t.strokeOpacity||t.lineWidth?[e=Zr(n,t.strokeColor),r=ii(n,t.strokeOpacity),di(e,r),ri(n,t.lineWidth)]:[]},We=function(n,t,e,r,i){return n.beginPath(),n.rect(t,e,r,i),n.clip()},Fr=function(n,t,e){return n.lineWidth=e,n.strokeStyle=t,n.stroke()},Xr=function(n,t){return n.fillStyle=t,n.fill()},Ir=function(n,t,e,r,i){return n.beginPath(),n.moveTo(t,e),n.lineTo(r,i),n.stroke()},zr=function(n,t,e,r,i){return n.beginPath(),r>e?n.rect(t-i/2,e,i,r-e):n.rect(t-i/2,r,i,e-r),n.closePath()},Mr=function(n,t,e,r,i){return n.beginPath(),e>t?n.rect(t,r-i/2,e-t,i):n.rect(e,r-i/2,t-e,i),n.closePath()},Ar=function(n,t,e,r,i,o,u,a,s,c){var l,f;return void 0!==t&&void 0!==e&&void 0!==r&&void 0!==i&&void 0!==o&&void 0!==u&&void 0!==a&&void 0!==s&&void 0!==c?(n.strokeStyle=s,n.lineWidth=c,Mr(n,e,i,u,a),n.stroke(),l=a/2,f=a/4,Ir(n,r,u-l,r,u+l),Ir(n,e,u,t,u),Ir(n,i,u,o,u),Ir(n,t,u-f,t,u+f),Ir(n,o,u-f,o,u+f)):void 0},Pr=function(n,t,e,r,i,o,u,a,s,c){var l,f;return void 0!==t&&void 0!==e&&void 0!==r&&void 0!==i&&void 0!==o&&void 0!==u&&void 0!==a&&void 0!==s&&void 0!==c?(n.strokeStyle=s,n.lineWidth=c,zr(n,t,r,o,a),n.stroke(),l=a/2,f=a/4,Ir(n,t-l,i,t+l,i),Ir(n,t,r,t,e),Ir(n,t,o,t,u),Ir(n,t-f,e,t+f,e),Ir(n,t-f,u,t+f,u)):void 0},su=function(n,t,e,r){var i,o,u,a,s,c,l,f,h;u=n.slope,i=n.intercept,a=n.strokeColor,s=n.strokeOpacity,o=n.lineWidth,void 0!==i?0===u?e instanceof Vn&&(c=t.range.min,l=t.range.max,f=h=e.scale(i)):t instanceof Vn&&e instanceof Vn&&(c=t.scale(t.domain.min),l=t.scale(t.domain.max),f=e.scale(u*t.domain.min+i),h=e.scale(u*e.domain.max+i)):t instanceof Vn&&(c=l=t.scale(u),f=e.range.min,h=e.range.max),void 0!==c&&void 0!==f&&void 0!==l&&void 0!==h&&(r.save(),r.strokeStyle=Ye(a,s),r.lineWidth=o,Ir(r,c,f,l,h),r.restore())},cr=function(n){var t,e,r,i,o,u;return r=n.position.coordinates,i=r[0],t=r[1],o=n.strokeColor,u=n.strokeOpacity,e=n.lineWidth,new bn(i?i.value:0,t?t.value:void 0,o?o.value:chroma("red"),u?u.value:1,e?e.value:1.5)},mr=function(n,t){var e,r,i,o,u,a,s,c,l,f,h,d,p;return o=t[0],u=t[1],h=new yt([o],[u]),l=null!=(a=n.shape)?a:new I("circle"),f=null!=(s=n.size)?s:new M(Or),c=Mi(n.fillColor,n.fillOpacity,n.strokeColor,n.strokeOpacity,n.lineWidth,!1,!0),e=c[0],r=c[1],d=c[2],p=c[3],i=c[4],new Ln(h,o,u,l,f,e,r,d,p,i,n.tooltip)},ui=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v,g,m;return s=ai(e,t.positionX),c=ai(r,t.positionY),h=li(n,t.shape),d=Kr(n,t.size),l=ti(n,t),o=l[0],u=l[1],i=l[2],f=hi(n,t),v=f[0],g=f[1],p=f[2],a=f[3],m=pi(n,t.tooltip),new Pn(s,c,h,d,i,o,u,p,v,g,a,m)},Ti=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g;for(l=t.positionX,f=t.positionY,h=t.shape,d=t.size,r=t.fill,p=t.stroke,s=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],v=l(i),g=f(i),void 0!==v&&void 0!==g&&(h(i)(e,v,g,d(i)),e.lineWidth=2+(p?s(i):1),e.stroke());for(e.restore(),e.save(),e.globalCompositeOperation="destination-out",e.fillStyle=e.strokeStyle="black",c=0,a=n.length;a>c;c++)i=n[c],v=l(i),g=f(i),void 0!==v&&void 0!==g&&(h(i)(e,v,g,d(i)),p&&(e.lineWidth=s(i),e.stroke()),r&&e.fill());return e.restore()},Bi=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v;for(c=t.positionX,l=t.positionY,f=t.shape,h=t.size,d=t.stroke,a=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],p=c(i),v=l(i),void 0!==p&&void 0!==v&&(s=r.put(i),f(i)(e,p,v,h(i)),e.fillStyle=s,e.fill(),d&&(e.lineWidth=a(i),e.strokeStyle=s,e.stroke()));return e.restore()},fu=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p;for(s=t.positionX,c=t.positionY,l=t.shape,f=t.size,r=t.fill,h=t.stroke,a=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],d=s(i),p=c(i),void 0!==d&&void 0!==p&&(l(i)(e,d,p,f(i)),h&&(e.lineWidth=a(i),e.strokeStyle=h(i),e.stroke()),r&&(e.fillStyle=r(i),e.fill()));return e.restore()},yu=function(n,t,e,r,i,o){var u,a,s,c,l,f,h,d;for(c=t.positionX,l=t.positionY,f=[],a=0,s=n.length;s>a;a++)u=n[a],h=c(u),d=l(u),void 0!==h&&void 0!==d&&h>=e&&i>=h&&d>=r&&o>=d&&f.push(u);return f},Cu=function(n){return _.map(n,function(n){return n.type}).join(", ")},br=function(n,t){var e,r,i,o,a,s,c,l,f,h,d,p,v,g,m,w,b,_,k,x,C,S,q;switch(S=Cu(t)){case"String, Number":return a=t[0],h=t[1],k=new yt([a],[h]),q=null!=(d=n.width)?d:new P(.8),p=Mi(n.fillColor,n.fillOpacity,n.strokeColor,n.strokeOpacity,n.lineWidth,!0,!1),e=p[0],r=p[1],x=p[2],C=p[3],o=p[4],new y(k,a,void 0,h,q,e,r,x,C,o,n.tooltip);case"String, Number, Number":return a=t[0],f=t[1],h=t[2],k=new yt([a],[f,h]),q=null!=(v=n.width)?v:new P(.8),g=Mi(n.fillColor,n.fillOpacity,n.strokeColor,n.strokeOpacity,n.lineWidth,!0,!1),e=g[0],r=g[1],x=g[2],C=g[3],o=g[4],new y(k,a,f,h,q,e,r,x,C,o,n.tooltip);case"Number, String":return c=t[0],l=t[1],k=new yt([c],[l]),i=null!=(m=n.height)?m:new Y(.8),w=Mi(n.fillColor,n.fillOpacity,n.strokeColor,n.strokeOpacity,n.lineWidth,!0,!1),e=w[0],r=w[1],x=w[2],C=w[3],o=w[4],new u(k,void 0,c,l,i,e,r,x,C,o,n.tooltip);case"Number, Number, String":return s=t[0],c=t[1],l=t[2],k=new yt([s,c],[l]),i=null!=(b=n.height)?b:new Y(.8),_=Mi(n.fillColor,n.fillOpacity,n.strokeColor,n.strokeOpacity,n.lineWidth,!0,!1),e=_[0],r=_[1],x=_[2],C=_[3],o=_[4],new u(k,s,c,l,i,e,r,x,C,o,n.tooltip);default:throw new Error("Cannot create rect marks with vectors of type ["+S+"]")}},Qr=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v,g,m;return s=ai(e,t.positionX),c=t.positionY1?ai(r,t.positionY1):ni(r,0),l=ai(r,t.positionY2),m=fi(n,t.width,e.rect.width/e.domain.length),f=ti(n,t),o=f[0],u=f[1],i=f[2],h=hi(n,t),p=h[0],v=h[1],d=h[2],a=h[3],g=pi(n,t.tooltip),new w(s,c,l,m,i,o,u,d,p,v,a,g)},Jr=function(n,t,e,r){var o,u,a,s,c,l,f,h,d,p,v,g,m,w,b,y,_,k;switch(t.space.x.length){case 1:_=t.space.x[0],l=ni(e,0),f=ai(e,_);break;default:d=t.space.x,y=d[0],_=d[1],l=ai(e,y),f=ai(e,_)}return k=t.space.y[0],h=ai(r,k),s=fi(n,t.height,r.rect.height/r.domain.length),p=ti(n,t),u=p[0],a=p[1],o=p[2],v=hi(n,t),m=v[0],w=v[1],g=v[2],c=v[3],b=pi(n,t.tooltip),new i(l,f,h,s,o,u,a,g,m,w,c,b)},Ni=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g,m,w;for(l=t.positionX,f=t.positionY1,h=t.positionY2,v=t.width,r=t.fill,d=t.stroke,s=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],g=l(i),m=f(i),w=h(i),p=v(i),void 0!==g&&void 0!==m&&void 0!==w&&void 0!==p&&(zr(e,g,m,w,p),e.lineWidth=2+(d?s(i):1),e.stroke());for(e.restore(),e.save(),e.globalCompositeOperation="destination-out",e.fillStyle=e.strokeStyle="black",c=0,a=n.length;a>c;c++)i=n[c],g=l(i),m=f(i),w=h(i),p=v(i),void 0!==g&&void 0!==m&&void 0!==w&&void 0!==p&&(zr(e,g,m,w,p),d&&(e.lineWidth=s(i),e.stroke()),r&&e.fill());return e.restore()},qi=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g,m,w;for(h=t.positionX1,d=t.positionX2,p=t.positionY,o=t.height,r=t.fill,v=t.stroke,l=t.lineWidth,e.save(),a=0,s=n.length;s>a;a++)u=n[a],g=h(u),m=d(u),w=p(u),i=o(u),void 0!==g&&void 0!==m&&void 0!==w&&void 0!==i&&(Mr(e,g,m,w,i),e.lineWidth=2+(v?l(u):1),e.stroke());for(e.restore(),e.save(),e.globalCompositeOperation="destination-out",e.fillStyle=e.strokeStyle="black",f=0,c=n.length;c>f;f++)u=n[f],g=h(u),m=d(u),w=p(u),i=o(u),void 0!==g&&void 0!==m&&void 0!==w&&void 0!==i&&(Mr(e,g,m,w,i),v&&(e.lineWidth=l(u),e.stroke()),r&&e.fill());return e.restore()},Li=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v,g,m;for(c=t.positionX,l=t.positionY1,f=t.positionY2,p=t.width,h=t.stroke,a=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],v=c(i),g=l(i),m=f(i),d=p(i),void 0!==v&&void 0!==g&&void 0!==m&&void 0!==d&&(s=r.put(i),zr(e,v,g,m,d),Xr(e,s),h&&Fr(e,s,a(i)));return e.restore()},ji=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v,g,m;for(f=t.positionX1,h=t.positionX2,d=t.positionY,o=t.height,p=t.stroke,c=t.lineWidth,e.save(),a=0,s=n.length;s>a;a++)u=n[a],v=f(u),g=h(u),m=d(u),i=o(u),void 0!==v&&void 0!==g&&void 0!==m&&void 0!==i&&(l=r.put(u),Mr(e,v,g,m,i),Xr(e,l),p&&Fr(e,l,c(u)));return e.restore()},ru=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g;for(s=t.positionX,c=t.positionY1,l=t.positionY2,d=t.width,r=t.fill,f=t.stroke,a=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],p=s(i),v=c(i),g=l(i),h=d(i),void 0!==p&&void 0!==v&&void 0!==g&&void 0!==h&&(zr(e,p,v,g,h),f&&Fr(e,f(i),a(i)),r&&Xr(e,r(i)));return e.restore()},eu=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g;for(l=t.positionX1,f=t.positionX2,h=t.positionY,o=t.height,r=t.fill,d=t.stroke,c=t.lineWidth,e.save(),a=0,s=n.length;s>a;a++)u=n[a],p=l(u),v=f(u),g=h(u),i=o(u),void 0!==p&&void 0!==v&&void 0!==g&&void 0!==i&&(Mr(e,p,v,g,i),d&&Fr(e,d(u),c(u)),r&&Xr(e,r(u)));return e.restore()},bu=function(n,t,e,r,i,o){var u,a,s,c,l,f,h,d,p,v,g,m,w,b,y;for(c=t.positionX,l=t.positionY1,f=t.positionY2,p=t.width,h=[],a=0,s=n.length;s>a;a++)u=n[a],v=c(u),w=l(u),b=f(u),w>b&&(y=w,w=b,b=y),d=p(u),void 0!==v&&void 0!==w&&void 0!==b&&void 0!==d&&(g=v-d/2,m=v+d/2,e>m||g>i||r>b||w>o||h.push(u));return h},wu=function(n,t,e,r,i,o){var u,a,s,c,l,f,h,d,p,v,g,m,w,b,y;for(f=t.positionX1,h=t.positionX2,d=t.positionY,a=t.height,p=[],c=0,l=n.length;l>c;c++)s=n[c],v=f(s),g=h(s),w=d(s),v>g&&(m=v,v=g,g=m),u=a(s),void 0!==v&&void 0!==g&&void 0!==w&&void 0!==u&&(b=w-u/2,y=w+u/2,e>g||v>i||r>y||b>o||p.push(s));return p},yr=function(n,t){var e,r,i,o,u,a,s,c,l,f,h,d,p,v,g,m,w,b;switch(g=Cu(t)){case"String, Number, Number, Number, Number, Number":return w=t[0],i=t[1],o=t[2],u=t[3],a=t[4],s=t[5],d=new yt([w],[i,o,u,a,s]),m=null!=(c=n.width)?c:new P(.8),l=zi(n.strokeColor,n.strokeOpacity,n.lineWidth),p=l[0],v=l[1],r=l[2],new at(d,w,i,o,u,a,s,m,p,v,r,n.tooltip);case"Number, Number, Number, Number, Number, String":return i=t[0],o=t[1],u=t[2],a=t[3],s=t[4],b=t[5],d=new yt([i,o,u,a,s],[b]),e=null!=(f=n.height)?f:new P(.8),h=zi(n.strokeColor,n.strokeOpacity,n.lineWidth),p=h[0],v=h[1],r=h[2],new it(d,i,o,u,a,s,b,e,p,v,r,n.tooltip)}},si=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v,g;return u=ai(e,t.q0),a=ai(e,t.q1),s=ai(e,t.q2),c=ai(e,t.q3),l=ai(e,t.qn),g=ai(r,t.positionY),i=fi(n,t.height,r.rect.height/r.domain.length),f=hi(n,t),d=f[0],p=f[1],h=f[2],o=f[3],v=pi(n,t.tooltip),new et(u,a,s,c,l,g,i,h,d,p,o,v)},Oi=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g;for(l=t.positionY,f=t.q0,h=t.q1,d=t.q2,p=t.q3,v=t.qn,r=t.height,g=t.stroke,s=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],Ar(e,f(i),h(i),d(i),p(i),v(i),l(i),r(i),g(i),2+(g?s(i):1));for(e.restore(),e.save(),e.globalCompositeOperation="destination-out",e.strokeStyle="black",c=0,a=n.length;a>c;c++)i=n[c],Ar(e,f(i),h(i),d(i),p(i),v(i),l(i),r(i),g(i),s(i));return e.restore()},Vi=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v,g,m,w,b,y;for(f=t.positionY,h=t.q0,d=t.q1,p=t.q2,v=t.q3,g=t.qn,o=t.height,m=t.stroke,c=t.lineWidth,e.save(),a=0,s=n.length;s>a;a++)u=n[a],w=h(u),b=g(u),y=f(u),i=o(u),void 0!==w&&void 0!==b&&void 0!==y&&void 0!==i&&(l=r.put(u),Mr(e,w,b,y,i),Xr(e,l),Fr(e,l,c(u)));return e.restore()},du=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p;for(s=t.positionY,c=t.q0,l=t.q1,f=t.q2,h=t.q3,d=t.qn,r=t.height,p=t.stroke,a=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],Ar(e,c(i),l(i),f(i),h(i),d(i),s(i),r(i),p(i),a(i));return e.restore()},_u=function(n,t,e,r,i,o){var u,a,s,c,l,f,h,d,p,v,g,m,w,b,y,_,k,x,C,S;for(h=t.positionY,d=t.q0,p=t.q1,v=t.q2,g=t.q3,m=t.qn,a=t.height,b=t.stroke,f=t.lineWidth,w=[],c=0,l=n.length;l>c;c++)s=n[c],y=d(s),_=m(s),x=h(s),y>_&&(k=y,y=_,_=k),u=a(s),void 0!==y&&void 0!==_&&void 0!==x&&void 0!==u&&(C=x-u/2,S=x+u/2,e>_||y>i||r>S||C>o||w.push(s));return w},ci=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v,g;return g=ai(e,t.positionX),o=ai(r,t.q0),u=ai(r,t.q1),a=ai(r,t.q2),s=ai(r,t.q3),c=ai(r,t.qn),v=fi(n,t.width,e.rect.width/e.domain.length),l=hi(n,t),h=l[0],d=l[1],f=l[2],i=l[3],p=pi(n,t.tooltip),new ot(g,o,u,a,s,c,v,f,h,d,i,p)},Ei=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g;for(c=t.positionX,l=t.q0,f=t.q1,h=t.q2,d=t.q3,p=t.qn,g=t.width,v=t.stroke,a=t.lineWidth,e.save(),i=0,o=n.length;o>i;i++)r=n[i],Pr(e,c(r),l(r),f(r),h(r),d(r),p(r),g(r),v(r),2+(v?a(r):1));for(e.restore(),e.save(),e.globalCompositeOperation="destination-out",e.strokeStyle="black",s=0,u=n.length;u>s;s++)r=n[s],Pr(e,c(r),l(r),f(r),h(r),d(r),p(r),g(r),v(r),a(r));return e.restore()},Di=function(n,t,e,r){var i,o,u,a,s,c,l,f,h,d,p,v,g,m,w,b,y;for(c=t.positionX,l=t.q0,f=t.q1,h=t.q2,d=t.q3,p=t.qn,m=t.width,v=t.stroke,a=t.lineWidth,e.save(),o=0,u=n.length;u>o;o++)i=n[o],w=c(i),b=l(i),y=p(i),g=m(i),void 0!==w&&void 0!==b&&void 0!==y&&void 0!==g&&(s=r.put(i),zr(e,w,b,y,g),Xr(e,s),Fr(e,s,a(i)));return e.restore()},pu=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p;for(a=t.positionX,s=t.q0,c=t.q1,l=t.q2,f=t.q3,h=t.qn,p=t.width,d=t.stroke,u=t.lineWidth,e.save(),i=0,o=n.length;o>i;i++)r=n[i],Pr(e,a(r),s(r),c(r),l(r),f(r),h(r),p(r),d(r),u(r));return e.restore()},ku=function(n,t,e,r,i,o){var u,a,s,c,l,f,h,d,p,v,g,m,w,b,y,_,k,x,C,S;for(l=t.positionX,f=t.q0,h=t.q1,d=t.q2,p=t.q3,v=t.qn,b=t.width,m=t.stroke,c=t.lineWidth,g=[],a=0,s=n.length;s>a;a++)u=n[a],y=l(u),x=f(u),C=v(u),x>C&&(S=x,x=C,C=S),w=b(u),void 0!==y&&void 0!==x&&void 0!==C&&void 0!==w&&(_=y-w/2,k=y+w/2,e>k||_>i||r>C||x>o||g.push(u));return g},gr=function(n,t){var e,r,i,o,u,a,s;return r=t[0],i=t[1],u=new yt([r],[i]),o=zi(n.strokeColor,n.strokeOpacity,n.lineWidth),a=o[0],s=o[1],e=o[2],new zn(u,r,i,a,s,e,n.tooltip)},oi=function(n,t,e,r){var i,o,u,a,s,c,l,f;return o=ai(e,t.positionX),u=ai(r,t.positionY),a=hi(n,t),c=a[0],l=a[1],s=a[2],i=a[3],f=pi(n,t.tooltip),new Xn(o,u,s,c,l,i,f)},Wi=function(n,t,e){var r,i,o,u,a,s,c;for(u=t.positionX,a=t.positionY,e.save(),i=0,o=n.length;o>i;i++)r=n[i],s=u(r),c=a(r),e.lineWidth=1.5,e.strokeStyle="black",void 0!==s&&void 0!==c&&(Lr(e,s,c,64),e.stroke());return e.restore()},Ri=function(n,t,e,r){var i,o,u,a,s,c,l;for(a=t.positionX,s=t.positionY,e.save(),o=0,u=n.length;u>o;o++)i=n[o],c=a(i),l=s(i),void 0!==c&&void 0!==l&&(Lr(e,c,l,64),e.fillStyle=r.put(i),e.fill());return e.restore()},cu=function(n,t,e){var r,i,o,u,a,s,c,l,f,h,d,p,v,g,m,w,b,y,_;if(f=t.positionX,h=t.positionY,d=t.stroke,c=t.lineWidth,d instanceof T&&c instanceof T){for(e.strokeStyle=d(),e.lineWidth=c(),e.save(),r=!1,u=0,a=n.length;a>u;u++)o=n[u],g=f(o),b=h(o),void 0!==g&&void 0!==b?r?e.lineTo(g,b):(e.beginPath(),r=!0,e.moveTo(g,b)):(r&&e.stroke(),r=!1);return e.restore()}for(e.save(),e.lineCap="round",r=!1,m=void 0,y=void 0,p=void 0,l=0,s=n.length;s>l;l++)o=n[l],w=f(o),_=h(o),void 0!==w&&void 0!==_?(v=d(o),r&&(v!==p?(i=e.createLinearGradient(m,y,w,_),i.addColorStop(0,p||Rt),i.addColorStop(1,v||Rt),e.strokeStyle=i):e.strokeStyle=v,e.lineWidth=c(o),e.beginPath(),e.moveTo(m,y),e.lineTo(w,_),e.stroke()),r=!0,m=w,y=_,p=v):r=!1;return e.restore()},hr=Er([Fn,Array,mr],[In,Array,gr],[Jn,Array,br],[tt,Array,yr]),De=Er([yn,cr]),jn=new sn(ui,Bi,Ti,fu,yu),Mn=new sn(oi,Ri,Wi,cu,yu),b=new sn(Qr,Li,Ni,ru,bu),o=new sn(Jr,ji,qi,eu,wu),rt=new sn(si,Vi,Oi,du,_u),ut=new sn(ci,Di,Ei,pu,ku),no=Er([Number,null,function(n,t){return new s(n,void 0)}],[null,Number,function(n,t){return new s(void 0,t)}],[Number,Number,function(n,t){return new s(n,t)}],[null,null,function(){return new s(void 0,void 0)}]),io=Er([Number,Number,function(n,t){return new G(n,t)}]),oo=Er([Number,Number,function(n,t){return new U(n,t)}]),lo=Er([an,_.identity],[Function,function(n){return new L(n)}]),Vo=Er([Number,function(n){return new En(n)}],[Boolean,function(n){return new a(n)}],[Date,function(n){return new R(n)}],[String,function(n){return new kt(n)}]),Yo=Er([Array,function(n){return new h(n)}],[Number,function(n){return n>0?new ft(0,n):0>n?new ft(n,0):new H(-1,0,1)}],[String,function(n){return new lt(n,"black")}],[Number,Number,function(n,t){return t>=n?new ft(n,t):new ft(t,n)}],[String,String,function(n,t){return new lt(n,t)}],[Number,Number,Number,function(n,t,e){var r,i,o,u;return u=_.sortBy([n,t,e],_.identity),r=u[0],i=u[1],o=u[2],new H(r,i,o)}],[String,String,String,function(n,t,e){return new D(n,t,e)}]),Ee=function(n){var t,e,r,i,o;for(i=[],e=0,r=n.length;r>e;e++)if(t=n[e],t instanceof en)i.push(t);else{if(zt!==(o=Su(t)))throw new Error("Cannot create vector reference from ["+t+"] of type ["+o+"].");i.push(new en(t))}return i},Eo=function(){var n,t,e;return t=1<=arguments.length?Ou.call(arguments,0):[],new Rn(_.every(t,function(n){return n instanceof Bt})?function(){var e,r,i;for(i=[],e=0,r=t.length;r>e;e++)n=t[e],i.push(new W(n.value));return i}():function(){var n,r,i,o;for(i=Ee(t),o=[],n=0,r=i.length;r>n;n++)e=i[n],o.push(new Vt(e));return o}())},so=Er([kt,function(n){return new O(chroma(n.value))}],[String,function(n){return new Ht(new en(n))}],[en,function(n){return new Ht(n)}],[String,q,function(n,t){return new Ht(new en(n),t)}],[en,q,function(n,t){return new Ht(n,t)}],[String,h,function(n,t){return new Ht(new en(n),t)}],[en,h,function(n,t){return new Ht(n,t)}]),co=Er([En,function(n){return new E(n.value)}],[String,function(n){return new $t(new en(n))}],[en,function(n){return new $t(n)}],[String,ft,function(n,t){return new $t(new en(n),t)}],[en,ft,function(n,t){return new $t(n,t)}]),jo=Er([kt,function(n){return new z(chroma(n.value))}],[String,function(n){return new Qt(new en(n))}],[en,function(n){return new Qt(n)}],[String,q,function(n,t){return new Qt(new en(n),t)}],[en,q,function(n,t){return new Qt(n,t)}],[String,h,function(n,t){return new Qt(new en(n),t)}],[en,h,function(n,t){return new Qt(n,t)}]),Lo=Er([En,function(n){return new A(n.value)}],[String,function(n){return new Zt(new en(n))}],[en,function(n){return new Zt(n)}],[String,ft,function(n,t){return new Zt(new en(n),t)}],[en,ft,function(n,t){return new Zt(n,t)}]),Yr=function(n,t){return Er([En,function(t){return new n(t.value)}],[String,function(n){return new t(new en(n))}],[en,function(n){return new t(n)}],[String,ft,function(n,e){return new t(new en(n),e)}],[en,ft,function(n,e){return new t(n,e)}])},Po=Yr(M,Jt),Ho=Yr(P,te),go=Yr(Y,Gt),ko=Er([En,function(n){return new X(n.value)}],[String,function(n){return new Ut(new en(n))}],[en,function(n){return new Ut(n)}],[String,ft,function(n,t){return new Ut(new en(n),t)}],[en,ft,function(n,t){return new Ut(n,t)}]),Ao=Er([kt,function(n){return new I(n.value)}],[String,function(n){return new Kt(new en(n))}],[en,function(n){return new Kt(n)}],[String,h,function(n,t){return new Kt(new en(n),t)}],[en,h,function(n,t){return new Kt(n,t)}]),Bo=function(){var n;return n=1<=arguments.length?Ou.call(arguments,0):[],new ne(Ee(n))},Mo=function(){var n,t;return t=1<=arguments.length?Ou.call(arguments,0):[],1===t.length&&_.isNumber(n=_.head(t))?new Un(n):new ct(Ee(t))},Jo=function(n){var t,e,r,i,o;for(o=[],e=0,r=n.length;r>e;e++)switch(t=n[e],t.type){case"string":o.push({label:t.name,type:"String",domain:null!=(i=t.lightningDomain)?i:[],parse:ye});break;case"integer":o.push({label:t.name,type:"Number",parse:_e});break;case"number":o.push({label:t.name,type:"Number",parse:ke});break;default:throw new Error("Invalid type ["+t.type+"] for schema field ["+t.name+"]")}return o},Ko=function(n,t,e,r){var i,o,u,a,s,c,l,f;return a=Papa.parse(e,{skipEmptyLines:!0}),c=a.data,r&&c.shift(),f=function(){var n,r,a,f,h;for(h=[],u=n=0,r=t.length;r>n;u=++n){for(i=t[u],e=new Array(c.length),o=f=0,a=c.length;a>f;o=++f)s=c[o],void 0!==(l=i.parse(s[u]))&&(e[o]=l);switch(i.type){case"String":h.push(ir(i.label,i.type,e,i.domain));break;case"Number":h.push(Nr(i.label,i.type,e,_.identity));break;default:h.push(void 0)}}return h}(),ar(n,f,_.range(c.length))},to=function(n,t,e,r,i){return function(o){var u,a,s,c,l,f;return l=Math.floor((e-t)/r),u=function(n){return t+n*r},s=function(n,t){var e;return e=function(n){return t(u(n))},sr(n,n,"Number",l,e,_.identity)},f=function(){var n;n=[];for(c in i)a=i[c],n.push(s(c,a));return n}(),f.unshift(sr(n,n,"Number",l,u,_.identity)),o(null,ar("computed",f,_.range(l)))}},ro=function(n){return function(t){return jr("json",n+"/datapackage.json",function(e,r){var i,o;return e?t(e):(i=_.head(r.resources))?(o=i.path)?jr("text",n+"/"+o,function(n,e){if(n)return t(n);try{return t(null,Ko(r.name,Jo(i.schema),e,!0))}catch(o){return n=o,t(n)}}):t(new Error("Resource is missing attribute [path].")):t(new Error("No resources found in data package."))})}},er=function(){var n,t;return n=arguments[0],t=2<=arguments.length?Ou.call(arguments,1):[],function(){var e;return e=1<=arguments.length?Ou.call(arguments,0):[],we(n,xi(e,t))}},Oo=er(Fn,Rn,ht,mt,on,un,Ct,St,_n,jt),Xo=er(Jn,Rn,ue,pn,on,un,Ct,St,_n,jt),To=er(In,Rn,Ct,St,_n,jt),Io=er(tt,Rn,ue,pn,Ct,St,_n,jt),_o=er(yn,Rn,Ct,St,_n),Wo=function(n,t){var e;return e=function(n,t){var r,i,o,u;if(_.isArray(n)){for(i=n.length,o=[];i--;)r=n[i],null!==r&&_.isObject(r)?(e(r,t),o.push(t(r))):o.push(void 0);return o}u=[];for(i in n)Yu.call(n,i)&&(r=n[i],null!==r&&_.isObject(r)?(e(r,t),u.push(t(r))):u.push(void 0));return u},function(r){var i;return i=n.parse(r),e(i,function(n){var t;"CallExpression"===n.type&&"Identifier"===n.callee.type?_.isFunction(Ui[t=n.callee.name])&&(n.callee={type:"MemberExpression",computed:!1,object:{type:"Identifier",name:"plot"},property:{type:"Identifier",name:t}}):"Identifier"===n.type&&_.isFunction(Ui[t=n.name])&&(delete n.name,n.type="MemberExpression",n.computed=!1,n.object={type:"Identifier",name:"plot"},n.property={type:"Identifier",name:t})}),t.generate(i)}},zo={maxCanvasSize:new gt(795,600),visualizationSize:new gt(300,300),axisLabelFont:"10px monospace",axisTickColor:"#4d4d4d",axisTitleFont:"bold 10px monospace",axisLabelColor:"#4d4d4d",gridLineColor:"#eee",originLineColor:"#ccc"},$o=function(n){return Math.round(n)+"px"},Qe=function(n,t){var e,r,i,o;e=document.createElement(n),i=e.style;for(r in t)o=t[r],i[r]=o;return e},Qo=function(n){for(var t;t=n.firstChild;)n.removeChild(t)},Sr=function(n){var t,e;t=document.createElement("style"),t.type="text/css",t.innerHTML=n,e=_.head(document.getElementsByTagName("head")),e.appendChild(t)},qr=function(n){var t,e,r,i,o,u,a,s,c;return e=diecut("table","tbody","tr","th","td"),i=e[0],o=e[1],s=e[2],a=e[3],u=e[4],r=function(){var e;e=[];for(t in n)c=n[t],e.push(s([u(t+":"),a(c)]));return e}(),au(i(o(r)))},Ge=function(n){var t,e,r,i,o,u,a;return a=n.width,o=n.height,i=document.createElement("canvas"),e=i.getContext("2d"),r=window.devicePixelRatio||1,t=e.webkitBackingStorePixelRatio||e.mozBackingStorePixelRatio||e.msBackingStorePixelRatio||e.oBackingStorePixelRatio||e.backingStorePixelRatio||1,u=r/t,i.style.position="absolute",r!==t?(i.width=a*u,i.height=o*u,e.scale(u,u),i.style.width=$o(a),i.style.height=$o(o)):(i.width=a,i.height=o),new l(i,e,n,u)},Wr=function(n){var t,e,r,i,o,u,a,s,c,l,f,h;return f=function(){var t,e;for(e=[],a=t=1;5>=t;a=++t)e.push(Ge(n));return e}(),t=f[0],o=f[1],u=f[2],l=f[3],r=f[4],i=Qe("div",{position:"relative",overflow:"visible",width:$o(n.width),height:$o(n.height)}),i.className="lz",s=Qe("div",{position:"absolute",left:$o(0),top:$o(0),width:$o(0),height:$o(0),display:"none",outline:"1px dotted #999",background:"rgba(0, 0, 0, 0.05)"}),h=Qe("div",{position:"absolute",left:$o(0),top:$o(0),"max-width":$o(.9*n.width),display:"none"}),h.className="lz-tooltip",i.appendChild(t.element),i.appendChild(o.element),i.appendChild(s),i.appendChild(u.element),i.appendChild(h),c=dr(l),e=Ke(r),new re(n,i,t,o,u,l,r,s,h,c,e)},Si=function(n){var t,e,r;return r=null!=(e=n.target)?e:n.srcElement,t=r.getBoundingClientRect(),[n.clientX-t.left,n.clientY-t.top]},Se=function(n,t,e,r,i){var o,u,a,s,c,l,f,h,d,p;u=$(document),o=$(n),s=t.style,c=h=l=d=f=p=0,a=!1,o.on("mousemove",function(n){var t;return c=n.offsetX,h=n.offsetY,(void 0===c||void 0===h)&&(t=Si(n),c=t[0],h=t[1]),a?(s.left=$o(c>l?l:c),s.top=$o(h>d?d:h),s.width=$o(Math.abs(c-l)),s.height=$o(Math.abs(h-d))):e(c,h)}),o.on("mousedown",function(n){var t;return n.preventDefault(),l=n.offsetX,d=n.offsetY,(void 0===l||void 0===d)&&(t=Si(n),l=t[0],d=t[1]),a=!0,s.display="block",s.left=$o(l),s.top=$o(d),u.on("mouseup",function(n){var t;return n.preventDefault(),f=n.offsetX,p=n.offsetY,(void 0===f||void 0===p)&&(t=Si(n),f=t[0],p=t[1]),a=!1,s.display="none",s.width=$o(0),s.height=$o(0),u.off("mouseup"),Math.abs(l-f)>5||Math.abs(d-p)>5?r(l,d,f,p):i(l,d)})})},tr=function(){var n,t,e,r;return n={},e=function(t,e){var r;return(r=n[t])?r.push(e):n[t]=[e]},r=function(t,e){var r,i,o,u,a;if(t)if(e){if(a=n[t])for(r=i=0,o=a.length;o>i;r=++i)if(u=a[r],u===e){a.splice(r,1);break}}else delete n[t]},t=function(){var t,e,r,i,o,u;if(e=arguments[0],t=2<=arguments.length?Ou.call(arguments,1):[],u=n[e])for(r=0,i=u.length;i>r;r++)o=u[r],o.apply(null,t)},[e,r,t]},Tr=function(n,t,e,r,i,o,u){var a,s,c,l,f,h,d,p,v,g,m,w,b,y,k,x,C,S,q,N,W,T,O;return l=Wr(n),f=l.baseCanvas,m=l.highlightCanvas,b=l.hoverCanvas,d=l.clipCanvas,x=l.maskCanvas,y=l.marquee,T=l.tooltip,k=l.mask,h=l.clip,O=n.regions.center,s=t.indices,a=void 0,W=function(t,r){var i,o,u,a,s;if(o=k.test(t,r),void 0!==o)for(i=d.context,i.clearRect(0,0,n.width,n.height),u=0,s=e.length;s>u;u++)if(a=e[u],i.save(),i.translate(O.left,O.top),a.mask([o],a.encoders,i,h),i.restore(),h.test(t,r))return o},p=function(n,t,e){var r;return r=qr(e),Qo(T),T.appendChild(r),T.style.display="block",C(n,t)},c=7,C=function(t,e){var r,i,o,u;if("none"!==T.style.display)return u=T.clientWidth,o=T.clientHeight,r=t+c,i=e-c-o,r+u>n.width&&(r=t-c-u),0>i&&(i=e+c),0>r&&(r=0),0>i&&(i=0),T.style.left=$o(r),T.style.top=$o(i)},v=function(){return T.style.display="none"},w=function(r,i){var o,s,c,l,f,h,d,g,m,w,y,_,k,x,S;if(l=W(r,i),l!==a){if(a=l,c=b.context,c.clearRect(0,0,n.width,n.height),v(),void 0!==l){for(c.save(),c.translate(O.left,O.top),f=0,d=e.length;d>f;f++)h=e[f],h.highlight([l],h.encoders,c);for(c.restore(),u("markhover",new vn(t,l)),x={},w=0,g=e.length;g>w;w++){h=e[w],_=h.encodings;for(o in _)if(s=_[o])if(s instanceof Dt)(S=s.vector)&&(x[S.label]=S.format(l));else if(s instanceof Lt)for(k=s.vectors,y=0,m=k.length;m>y;y++)S=k[y],x[S.label]=S.format(l)}p(r,i,x)}}else C(r,i)},g=function(r){var i,o,a,s;if(i=m.context,i.clearRect(0,0,n.width,n.height),r.length){for(f.element.style.opacity=.5,i.save(),i.translate(O.left,O.top),o=0,s=e.length;s>o;o++)a=e[o],a.highlight(r,a.encoders,i),a.render(r,a.encoders,i);i.restore(),u("markselect",new st(t,r))}else f.element.style.opacity=1,u("markdeselect",new V(t))},q=function(n,t){var e;e=W(n,t),g(void 0!==e?[e]:[])},N=function(n,t,r,i){var o,u,a,c,l,f,h;l=-O.left+(n>r?r:n),c=-O.left+(n>r?n:r),h=-O.top+(t>i?i:t),f=-O.top+(t>i?t:i),a=function(){var n,t,r;for(r=[],n=0,t=e.length;t>n;n++)o=e[n],r.push(o.select(s,o.encoders,l,h,c,f));return r}(),u=e.length>1?_.unique(_.flatten(a,!0)):_.head(a),g(u)},S=function(){var t,u,a,c,l,h,d,p;for(u=f.context,p=x.context,ou(u,i,O),uu(u,o,O),u.save(),u.translate(O.left,O.top),p.save(),p.translate(O.left,O.top),a=0,l=e.length;l>a;a++)c=e[a],c.render(s,c.encoders,u),c.mask(s,c.encoders,p,k);for(d=0,h=r.length;h>d;d++)t=r[d],t.render(t,i,o,u);p.restore(),u.restore(),nu(u,i,n.regions.bottom),tu(u,o,n.regions.left)},Se(b.element,y,w,N,q),new ie(l,t,W,g,w,q,N,S)},Zo=function(n,t,e,r,i){var o,u,a,s,c,l,h,d,p,v,g,m,w,b,y,_,k,x,C,S,q;if(n.font=zo.axisLabelFont,n.fillStyle=zo.axisLabelColor,n.strokeStyle=zo.axisTickColor,n.textBaseline="middle",
-q=ae+4,m=e-q,n.save(),We(n,q,0,m,r),n.textAlign="right",S=e-5,h=e-6,t instanceof f){for(o=t.guide(),b=Math.floor(r/(ae+2)),a=Math.floor(o.length/b),s=c=0,p=o.length;p>c;s=++c)u=o[s],_=t.scale(u),C=-.5+Math.round(_),Ir(n,S,C,e,C),(0===a||0!==s&&0===s%a)&&n.fillText(u.value,h,_,m-6);Ir(n,e-.5,0,e-.5,r)}else{if(!(t instanceof Vn))throw new Error("Invalid axis type.");for(y=6,w=r-6,k=t.guide(),g=0,v=k.length;v>g;g++)x=k[g],l=x.label,_=t.scale(x.value),C=Math.max(.5,-.5+Math.round(_)),Ir(n,S,C,e,C),d=y>_?y:_>w?w:_,n.fillText(l,h,d,m-6);Ir(n,e-.5,0,e-.5,r)}return n.restore(),n.font=zo.axisTitleFont,n.textAlign="center",n.translate(q/2,r/2),n.rotate(i*fn),n.fillText(t.label,0,0,r),n.restore()},iu=function(n,t,e,r){var i,o,u,a,s;if(n.strokeStyle=zo.gridLineColor,t instanceof f)Ir(n,0,.5,e,.5),Ir(n,0,r-.5,e,r-.5);else if(t instanceof Vn){for(u=t.guide(),i=0,o=u.length;o>i;i++)a=u[i],s=Math.max(.5,-.5+Math.round(t.scale(a.value))),Ir(n,0,s,e,s);t.domain.min<=0&&0<=t.domain.max&&(n.strokeStyle=zo.originLineColor,s=Math.max(.5,-.5+Math.round(t.scale(0))),Ir(n,0,s,e,s))}},ou=function(n,t,e){return n.save(),n.translate(e.left,e.top+e.height),n.rotate(-fn),iu(n,t,e.height,e.width),n.restore()},uu=function(n,t,e){return n.save(),n.translate(e.left,e.top),iu(n,t,e.width,e.height),n.restore()},nu=function(n,t,e){return n.save(),n.translate(e.left,e.top+e.height),n.rotate(-fn),Zo(n,t,e.height,e.width,1),n.restore()},tu=function(n,t,e){return n.save(),n.translate(e.left,e.top),Zo(n,t,e.width,e.height,-1),n.restore()},au=function(n){var t;return t=document.createElement("div"),t.innerHTML=n,t.childNodes[0]},yi=function(n,t){var e,r,i,o,u,a,s;for(r={},i=[],a=0,s=t.length;s>a;a++)o=t[a],u=(e=n.at(o)).key,r[u]||(r[u]=!0,i.push(e));return i},xr=function(n,t){var e,r,i,o,u,a;for(u=null,r=null,e=null,i=0,o=n.length;o>i;i++)if(a=n[i],null===u)switch(u=a.type){case zt:e=a,r=yi(a,t);break;case Xt:r=a.domain;break;default:throw new Error("ni")}else{if(u!==a.type)throw new Error("Incompatible axis vector ["+a.label+"]. Expect type ["+u+"], got ["+a.type+"]");switch(u){case zt:if(e!==a)throw new Error("Incompatible categorical vector ["+a.label+"]. Expected ["+e.label+"].");break;case Xt:r=Xe(r,a.domain);break;default:throw new Error("ni")}}return new bt(u,n,r)},$e=function(n){var t,e;return t=function(){var t,r,i;for(i=[],t=0,r=n.length;r>t;t++)e=n[t],i.push(e.label);return i}(),_.unique(t).join(", ")},Ie=function(n,t){var e,r,i,o,u,a,c,l,h,d,p,v,g;if(p=new Kn(0,0,400,400),e=He(n,"",t,new ft(0,p.width),p),d=ae+4+6+10,e instanceof f){for(l=0,r=e.guide(),o=0,u=r.length;u>o;o++)i=r[o],l<(c=(""+i.value).length)&&(l=c);return new s(Math.ceil(l*ae+d),Math.ceil(r.length*(ae+8)))}if(e instanceof Vn){for(l=0,r=e.guide(),v=e.guide(),h=0,a=v.length;a>h;h++)g=v[h],l<(c=g.label.length)&&(l=c);return new s(Math.ceil(l*ae+d),zo.visualizationSize.height)}throw new Error("Invalid axis type.")},He=function(n,t,e,r,i){var o,u,a,s,c;switch(n){case zt:return a=vr(e,r),o=function(){return e},new f(n,t,a,e,r,i,o);case Xt:return u=pr(e,r),a=u[0],s=u[1],c=u[2],o=function(n){var t,e,r,i,o,u;for(null==n&&(n=10),t=s(n),i=c(n),o=[],e=0,r=i.length;r>e;e++)u=i[e],o.push(new Ft(u,t(u)));return o},new kn(n,t,a,e,r,i,o);default:throw new Error("Unhandled axis type ["+n+"].")}},gu=function(n,t){var e,r;return r=wr(t),e=Uo(n,r),ki(t,ct)?vu(e,t):ki(t,Un)?hu(e,t):lu(e,t)},hu=function(n,t){var e,r,i,o,u,a,s,c,l,f,h,d,p,v,g,m,w;return a=ki(t,Un),o=a.index,s=diecut("table.lz-record","tbody","tr","th","td"),l=s[0],f=s[1],p=s[2],d=s[3],h=s[4],v=function(){var t,e;t=n.schema,e=[];for(u in t)w=t[u],m=w.format(o),r=function(){switch(w.type){case zt:return void 0!==m?m:On;case Xt:return void 0!==m?_.escape(m):On;case It:return void 0!==m?m:On;default:throw new Error("Cannot render table cell of type "+w.type)}}(),e.push(p([d(_.escape(w.label)),h(r)]));return e}(),e=au(l(f(v))),c=_.noop,g=_.noop,i=_.noop,new An(e,c,g,i)},vu=function(n,t){var e,r,i,o,u,a,s,c,l,f,h,d,p,g,m,w,b,y,k,x,C,S,q,N,W;return c=ki(t,ct),N=function(){var t,e,i,o;if(c.fields.length){for(i=c.fields,o=[],t=0,e=i.length;e>t;t++)r=i[t],o.push(n.evaluate(r));return o}return n.vectors}(),W=_.flatten(N),a=diecut("table.lz-table","thead","tbody","tr","th","th.lz-number","td","td.lz-number"),f=a[0],w=a[1],h=a[2],k=a[3],m=a[4],b=a[5],d=a[6],p=a[7],y=function(){var n,t,e;for(e=[],n=0,t=W.length;t>n;n++)switch(q=W[n],q.type){case Xt:e.push(b(_.escape(q.label)));break;default:e.push(m(_.escape(q.label)))}return e}(),x=function(){var t,e,r,i;for(r=n.indices,i=[],t=0,e=r.length;e>t;t++)o=r[t],g=function(){var n,t,e;for(e=[],t=0,n=W.length;n>t;t++)switch(q=W[t],S=q.format(o),q.type){case zt:e.push(d(void 0!==S?S:On));break;case Xt:e.push(p(void 0!==S?_.escape(S):On));break;case It:e.push(d(void 0!==S?S:On));break;default:throw new Error("Cannot render table cell of type "+q.type)}return e}(),i.push(k(g));return i}(),e=au(f([w(k(y)),h(x)])),s=tr(),l=s[0],C=s[1],u=s[2],$(e).on("click",function(t){var e,r,i,o,a,s;switch(r=$(t.target),e=r.parent(),o=e.prop("tagName").toLowerCase(),s=r.prop("tagName").toLowerCase(),a=r.index(),i=e.index(),s){case"td":u("cellselect",new v(W[a],n.indices[i]));break;case"th":u("headerselect",new dn(W[a]))}}),i=_.noop,new An(e,l,C,i)},Me=function(n,t,e){return n.type===Xt?e?Xe(n.domain,e):t.type===zt?Yi(n.domain):n.domain:n.domain},lu=function(n,t){var r,i,o,u,a,l,f,h,d,p,v,g,m,w,b,y,k,x,C,S,q,N,W,T,O,E,Y,X,I,M;return b=_.map(bi(t,Nn),function(t){var e,r;return r=function(){var r,i,o,u;for(o=t.position.coordinates,u=[],r=0,i=o.length;i>r;r++)e=o[r],u.push(n.evaluate(e.field));return u}(),hr(t,_.flatten(r))}),O=_.map(b,function(n){return n.space}),X=Ci(O,function(n){return n.x}),I=Ci(O,function(n){return n.y}),W=xr(X,n.indices),T=xr(I,n.indices),g=Me(W,T,ki(t,G)),m=Me(T,W,ki(t,U)),i=Ie(W.type,g),o=Ie(T.type,m),h=null!=(C=ki(t,s))?C:new s(void 0,void 0),p=null!=(S=h.width)?S:Math.min(zo.maxCanvasSize.width,o.width+i.height),d=null!=(q=h.height)?q:Math.min(zo.maxCanvasSize.height,i.width+o.height),v=new c(p,d,new Sn(Math.min(.3*zo.maxCanvasSize.width,o.width),0,0,Math.min(.3*zo.maxCanvasSize.height,i.width))),u=v.regions.bottom,a=v.regions.left,k=new ft(0,u.width),x=T.type===Xt?new ft(a.height,0):new ft(0,a.height),l=He(W.type,$e(X),g,k,u),f=He(T.type,$e(I),m,x,a),w=_.map(b,function(t){var e,r,i,o,u;i=t.geometry,r=i.encode(n,t,l,f),e={};for(o in r)u=r[o],(null!=u?u.encode:void 0)&&(e[o]=u.encode);return new gn(r,e,i.mask,i.highlight,i.render,i.select)}),r=_.map(bi(t,e),function(n){return De(n)}),N=tr(),E=N[0],Y=N[1],y=N[2],M=Tr(v,n,w,r,l,f,y),M.render(),new An(M.viewport.container,E,Y,M.highlight)},qu=Er([L,Array,Function,function(n,t,e){return n.read(function(n,r){return n?e(n):qu(r,t,e)})}],[an,Array,Function,function(n,t,e){var r;try{return e(null,gu(n,t))}catch(i){return r=i,e(r)}}]),Fi=function(){return Sr(".lz-tooltip {\n  background: #2c2c2c;\n  color: #fff;\n  font-size: 12px;\n}\n.lz-tooltip th, .lz-tooltip td {\n  padding: 0px 4px;\n  vertical-align: middle;\n}\n.lz-tooltip th {\n  text-align: left;\n}\n.lz-table th, .lz-table td {\n  padding: 0px 8px;\n  vertical-align: middle;\n}\n.lz-table tbody > tr:nth-child(odd) {\n  background-color: #f3f3f3;\n}\n.lz-table .lz-number {\n  text-align: right;\n}\n.lz-record th, .lz-record td {\n  padding: 0px 8px;\n  vertical-align: middle;\n}\n.lz-record th {\n  text-align: right;\n}\n.lz-record tbody > tr:nth-child(odd) {\n  background-color: #f3f3f3;\n}")},ce=null,ae=18,Pi=function(){var n,t;return ce=n=Ge(new s(100,100)),t=n.context,t.font=zo.axisLabelFont,ae=t.measureText("M").width},se=!1,Ai=function(){return se?void 0:(Fi(),Pi(),se=!0)},Ui=function(){var n,t;return t=1<=arguments.length?Ou.call(arguments,0):[],(n=ki(t,L,an))?(Ai(),function(e){var r;return r=_.isElement(e)?function(n,t){return n?e.innerHTML=n.message:e.appendChild(t.element)}:_.isFunction(e)?e:void 0,r?qu(n,_.without(t,n),r):void 0}):function(){var n;return n=1<=arguments.length?Ou.call(arguments,0):[],Ui.apply(null,t.concat(n))}},Ui.VERSION="999.999.999",Ui.settings=zo,Ui.bounds=no,Ui.from=lo,Ui.value=Vo,Ui.range=Yo,Ui.position=Eo,Ui.fillColor=so,Ui.fillOpacity=co,Ui.strokeColor=jo,Ui.strokeOpacity=Lo,Ui.size=Po,Ui.width=Ho,Ui.height=go,Ui.lineWidth=ko,Ui.shape=Ao,Ui.tooltip=Bo,Ui.factor=ao,Ui.stack=Fo,Ui.groupBy=ho,Ui.where=Do,Ui.limit=yo,Ui.having=vo,Ui.eq=uo,Ui.ne=qo,Ui.lt=xo,Ui.gt=po,Ui.le=wo,Ui.ge=fo,Ui.like=bo,Ui.avg=Zi,Ui.count=eo,Ui.max=Co,Ui.min=So,Ui.sum=Ro,Ui.parse=Wo,Ui.point=Oo,Ui.rect=Xo,Ui.path=To,Ui.schema=Io,Ui.line=_o,Ui.select=Mo,Ui.dataPackage=ro,Ui.computed=to,Ui.createFrame=ar,Ui.createVector=Nr,Ui.createList=fr,Ui.createFactor=ir,Ui.domainX_HACK=io,Ui.domainY_HACK=oo,null!=("undefined"!=typeof module&&null!==module?module.exports:void 0)?module.exports=Ui:window.plot=Ui}).call(this);
