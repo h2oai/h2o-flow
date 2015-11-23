@@ -572,6 +572,46 @@ H2O.ModelOutput = (_, _go, _model) ->
           if confusionMatrix = output.cross_validation_metrics?.cm?.table
             renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
+  if table = _.inspect 'output - training_metrics - Gains/Lift Table', _model
+    renderPlot 'Training Metrics - Gains/Lift Table', no, _.plot (g) ->
+      g(
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_lift'
+          g.strokeColor g.value 'green'
+        )
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_capture_rate'
+          g.strokeColor g.value 'black'
+        )
+        g.from table
+      )
+  if table = _.inspect 'output - validation_metrics - Gains/Lift Table', _model
+    renderPlot 'Validation Metrics - Gains/Lift Table', no, _.plot (g) ->
+      g(
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_lift'
+          g.strokeColor g.value 'green'
+        )
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_capture_rate'
+          g.strokeColor g.value 'black'
+        )
+        g.from table
+      )
+  if table = _.inspect 'output - cross_validation_metrics - Gains/Lift Table', _model
+    renderPlot 'Cross Validation Metrics - Gains/Lift Table', no, _.plot (g) ->
+      g(
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_lift'
+          g.strokeColor g.value 'green'
+        )
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_capture_rate'
+          g.strokeColor g.value 'black'
+        )
+        g.from table
+      )
+
   for tableName in _.ls _model when tableName isnt 'parameters'
 
     # Skip CM tables for multinomial models
