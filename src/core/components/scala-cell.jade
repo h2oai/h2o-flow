@@ -1,0 +1,22 @@
+.flow-cell(data-bind="click:select, css:{ 'flow-cell-selected':isSelected, 'flow-cell-active':isActive, 'flow-cell-ready':isReady, 'flow-cell-busy':isBusy, 'flow-cell-error':hasError, 'flow-cell-code':isCode }, scrollIntoView:_actions")
+    .flow-cell-type(data-bind="text:visibleType")
+    .flow-cell-input(data-bind="visible:isInputVisible")
+        .flow-cell-code(data-bind="attr: {id: getEditorId()}, visible:hasInput, css:{ 'flow-cell-has-output':hasOutput }")
+            table(style='width:100%')
+                tbody
+                    tr
+                        td  
+                            textarea(data-bind="value:input, codemirror: {readOnly: false,lineWrapping: true, lineNumbers: true, theme: 'flow',matchBrackets: true, mode: {name: 'text/x-scala'}, parentScalaCellId: getEditorId()}")
+                        td.flow-cell-actions
+                            i.fa.fa-paperclip.flow-pointer(title='Save to clipboard' data-bind='click:clip')
+                    tr
+                        td.flow-cell-time(data-bind='text:time')
+                        td.flow-cell-actions
+
+
+    .flow-cell-output(data-bind="css:{ 'flow-hide-output': isOutputHidden }")
+        // ko if:result
+        .flow-cell-result(data-bind='template:{ name: templateOf, data:result }')
+        // /ko
+        .flow-cell-outputs(data-bind='template: { name: templateOf, foreach:outputs }')
+
