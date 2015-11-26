@@ -19,7 +19,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   _isOutputHidden = signal no
 
   # This is a shim for ko binding handlers to attach methods to
-  # The ko 'cursorPosition' custom binding attaches a getCursortPosition() method to this.
+  # The ko 'cursorPosition' custom binding attaches a getCursorPosition() method to this.
   # The ko 'autoResize' custom binding attaches an autoResize() method to this.
   _actions = {}
 
@@ -77,6 +77,16 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
     _isBusy yes
 
     clear()
+
+    if _type() == 'sca'
+      # escape backslashes
+      input = input.replace(/\\/g,'\\\\')
+      # escape quotes
+      input = input.replace(/'/g,'\\\'')
+      # escape new-lines
+      input = input.replace(/\n/g, '\\n')
+      # pass the cell body as an argument, representing the scala code, to the appropriate function
+      input = 'runScalaCode ' + _.scalaIntpId() + ', \'' + input + '\''
 
     render input,
       data: (result) ->

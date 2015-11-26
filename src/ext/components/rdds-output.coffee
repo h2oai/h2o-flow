@@ -2,7 +2,7 @@ H2O.RDDsOutput = (_, _go, _rDDs) ->
   _rDDViews = signal []
 
   createRDDView = (rDD) ->
-    id: rDD.id
+    id: rDD.rdd_id
     name: rDD.name
     partitions: rDD.partitions
 

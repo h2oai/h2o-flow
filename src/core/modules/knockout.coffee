@@ -184,4 +184,27 @@ ko.bindingHandlers.file =
       $file.change -> file @files[0]
     return
 
+ko.bindingHandlers.codemirror =
+  init:  (element, valueAccessor,  allBindings, viewModel, bindingContext) ->
+    # get the code mirror options
+    options = ko.unwrap(valueAccessor())
+    # created editor replaces the textarea on which it was created
+    editor = CodeMirror.fromTextArea element, options
+    editor.on 'change', (cm) ->
+      allBindings().value(cm.getValue())
+    element.editor = editor
+    if(allBindings().value())
+      editor.setValue(allBindings().value())
 
+    internalTextArea = $(editor.getWrapperElement()).find("div textarea")
+    internalTextArea.attr('rows','1')
+    internalTextArea.attr('spellcheck','false')
+    internalTextArea.removeAttr("wrap")
+
+
+    editor.refresh()
+
+
+  update: (element, valueAccessor) ->
+            if element.editor
+                element.editor.refresh()

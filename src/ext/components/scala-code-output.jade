@@ -1,0 +1,10 @@
+.flow-widget
+    // ko with:scalaCodeView
+    h4(data-bind="text:\"Status: \"+status")
+    h4 Console Output:
+    p(data-bind="text:output" style="white-space: pre-wrap")
+
+    h4 Scala Response:
+    p(data-bind="text: response, visible: scalaResponseVisible " style="white-space: pre-wrap")
+    a(href="#" data-bind="click: toggleVisibility, text: scalaLinkText")
+    // /ko

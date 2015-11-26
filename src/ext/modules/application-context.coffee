@@ -18,7 +18,6 @@ H2O.ApplicationContext = (_) ->
   _.requestFrameSummaryWithoutData = do slot
   _.requestDeleteFrame = do slot
   _.requestExportFrame = do slot
-  _.requestRDDs = do slot
   _.requestColumnSummary = do slot
   _.requestModelBuilder = do slot
   _.requestModelBuilders = do slot
@@ -70,3 +69,13 @@ H2O.ApplicationContext = (_) ->
   _.plot = do slot
   _.grid = do slot
   _.enumerate = do slot
+  #
+  # Sparkling-Water
+  _.scalaIntpId = signal -1
+  _.requestRDDs = do slot
+  _.requestDataFrames = do slot
+  _.requestScalaIntp = do slot
+  _.requestScalaCode = do slot
+  _.requestAsH2OFrameFromRDD = do slot
+  _.requestAsH2OFrameFromDF = do slot
+  _.requestAsDataFrame = do slot

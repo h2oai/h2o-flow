@@ -7,6 +7,7 @@ Flow.Renderers = (_, _sandbox) ->
   h6: -> Flow.Heading _, 'h6'
   md: -> Flow.Markdown _
   cs: (guid) -> Flow.Coffeescript _, guid, _sandbox
+  sca: (guid) -> Flow.Coffeescript _, guid, _sandbox
   raw: -> Flow.Raw _
 
 Flow.Notebook = (_, _renderers) ->
@@ -37,6 +38,16 @@ Flow.Notebook = (_, _renderers) ->
   _about = Flow.About _
   _dialogs = Flow.Dialogs _
 
+  # initialize the interpreter when the notebook is created
+  # one interpreter is shared by all scala cells
+  _initializeInterpreter = ->
+    _.requestScalaIntp (error,response) ->
+      if error
+        # Handle the error
+        _.scalaIntpId -1
+      else
+        _.scalaIntpId response.session_id
+
   serialize = ->
     cells = for cell in _cells()
       type: cell.type()
@@ -62,7 +73,7 @@ Flow.Notebook = (_, _renderers) ->
     return
 
   createCell = (type='cs', input='') ->
-    Flow.Cell _, _renderers, type, input
+      Flow.Cell _, _renderers, type, input
 
   checkConsistency = ->
     selectionCount = 0
@@ -101,7 +112,7 @@ Flow.Notebook = (_, _renderers) ->
   convertCellToCode = ->
     _selectedCell.type 'cs'
 
-  convertCellToHeading = (level) -> -> 
+  convertCellToHeading = (level) -> ->
     _selectedCell.type "h#{level}"
     _selectedCell.execute()
 
@@ -112,6 +123,9 @@ Flow.Notebook = (_, _renderers) ->
   convertCellToRaw = ->
     _selectedCell.type 'raw'
     _selectedCell.execute()
+
+  convertCellToScala = ->
+    _selectedCell.type 'sca'
 
   copyCell = ->
     _clipboardCell = _selectedCell
@@ -163,6 +177,12 @@ Flow.Notebook = (_, _renderers) ->
 
   insertNewCellBelow = ->
     insertBelow createCell 'cs'
+
+  insertNewScalaCellAbove = ->
+    insertAbove createCell 'sca'
+
+  insertNewScalaCellBelow = ->
+    insertBelow createCell 'sca'
 
   insertCellAboveAndRun = (type, input) ->
     cell = insertAbove createCell type, input
@@ -528,6 +548,39 @@ Flow.Notebook = (_, _renderers) ->
 
   _menus = signal null
 
+  menuCell = [
+        createMenuItem 'Run Cell', runCell, ['ctrl', 'enter']
+        menuDivider
+        createMenuItem 'Cut Cell', cutCell, ['x']
+        createMenuItem 'Copy Cell', copyCell, ['c']
+        createMenuItem 'Paste Cell Above', pasteCellAbove, ['shift', 'v']
+        createMenuItem 'Paste Cell Below', pasteCellBelow, ['v']
+        #TODO createMenuItem 'Paste Cell and Replace', pasteCellandReplace, yes
+        createMenuItem 'Delete Cell', deleteCell, ['d', 'd']
+        createMenuItem 'Undo Delete Cell', undoLastDelete, ['z']
+        menuDivider
+        createMenuItem 'Move Cell Up', moveCellUp, ['ctrl', 'k']
+        createMenuItem 'Move Cell Down', moveCellDown, ['ctrl', 'j']
+        menuDivider
+        createMenuItem 'Insert Cell Above', insertNewCellAbove, ['a']
+        createMenuItem 'Insert Cell Below', insertNewCellBelow, ['b']
+        #TODO createMenuItem 'Split Cell', splitCell
+        #TODO createMenuItem 'Merge Cell Above', mergeCellAbove, yes
+        #TODO createMenuItem 'Merge Cell Below', mergeCellBelow
+        menuDivider
+        createMenuItem 'Toggle Cell Input', toggleInput
+        createMenuItem 'Toggle Cell Output', toggleOutput, ['o']
+        createMenuItem 'Clear Cell Output', clearCell
+        ]
+
+  menuCellSW = [
+        menuDivider
+        createMenuItem 'Insert Scala Cell Above', insertNewScalaCellAbove
+        createMenuItem 'Insert Scala Cell Below', insertNewScalaCellBelow
+        ]
+  if _.onSparklingWater
+    menuCell = [menuCell..., menuCellSW...]
+
   initializeMenus = (builder) ->
     modelMenuItems = map(builder, (builder) ->
       createMenuItem "#{ builder.algo_full_name }...", executeCommand "buildModel #{stringify builder.algo}"
@@ -556,30 +609,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Download this Flow...', exportNotebook 
       ]
     ,
-      createMenu 'Cell', [
-        createMenuItem 'Run Cell', runCell, ['ctrl', 'enter']
-        menuDivider
-        createMenuItem 'Cut Cell', cutCell, ['x']
-        createMenuItem 'Copy Cell', copyCell, ['c']
-        createMenuItem 'Paste Cell Above', pasteCellAbove, ['shift', 'v']
-        createMenuItem 'Paste Cell Below', pasteCellBelow, ['v']
-        #TODO createMenuItem 'Paste Cell and Replace', pasteCellandReplace, yes
-        createMenuItem 'Delete Cell', deleteCell, ['d', 'd']
-        createMenuItem 'Undo Delete Cell', undoLastDelete, ['z']
-        menuDivider
-        createMenuItem 'Move Cell Up', moveCellUp, ['ctrl', 'k']
-        createMenuItem 'Move Cell Down', moveCellDown, ['ctrl', 'j']
-        menuDivider
-        createMenuItem 'Insert Cell Above', insertNewCellAbove, ['a']
-        createMenuItem 'Insert Cell Below', insertNewCellBelow, ['b']
-        #TODO createMenuItem 'Split Cell', splitCell
-        #TODO createMenuItem 'Merge Cell Above', mergeCellAbove, yes
-        #TODO createMenuItem 'Merge Cell Below', mergeCellBelow
-        menuDivider
-        createMenuItem 'Toggle Cell Input', toggleInput
-        createMenuItem 'Toggle Cell Output', toggleOutput, ['o']
-        createMenuItem 'Clear Cell Output', clearCell
-      ]
+      createMenu 'Cell', menuCell
     ,
       createMenu 'Data', [
         createMenuItem 'Import Files...', executeCommand 'importFiles'
@@ -728,11 +758,15 @@ Flow.Notebook = (_, _renderers) ->
     # [ 'l', 'toggle line numbers' ]
     [ 'o', 'toggle output', toggleOutput ]
     # [ 'shift+o', 'toggle output scrolling' ]
-    # [ 'q', 'close pager' ]
     [ 'h', 'keyboard shortcuts', displayKeyboardShortcuts ]
     # [ 'i', 'interrupt kernel (press twice)' ]
     # [ '0', 'restart kernel (press twice)' ]
-  ] 
+  ]
+
+  if _.onSparklingWater
+    normalModeKeyboardShortcuts.push [ 'q', 'to Scala', convertCellToScala ]
+
+
 
   # 
   # Edit Mode (press Enter to enable) 
@@ -806,6 +840,7 @@ Flow.Notebook = (_, _renderers) ->
     do (executeCommand 'assist')
 
     _.setDirty() #TODO setPristine() when autosave is implemented.
+    _initializeInterpreter()
 
   link _.ready, initialize
 
@@ -833,4 +868,3 @@ Flow.Notebook = (_, _renderers) ->
   about: _about
   dialogs: _dialogs
   templateOf: (view) -> view.template
-

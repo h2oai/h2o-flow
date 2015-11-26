@@ -5,14 +5,19 @@
       table(style='width:100%')
         tbody
           tr
-            td 
+            td
+              //ko ifnot:type()=='sca'
               textarea(placeholder='Expression...' rows='1' spellcheck='false' data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_actions, autoResize:_actions")
+              // /ko
+              //ko if:type()=='sca'
+              textarea(data-bind="value:input, cursorPosition:_actions, autoResize:_actions, valueUpdate: 'afterkeydown', hasFocus:isActive, codemirror: {readOnly: false, lineWrapping: true, lineNumbers: true, theme: 'flow', matchBrackets: true, mode: {name: 'text/x-scala'}}")
+              // /ko
             td.flow-cell-actions
               i.fa.fa-paperclip.flow-pointer(title='Save to clipboard' data-bind='click:clip')
           tr
             td.flow-cell-time(data-bind='text:time')
             td.flow-cell-actions
-
+      // /ko
   .flow-cell-output(data-bind="css:{ 'flow-hide-output': isOutputHidden }")
     // ko if:result
     .flow-cell-result(data-bind='template:{ name: templateOf, data:result }')

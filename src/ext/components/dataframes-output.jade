@@ -1,0 +1,25 @@
+.flow-widget
+    h3.flow-hint
+        i.fa.fa-table
+        | Spark's Data Frames
+
+    // ko ifnot:hasDataFrames
+    blockquote Your Spark Cloud has no data frames.
+    // /ko
+
+    // ko if:hasDataFrames
+    table.flow-form.flow-form-ruled
+        thead
+            tr
+                th(width='1') ID
+                th(width='1') Partitions
+
+        tbody
+            // ko foreach:dataFrameViews
+            tr
+                td.flow-right(data-bind='text:dataframe_id')
+                td(data-bind='text:partitions')
+            // /ko
+    // /ko
+
+

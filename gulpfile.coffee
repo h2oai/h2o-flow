@@ -64,6 +64,10 @@ config =
       'lib/typeahead.js/dist/typeahead.jquery.min.js'
       'lib/diecut/diecut.js'
       'vendor/h2oai/lightning.min.js'
+      'lib/codemirror/lib/codemirror.js'
+      'lib/codemirror/mode/clike/clike.js'
+      'lib/codemirror/addon/edit/matchbrackets.js'
+
     ]
     css: [
       'fonts/lato/fonts.css'
@@ -71,6 +75,7 @@ config =
       'lib/fontawesome/css/font-awesome.css'
       'lib/highlightjs/styles/tomorrow.css'
       'lib/bootstrap/dist/css/bootstrap.css'
+      'lib/codemirror/lib/codemirror.css'
     ]
     cssmap: [
       'lib/bootstrap/dist/css/bootstrap.css.map'
@@ -125,7 +130,7 @@ gulp.task 'build-templates', ->
     .pipe gulp.dest config.dir.deploy
 
 gulp.task 'build-styles', ->
-  gulp.src 'src/flow.styl'
+  gulp.src [ 'src/*.styl' ]
     .pipe stylus use: [ nib() ]
     .pipe gulp.dest config.dir.deploy + '/css/'
 

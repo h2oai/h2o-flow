@@ -1643,14 +1643,95 @@ H2O.Routines = (_) ->
     rdds
 
   requestRDDs = (go) ->
-    _.requestRDDs (error, rdds) ->
+    _.requestRDDs (error, result) ->
       if error
         go error
       else
-        go null, extendRDDs rdds
+        go null, extendRDDs result.rdds
 
   getRDDs = ->
     _fork requestRDDs
+
+  extendDataFrames = (dataframes) ->
+    render_ dataframes, H2O.DataFramesOutput, dataframes
+    dataframes
+
+  requestDataFrames = (go) ->
+    _.requestDataFrames (error, result) ->
+      if error
+        go error
+      else
+        go null, extendDataFrames result.dataframes
+
+  getDataFrames = ->
+    _fork requestDataFrames
+
+  extendAsH2OFrame = (result) ->
+    render_ result, H2O.H2OFrameOutput, result
+    result
+
+  requestAsH2OFrameFromRDD = (rdd_id, name, go) ->
+    _.requestAsH2OFrameFromRDD rdd_id,name, (error, h2oframe_id) ->
+      if error
+        go error
+      else
+        go null, extendAsH2OFrame h2oframe_id
+
+  asH2OFrameFromRDD = (rdd_id, name=undefined) ->
+    _fork requestAsH2OFrameFromRDD, rdd_id, name
+
+  requestAsH2OFrameFromDF = (df_id, name, go) ->
+    _.requestAsH2OFrameFromDF df_id, name, (error, result) ->
+      if error
+        go error
+      else
+        go null, extendAsH2OFrame result
+
+  asH2OFrameFromDF = (df_id, name=undefined) ->
+    _fork requestAsH2OFrameFromDF, df_id, name
+
+
+  extendAsDataFrame = (result) ->
+    render_ result, H2O.DataFrameOutput, result
+    result
+
+  requestAsDataFrame = (hf_id, name, go) ->
+    _.requestAsDataFrame hf_id, name, (error, result) ->
+      if error
+        go error
+      else
+        go null, extendAsDataFrame result
+
+  asDataFrame = (hf_id, name=undefined) ->
+    _fork requestAsDataFrame, hf_id, name
+
+  requestScalaCode = (session_id, code, go) ->
+    _.requestScalaCode session_id, code,  (error, result) ->
+      if error
+        go error
+      else
+        go null, extendScalaCode result
+
+  extendScalaCode = (result) ->
+    render_ result, H2O.ScalaCodeOutput, result
+    result
+
+  runScalaCode = (session_id, code) ->
+    _fork requestScalaCode, session_id, code
+
+  requestScalaIntp = (go) ->
+    _.requestScalaIntp (error, result) ->
+      if error
+        go error
+      else
+        go null, extendScalaIntp result
+
+  extendScalaIntp = (result) ->
+    render_ result, H2O.ScalaIntpOutput, result
+    result
+
+  getScalaIntp = ->
+    _fork requestScalaIntp
 
   requestProfile = (depth, go) ->
     _.requestProfile depth, (error, profile) ->
@@ -1723,16 +1804,18 @@ H2O.Routines = (_) ->
       )
     link _.requestFrameDataE, requestFrameData
     link _.requestFrameSummarySliceE, requestFrameSummarySlice
+   
+  initAssistanceSparklingWater = ->
+    _assistance.getRDDs =
+      description: 'Get a list of Spark\'s RDDs'
+      icon: 'table'
+    _assistance.getDataFrames =
+      description: 'Get a list of Spark\'s data frames'
+      icon: 'table'
 
   link _.initialized, ->
-    #TODO Hack for sparkling-water
-    _.requestEndpoints (error, response) ->
-      unless error
-        for route in response.routes
-          if route.url_pattern is '/3/RDDs'
-            _assistance.getRDDs =
-              description: 'Get a list of RDDs in H<sub>2</sub>O'
-              icon: 'table'
+    if _.onSparklingWater
+            initAssistanceSparklingWater()
 
 
   # fork/join 
@@ -1784,7 +1867,6 @@ H2O.Routines = (_) ->
   deleteFrames: deleteFrames
   deleteFrame: deleteFrame
   exportFrame: exportFrame
-  getRDDs: getRDDs
   getColumnSummary: getColumnSummary
   changeColumnType: changeColumnType
   imputeColumn: imputeColumn
@@ -1807,4 +1889,13 @@ H2O.Routines = (_) ->
   getLogFile: getLogFile
   testNetwork: testNetwork
   deleteAll: deleteAll
+  #
+  # Sparkling-Water
+  getDataFrames: getDataFrames
+  getRDDs: getRDDs
+  getScalaIntp: getScalaIntp
+  runScalaCode: runScalaCode
+  asH2OFrameFromRDD: asH2OFrameFromRDD
+  asH2OFrameFromDF: asH2OFrameFromDF
+  asDataFrame: asDataFrame
 

@@ -190,13 +190,6 @@ H2O.Proxy = (_) ->
       force: if overwrite then 'true' else 'false'
     doPost "/3/Frames/#{encodeURIComponent key}/export", params, go
 
-  requestRDDs = (go) ->
-    doGet '/3/RDDs', (error, result) ->
-      if error
-        go error
-      else
-        go null, result.rdds
-
   requestColumnSummary = (frameKey, column, go) ->
     doGet "/3/Frames/#{encodeURIComponent frameKey}/columns/#{encodeURIComponent column}/summary", unwrap go, (result) -> head result.frames
 
@@ -528,6 +521,37 @@ H2O.Proxy = (_) ->
   requestHelpContent = (name, go) ->
     download 'text', "/flow/help/#{name}.html", go
 
+  requestRDDs = (go) ->
+    doGet '/3/RDDs', go
+
+  requestDataFrames = (go) ->
+    doGet '/3/dataframes', go
+
+  requestScalaIntp = (go) ->
+    doPost '/3/scalaint', {}, go
+
+  requestScalaCode = (session_id, code, go) ->
+    doPost "/3/scalaint/#{session_id}", {code: code}, go
+
+  requestAsH2OFrameFromRDD = (rdd_id, name, go) ->
+    if name==undefined
+      doPost "/3/RDDs/#{rdd_id}/h2oframe", {}, go
+    else
+      doPost "/3/RDDs/#{rdd_id}/h2oframe", {h2oframe_id: name}, go
+
+  requestAsH2OFrameFromDF = (df_id, name, go) ->
+    if name==undefined
+      doPost "/3/dataframes/#{df_id}/h2oframe", {}, go
+    else
+      doPost "/3/dataframes/#{df_id}/h2oframe", {h2oframe_id: name}, go
+
+  requestAsDataFrame = (hf_id, name, go) ->
+    if name==undefined
+      doPost "/3/h2oframes/#{hf_id}/dataframe", {}, go
+    else
+      doPost "/3/h2oframes/#{hf_id}/dataframe", {dataframe_id: name}, go
+
+
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
   link _.requestSplitFrame, requestSplitFrame
@@ -539,7 +563,6 @@ H2O.Proxy = (_) ->
   link _.requestFrameSummarySlice, requestFrameSummarySlice
   link _.requestDeleteFrame, requestDeleteFrame
   link _.requestExportFrame, requestExportFrame
-  link _.requestRDDs, requestRDDs
   link _.requestColumnSummary, requestColumnSummary
   link _.requestJobs, requestJobs
   link _.requestJob, requestJob
@@ -592,5 +615,14 @@ H2O.Proxy = (_) ->
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
   link _.requestExec, requestExec
+  #
+  # Sparkling-Water
+  link _.requestRDDs, requestRDDs
+  link _.requestDataFrames, requestDataFrames
+  link _.requestScalaIntp, requestScalaIntp
+  link _.requestScalaCode, requestScalaCode
+  link _.requestAsH2OFrameFromDF, requestAsH2OFrameFromDF
+  link _.requestAsH2OFrameFromRDD, requestAsH2OFrameFromRDD
+  link _.requestAsDataFrame, requestAsDataFrame
 
 
