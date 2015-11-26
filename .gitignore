@@ -6,4 +6,6 @@ lib
 *.log
 *.tmp
 .gradle
+.idea
+build
 
