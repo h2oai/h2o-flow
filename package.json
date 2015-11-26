@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "npm install && bower install && gulp",
-    "build": "gulp",
+      "build": "mkdir -p build/css && mkdir -p build/custom &&  cp -a src/custom/. build/custom && mkdir -p build/fonts && cp -a src/fonts/. build/fonts && mkdir -p build/img && cp -a src/img/. build/img && mkdir -p build/js && gulp",
     "clean": "gulp clean",
     "watch": "gulp && gulp watch",
     "headless": "gulp && phantomjs build/js/headless-test.js --packs examples",
