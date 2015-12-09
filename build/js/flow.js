@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.4';
+    Flow.Version = '0.4.6';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -10615,17 +10615,17 @@
         }
         if (table = _.inspect('output - training_metrics - Gains/Lift Table', _model)) {
             renderPlot('Training Metrics - Gains/Lift Table', false, _.plot(function (g) {
-                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.from(table));
+                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.from(table));
             }));
         }
         if (table = _.inspect('output - validation_metrics - Gains/Lift Table', _model)) {
             renderPlot('Validation Metrics - Gains/Lift Table', false, _.plot(function (g) {
-                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.from(table));
+                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.from(table));
             }));
         }
         if (table = _.inspect('output - cross_validation_metrics - Gains/Lift Table', _model)) {
             renderPlot('Cross Validation Metrics - Gains/Lift Table', false, _.plot(function (g) {
-                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.from(table));
+                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.from(table));
             }));
         }
         _ref18 = _.ls(_model);
