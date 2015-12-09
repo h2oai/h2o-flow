@@ -12,1419 +12,1998 @@
     }
 }.call(this));
 (function () {
-    H2O.Assist = function (_, _go, _items) {
-        var createAssistItem, item, name;
-        createAssistItem = function (name, item) {
-            return {
-                name: name,
-                description: item.description,
-                icon: 'fa fa-' + item.icon + ' flow-icon',
-                execute: function () {
-                    return _.insertAndExecuteCell('cs', name);
-                }
+    Flow.Version = '0.4.4';
+    Flow.About = function (_) {
+        var _properties;
+        _properties = Flow.Dataflow.signals([]);
+        Flow.Dataflow.link(_.ready, function () {
+            if (Flow.BuildProperties) {
+                return _properties(Flow.BuildProperties);
+            } else {
+                return _.requestAbout(function (error, response) {
+                    var name, properties, value, _i, _len, _ref, _ref1;
+                    properties = [];
+                    if (!error) {
+                        _ref = response.entries;
+                        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                            _ref1 = _ref[_i], name = _ref1.name, value = _ref1.value;
+                            properties.push({
+                                caption: 'H2O ' + name,
+                                value: value
+                            });
+                        }
+                    }
+                    properties.push({
+                        caption: 'Flow version',
+                        value: Flow.Version
+                    });
+                    return _properties(Flow.BuildProperties = properties);
+                });
+            }
+        });
+        return { properties: _properties };
+    };
+}.call(this));
+(function () {
+    Flow.AlertDialog = function (_, _message, _opts, _go) {
+        var accept;
+        if (_opts == null) {
+            _opts = {};
+        }
+        lodash.defaults(_opts, {
+            title: 'Alert',
+            acceptCaption: 'OK'
+        });
+        accept = function () {
+            return _go(true);
+        };
+        return {
+            title: _opts.title,
+            acceptCaption: _opts.acceptCaption,
+            message: Flow.Util.multilineTextToHTML(_message),
+            accept: accept,
+            template: 'alert-dialog'
+        };
+    };
+}.call(this));
+(function () {
+    Flow.Browser = function (_) {
+        var createNotebookView, loadNotebooks, _docs, _hasDocs, _sortedDocs;
+        _docs = Flow.Dataflow.signals([]);
+        _sortedDocs = Flow.Dataflow.lift(_docs, function (docs) {
+            return lodash.sortBy(docs, function (doc) {
+                return -doc.date().getTime();
+            });
+        });
+        _hasDocs = Flow.Dataflow.lift(_docs, function (docs) {
+            return docs.length > 0;
+        });
+        createNotebookView = function (notebook) {
+            var load, purge, self, _date, _fromNow, _name;
+            _name = notebook.name;
+            _date = Flow.Dataflow.signal(new Date(notebook.timestamp_millis));
+            _fromNow = Flow.Dataflow.lift(_date, Flow.Util.fromNow);
+            load = function () {
+                return _.confirm('This action will replace your active notebook.\nAre you sure you want to continue?', {
+                    acceptCaption: 'Load Notebook',
+                    declineCaption: 'Cancel'
+                }, function (accept) {
+                    if (accept) {
+                        return _.load(_name);
+                    }
+                });
+            };
+            purge = function () {
+                return _.confirm('Are you sure you want to delete this notebook?\n"' + _name + '"', {
+                    acceptCaption: 'Delete',
+                    declineCaption: 'Keep'
+                }, function (accept) {
+                    if (accept) {
+                        return _.requestDeleteObject('notebook', _name, function (error) {
+                            var _ref;
+                            if (error) {
+                                return _alert((_ref = error.message) != null ? _ref : error);
+                            } else {
+                                _docs.remove(self);
+                                return _.growl('Notebook deleted.');
+                            }
+                        });
+                    }
+                });
+            };
+            return self = {
+                name: _name,
+                date: _date,
+                fromNow: _fromNow,
+                load: load,
+                purge: purge
             };
         };
-        lodash.defer(_go);
-        return {
-            routines: function () {
-                var _results;
-                _results = [];
-                for (name in _items) {
-                    item = _items[name];
-                    _results.push(createAssistItem(name, item));
-                }
-                return _results;
-            }(),
-            template: 'flow-assist'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.BindFramesOutput = function (_, _go, key, result) {
-        var viewFrame;
-        viewFrame = function () {
-            return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(key));
-        };
-        lodash.defer(_go);
-        return {
-            viewFrame: viewFrame,
-            template: 'flow-bind-frames-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.CancelJobOutput = function (_, _go, _cancellation) {
-        lodash.defer(_go);
-        return { template: 'flow-cancel-job-output' };
-    };
-}.call(this));
-(function () {
-    H2O.CloudOutput = function (_, _go, _cloud) {
-        var avg, createGrid, createNodeRow, createTotalRow, format3f, formatMilliseconds, formatThreads, prettyPrintBytes, refresh, sum, toggleExpansion, toggleRefresh, updateCloud, _exception, _hasConsensus, _headers, _isBusy, _isExpanded, _isHealthy, _isLive, _isLocked, _name, _nodeCounts, _nodes, _size, _sizes, _uptime, _version;
-        _exception = Flow.Dataflow.signal(null);
-        _isLive = Flow.Dataflow.signal(false);
-        _isBusy = Flow.Dataflow.signal(false);
-        _isExpanded = Flow.Dataflow.signal(false);
-        _name = Flow.Dataflow.signal();
-        _size = Flow.Dataflow.signal();
-        _uptime = Flow.Dataflow.signal();
-        _version = Flow.Dataflow.signal();
-        _nodeCounts = Flow.Dataflow.signal();
-        _hasConsensus = Flow.Dataflow.signal();
-        _isLocked = Flow.Dataflow.signal();
-        _isHealthy = Flow.Dataflow.signal();
-        _nodes = Flow.Dataflow.signals();
-        formatMilliseconds = function (ms) {
-            return Flow.Util.fromNow(new Date(new Date().getTime() - ms));
-        };
-        format3f = d3.format('.3f');
-        _sizes = [
-            'B',
-            'KB',
-            'MB',
-            'GB',
-            'TB',
-            'PB',
-            'EB',
-            'ZB',
-            'YB'
-        ];
-        prettyPrintBytes = function (bytes) {
-            var i;
-            if (bytes === 0) {
-                return '-';
-            }
-            i = Math.floor(Math.log(bytes) / Math.log(1024));
-            return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + _sizes[i];
-        };
-        formatThreads = function (fjs) {
-            var i, max_lo, s, _i, _j, _k, _ref;
-            for (max_lo = _i = 120; _i > 0; max_lo = --_i) {
-                if (fjs[max_lo - 1] !== -1) {
-                    break;
-                }
-            }
-            s = '[';
-            for (i = _j = 0; 0 <= max_lo ? _j < max_lo : _j > max_lo; i = 0 <= max_lo ? ++_j : --_j) {
-                s += Math.max(fjs[i], 0);
-                s += '/';
-            }
-            s += '.../';
-            for (i = _k = 120, _ref = fjs.length - 1; 120 <= _ref ? _k < _ref : _k > _ref; i = 120 <= _ref ? ++_k : --_k) {
-                s += fjs[i];
-                s += '/';
-            }
-            s += fjs[fjs.length - 1];
-            s += ']';
-            return s;
-        };
-        sum = function (nodes, attrOf) {
-            var node, total, _i, _len;
-            total = 0;
-            for (_i = 0, _len = nodes.length; _i < _len; _i++) {
-                node = nodes[_i];
-                total += attrOf(node);
-            }
-            return total;
-        };
-        avg = function (nodes, attrOf) {
-            return sum(nodes, attrOf) / nodes.length;
-        };
-        _headers = [
-            [
-                '&nbsp;',
-                true
-            ],
-            [
-                'Name',
-                true
-            ],
-            [
-                'Ping',
-                true
-            ],
-            [
-                'Cores',
-                true
-            ],
-            [
-                'Load',
-                true
-            ],
-            [
-                'My CPU %',
-                true
-            ],
-            [
-                'Sys CPU %',
-                true
-            ],
-            [
-                'Data (Used/Total)',
-                true
-            ],
-            [
-                'Data (% Cached)',
-                true
-            ],
-            [
-                'GC (Free / Total / Max)',
-                true
-            ],
-            [
-                'Disk (Free / Max)',
-                true
-            ],
-            [
-                'Disk (% Free)',
-                true
-            ],
-            [
-                'PID',
-                false
-            ],
-            [
-                'Keys',
-                false
-            ],
-            [
-                'TCP',
-                false
-            ],
-            [
-                'FD',
-                false
-            ],
-            [
-                'RPCs',
-                false
-            ],
-            [
-                'Threads',
-                false
-            ],
-            [
-                'Tasks',
-                false
-            ]
-        ];
-        createNodeRow = function (node) {
-            return [
-                node.healthy,
-                node.ip_port,
-                moment(new Date(node.last_ping)).fromNow(),
-                node.num_cpus,
-                format3f(node.sys_load),
-                node.my_cpu_pct,
-                node.sys_cpu_pct,
-                '' + prettyPrintBytes(node.mem_value_size) + ' / ' + prettyPrintBytes(node.total_value_size),
-                '' + Math.floor(node.mem_value_size * 100 / node.total_value_size) + '%',
-                '' + prettyPrintBytes(node.free_mem) + ' / ' + prettyPrintBytes(node.tot_mem) + ' / ' + prettyPrintBytes(node.max_mem),
-                '' + prettyPrintBytes(node.free_disk) + ' / ' + prettyPrintBytes(node.max_disk),
-                '' + Math.floor(node.free_disk * 100 / node.max_disk) + '%',
-                node.pid,
-                node.num_keys,
-                node.tcps_active,
-                node.open_fds,
-                node.rpcs_active,
-                formatThreads(node.fjthrds),
-                formatThreads(node.fjqueue)
-            ];
-        };
-        createTotalRow = function (cloud) {
-            var nodes;
-            nodes = cloud.nodes;
-            return [
-                cloud.cloud_healthy,
-                'TOTAL',
-                '-',
-                sum(nodes, function (node) {
-                    return node.num_cpus;
-                }),
-                format3f(sum(nodes, function (node) {
-                    return node.sys_load;
-                })),
-                '-',
-                '-',
-                '' + prettyPrintBytes(sum(nodes, function (node) {
-                    return node.mem_value_size;
-                })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
-                    return node.total_value_size;
-                })),
-                '' + Math.floor(avg(nodes, function (node) {
-                    return node.mem_value_size * 100 / node.total_value_size;
-                })) + '%',
-                '' + prettyPrintBytes(sum(nodes, function (node) {
-                    return node.free_mem;
-                })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
-                    return node.tot_mem;
-                })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
-                    return node.max_mem;
-                })),
-                '' + prettyPrintBytes(sum(nodes, function (node) {
-                    return node.free_disk;
-                })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
-                    return node.max_disk;
-                })),
-                '' + Math.floor(avg(nodes, function (node) {
-                    return node.free_disk * 100 / node.max_disk;
-                })) + '%',
-                '-',
-                sum(nodes, function (node) {
-                    return node.num_keys;
-                }),
-                sum(nodes, function (node) {
-                    return node.tcps_active;
-                }),
-                sum(nodes, function (node) {
-                    return node.open_fds;
-                }),
-                sum(nodes, function (node) {
-                    return node.rpcs_active;
-                }),
-                '-',
-                '-'
-            ];
-        };
-        createGrid = function (cloud, isExpanded) {
-            var caption, cell, danger, grid, i, nodeRows, row, showAlways, success, table, tbody, td, tds, th, thead, ths, tr, trs, _ref;
-            _ref = Flow.HTML.template('.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'i.fa.fa-check-circle.text-success', 'i.fa.fa-exclamation-circle.text-danger'), grid = _ref[0], table = _ref[1], thead = _ref[2], tbody = _ref[3], tr = _ref[4], th = _ref[5], td = _ref[6], success = _ref[7], danger = _ref[8];
-            nodeRows = lodash.map(cloud.nodes, createNodeRow);
-            nodeRows.push(createTotalRow(cloud));
-            ths = function () {
-                var _i, _len, _ref1, _results;
-                _results = [];
-                for (_i = 0, _len = _headers.length; _i < _len; _i++) {
-                    _ref1 = _headers[_i], caption = _ref1[0], showAlways = _ref1[1];
-                    if (showAlways || isExpanded) {
-                        _results.push(th(caption));
-                    }
-                }
-                return _results;
-            }();
-            trs = function () {
-                var _i, _len, _results;
-                _results = [];
-                for (_i = 0, _len = nodeRows.length; _i < _len; _i++) {
-                    row = nodeRows[_i];
-                    tds = function () {
-                        var _j, _len1, _results1;
-                        _results1 = [];
-                        for (i = _j = 0, _len1 = row.length; _j < _len1; i = ++_j) {
-                            cell = row[i];
-                            if (_headers[i][1] || isExpanded) {
-                                if (i === 0) {
-                                    _results1.push(td(cell ? success() : danger()));
-                                } else {
-                                    _results1.push(td(cell));
-                                }
-                            }
-                        }
-                        return _results1;
-                    }();
-                    _results.push(tr(tds));
-                }
-                return _results;
-            }();
-            return Flow.HTML.render('div', grid([table([
-                    thead(tr(ths)),
-                    tbody(trs)
-                ])]));
-        };
-        updateCloud = function (cloud, isExpanded) {
-            _name(cloud.cloud_name);
-            _version(cloud.version);
-            _hasConsensus(cloud.consensus);
-            _uptime(formatMilliseconds(cloud.cloud_uptime_millis));
-            _nodeCounts('' + (cloud.cloud_size - cloud.bad_nodes) + ' / ' + cloud.cloud_size);
-            _isLocked(cloud.locked);
-            _isHealthy(cloud.cloud_healthy);
-            return _nodes(createGrid(cloud, isExpanded));
-        };
-        toggleRefresh = function () {
-            return _isLive(!_isLive());
-        };
-        refresh = function () {
-            _isBusy(true);
-            return _.requestCloud(function (error, cloud) {
-                _isBusy(false);
-                if (error) {
-                    _exception(Flow.Failure(_, new Flow.Error('Error fetching cloud status', error)));
-                    return _isLive(false);
-                } else {
-                    updateCloud(_cloud = cloud, _isExpanded());
-                    if (_isLive()) {
-                        return lodash.delay(refresh, 2000);
-                    }
-                }
-            });
-        };
-        Flow.Dataflow.act(_isLive, function (isLive) {
-            if (isLive) {
-                return refresh();
-            }
-        });
-        toggleExpansion = function () {
-            return _isExpanded(!_isExpanded());
-        };
-        Flow.Dataflow.act(_isExpanded, function (isExpanded) {
-            return updateCloud(_cloud, isExpanded);
-        });
-        updateCloud(_cloud, _isExpanded());
-        lodash.defer(_go);
-        return {
-            name: _name,
-            size: _size,
-            uptime: _uptime,
-            version: _version,
-            nodeCounts: _nodeCounts,
-            hasConsensus: _hasConsensus,
-            isLocked: _isLocked,
-            isHealthy: _isHealthy,
-            nodes: _nodes,
-            isLive: _isLive,
-            isBusy: _isBusy,
-            toggleRefresh: toggleRefresh,
-            refresh: refresh,
-            isExpanded: _isExpanded,
-            toggleExpansion: toggleExpansion,
-            template: 'flow-cloud-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.ColumnSummaryOutput = function (_, _go, frameKey, frame, columnName) {
-        var column, impute, inspect, renderPlot, table, _characteristicsPlot, _distributionPlot, _domainPlot, _summaryPlot;
-        column = lodash.head(frame.columns);
-        _characteristicsPlot = Flow.Dataflow.signal(null);
-        _summaryPlot = Flow.Dataflow.signal(null);
-        _distributionPlot = Flow.Dataflow.signal(null);
-        _domainPlot = Flow.Dataflow.signal(null);
-        renderPlot = function (target, render) {
-            return render(function (error, vis) {
+        loadNotebooks = function () {
+            return _.requestObjects('notebook', function (error, notebooks) {
                 if (error) {
                     return console.debug(error);
                 } else {
-                    return target(vis.element);
+                    return _docs(lodash.map(notebooks, function (notebook) {
+                        return createNotebookView(notebook);
+                    }));
                 }
             });
         };
-        if (table = _.inspect('characteristics', frame)) {
-            renderPlot(_characteristicsPlot, _.plot(function (g) {
-                return g(g.rect(g.position(g.stack(g.avg('percent'), 0), 'All'), g.fillColor('characteristic')), g.groupBy(g.factor(g.value('All')), 'characteristic'), g.from(table));
-            }));
-        }
-        if (table = _.inspect('distribution', frame)) {
-            renderPlot(_distributionPlot, _.plot(function (g) {
-                return g(g.rect(g.position('interval', 'count'), g.width(g.value(1))), g.from(table));
-            }));
-        }
-        if (table = _.inspect('summary', frame)) {
-            renderPlot(_summaryPlot, _.plot(function (g) {
-                return g(g.schema(g.position('min', 'q1', 'q2', 'q3', 'max', 'column')), g.from(table));
-            }));
-        }
-        if (table = _.inspect('domain', frame)) {
-            renderPlot(_domainPlot, _.plot(function (g) {
-                return g(g.rect(g.position('count', 'label')), g.from(table), g.limit(1000));
-            }));
-        }
-        impute = function () {
-            return _.insertAndExecuteCell('cs', 'imputeColumn frame: ' + Flow.Prelude.stringify(frameKey) + ', column: ' + Flow.Prelude.stringify(columnName));
-        };
-        inspect = function () {
-            return _.insertAndExecuteCell('cs', 'inspect getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName));
-        };
-        lodash.defer(_go);
+        Flow.Dataflow.link(_.ready, function () {
+            loadNotebooks();
+            Flow.Dataflow.link(_.saved, function () {
+                return loadNotebooks();
+            });
+            return Flow.Dataflow.link(_.loaded, function () {
+                return loadNotebooks();
+            });
+        });
         return {
-            label: column.label,
-            characteristicsPlot: _characteristicsPlot,
-            summaryPlot: _summaryPlot,
-            distributionPlot: _distributionPlot,
-            domainPlot: _domainPlot,
-            impute: impute,
-            inspect: inspect,
-            template: 'flow-column-summary-output'
+            docs: _sortedDocs,
+            hasDocs: _hasDocs,
+            loadNotebooks: loadNotebooks
         };
     };
 }.call(this));
 (function () {
-    H2O.CreateFrameInput = function (_, _go) {
-        var createFrame, _binaryFraction, _binaryOnesFraction, _categoricalFraction, _columns, _factors, _hasResponse, _integerFraction, _integerRange, _key, _missingFraction, _randomize, _realRange, _responseFactors, _rows, _seed, _value;
-        _key = Flow.Dataflow.signal('');
-        _rows = Flow.Dataflow.signal(10000);
-        _columns = Flow.Dataflow.signal(100);
-        _seed = Flow.Dataflow.signal(7595850248774472000);
-        _randomize = Flow.Dataflow.signal(true);
-        _value = Flow.Dataflow.signal(0);
-        _realRange = Flow.Dataflow.signal(100);
-        _categoricalFraction = Flow.Dataflow.signal(0.1);
-        _factors = Flow.Dataflow.signal(5);
-        _integerFraction = Flow.Dataflow.signal(0.5);
-        _binaryFraction = Flow.Dataflow.signal(0.1);
-        _binaryOnesFraction = Flow.Dataflow.signal(0.02);
-        _integerRange = Flow.Dataflow.signal(1);
-        _missingFraction = Flow.Dataflow.signal(0.01);
-        _responseFactors = Flow.Dataflow.signal(2);
-        _hasResponse = Flow.Dataflow.signal(false);
-        createFrame = function () {
-            var opts;
-            opts = {
-                dest: _key(),
-                rows: _rows(),
-                cols: _columns(),
-                seed: _seed(),
-                randomize: _randomize(),
-                value: _value(),
-                real_range: _realRange(),
-                categorical_fraction: _categoricalFraction(),
-                factors: _factors(),
-                integer_fraction: _integerFraction(),
-                binary_fraction: _binaryFraction(),
-                binary_ones_fraction: _binaryOnesFraction(),
-                integer_range: _integerRange(),
-                missing_fraction: _missingFraction(),
-                response_factors: _responseFactors(),
-                has_response: _hasResponse()
+    Flow.Cell = function (_, _renderers, type, input) {
+        var activate, clear, clip, execute, navigate, select, self, toggleInput, toggleOutput, _actions, _errors, _guid, _hasError, _hasInput, _hasOutput, _input, _isActive, _isBusy, _isCode, _isInputVisible, _isOutputHidden, _isReady, _isSelected, _outputs, _render, _result, _time, _type;
+        if (type == null) {
+            type = 'cs';
+        }
+        if (input == null) {
+            input = '';
+        }
+        _guid = lodash.uniqueId();
+        _type = Flow.Dataflow.signal(type);
+        _render = Flow.Dataflow.lift(_type, function (type) {
+            return _renderers[type](_guid);
+        });
+        _isCode = Flow.Dataflow.lift(_render, function (render) {
+            return render.isCode;
+        });
+        _isSelected = Flow.Dataflow.signal(false);
+        _isActive = Flow.Dataflow.signal(false);
+        _hasError = Flow.Dataflow.signal(false);
+        _isBusy = Flow.Dataflow.signal(false);
+        _isReady = Flow.Dataflow.lift(_isBusy, function (isBusy) {
+            return !isBusy;
+        });
+        _time = Flow.Dataflow.signal('');
+        _hasInput = Flow.Dataflow.signal(true);
+        _input = Flow.Dataflow.signal(input);
+        _outputs = Flow.Dataflow.signals([]);
+        _errors = [];
+        _result = Flow.Dataflow.signal(null);
+        _hasOutput = Flow.Dataflow.lift(_outputs, function (outputs) {
+            return outputs.length > 0;
+        });
+        _isInputVisible = Flow.Dataflow.signal(true);
+        _isOutputHidden = Flow.Dataflow.signal(false);
+        _actions = {};
+        Flow.Dataflow.act(_isActive, function (isActive) {
+            if (isActive) {
+                _.selectCell(self);
+                _hasInput(true);
+                if (!_isCode()) {
+                    _outputs([]);
+                }
+            }
+        });
+        Flow.Dataflow.act(_isSelected, function (isSelected) {
+            if (!isSelected) {
+                return _isActive(false);
+            }
+        });
+        select = function () {
+            _.selectCell(self, false);
+            return true;
+        };
+        navigate = function () {
+            _.selectCell(self);
+            return true;
+        };
+        activate = function () {
+            return _isActive(true);
+        };
+        clip = function () {
+            return _.saveClip('user', _type(), _input());
+        };
+        toggleInput = function () {
+            return _isInputVisible(!_isInputVisible());
+        };
+        toggleOutput = function () {
+            return _isOutputHidden(!_isOutputHidden());
+        };
+        clear = function () {
+            _result(null);
+            _outputs([]);
+            _errors.length = 0;
+            _hasError(false);
+            if (!_isCode()) {
+                return _hasInput(true);
+            }
+        };
+        execute = function (go) {
+            var render, startTime;
+            startTime = Date.now();
+            _time('Started at ' + Flow.Util.formatClockTime(startTime));
+            input = _input().trim();
+            if (!input) {
+                if (go) {
+                    return go(null);
+                } else {
+                    return void 0;
+                }
+            }
+            render = _render();
+            _isBusy(true);
+            clear();
+            render(input, {
+                data: function (result) {
+                    return _outputs.push(result);
+                },
+                close: function (result) {
+                    return _result(result);
+                },
+                error: function (error) {
+                    _hasError(true);
+                    if (error.name === 'FlowError') {
+                        _outputs.push(Flow.Failure(_, error));
+                    } else {
+                        _outputs.push({
+                            text: JSON.stringify(error, null, 2),
+                            template: 'flow-raw'
+                        });
+                    }
+                    return _errors.push(error);
+                },
+                end: function () {
+                    _hasInput(_isCode());
+                    _isBusy(false);
+                    _time(Flow.Util.formatElapsedTime(Date.now() - startTime));
+                    if (go) {
+                        go(_hasError() ? _errors.slice(0) : null);
+                    }
+                }
+            });
+            return _isActive(false);
+        };
+        return self = {
+            guid: _guid,
+            type: _type,
+            isCode: _isCode,
+            isSelected: _isSelected,
+            isActive: _isActive,
+            hasError: _hasError,
+            isBusy: _isBusy,
+            isReady: _isReady,
+            time: _time,
+            input: _input,
+            hasInput: _hasInput,
+            outputs: _outputs,
+            result: _result,
+            hasOutput: _hasOutput,
+            isInputVisible: _isInputVisible,
+            toggleInput: toggleInput,
+            isOutputHidden: _isOutputHidden,
+            toggleOutput: toggleOutput,
+            select: select,
+            navigate: navigate,
+            activate: activate,
+            execute: execute,
+            clear: clear,
+            clip: clip,
+            _actions: _actions,
+            getCursorPosition: function () {
+                return _actions.getCursorPosition();
+            },
+            autoResize: function () {
+                return _actions.autoResize();
+            },
+            scrollIntoView: function (immediate) {
+                return _actions.scrollIntoView(immediate);
+            },
+            templateOf: function (view) {
+                return view.template;
+            },
+            template: 'flow-cell'
+        };
+    };
+}.call(this));
+(function () {
+    var SystemClips;
+    SystemClips = [
+        'assist',
+        'importFiles',
+        'getFrames',
+        'getModels',
+        'getPredictions',
+        'getJobs',
+        'buildModel',
+        'predict'
+    ];
+    Flow.Clipboard = function (_) {
+        var addClip, createClip, emptyTrash, initialize, lengthOf, loadUserClips, removeClip, saveUserClips, serializeUserClips, _hasTrashClips, _hasUserClips, _systemClipCount, _systemClips, _trashClipCount, _trashClips, _userClipCount, _userClips;
+        lengthOf = function (array) {
+            if (array.length) {
+                return '(' + array.length + ')';
+            } else {
+                return '';
+            }
+        };
+        _systemClips = Flow.Dataflow.signals([]);
+        _systemClipCount = Flow.Dataflow.lift(_systemClips, lengthOf);
+        _userClips = Flow.Dataflow.signals([]);
+        _userClipCount = Flow.Dataflow.lift(_userClips, lengthOf);
+        _hasUserClips = Flow.Dataflow.lift(_userClips, function (clips) {
+            return clips.length > 0;
+        });
+        _trashClips = Flow.Dataflow.signals([]);
+        _trashClipCount = Flow.Dataflow.lift(_trashClips, lengthOf);
+        _hasTrashClips = Flow.Dataflow.lift(_trashClips, function (clips) {
+            return clips.length > 0;
+        });
+        createClip = function (_list, _type, _input, _canRemove) {
+            var execute, insert, self;
+            if (_canRemove == null) {
+                _canRemove = true;
+            }
+            execute = function () {
+                return _.insertAndExecuteCell(_type, _input);
             };
-            return _.insertAndExecuteCell('cs', 'createFrame ' + Flow.Prelude.stringify(opts));
+            insert = function () {
+                return _.insertCell(_type, _input);
+            };
+            Flow.Prelude.remove = function () {
+                if (_canRemove) {
+                    return removeClip(_list, self);
+                }
+            };
+            return self = {
+                type: _type,
+                input: _input,
+                execute: execute,
+                insert: insert,
+                remove: Flow.Prelude.remove,
+                canRemove: _canRemove
+            };
         };
-        lodash.defer(_go);
-        return {
-            key: _key,
-            rows: _rows,
-            columns: _columns,
-            seed: _seed,
-            randomize: _randomize,
-            value: _value,
-            realRange: _realRange,
-            categoricalFraction: _categoricalFraction,
-            factors: _factors,
-            integerFraction: _integerFraction,
-            binaryFraction: _binaryFraction,
-            binaryOnesFraction: _binaryOnesFraction,
-            integerRange: _integerRange,
-            missingFraction: _missingFraction,
-            responseFactors: _responseFactors,
-            hasResponse: _hasResponse,
-            createFrame: createFrame,
-            template: 'flow-create-frame-input'
+        addClip = function (list, type, input) {
+            return list.push(createClip(list, type, input));
         };
-    };
-}.call(this));
-(function () {
-    H2O.DeleteObjectsOutput = function (_, _go, _keys) {
-        lodash.defer(_go);
-        return {
-            hasKeys: _keys.length > 0,
-            keys: _keys,
-            template: 'flow-delete-objects-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.ExportFrameInput = function (_, _go, frameKey, path, opt) {
-        var exportFrame, _canExportFrame, _frames, _overwrite, _path, _selectedFrame;
-        _frames = Flow.Dataflow.signal([]);
-        _selectedFrame = Flow.Dataflow.signal(frameKey);
-        _path = Flow.Dataflow.signal(null);
-        _overwrite = Flow.Dataflow.signal(true);
-        _canExportFrame = Flow.Dataflow.lift(_selectedFrame, _path, function (frame, path) {
-            return frame && path;
-        });
-        exportFrame = function () {
-            return _.insertAndExecuteCell('cs', 'exportFrame ' + Flow.Prelude.stringify(_selectedFrame()) + ', ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
-        };
-        _.requestFrames(function (error, frames) {
-            var frame;
-            if (error) {
+        removeClip = function (list, clip) {
+            if (list === _userClips) {
+                _userClips.remove(clip);
+                saveUserClips();
+                return _trashClips.push(createClip(_trashClips, clip.type, clip.input));
             } else {
-                _frames(function () {
-                    var _i, _len, _results;
-                    _results = [];
-                    for (_i = 0, _len = frames.length; _i < _len; _i++) {
-                        frame = frames[_i];
-                        _results.push(frame.frame_id.name);
-                    }
-                    return _results;
-                }());
-                return _selectedFrame(frameKey);
+                return _trashClips.remove(clip);
             }
-        });
-        lodash.defer(_go);
+        };
+        emptyTrash = function () {
+            return _trashClips.removeAll();
+        };
+        loadUserClips = function () {
+            return _.requestObjectExists('environment', 'clips', function (error, exists) {
+                if (exists) {
+                    return _.requestObject('environment', 'clips', function (error, doc) {
+                        if (!error) {
+                            return _userClips(lodash.map(doc.clips, function (clip) {
+                                return createClip(_userClips, clip.type, clip.input);
+                            }));
+                        }
+                    });
+                }
+            });
+        };
+        serializeUserClips = function () {
+            return {
+                version: '1.0.0',
+                clips: lodash.map(_userClips(), function (clip) {
+                    return {
+                        type: clip.type,
+                        input: clip.input
+                    };
+                })
+            };
+        };
+        saveUserClips = function () {
+            return _.requestPutObject('environment', 'clips', serializeUserClips(), function (error) {
+                if (error) {
+                    _.alert('Error saving clips: ' + error.message);
+                }
+            });
+        };
+        initialize = function () {
+            _systemClips(lodash.map(SystemClips, function (input) {
+                return createClip(_systemClips, 'cs', input, false);
+            }));
+            return Flow.Dataflow.link(_.ready, function () {
+                loadUserClips();
+                return Flow.Dataflow.link(_.saveClip, function (category, type, input) {
+                    input = input.trim();
+                    if (input) {
+                        if (category === 'user') {
+                            addClip(_userClips, type, input);
+                            return saveUserClips();
+                        } else {
+                            return addClip(_trashClips, type, input);
+                        }
+                    }
+                });
+            });
+        };
+        initialize();
         return {
-            frames: _frames,
-            selectedFrame: _selectedFrame,
-            path: _path,
-            overwrite: _overwrite,
-            canExportFrame: _canExportFrame,
-            exportFrame: exportFrame,
-            template: 'flow-export-frame-input'
+            systemClips: _systemClips,
+            systemClipCount: _systemClipCount,
+            userClips: _userClips,
+            hasUserClips: _hasUserClips,
+            userClipCount: _userClipCount,
+            trashClips: _trashClips,
+            trashClipCount: _trashClipCount,
+            hasTrashClips: _hasTrashClips,
+            emptyTrash: emptyTrash
         };
     };
 }.call(this));
 (function () {
-    H2O.ExportFrameOutput = function (_, _go, result) {
-        lodash.defer(_go);
-        return { template: 'flow-export-frame-output' };
+    Flow.Coffeescript = function (_, guid, sandbox) {
+        var isRoutine, print, render, _kernel;
+        _kernel = Flow.CoffeescriptKernel;
+        print = function (arg) {
+            if (arg !== print) {
+                sandbox.results[guid].outputs(arg);
+            }
+            return print;
+        };
+        isRoutine = function (f) {
+            var name, routine, _ref;
+            _ref = sandbox.routines;
+            for (name in _ref) {
+                routine = _ref[name];
+                if (f === routine) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        render = function (input, output) {
+            var cellResult, evaluate, outputBuffer, tasks;
+            sandbox.results[guid] = cellResult = {
+                result: Flow.Dataflow.signal(null),
+                outputs: outputBuffer = Flow.Async.createBuffer([])
+            };
+            evaluate = function (ft) {
+                if (ft != null ? ft.isFuture : void 0) {
+                    return ft(function (error, result) {
+                        var _ref;
+                        if (error) {
+                            output.error(new Flow.Error('Error evaluating cell', error));
+                            return output.end();
+                        } else {
+                            if (result != null ? (_ref = result._flow_) != null ? _ref.render : void 0 : void 0) {
+                                return output.data(result._flow_.render(function () {
+                                    return output.end();
+                                }));
+                            } else {
+                                return output.data(Flow.ObjectBrowser(_, function () {
+                                    return output.end();
+                                }('output', result)));
+                            }
+                        }
+                    });
+                } else {
+                    return output.data(Flow.ObjectBrowser(_, function () {
+                        return output.end();
+                    }, 'output', ft));
+                }
+            };
+            outputBuffer.subscribe(evaluate);
+            tasks = [
+                _kernel.safetyWrapCoffeescript(guid),
+                _kernel.compileCoffeescript,
+                _kernel.parseJavascript,
+                _kernel.createRootScope(sandbox),
+                _kernel.removeHoistedDeclarations,
+                _kernel.rewriteJavascript(sandbox),
+                _kernel.generateJavascript,
+                _kernel.compileJavascript,
+                _kernel.executeJavascript(sandbox, print)
+            ];
+            return Flow.Async.pipe(tasks)(input, function (error) {
+                var result;
+                if (error) {
+                    output.error(error);
+                }
+                result = cellResult.result();
+                if (lodash.isFunction(result)) {
+                    if (isRoutine(result)) {
+                        return print(result());
+                    } else {
+                        return evaluate(result);
+                    }
+                } else {
+                    return output.close(Flow.ObjectBrowser(_, function () {
+                        return output.end();
+                    }, 'result', result));
+                }
+            });
+        };
+        render.isCode = true;
+        return render;
     };
 }.call(this));
 (function () {
-    H2O.ExportModelInput = function (_, _go, modelKey, path, opt) {
-        var exportModel, _canExportModel, _models, _overwrite, _path, _selectedModelKey;
-        if (opt == null) {
-            opt = {};
+    Flow.ConfirmDialog = function (_, _message, _opts, _go) {
+        var accept, decline;
+        if (_opts == null) {
+            _opts = {};
         }
-        _models = Flow.Dataflow.signal([]);
-        _selectedModelKey = Flow.Dataflow.signal(null);
-        _path = Flow.Dataflow.signal(null);
-        _overwrite = Flow.Dataflow.signal(opt.overwrite ? true : false);
-        _canExportModel = Flow.Dataflow.lift(_selectedModelKey, _path, function (modelKey, path) {
-            return modelKey && path;
+        lodash.defaults(_opts, {
+            title: 'Confirm',
+            acceptCaption: 'Yes',
+            declineCaption: 'No'
         });
-        exportModel = function () {
-            return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_selectedModelKey()) + ', ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
+        accept = function () {
+            return _go(true);
         };
-        _.requestModels(function (error, models) {
-            var model;
-            if (error) {
-            } else {
-                _models(function () {
-                    var _i, _len, _results;
-                    _results = [];
-                    for (_i = 0, _len = models.length; _i < _len; _i++) {
-                        model = models[_i];
-                        _results.push(model.model_id.name);
-                    }
-                    return _results;
-                }());
-                return _selectedModelKey(modelKey);
-            }
-        });
+        decline = function () {
+            return _go(false);
+        };
+        return {
+            title: _opts.title,
+            acceptCaption: _opts.acceptCaption,
+            declineCaption: _opts.declineCaption,
+            message: Flow.Util.multilineTextToHTML(_message),
+            accept: accept,
+            decline: decline,
+            template: 'confirm-dialog'
+        };
+    };
+}.call(this));
+(function () {
+}.call(this));
+(function () {
+    var traceCauses;
+    traceCauses = function (error, causes) {
+        causes.push(error.message);
+        if (error.cause) {
+            traceCauses(error.cause, causes);
+        }
+        return causes;
+    };
+    Flow.Failure = function (_, error) {
+        var causes, message, toggleStack, _isStackVisible;
+        causes = traceCauses(error, []);
+        message = causes.shift();
+        _isStackVisible = Flow.Dataflow.signal(false);
+        toggleStack = function () {
+            return _isStackVisible(!_isStackVisible());
+        };
+        _.trackException(message + '; ' + causes.join('; '));
+        return {
+            message: message,
+            stack: error.stack,
+            causes: causes,
+            isStackVisible: _isStackVisible,
+            toggleStack: toggleStack,
+            template: 'flow-failure'
+        };
+    };
+}.call(this));
+(function () {
+    Flow.Form = function (_, _form, _go) {
         lodash.defer(_go);
         return {
-            models: _models,
-            selectedModelKey: _selectedModelKey,
-            path: _path,
-            overwrite: _overwrite,
-            canExportModel: _canExportModel,
-            exportModel: exportModel,
-            template: 'flow-export-model-input'
+            form: _form,
+            template: 'flow-form',
+            templateOf: function (control) {
+                return control.template;
+            }
         };
     };
 }.call(this));
 (function () {
-    H2O.ExportModelOutput = function (_, _go, result) {
-        lodash.defer(_go);
-        return { template: 'flow-export-model-output' };
+    Flow.Heading = function (_, level) {
+        var render;
+        render = function (input, output) {
+            output.data({
+                text: input.trim() || '(Untitled)',
+                template: 'flow-' + level
+            });
+            return output.end();
+        };
+        render.isCode = false;
+        return render;
     };
 }.call(this));
 (function () {
-    Flow.FileOpenDialog = function (_, _go) {
-        var accept, checkIfNameIsInUse, decline, uploadFile, _canAccept, _file, _form, _overwrite;
-        _overwrite = Flow.Dataflow.signal(false);
-        _form = Flow.Dataflow.signal(null);
-        _file = Flow.Dataflow.signal(null);
-        _canAccept = Flow.Dataflow.lift(_file, function (file) {
-            if (file != null ? file.name : void 0) {
-                return H2O.Util.validateFileExtension(file.name, '.flow');
-            } else {
-                return false;
+    var _catalog, _homeContent, _homeMarkdown, _index;
+    _catalog = null;
+    _index = {};
+    _homeContent = null;
+    _homeMarkdown = '<blockquote>\nUsing Flow for the first time?\n<br/>\n<div style=\'margin-top:10px\'>\n  <button type=\'button\' data-action=\'get-flow\' data-pack-name=\'examples\' data-flow-name=\'QuickStartVideos.flow\' class=\'flow-button\'><i class=\'fa fa-file-movie-o\'></i><span>Quickstart Videos</span>\n  </button>\n</div>\n</blockquote>\n\nOr, <a href=\'#\' data-action=\'get-pack\' data-pack-name=\'examples\'>view example Flows</a> to explore and learn H<sub>2</sub>O.\n\n###### Star H2O on Github!\n\n<iframe src="https://ghbtns.com/github-btn.html?user=h2oai&repo=h2o-3&type=star&count=true" frameborder="0" scrolling="0" width="170px" height="20px"></iframe>\n\n###### General\n\n%HELP_TOPICS%\n\n###### Examples\n\nFlow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Flows and run them in your browser.<br/><a href=\'#\' data-action=\'get-packs\'>Browse installed packs...</a>\n\n###### H<sub>2</sub>O REST API\n\n- <a href=\'#\' data-action=\'endpoints\'>Routes</a>\n- <a href=\'#\' data-action=\'schemas\'>Schemas</a>\n';
+    Flow.Help = function (_) {
+        var buildToc, buildTopics, displayEndpoint, displayEndpoints, displayFlows, displayHtml, displayPacks, displaySchema, displaySchemas, fixImageSources, goBack, goForward, goHome, goTo, initialize, performAction, _canGoBack, _canGoForward, _content, _history, _historyIndex;
+        _content = Flow.Dataflow.signal(null);
+        _history = [];
+        _historyIndex = -1;
+        _canGoBack = Flow.Dataflow.signal(false);
+        _canGoForward = Flow.Dataflow.signal(false);
+        goTo = function (index) {
+            var content;
+            content = _history[_historyIndex = index];
+            $('a, button', $(content)).each(function (i) {
+                var $a, action;
+                $a = $(this);
+                if (action = $a.attr('data-action')) {
+                    return $a.click(function () {
+                        return performAction(action, $a);
+                    });
+                }
+            });
+            _content(content);
+            _canGoForward(_historyIndex < _history.length - 1);
+            _canGoBack(_historyIndex > 0);
+        };
+        goBack = function () {
+            if (_historyIndex > 0) {
+                return goTo(_historyIndex - 1);
             }
+        };
+        goForward = function () {
+            if (_historyIndex < _history.length - 1) {
+                return goTo(_historyIndex + 1);
+            }
+        };
+        displayHtml = function (content) {
+            if (_historyIndex < _history.length - 1) {
+                _history.splice(_historyIndex + 1, _history.length - (_historyIndex + 1), content);
+            } else {
+                _history.push(content);
+            }
+            return goTo(_history.length - 1);
+        };
+        fixImageSources = function (html) {
+            return html.replace(/\s+src\s*\=\s*\"images\//g, ' src="help/images/');
+        };
+        performAction = function (action, $el) {
+            var packName, routeIndex, schemaName, topic;
+            switch (action) {
+            case 'help':
+                topic = _index[$el.attr('data-topic')];
+                _.requestHelpContent(topic.name, function (error, html) {
+                    var contents, div, h5, h6, mark, _ref;
+                    _ref = Flow.HTML.template('div', 'mark', 'h5', 'h6'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3];
+                    contents = [
+                        mark('Help'),
+                        h5(topic.title),
+                        fixImageSources(div(html))
+                    ];
+                    if (topic.children.length) {
+                        contents.push(h6('Topics'));
+                        contents.push(buildToc(topic.children));
+                    }
+                    return displayHtml(Flow.HTML.render('div', div(contents)));
+                });
+                break;
+            case 'assist':
+                _.insertAndExecuteCell('cs', 'assist');
+                break;
+            case 'get-packs':
+                _.requestPacks(function (error, packNames) {
+                    if (!error) {
+                        return displayPacks(lodash.filter(packNames, function (packName) {
+                            return packName !== 'test';
+                        }));
+                    }
+                });
+                break;
+            case 'get-pack':
+                packName = $el.attr('data-pack-name');
+                _.requestPack(packName, function (error, flowNames) {
+                    if (!error) {
+                        return displayFlows(packName, flowNames);
+                    }
+                });
+                break;
+            case 'get-flow':
+                _.confirm('This action will replace your active notebook.\nAre you sure you want to continue?', {
+                    acceptCaption: 'Load Notebook',
+                    declineCaption: 'Cancel'
+                }, function (accept) {
+                    var flowName;
+                    if (accept) {
+                        packName = $el.attr('data-pack-name');
+                        flowName = $el.attr('data-flow-name');
+                        if (H2O.Util.validateFileExtension(flowName, '.flow')) {
+                            return _.requestFlow(packName, flowName, function (error, flow) {
+                                if (!error) {
+                                    return _.open(H2O.Util.getFileBaseName(flowName, '.flow'), flow);
+                                }
+                            });
+                        }
+                    }
+                });
+                break;
+            case 'endpoints':
+                _.requestEndpoints(function (error, response) {
+                    if (!error) {
+                        return displayEndpoints(response.routes);
+                    }
+                });
+                break;
+            case 'endpoint':
+                routeIndex = $el.attr('data-index');
+                _.requestEndpoint(routeIndex, function (error, response) {
+                    if (!error) {
+                        return displayEndpoint(lodash.head(response.routes));
+                    }
+                });
+                break;
+            case 'schemas':
+                _.requestSchemas(function (error, response) {
+                    if (!error) {
+                        return displaySchemas(lodash.sortBy(response.schemas, function (schema) {
+                            return schema.name;
+                        }));
+                    }
+                });
+                break;
+            case 'schema':
+                schemaName = $el.attr('data-schema');
+                _.requestSchema(schemaName, function (error, response) {
+                    if (!error) {
+                        return displaySchema(lodash.head(response.schemas));
+                    }
+                });
+            }
+        };
+        buildToc = function (nodes) {
+            var a, li, ul, _ref;
+            _ref = Flow.HTML.template('ul', 'li', 'a href=\'#\' data-action=\'help\' data-topic=\'$1\''), ul = _ref[0], li = _ref[1], a = _ref[2];
+            return ul(lodash.map(nodes, function (node) {
+                return li(a(node.title, node.name));
+            }));
+        };
+        buildTopics = function (index, topics) {
+            var topic, _i, _len;
+            for (_i = 0, _len = topics.length; _i < _len; _i++) {
+                topic = topics[_i];
+                index[topic.name] = topic;
+                if (topic.children.length) {
+                    buildTopics(index, topic.children);
+                }
+            }
+        };
+        displayPacks = function (packNames) {
+            var a, div, h5, i, mark, p, _ref;
+            _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'i.fa.fa-folder-o', 'a href=\'#\' data-action=\'get-pack\' data-pack-name=\'$1\''), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], i = _ref[4], a = _ref[5];
+            displayHtml(Flow.HTML.render('div', div([
+                mark('Packs'),
+                h5('Installed Packs'),
+                div(lodash.map(packNames, function (packName) {
+                    return p([
+                        i(),
+                        a(packName, packName)
+                    ]);
+                }))
+            ])));
+        };
+        displayFlows = function (packName, flowNames) {
+            var a, div, h5, i, mark, p, _ref;
+            _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'i.fa.fa-file-text-o', 'a href=\'#\' data-action=\'get-flow\' data-pack-name=\'' + packName + '\' data-flow-name=\'$1\''), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], i = _ref[4], a = _ref[5];
+            displayHtml(Flow.HTML.render('div', div([
+                mark('Pack'),
+                h5(packName),
+                div(lodash.map(flowNames, function (flowName) {
+                    return p([
+                        i(),
+                        a(flowName, flowName)
+                    ]);
+                }))
+            ])));
+        };
+        displayEndpoints = function (routes) {
+            var action, code, div, els, h5, mark, p, route, routeIndex, _i, _len, _ref;
+            _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'a href=\'#\' data-action=\'endpoint\' data-index=\'$1\'', 'code'), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], action = _ref[4], code = _ref[5];
+            els = [
+                mark('API'),
+                h5('List of Routes')
+            ];
+            for (routeIndex = _i = 0, _len = routes.length; _i < _len; routeIndex = ++_i) {
+                route = routes[routeIndex];
+                els.push(p(action(code(route.http_method + ' ' + route.url_pattern), routeIndex) + '<br/>' + route.summary));
+            }
+            displayHtml(Flow.HTML.render('div', div(els)));
+        };
+        goHome = function () {
+            return displayHtml(Flow.HTML.render('div', _homeContent));
+        };
+        displayEndpoint = function (route) {
+            var action, code, div, h5, h6, mark, p, _ref, _ref1;
+            _ref = Flow.HTML.template('div', 'mark', 'h5', 'h6', 'p', 'a href=\'#\' data-action=\'schema\' data-schema=\'$1\'', 'code'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3], p = _ref[4], action = _ref[5], code = _ref[6];
+            return displayHtml(Flow.HTML.render('div', div([
+                mark('Route'),
+                h5(route.url_pattern),
+                h6('Method'),
+                p(code(route.http_method)),
+                h6('Summary'),
+                p(route.summary),
+                h6('Parameters'),
+                p(((_ref1 = route.path_params) != null ? _ref1.length : void 0) ? route.path_params.join(', ') : '-'),
+                h6('Input Schema'),
+                p(action(code(route.input_schema), route.input_schema)),
+                h6('Output Schema'),
+                p(action(code(route.output_schema), route.output_schema))
+            ])));
+        };
+        displaySchemas = function (schemas) {
+            var action, code, div, els, h5, li, mark, schema, ul, variable, _ref;
+            _ref = Flow.HTML.template('div', 'h5', 'ul', 'li', 'var', 'mark', 'code', 'a href=\'#\' data-action=\'schema\' data-schema=\'$1\''), div = _ref[0], h5 = _ref[1], ul = _ref[2], li = _ref[3], variable = _ref[4], mark = _ref[5], code = _ref[6], action = _ref[7];
+            els = [
+                mark('API'),
+                h5('List of Schemas'),
+                ul(function () {
+                    var _i, _len, _results;
+                    _results = [];
+                    for (_i = 0, _len = schemas.length; _i < _len; _i++) {
+                        schema = schemas[_i];
+                        _results.push(li('' + action(code(schema.name), schema.name) + ' ' + variable(lodash.escape(schema.type))));
+                    }
+                    return _results;
+                }())
+            ];
+            return displayHtml(Flow.HTML.render('div', div(els)));
+        };
+        displaySchema = function (schema) {
+            var code, content, div, field, h5, h6, mark, p, small, variable, _i, _len, _ref, _ref1;
+            _ref = Flow.HTML.template('div', 'mark', 'h5', 'h6', 'p', 'code', 'var', 'small'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3], p = _ref[4], code = _ref[5], variable = _ref[6], small = _ref[7];
+            content = [
+                mark('Schema'),
+                h5('' + schema.name + ' (' + lodash.escape(schema.type) + ')'),
+                h6('Fields')
+            ];
+            _ref1 = schema.fields;
+            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                field = _ref1[_i];
+                if (field.name !== '__meta') {
+                    content.push(p('' + variable(field.name) + (field.required ? '*' : '') + ' ' + code(lodash.escape(field.type)) + '<br/>' + small(field.help)));
+                }
+            }
+            return displayHtml(Flow.HTML.render('div', div(content)));
+        };
+        initialize = function (catalog) {
+            _catalog = catalog;
+            buildTopics(_index, _catalog);
+            _homeContent = marked(_homeMarkdown).replace('%HELP_TOPICS%', buildToc(_catalog));
+            return goHome();
+        };
+        Flow.Dataflow.link(_.ready, function () {
+            return _.requestHelpIndex(function (error, catalog) {
+                if (!error) {
+                    return initialize(catalog);
+                }
+            });
         });
+        return {
+            content: _content,
+            goHome: goHome,
+            goBack: goBack,
+            canGoBack: _canGoBack,
+            goForward: goForward,
+            canGoForward: _canGoForward
+        };
+    };
+}.call(this));
+(function () {
+    Flow.Markdown = function (_) {
+        var render;
+        render = function (input, output) {
+            var error;
+            try {
+                return output.data({
+                    html: marked(input.trim() || '(No content)'),
+                    template: 'flow-html'
+                });
+            } catch (_error) {
+                error = _error;
+                return output.error(error);
+            } finally {
+                output.end();
+            }
+        };
+        render.isCode = false;
+        return render;
+    };
+}.call(this));
+(function () {
+    Flow.Renderers = function (_, _sandbox) {
+        return {
+            h1: function () {
+                return Flow.Heading(_, 'h1');
+            },
+            h2: function () {
+                return Flow.Heading(_, 'h2');
+            },
+            h3: function () {
+                return Flow.Heading(_, 'h3');
+            },
+            h4: function () {
+                return Flow.Heading(_, 'h4');
+            },
+            h5: function () {
+                return Flow.Heading(_, 'h5');
+            },
+            h6: function () {
+                return Flow.Heading(_, 'h6');
+            },
+            md: function () {
+                return Flow.Markdown(_);
+            },
+            cs: function (guid) {
+                return Flow.Coffeescript(_, guid, _sandbox);
+            },
+            raw: function () {
+                return Flow.Raw(_);
+            }
+        };
+    };
+    Flow.Notebook = function (_, _renderers) {
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createShortcutHint, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        _localName = Flow.Dataflow.signal('Untitled Flow');
+        Flow.Dataflow.react(_localName, function (name) {
+            return document.title = 'H2O' + (name && name.trim() ? '- ' + name : '');
+        });
+        _remoteName = Flow.Dataflow.signal(null);
+        _isEditingName = Flow.Dataflow.signal(false);
+        editName = function () {
+            return _isEditingName(true);
+        };
+        saveName = function () {
+            return _isEditingName(false);
+        };
+        _cells = Flow.Dataflow.signals([]);
+        _selectedCell = null;
+        _selectedCellIndex = -1;
+        _clipboardCell = null;
+        _lastDeletedCell = null;
+        _areInputsHidden = Flow.Dataflow.signal(false);
+        _areOutputsHidden = Flow.Dataflow.signal(false);
+        _isSidebarHidden = Flow.Dataflow.signal(false);
+        _isRunningAll = Flow.Dataflow.signal(false);
+        _runningCaption = Flow.Dataflow.signal('Running');
+        _runningPercent = Flow.Dataflow.signal('0%');
+        _runningCellInput = Flow.Dataflow.signal('');
+        _status = Flow.Status(_);
+        _sidebar = Flow.Sidebar(_, _cells);
+        _about = Flow.About(_);
+        _dialogs = Flow.Dialogs(_);
+        serialize = function () {
+            var cell, cells;
+            cells = function () {
+                var _i, _len, _ref, _results;
+                _ref = _cells();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    cell = _ref[_i];
+                    _results.push({
+                        type: cell.type(),
+                        input: cell.input()
+                    });
+                }
+                return _results;
+            }();
+            return {
+                version: '1.0.0',
+                cells: cells
+            };
+        };
+        deserialize = function (localName, remoteName, doc) {
+            var cell, cells, _i, _len, _ref;
+            _localName(localName);
+            _remoteName(remoteName);
+            cells = function () {
+                var _i, _len, _ref, _results;
+                _ref = doc.cells;
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    cell = _ref[_i];
+                    _results.push(createCell(cell.type, cell.input));
+                }
+                return _results;
+            }();
+            _cells(cells);
+            selectCell(lodash.head(cells));
+            _ref = _cells();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                cell = _ref[_i];
+                if (!cell.isCode()) {
+                    cell.execute();
+                }
+            }
+        };
+        createCell = function (type, input) {
+            if (type == null) {
+                type = 'cs';
+            }
+            if (input == null) {
+                input = '';
+            }
+            return Flow.Cell(_, _renderers, type, input);
+        };
+        checkConsistency = function () {
+            var cell, i, selectionCount, _i, _len, _ref;
+            selectionCount = 0;
+            _ref = _cells();
+            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                cell = _ref[i];
+                if (!cell) {
+                    error('index ' + i + ' is empty');
+                } else {
+                    if (cell.isSelected()) {
+                        selectionCount++;
+                    }
+                }
+            }
+            if (selectionCount !== 1) {
+                error('selected cell count = ' + selectionCount);
+            }
+        };
+        selectCell = function (target, scrollIntoView, scrollImmediately) {
+            if (scrollIntoView == null) {
+                scrollIntoView = true;
+            }
+            if (scrollImmediately == null) {
+                scrollImmediately = false;
+            }
+            if (_selectedCell === target) {
+                return;
+            }
+            if (_selectedCell) {
+                _selectedCell.isSelected(false);
+            }
+            _selectedCell = target;
+            _selectedCell.isSelected(true);
+            _selectedCellIndex = _cells.indexOf(_selectedCell);
+            checkConsistency();
+            if (scrollIntoView) {
+                lodash.defer(function () {
+                    return _selectedCell.scrollIntoView(scrollImmediately);
+                });
+            }
+            return _selectedCell;
+        };
+        cloneCell = function (cell) {
+            return createCell(cell.type(), cell.input());
+        };
+        switchToCommandMode = function () {
+            return _selectedCell.isActive(false);
+        };
+        switchToEditMode = function () {
+            _selectedCell.isActive(true);
+            return false;
+        };
+        convertCellToCode = function () {
+            return _selectedCell.type('cs');
+        };
+        convertCellToHeading = function (level) {
+            return function () {
+                _selectedCell.type('h' + level);
+                return _selectedCell.execute();
+            };
+        };
+        convertCellToMarkdown = function () {
+            _selectedCell.type('md');
+            return _selectedCell.execute();
+        };
+        convertCellToRaw = function () {
+            _selectedCell.type('raw');
+            return _selectedCell.execute();
+        };
+        copyCell = function () {
+            return _clipboardCell = _selectedCell;
+        };
+        cutCell = function () {
+            copyCell();
+            return removeCell();
+        };
+        deleteCell = function () {
+            _lastDeletedCell = _selectedCell;
+            return removeCell();
+        };
+        removeCell = function () {
+            var cells, removedCell;
+            cells = _cells();
+            if (cells.length > 1) {
+                if (_selectedCellIndex === cells.length - 1) {
+                    removedCell = lodash.head(_cells.splice(_selectedCellIndex, 1));
+                    selectCell(cells[_selectedCellIndex - 1]);
+                } else {
+                    removedCell = lodash.head(_cells.splice(_selectedCellIndex, 1));
+                    selectCell(cells[_selectedCellIndex]);
+                }
+                if (removedCell) {
+                    _.saveClip('trash', removedCell.type(), removedCell.input());
+                }
+            }
+        };
+        insertCell = function (index, cell) {
+            _cells.splice(index, 0, cell);
+            selectCell(cell);
+            return cell;
+        };
+        insertAbove = function (cell) {
+            return insertCell(_selectedCellIndex, cell);
+        };
+        insertBelow = function (cell) {
+            return insertCell(_selectedCellIndex + 1, cell);
+        };
+        appendCell = function (cell) {
+            return insertCell(_cells().length, cell);
+        };
+        insertCellAbove = function (type, input) {
+            return insertAbove(createCell(type, input));
+        };
+        insertCellBelow = function (type, input) {
+            return insertBelow(createCell(type, input));
+        };
+        insertNewCellAbove = function () {
+            return insertAbove(createCell('cs'));
+        };
+        insertNewCellBelow = function () {
+            return insertBelow(createCell('cs'));
+        };
+        insertCellAboveAndRun = function (type, input) {
+            var cell;
+            cell = insertAbove(createCell(type, input));
+            cell.execute();
+            return cell;
+        };
+        insertCellBelowAndRun = function (type, input) {
+            var cell;
+            cell = insertBelow(createCell(type, input));
+            cell.execute();
+            return cell;
+        };
+        appendCellAndRun = function (type, input) {
+            var cell;
+            cell = appendCell(createCell(type, input));
+            cell.execute();
+            return cell;
+        };
+        moveCellDown = function () {
+            var cells;
+            cells = _cells();
+            if (_selectedCellIndex !== cells.length - 1) {
+                _cells.splice(_selectedCellIndex, 1);
+                _selectedCellIndex++;
+                _cells.splice(_selectedCellIndex, 0, _selectedCell);
+            }
+        };
+        moveCellUp = function () {
+            var cells;
+            if (_selectedCellIndex !== 0) {
+                cells = _cells();
+                _cells.splice(_selectedCellIndex, 1);
+                _selectedCellIndex--;
+                _cells.splice(_selectedCellIndex, 0, _selectedCell);
+            }
+        };
+        mergeCellBelow = function () {
+            var cells, nextCell;
+            cells = _cells();
+            if (_selectedCellIndex !== cells.length - 1) {
+                nextCell = cells[_selectedCellIndex + 1];
+                if (_selectedCell.type() === nextCell.type()) {
+                    nextCell.input(_selectedCell.input() + '\n' + nextCell.input());
+                    removeCell();
+                }
+            }
+        };
+        splitCell = function () {
+            var cursorPosition, input, left, right;
+            if (_selectedCell.isActive()) {
+                input = _selectedCell.input();
+                if (input.length > 1) {
+                    cursorPosition = _selectedCell.getCursorPosition();
+                    if (0 < cursorPosition && cursorPosition < input.length - 1) {
+                        left = input.substr(0, cursorPosition);
+                        right = input.substr(cursorPosition);
+                        _selectedCell.input(left);
+                        insertCell(_selectedCellIndex + 1, createCell('cs', right));
+                        _selectedCell.isActive(true);
+                    }
+                }
+            }
+        };
+        pasteCellAbove = function () {
+            if (_clipboardCell) {
+                return insertCell(_selectedCellIndex, cloneCell(_clipboardCell));
+            }
+        };
+        pasteCellBelow = function () {
+            if (_clipboardCell) {
+                return insertCell(_selectedCellIndex + 1, cloneCell(_clipboardCell));
+            }
+        };
+        undoLastDelete = function () {
+            if (_lastDeletedCell) {
+                insertCell(_selectedCellIndex + 1, _lastDeletedCell);
+            }
+            return _lastDeletedCell = null;
+        };
+        runCell = function () {
+            _selectedCell.execute();
+            return false;
+        };
+        runCellAndInsertBelow = function () {
+            _selectedCell.execute(function () {
+                return insertNewCellBelow();
+            });
+            return false;
+        };
+        runCellAndSelectBelow = function () {
+            _selectedCell.execute(function () {
+                return selectNextCell();
+            });
+            return false;
+        };
         checkIfNameIsInUse = function (name, go) {
             return _.requestObjectExists('notebook', name, function (error, exists) {
                 return go(exists);
             });
         };
-        uploadFile = function (basename) {
-            return _.requestUploadObject('notebook', basename, new FormData(_form()), function (error, filename) {
-                return _go({
-                    error: error,
-                    filename: filename
-                });
-            });
-        };
-        accept = function () {
-            var basename, file;
-            if (file = _file()) {
-                basename = H2O.Util.getFileBaseName(file.name, '.flow');
-                if (_overwrite()) {
-                    return uploadFile(basename);
-                } else {
-                    return checkIfNameIsInUse(basename, function (isNameInUse) {
-                        if (isNameInUse) {
-                            return _overwrite(true);
-                        } else {
-                            return uploadFile(basename);
-                        }
-                    });
-                }
-            }
-        };
-        decline = function () {
-            return _go(null);
-        };
-        return {
-            form: _form,
-            file: _file,
-            overwrite: _overwrite,
-            canAccept: _canAccept,
-            accept: accept,
-            decline: decline,
-            template: 'file-open-dialog'
-        };
-    };
-}.call(this));
-(function () {
-    Flow.FileUploadDialog = function (_, _go) {
-        var accept, decline, uploadFile, _file, _form;
-        _form = Flow.Dataflow.signal(null);
-        _file = Flow.Dataflow.signal(null);
-        uploadFile = function (key) {
-            return _.requestUploadFile(key, new FormData(_form()), function (error, result) {
-                return _go({
-                    error: error,
-                    result: result
-                });
-            });
-        };
-        accept = function () {
-            var file;
-            if (file = _file()) {
-                return uploadFile(file.name);
-            }
-        };
-        decline = function () {
-            return _go(null);
-        };
-        return {
-            form: _form,
-            file: _file,
-            accept: accept,
-            decline: decline,
-            template: 'file-upload-dialog'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.FrameDataOutput = function (_, _go, _frame) {
-        var MaxItemsPerPage, goToNextPage, goToPreviousPage, refreshColumns, renderFrame, renderPlot, _canGoToNextPage, _canGoToPreviousPage, _columnNameSearchTerm, _currentPage, _data, _lastUsedSearchTerm, _maxPages;
-        MaxItemsPerPage = 20;
-        _data = Flow.Dataflow.signal(null);
-        _columnNameSearchTerm = Flow.Dataflow.signal(null);
-        _currentPage = Flow.Dataflow.signal(0);
-        _maxPages = Flow.Dataflow.signal(Math.ceil(_frame.total_column_count / MaxItemsPerPage));
-        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
-            return index > 0;
-        });
-        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
-            return index < maxPages - 1;
-        });
-        renderPlot = function (container, render) {
-            return render(function (error, vis) {
+        storeNotebook = function (localName, remoteName) {
+            return _.requestPutObject('notebook', localName, serialize(), function (error) {
                 if (error) {
-                    return console.debug(error);
+                    return _.alert('Error saving notebook: ' + error.message);
                 } else {
-                    return container(vis.element);
-                }
-            });
-        };
-        renderFrame = function (frame) {
-            return renderPlot(_data, _.plot(function (g) {
-                return g(g.select(), g.from(_.inspect('data', frame)));
-            }));
-        };
-        _lastUsedSearchTerm = null;
-        refreshColumns = function (pageIndex) {
-            var itemCount, searchTerm, startIndex;
-            searchTerm = _columnNameSearchTerm();
-            if (searchTerm !== _lastUsedSearchTerm) {
-                pageIndex = 0;
-            }
-            startIndex = pageIndex * MaxItemsPerPage;
-            itemCount = startIndex + MaxItemsPerPage < _frame.total_column_count ? MaxItemsPerPage : _frame.total_column_count - startIndex;
-            return _.requestFrameDataE(_frame.frame_id.name, searchTerm, startIndex, itemCount, function (error, frame) {
-                if (error) {
-                } else {
-                    _lastUsedSearchTerm = searchTerm;
-                    _currentPage(pageIndex);
-                    return renderFrame(frame);
-                }
-            });
-        };
-        goToPreviousPage = function () {
-            var currentPage;
-            currentPage = _currentPage();
-            if (currentPage > 0) {
-                refreshColumns(currentPage - 1);
-            }
-        };
-        goToNextPage = function () {
-            var currentPage;
-            currentPage = _currentPage();
-            if (currentPage < _maxPages() - 1) {
-                refreshColumns(currentPage + 1);
-            }
-        };
-        Flow.Dataflow.react(_columnNameSearchTerm, lodash.throttle(refreshColumns, 500));
-        renderFrame(_frame);
-        lodash.defer(_go);
-        return {
-            key: _frame.frame_id.name,
-            data: _data,
-            columnNameSearchTerm: _columnNameSearchTerm,
-            canGoToPreviousPage: _canGoToPreviousPage,
-            canGoToNextPage: _canGoToNextPage,
-            goToPreviousPage: goToPreviousPage,
-            goToNextPage: goToNextPage,
-            template: 'flow-frame-data-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.FrameOutput = function (_, _go, _frame) {
-        var MaxItemsPerPage, createModel, deleteFrame, download, exportFrame, goToNextPage, goToPreviousPage, inspect, inspectData, predict, refreshColumns, renderFrame, renderGrid, renderPlot, splitFrame, _canGoToNextPage, _canGoToPreviousPage, _chunkSummary, _columnNameSearchTerm, _currentPage, _distributionSummary, _grid, _lastUsedSearchTerm, _maxPages;
-        MaxItemsPerPage = 20;
-        _grid = Flow.Dataflow.signal(null);
-        _chunkSummary = Flow.Dataflow.signal(null);
-        _distributionSummary = Flow.Dataflow.signal(null);
-        _columnNameSearchTerm = Flow.Dataflow.signal(null);
-        _currentPage = Flow.Dataflow.signal(0);
-        _maxPages = Flow.Dataflow.signal(Math.ceil(_frame.total_column_count / MaxItemsPerPage));
-        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
-            return index > 0;
-        });
-        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
-            return index < maxPages - 1;
-        });
-        renderPlot = function (container, render) {
-            return render(function (error, vis) {
-                if (error) {
-                    return console.debug(error);
-                } else {
-                    return container(vis.element);
-                }
-            });
-        };
-        renderGrid = function (render) {
-            return render(function (error, vis) {
-                if (error) {
-                    return console.debug(error);
-                } else {
-                    $('a', vis.element).on('click', function (e) {
-                        var $a;
-                        $a = $(e.target);
-                        switch ($a.attr('data-type')) {
-                        case 'summary-link':
-                            return _.insertAndExecuteCell('cs', 'getColumnSummary ' + Flow.Prelude.stringify(_frame.frame_id.name) + ', ' + Flow.Prelude.stringify($a.attr('data-key')));
-                        case 'as-factor-link':
-                            return _.insertAndExecuteCell('cs', 'changeColumnType frame: ' + Flow.Prelude.stringify(_frame.frame_id.name) + ', column: ' + Flow.Prelude.stringify($a.attr('data-key')) + ', type: \'enum\'');
-                        case 'as-numeric-link':
-                            return _.insertAndExecuteCell('cs', 'changeColumnType frame: ' + Flow.Prelude.stringify(_frame.frame_id.name) + ', column: ' + Flow.Prelude.stringify($a.attr('data-key')) + ', type: \'int\'');
-                        }
-                    });
-                    return _grid(vis.element);
-                }
-            });
-        };
-        createModel = function () {
-            return _.insertAndExecuteCell('cs', 'assist buildModel, null, training_frame: ' + Flow.Prelude.stringify(_frame.frame_id.name));
-        };
-        inspect = function () {
-            return _.insertAndExecuteCell('cs', 'inspect getFrameSummary ' + Flow.Prelude.stringify(_frame.frame_id.name));
-        };
-        inspectData = function () {
-            return _.insertAndExecuteCell('cs', 'getFrameData ' + Flow.Prelude.stringify(_frame.frame_id.name));
-        };
-        splitFrame = function () {
-            return _.insertAndExecuteCell('cs', 'assist splitFrame, ' + Flow.Prelude.stringify(_frame.frame_id.name));
-        };
-        predict = function () {
-            return _.insertAndExecuteCell('cs', 'predict frame: ' + Flow.Prelude.stringify(_frame.frame_id.name));
-        };
-        download = function () {
-            return window.open('/3/DownloadDataset?frame_id=' + encodeURIComponent(_frame.frame_id.name), '_blank');
-        };
-        exportFrame = function () {
-            return _.insertAndExecuteCell('cs', 'exportFrame ' + Flow.Prelude.stringify(_frame.frame_id.name));
-        };
-        deleteFrame = function () {
-            return _.confirm('Are you sure you want to delete this frame?', {
-                acceptCaption: 'Delete Frame',
-                declineCaption: 'Cancel'
-            }, function (accept) {
-                if (accept) {
-                    return _.insertAndExecuteCell('cs', 'deleteFrame ' + Flow.Prelude.stringify(_frame.frame_id.name));
-                }
-            });
-        };
-        renderFrame = function (frame) {
-            renderGrid(_.plot(function (g) {
-                return g(g.select(), g.from(_.inspect('columns', frame)));
-            }));
-            renderPlot(_chunkSummary, _.plot(function (g) {
-                return g(g.select(), g.from(_.inspect('Chunk compression summary', frame)));
-            }));
-            return renderPlot(_distributionSummary, _.plot(function (g) {
-                return g(g.select(), g.from(_.inspect('Frame distribution summary', frame)));
-            }));
-        };
-        _lastUsedSearchTerm = null;
-        refreshColumns = function (pageIndex) {
-            var itemCount, searchTerm, startIndex;
-            searchTerm = _columnNameSearchTerm();
-            if (searchTerm !== _lastUsedSearchTerm) {
-                pageIndex = 0;
-            }
-            startIndex = pageIndex * MaxItemsPerPage;
-            itemCount = startIndex + MaxItemsPerPage < _frame.total_column_count ? MaxItemsPerPage : _frame.total_column_count - startIndex;
-            return _.requestFrameSummarySliceE(_frame.frame_id.name, searchTerm, startIndex, itemCount, function (error, frame) {
-                if (error) {
-                } else {
-                    _lastUsedSearchTerm = searchTerm;
-                    _currentPage(pageIndex);
-                    return renderFrame(frame);
-                }
-            });
-        };
-        goToPreviousPage = function () {
-            var currentPage;
-            currentPage = _currentPage();
-            if (currentPage > 0) {
-                refreshColumns(currentPage - 1);
-            }
-        };
-        goToNextPage = function () {
-            var currentPage;
-            currentPage = _currentPage();
-            if (currentPage < _maxPages() - 1) {
-                refreshColumns(currentPage + 1);
-            }
-        };
-        Flow.Dataflow.react(_columnNameSearchTerm, lodash.throttle(refreshColumns, 500));
-        renderFrame(_frame);
-        lodash.defer(_go);
-        return {
-            key: _frame.frame_id.name,
-            rowCount: _frame.rows,
-            columnCount: _frame.total_column_count,
-            size: Flow.Util.formatBytes(_frame.byte_size),
-            chunkSummary: _chunkSummary,
-            distributionSummary: _distributionSummary,
-            columnNameSearchTerm: _columnNameSearchTerm,
-            grid: _grid,
-            inspect: inspect,
-            createModel: createModel,
-            inspectData: inspectData,
-            splitFrame: splitFrame,
-            predict: predict,
-            download: download,
-            exportFrame: exportFrame,
-            canGoToPreviousPage: _canGoToPreviousPage,
-            canGoToNextPage: _canGoToNextPage,
-            goToPreviousPage: goToPreviousPage,
-            goToNextPage: goToNextPage,
-            deleteFrame: deleteFrame,
-            template: 'flow-frame-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.FramesOutput = function (_, _go, _frames) {
-        var collectSelectedKeys, createFrameView, deleteFrames, importFiles, predictOnFrames, _checkAllFrames, _frameViews, _hasSelectedFrames, _isCheckingAll;
-        _frameViews = Flow.Dataflow.signal([]);
-        _checkAllFrames = Flow.Dataflow.signal(false);
-        _hasSelectedFrames = Flow.Dataflow.signal(false);
-        _isCheckingAll = false;
-        Flow.Dataflow.react(_checkAllFrames, function (checkAll) {
-            var view, _i, _len, _ref;
-            _isCheckingAll = true;
-            _ref = _frameViews();
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                view = _ref[_i];
-                view.isChecked(checkAll);
-            }
-            _hasSelectedFrames(checkAll);
-            _isCheckingAll = false;
-        });
-        createFrameView = function (frame) {
-            var columnLabels, createModel, inspect, predict, view, _isChecked;
-            _isChecked = Flow.Dataflow.signal(false);
-            Flow.Dataflow.react(_isChecked, function () {
-                var checkedViews, view;
-                if (_isCheckingAll) {
-                    return;
-                }
-                checkedViews = function () {
-                    var _i, _len, _ref, _results;
-                    _ref = _frameViews();
-                    _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        view = _ref[_i];
-                        if (view.isChecked()) {
-                            _results.push(view);
-                        }
+                    _remoteName(localName);
+                    _localName(localName);
+                    if (remoteName !== localName) {
+                        return _.requestDeleteObject('notebook', remoteName, function (error) {
+                            if (error) {
+                                _.alert('Error deleting remote notebook [' + remoteName + ']: ' + error.message);
+                            }
+                            return _.saved();
+                        });
+                    } else {
+                        return _.saved();
                     }
-                    return _results;
-                }();
-                return _hasSelectedFrames(checkedViews.length > 0);
-            });
-            columnLabels = lodash.head(lodash.map(frame.columns, function (column) {
-                return column.label;
-            }), 15);
-            view = function () {
-                if (frame.is_text) {
-                    return _.insertAndExecuteCell('cs', 'setupParse source_frames: [ ' + Flow.Prelude.stringify(frame.frame_id.name) + ' ]');
-                } else {
-                    return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(frame.frame_id.name));
-                }
-            };
-            predict = function () {
-                return _.insertAndExecuteCell('cs', 'predict frame: ' + Flow.Prelude.stringify(frame.frame_id.name));
-            };
-            inspect = function () {
-                return _.insertAndExecuteCell('cs', 'inspect getFrameSummary ' + Flow.Prelude.stringify(frame.frame_id.name));
-            };
-            createModel = function () {
-                return _.insertAndExecuteCell('cs', 'assist buildModel, null, training_frame: ' + Flow.Prelude.stringify(frame.frame_id.name));
-            };
-            return {
-                key: frame.frame_id.name,
-                isChecked: _isChecked,
-                size: Flow.Util.formatBytes(frame.byte_size),
-                rowCount: frame.rows,
-                columnCount: frame.columns,
-                isText: frame.is_text,
-                view: view,
-                predict: predict,
-                inspect: inspect,
-                createModel: createModel
-            };
-        };
-        importFiles = function () {
-            return _.insertAndExecuteCell('cs', 'importFiles');
-        };
-        collectSelectedKeys = function () {
-            var view, _i, _len, _ref, _results;
-            _ref = _frameViews();
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                view = _ref[_i];
-                if (view.isChecked()) {
-                    _results.push(view.key);
-                }
-            }
-            return _results;
-        };
-        predictOnFrames = function () {
-            return _.insertAndExecuteCell('cs', 'predict frames: ' + Flow.Prelude.stringify(collectSelectedKeys()));
-        };
-        deleteFrames = function () {
-            return _.confirm('Are you sure you want to delete these frames?', {
-                acceptCaption: 'Delete Frames',
-                declineCaption: 'Cancel'
-            }, function (accept) {
-                if (accept) {
-                    return _.insertAndExecuteCell('cs', 'deleteFrames ' + Flow.Prelude.stringify(collectSelectedKeys()));
                 }
             });
         };
-        _frameViews(lodash.map(_frames, createFrameView));
-        lodash.defer(_go);
-        return {
-            frameViews: _frameViews,
-            hasFrames: _frames.length > 0,
-            importFiles: importFiles,
-            predictOnFrames: predictOnFrames,
-            deleteFrames: deleteFrames,
-            hasSelectedFrames: _hasSelectedFrames,
-            checkAllFrames: _checkAllFrames,
-            template: 'flow-frames-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.GridOutput = function (_, _go, _grid) {
-        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspectAll, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _errorViews, _hasErrors, _hasModels, _hasSelectedModels, _isCheckingAll, _modelViews;
-        _modelViews = Flow.Dataflow.signal([]);
-        _hasModels = _grid.model_ids.length > 0;
-        _errorViews = Flow.Dataflow.signal([]);
-        _hasErrors = _grid.failure_details.length > 0;
-        _checkAllModels = Flow.Dataflow.signal(false);
-        _checkedModelCount = Flow.Dataflow.signal(0);
-        _canCompareModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
-            return count > 1;
-        });
-        _hasSelectedModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
-            return count > 0;
-        });
-        _isCheckingAll = false;
-        Flow.Dataflow.react(_checkAllModels, function (checkAll) {
-            var view, views, _i, _len;
-            _isCheckingAll = true;
-            views = _modelViews();
-            for (_i = 0, _len = views.length; _i < _len; _i++) {
-                view = views[_i];
-                view.isChecked(checkAll);
+        saveNotebook = function () {
+            var localName, remoteName;
+            localName = Flow.Util.sanitizeName(_localName());
+            if (localName === '') {
+                return _.alert('Invalid notebook name.');
             }
-            _checkedModelCount(checkAll ? views.length : 0);
-            _isCheckingAll = false;
-        });
-        createModelView = function (model_id) {
-            var cloneModel, inspect, predict, view, _isChecked;
-            _isChecked = Flow.Dataflow.signal(false);
-            Flow.Dataflow.react(_isChecked, function () {
-                var checkedViews, view;
-                if (_isCheckingAll) {
-                    return;
-                }
-                checkedViews = function () {
-                    var _i, _len, _ref, _results;
-                    _ref = _modelViews();
-                    _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        view = _ref[_i];
-                        if (view.isChecked()) {
-                            _results.push(view);
-                        }
+            remoteName = _remoteName();
+            if (remoteName) {
+                storeNotebook(localName, remoteName);
+            } else {
+                checkIfNameIsInUse(localName, function (isNameInUse) {
+                    if (isNameInUse) {
+                        return _.confirm('A notebook with that name already exists.\nDo you want to replace it with the one you\'re saving?', {
+                            acceptCaption: 'Replace',
+                            declineCaption: 'Cancel'
+                        }, function (accept) {
+                            if (accept) {
+                                return storeNotebook(localName, remoteName);
+                            }
+                        });
+                    } else {
+                        return storeNotebook(localName, remoteName);
                     }
-                    return _results;
-                }();
-                return _checkedModelCount(checkedViews.length);
-            });
-            predict = function () {
-                return _.insertAndExecuteCell('cs', 'predict model: ' + Flow.Prelude.stringify(model_id.name));
-            };
-            cloneModel = function () {
-                return alert('Not implemented');
-                return _.insertAndExecuteCell('cs', 'cloneModel ' + Flow.Prelude.stringify(model_id.name));
-            };
-            view = function () {
-                return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(model_id.name));
-            };
-            inspect = function () {
-                return _.insertAndExecuteCell('cs', 'inspect getModel ' + Flow.Prelude.stringify(model_id.name));
-            };
-            return {
-                key: model_id.name,
-                isChecked: _isChecked,
-                predict: predict,
-                clone: cloneModel,
-                inspect: inspect,
-                view: view
-            };
-        };
-        buildModel = function () {
-            return _.insertAndExecuteCell('cs', 'buildModel');
-        };
-        collectSelectedKeys = function () {
-            var view, _i, _len, _ref, _results;
-            _ref = _modelViews();
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                view = _ref[_i];
-                if (view.isChecked()) {
-                    _results.push(view.key);
-                }
+                });
             }
-            return _results;
         };
-        compareModels = function () {
-            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
-        };
-        predictUsingModels = function () {
-            return _.insertAndExecuteCell('cs', 'predict models: ' + Flow.Prelude.stringify(collectSelectedKeys()));
-        };
-        deleteModels = function () {
-            return _.confirm('Are you sure you want to delete these models?', {
-                acceptCaption: 'Delete Models',
-                declineCaption: 'Cancel'
-            }, function (accept) {
-                if (accept) {
-                    return _.insertAndExecuteCell('cs', 'deleteModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
+        promptForNotebook = function () {
+            return _.dialog(Flow.FileOpenDialog, function (result) {
+                var error, filename, _ref;
+                if (result) {
+                    error = result.error, filename = result.filename;
+                    if (error) {
+                        return _.growl((_ref = error.message) != null ? _ref : error);
+                    } else {
+                        loadNotebook(filename);
+                        return _.loaded();
+                    }
                 }
             });
         };
-        inspectAll = function () {
-            var allKeys, view;
-            allKeys = function () {
-                var _i, _len, _ref, _results;
-                _ref = _modelViews();
-                _results = [];
+        uploadFile = function () {
+            return _.dialog(Flow.FileUploadDialog, function (result) {
+                var error, _ref;
+                if (result) {
+                    error = result.error;
+                    if (error) {
+                        return _.growl((_ref = error.message) != null ? _ref : error);
+                    } else {
+                        _.growl('File uploaded successfully!');
+                        return _.insertAndExecuteCell('cs', 'setupParse source_frames: [ ' + Flow.Prelude.stringify(result.result.destination_frame) + ']');
+                    }
+                }
+            });
+        };
+        toggleInput = function () {
+            return _selectedCell.toggleInput();
+        };
+        toggleOutput = function () {
+            return _selectedCell.toggleOutput();
+        };
+        toggleAllInputs = function () {
+            var cell, wereHidden, _i, _len, _ref;
+            wereHidden = _areInputsHidden();
+            _areInputsHidden(!wereHidden);
+            if (wereHidden) {
+                _ref = _cells();
                 for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    view = _ref[_i];
-                    _results.push(view.key);
+                    cell = _ref[_i];
+                    cell.autoResize();
                 }
-                return _results;
-            }();
-            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(allKeys));
+            }
         };
-        initialize = function (grid) {
-            var errorViews, i;
-            _modelViews(lodash.map(grid.model_ids, createModelView));
-            errorViews = function () {
-                var _i, _ref, _results;
-                _results = [];
-                for (i = _i = 0, _ref = grid.failure_details.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-                    _results.push({
-                        title: 'Error ' + (i + 1),
-                        detail: grid.failure_details[i],
-                        params: 'Parameters: [ ' + grid.failed_raw_params[i].join(', ') + ' ]',
-                        stacktrace: grid.failure_stack_traces[i]
+        toggleAllOutputs = function () {
+            return _areOutputsHidden(!_areOutputsHidden());
+        };
+        toggleSidebar = function () {
+            return _isSidebarHidden(!_isSidebarHidden());
+        };
+        showBrowser = function () {
+            _isSidebarHidden(false);
+            return _.showBrowser();
+        };
+        showOutline = function () {
+            _isSidebarHidden(false);
+            return _.showOutline();
+        };
+        showClipboard = function () {
+            _isSidebarHidden(false);
+            return _.showClipboard();
+        };
+        selectNextCell = function () {
+            var cells;
+            cells = _cells();
+            if (_selectedCellIndex !== cells.length - 1) {
+                selectCell(cells[_selectedCellIndex + 1]);
+            }
+            return false;
+        };
+        selectPreviousCell = function () {
+            var cells;
+            if (_selectedCellIndex !== 0) {
+                cells = _cells();
+                selectCell(cells[_selectedCellIndex - 1]);
+            }
+            return false;
+        };
+        displayKeyboardShortcuts = function () {
+            return $('#keyboardHelpDialog').modal();
+        };
+        findBuildProperty = function (caption) {
+            var entry;
+            if (Flow.BuildProperties) {
+                if (entry = lodash.find(Flow.BuildProperties, function (entry) {
+                        return entry.caption === caption;
+                    })) {
+                    return entry.value;
+                } else {
+                    return void 0;
+                }
+            } else {
+                return void 0;
+            }
+        };
+        getBuildProperties = function () {
+            var projectVersion;
+            projectVersion = findBuildProperty('H2O Build project version');
+            return [
+                findBuildProperty('H2O Build git branch'),
+                projectVersion,
+                projectVersion ? lodash.last(projectVersion.split('.')) : void 0,
+                findBuildProperty('H2O Build git hash') || 'master'
+            ];
+        };
+        displayDocumentation = function () {
+            var buildVersion, gitBranch, gitHash, projectVersion, _ref;
+            _ref = getBuildProperties(), gitBranch = _ref[0], projectVersion = _ref[1], buildVersion = _ref[2], gitHash = _ref[3];
+            if (buildVersion && buildVersion !== '99999') {
+                return window.open('http://h2o-release.s3.amazonaws.com/h2o/' + gitBranch + '/' + buildVersion + '/docs-website/h2o-docs/index.html', '_blank');
+            } else {
+                return window.open('https://github.com/h2oai/h2o-3/blob/' + gitHash + '/h2o-docs/src/product/flow/README.md', '_blank');
+            }
+        };
+        displayFAQ = function () {
+            var buildVersion, gitBranch, gitHash, projectVersion, _ref;
+            _ref = getBuildProperties(), gitBranch = _ref[0], projectVersion = _ref[1], buildVersion = _ref[2], gitHash = _ref[3];
+            if (buildVersion && buildVersion !== '99999') {
+                return window.open('http://h2o-release.s3.amazonaws.com/h2o/' + gitBranch + '/' + buildVersion + '/docs-website/h2o-docs/index.html', '_blank');
+            } else {
+                return window.open('https://github.com/h2oai/h2o-3/blob/' + gitHash + '/h2o-docs/src/product/howto/FAQ.md', '_blank');
+            }
+        };
+        executeCommand = function (command) {
+            return function () {
+                return _.insertAndExecuteCell('cs', command);
+            };
+        };
+        displayAbout = function () {
+            return $('#aboutDialog').modal();
+        };
+        shutdown = function () {
+            return _.requestShutdown(function (error, result) {
+                if (error) {
+                    return _.growl('Shutdown failed: ' + error.message, 'danger');
+                } else {
+                    return _.growl('Shutdown complete!', 'warning');
+                }
+            });
+        };
+        showHelp = function () {
+            _isSidebarHidden(false);
+            return _.showHelp();
+        };
+        createNotebook = function () {
+            return _.confirm('This action will replace your active notebook.\nAre you sure you want to continue?', {
+                acceptCaption: 'Create New Notebook',
+                declineCaption: 'Cancel'
+            }, function (accept) {
+                var currentTime;
+                if (accept) {
+                    currentTime = new Date().getTime();
+                    return deserialize('Untitled Flow', null, {
+                        cells: [{
+                                type: 'cs',
+                                input: ''
+                            }]
                     });
                 }
-                return _results;
-            }();
-            _errorViews(errorViews);
-            return lodash.defer(_go);
+            });
         };
-        initialize(_grid);
-        return {
-            modelViews: _modelViews,
-            hasModels: _hasModels,
-            errorViews: _errorViews,
-            hasErrors: _hasErrors,
-            buildModel: buildModel,
-            compareModels: compareModels,
-            predictUsingModels: predictUsingModels,
-            deleteModels: deleteModels,
-            checkedModelCount: _checkedModelCount,
-            canCompareModels: _canCompareModels,
-            hasSelectedModels: _hasSelectedModels,
-            checkAllModels: _checkAllModels,
-            inspect: inspectAll,
-            template: 'flow-grid-output'
+        duplicateNotebook = function () {
+            return deserialize('Copy of ' + _localName(), null, serialize());
         };
-    };
-}.call(this));
-(function () {
-    H2O.GridsOutput = function (_, _go, _grids) {
-        var buildModel, createGridView, initialize, _gridViews;
-        _gridViews = Flow.Dataflow.signal([]);
-        createGridView = function (grid) {
-            var view;
-            view = function () {
-                return _.insertAndExecuteCell('cs', 'getGrid ' + Flow.Prelude.stringify(grid.grid_id.name));
-            };
-            return {
-                key: grid.grid_id.name,
-                size: grid.model_ids.length,
-                view: view
-            };
+        openNotebook = function (name, doc) {
+            return deserialize(name, null, doc);
         };
-        buildModel = function () {
-            return _.insertAndExecuteCell('cs', 'buildModel');
-        };
-        initialize = function (grids) {
-            _gridViews(lodash.map(grids, createGridView));
-            return lodash.defer(_go);
-        };
-        initialize(_grids);
-        return {
-            gridViews: _gridViews,
-            hasGrids: _grids.length > 0,
-            buildModel: buildModel,
-            template: 'flow-grids-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.ImportFilesInput = function (_, _go) {
-        var createFileItem, createFileItems, createSelectedFileItem, deselectAllFiles, importFiles, importSelectedFiles, listPathHints, processImportResult, selectAllFiles, tryImportFiles, _exception, _hasErrorMessage, _hasImportedFiles, _hasSelectedFiles, _hasUnselectedFiles, _importedFileCount, _importedFiles, _selectedFileCount, _selectedFiles, _selectedFilesDictionary, _specifiedPath;
-        _specifiedPath = Flow.Dataflow.signal('');
-        _exception = Flow.Dataflow.signal('');
-        _hasErrorMessage = Flow.Dataflow.lift(_exception, function (exception) {
-            if (exception) {
-                return true;
-            } else {
-                return false;
-            }
-        });
-        tryImportFiles = function () {
-            var specifiedPath;
-            specifiedPath = _specifiedPath();
-            return _.requestFileGlob(specifiedPath, -1, function (error, result) {
+        loadNotebook = function (name) {
+            return _.requestObject('notebook', name, function (error, doc) {
+                var _ref;
                 if (error) {
-                    return _exception(error.stack);
+                    return _.alert((_ref = error.message) != null ? _ref : error);
                 } else {
-                    _exception('');
-                    return processImportResult(result);
+                    return deserialize(name, name, doc);
                 }
             });
         };
-        _importedFiles = Flow.Dataflow.signals([]);
-        _importedFileCount = Flow.Dataflow.lift(_importedFiles, function (files) {
-            if (files.length) {
-                return 'Found ' + Flow.Util.describeCount(files.length, 'file') + ':';
+        exportNotebook = function () {
+            var remoteName;
+            if (remoteName = _remoteName()) {
+                return window.open('/3/NodePersistentStorage.bin/notebook/' + remoteName, '_blank');
             } else {
-                return '';
+                return _.alert('Please save this notebook before exporting.');
             }
-        });
-        _hasImportedFiles = Flow.Dataflow.lift(_importedFiles, function (files) {
-            return files.length > 0;
-        });
-        _hasUnselectedFiles = Flow.Dataflow.lift(_importedFiles, function (files) {
-            return lodash.some(files, function (file) {
-                return !file.isSelected();
-            });
-        });
-        _selectedFiles = Flow.Dataflow.signals([]);
-        _selectedFilesDictionary = Flow.Dataflow.lift(_selectedFiles, function (files) {
-            var dictionary, file, _i, _len;
-            dictionary = {};
-            for (_i = 0, _len = files.length; _i < _len; _i++) {
-                file = files[_i];
-                dictionary[file.path] = true;
-            }
-            return dictionary;
-        });
-        _selectedFileCount = Flow.Dataflow.lift(_selectedFiles, function (files) {
-            if (files.length) {
-                return '' + Flow.Util.describeCount(files.length, 'file') + ' selected:';
-            } else {
-                return '(No files selected)';
-            }
-        });
-        _hasSelectedFiles = Flow.Dataflow.lift(_selectedFiles, function (files) {
-            return files.length > 0;
-        });
-        importFiles = function (files) {
-            var paths;
-            paths = lodash.map(files, function (file) {
-                return Flow.Prelude.stringify(file.path);
-            });
-            return _.insertAndExecuteCell('cs', 'importFiles [ ' + paths.join(',') + ' ]');
         };
-        importSelectedFiles = function () {
-            return importFiles(_selectedFiles());
+        goToUrl = function (url) {
+            return function () {
+                return window.open(url, '_blank');
+            };
         };
-        createSelectedFileItem = function (path) {
-            var self;
-            return self = {
-                path: path,
-                deselect: function () {
-                    var file, _i, _len, _ref;
-                    _selectedFiles.remove(self);
-                    _ref = _importedFiles();
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        file = _ref[_i];
-                        if (file.path === path) {
-                            file.isSelected(false);
-                        }
+        executeAllCells = function (fromBeginning, go) {
+            var cellCount, cellIndex, cells, executeNextCell;
+            _isRunningAll(true);
+            cells = _cells().slice(0);
+            cellCount = cells.length;
+            cellIndex = 0;
+            if (!fromBeginning) {
+                cells = cells.slice(_selectedCellIndex);
+                cellIndex = _selectedCellIndex;
+            }
+            executeNextCell = function () {
+                var cell;
+                if (_isRunningAll()) {
+                    cell = cells.shift();
+                    if (cell) {
+                        cell.scrollIntoView(true);
+                        cellIndex++;
+                        _runningCaption('Running cell ' + cellIndex + ' of ' + cellCount);
+                        _runningPercent('' + Math.floor(100 * cellIndex / cellCount) + '%');
+                        _runningCellInput(cell.input());
+                        return cell.execute(function (errors) {
+                            if (errors) {
+                                return go('failed', errors);
+                            } else {
+                                return executeNextCell();
+                            }
+                        });
+                    } else {
+                        return go('done');
                     }
+                } else {
+                    return go('aborted');
                 }
             };
+            return executeNextCell();
         };
-        createFileItem = function (path, isSelected) {
-            var self;
-            self = {
-                path: path,
-                isSelected: Flow.Dataflow.signal(isSelected),
-                select: function () {
-                    _selectedFiles.push(createSelectedFileItem(self.path));
-                    return self.isSelected(true);
-                }
-            };
-            Flow.Dataflow.act(self.isSelected, function (isSelected) {
-                return _hasUnselectedFiles(lodash.some(_importedFiles(), function (file) {
-                    return !file.isSelected();
-                }));
-            });
-            return self;
-        };
-        createFileItems = function (result) {
-            return lodash.map(result.matches, function (path) {
-                return createFileItem(path, _selectedFilesDictionary()[path]);
-            });
-        };
-        listPathHints = function (query, process) {
-            return _.requestFileGlob(query, 10, function (error, result) {
-                if (!error) {
-                    return process(lodash.map(result.matches, function (value) {
-                        return { value: value };
-                    }));
+        runAllCells = function (fromBeginning) {
+            if (fromBeginning == null) {
+                fromBeginning = true;
+            }
+            return executeAllCells(fromBeginning, function (status) {
+                _isRunningAll(false);
+                switch (status) {
+                case 'aborted':
+                    return _.growl('Stopped running your flow.', 'warning');
+                case 'failed':
+                    return _.growl('Failed running your flow.', 'danger');
+                default:
+                    return _.growl('Finished running your flow!', 'success');
                 }
             });
         };
-        selectAllFiles = function () {
-            var dict, file, _i, _j, _len, _len1, _ref, _ref1;
-            dict = {};
-            _ref = _selectedFiles();
+        continueRunningAllCells = function () {
+            return runAllCells(false);
+        };
+        stopRunningAll = function () {
+            return _isRunningAll(false);
+        };
+        clearCell = function () {
+            _selectedCell.clear();
+            return _selectedCell.autoResize();
+        };
+        clearAllCells = function () {
+            var cell, _i, _len, _ref;
+            _ref = _cells();
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                file = _ref[_i];
-                dict[file.path] = true;
-            }
-            _ref1 = _importedFiles();
-            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-                file = _ref1[_j];
-                if (!dict[file.path]) {
-                    file.select();
-                }
+                cell = _ref[_i];
+                cell.clear();
+                cell.autoResize();
             }
         };
-        deselectAllFiles = function () {
-            var file, _i, _len, _ref;
-            _selectedFiles([]);
-            _ref = _importedFiles();
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                file = _ref[_i];
-                file.isSelected(false);
-            }
+        notImplemented = function () {
         };
-        processImportResult = function (result) {
-            var files;
-            files = createFileItems(result);
-            return _importedFiles(files);
-        };
-        lodash.defer(_go);
-        return {
-            specifiedPath: _specifiedPath,
-            hasErrorMessage: _hasErrorMessage,
-            exception: _exception,
-            tryImportFiles: tryImportFiles,
-            listPathHints: lodash.throttle(listPathHints, 100),
-            hasImportedFiles: _hasImportedFiles,
-            importedFiles: _importedFiles,
-            importedFileCount: _importedFileCount,
-            selectedFiles: _selectedFiles,
-            selectAllFiles: selectAllFiles,
-            deselectAllFiles: deselectAllFiles,
-            hasUnselectedFiles: _hasUnselectedFiles,
-            hasSelectedFiles: _hasSelectedFiles,
-            selectedFileCount: _selectedFileCount,
-            importSelectedFiles: importSelectedFiles,
-            template: 'flow-import-files'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.ImportFilesOutput = function (_, _go, _importResults) {
-        var createImportView, parse, _allPaths, _canParse, _importViews, _title;
-        _allPaths = lodash.flatten(lodash.compact(lodash.map(_importResults, function (result) {
-            return result.files;
-        })));
-        _canParse = _allPaths.length > 0;
-        _title = '' + _allPaths.length + ' / ' + _importResults.length + ' files imported.';
-        createImportView = function (result) {
+        pasteCellandReplace = notImplemented;
+        mergeCellAbove = notImplemented;
+        startTour = notImplemented;
+        createMenu = function (label, items) {
             return {
-                files: result.files,
-                template: 'flow-import-file-output'
+                label: label,
+                items: items
             };
         };
-        _importViews = lodash.map(_importResults, createImportView);
-        parse = function () {
-            var paths;
-            paths = lodash.map(_allPaths, Flow.Prelude.stringify);
-            return _.insertAndExecuteCell('cs', 'setupParse paths: [ ' + paths.join(',') + ' ]');
+        createMenuHeader = function (label) {
+            return {
+                label: label,
+                action: null
+            };
         };
-        lodash.defer(_go);
+        createShortcutHint = function (shortcut) {
+            return '<span style=\'float:right\'>' + lodash.map(shortcut, function (key) {
+                return '<kbd>' + key + '</kbd>';
+            }).join(' ') + '</span>';
+        };
+        createMenuItem = function (label, action, shortcut) {
+            var kbds;
+            kbds = shortcut ? createShortcutHint(shortcut) : '';
+            return {
+                label: '' + lodash.escape(label) + kbds,
+                action: action
+            };
+        };
+        menuDivider = {
+            label: null,
+            action: null
+        };
+        _menus = Flow.Dataflow.signal(null);
+        initializeMenus = function (builder) {
+            var modelMenuItems;
+            modelMenuItems = lodash.map(builder, function (builder) {
+                return createMenuItem('' + builder.algo_full_name + '...', executeCommand('buildModel ' + Flow.Prelude.stringify(builder.algo)));
+            }).concat([
+                menuDivider,
+                createMenuItem('List All Models', executeCommand('getModels')),
+                createMenuItem('List Grid Search Results', executeCommand('getGrids')),
+                createMenuItem('Import Model...', executeCommand('importModel')),
+                createMenuItem('Export Model...', executeCommand('exportModel'))
+            ]);
+            return [
+                createMenu('Flow', [
+                    createMenuItem('New Flow', createNotebook),
+                    createMenuItem('Open Flow...', promptForNotebook),
+                    createMenuItem('Save Flow', saveNotebook, ['s']),
+                    createMenuItem('Make a Copy...', duplicateNotebook),
+                    menuDivider,
+                    createMenuItem('Run All Cells', runAllCells),
+                    createMenuItem('Run All Cells Below', continueRunningAllCells),
+                    menuDivider,
+                    createMenuItem('Toggle All Cell Inputs', toggleAllInputs),
+                    createMenuItem('Toggle All Cell Outputs', toggleAllOutputs),
+                    createMenuItem('Clear All Cell Outputs', clearAllCells),
+                    menuDivider,
+                    createMenuItem('Download this Flow...', exportNotebook)
+                ]),
+                createMenu('Cell', [
+                    createMenuItem('Run Cell', runCell, [
+                        'ctrl',
+                        'enter'
+                    ]),
+                    menuDivider,
+                    createMenuItem('Cut Cell', cutCell, ['x']),
+                    createMenuItem('Copy Cell', copyCell, ['c']),
+                    createMenuItem('Paste Cell Above', pasteCellAbove, [
+                        'shift',
+                        'v'
+                    ]),
+                    createMenuItem('Paste Cell Below', pasteCellBelow, ['v']),
+                    createMenuItem('Delete Cell', deleteCell, [
+                        'd',
+                        'd'
+                    ]),
+                    createMenuItem('Undo Delete Cell', undoLastDelete, ['z']),
+                    menuDivider,
+                    createMenuItem('Move Cell Up', moveCellUp, [
+                        'ctrl',
+                        'k'
+                    ]),
+                    createMenuItem('Move Cell Down', moveCellDown, [
+                        'ctrl',
+                        'j'
+                    ]),
+                    menuDivider,
+                    createMenuItem('Insert Cell Above', insertNewCellAbove, ['a']),
+                    createMenuItem('Insert Cell Below', insertNewCellBelow, ['b']),
+                    menuDivider,
+                    createMenuItem('Toggle Cell Input', toggleInput),
+                    createMenuItem('Toggle Cell Output', toggleOutput, ['o']),
+                    createMenuItem('Clear Cell Output', clearCell)
+                ]),
+                createMenu('Data', [
+                    createMenuItem('Import Files...', executeCommand('importFiles')),
+                    createMenuItem('Upload File...', uploadFile),
+                    createMenuItem('Split Frame...', executeCommand('splitFrame')),
+                    menuDivider,
+                    createMenuItem('List All Frames', executeCommand('getFrames')),
+                    menuDivider,
+                    createMenuItem('Impute...', executeCommand('imputeColumn'))
+                ]),
+                createMenu('Model', modelMenuItems),
+                createMenu('Score', [
+                    createMenuItem('Predict...', executeCommand('predict')),
+                    menuDivider,
+                    createMenuItem('List All Predictions', executeCommand('getPredictions'))
+                ]),
+                createMenu('Admin', [
+                    createMenuItem('Jobs', executeCommand('getJobs')),
+                    createMenuItem('Cluster Status', executeCommand('getCloud')),
+                    createMenuItem('Water Meter (CPU meter)', goToUrl('/perfbar.html')),
+                    menuDivider,
+                    createMenuHeader('Inspect Log'),
+                    createMenuItem('View Log', executeCommand('getLogFile')),
+                    createMenuItem('Download Logs', goToUrl('/Logs/download')),
+                    menuDivider,
+                    createMenuHeader('Advanced'),
+                    createMenuItem('Create Synthetic Frame...', executeCommand('createFrame')),
+                    createMenuItem('Stack Trace', executeCommand('getStackTrace')),
+                    createMenuItem('Network Test', executeCommand('testNetwork')),
+                    createMenuItem('Profiler', executeCommand('getProfile depth: 10')),
+                    createMenuItem('Timeline', executeCommand('getTimeline')),
+                    createMenuItem('Shut Down', shutdown)
+                ]),
+                createMenu('Help', [
+                    createMenuItem('Assist Me', executeCommand('assist')),
+                    menuDivider,
+                    createMenuItem('Contents', showHelp),
+                    createMenuItem('Keyboard Shortcuts', displayKeyboardShortcuts, ['h']),
+                    menuDivider,
+                    createMenuItem('Documentation', displayDocumentation),
+                    createMenuItem('FAQ', displayFAQ),
+                    createMenuItem('H2O.ai', goToUrl('http://h2o.ai/')),
+                    createMenuItem('H2O on Github', goToUrl('https://github.com/h2oai/h2o-3')),
+                    createMenuItem('Report an issue', goToUrl('http://jira.h2o.ai')),
+                    createMenuItem('Forum / Ask a question', goToUrl('https://groups.google.com/d/forum/h2ostream')),
+                    menuDivider,
+                    createMenuItem('About', displayAbout)
+                ])
+            ];
+        };
+        setupMenus = function () {
+            return _.requestModelBuilders(function (error, builders) {
+                return _menus(initializeMenus(error ? [] : builders));
+            });
+        };
+        createTool = function (icon, label, action, isDisabled) {
+            if (isDisabled == null) {
+                isDisabled = false;
+            }
+            return {
+                label: label,
+                action: action,
+                isDisabled: isDisabled,
+                icon: 'fa fa-' + icon
+            };
+        };
+        _toolbar = [
+            [
+                createTool('file-o', 'New', createNotebook),
+                createTool('folder-open-o', 'Open', promptForNotebook),
+                createTool('save', 'Save (s)', saveNotebook)
+            ],
+            [
+                createTool('plus', 'Insert Cell Below (b)', insertNewCellBelow),
+                createTool('arrow-up', 'Move Cell Up (ctrl+k)', moveCellUp),
+                createTool('arrow-down', 'Move Cell Down (ctrl+j)', moveCellDown)
+            ],
+            [
+                createTool('cut', 'Cut Cell (x)', cutCell),
+                createTool('copy', 'Copy Cell (c)', copyCell),
+                createTool('paste', 'Paste Cell Below (v)', pasteCellBelow),
+                createTool('eraser', 'Clear Cell', clearCell),
+                createTool('trash-o', 'Delete Cell (d d)', deleteCell)
+            ],
+            [
+                createTool('step-forward', 'Run and Select Below', runCellAndSelectBelow),
+                createTool('play', 'Run (ctrl+enter)', runCell),
+                createTool('forward', 'Run All', runAllCells)
+            ],
+            [createTool('question-circle', 'Assist Me', executeCommand('assist'))]
+        ];
+        normalModeKeyboardShortcuts = [
+            [
+                'enter',
+                'edit mode',
+                switchToEditMode
+            ],
+            [
+                'y',
+                'to code',
+                convertCellToCode
+            ],
+            [
+                'm',
+                'to markdown',
+                convertCellToMarkdown
+            ],
+            [
+                'r',
+                'to raw',
+                convertCellToRaw
+            ],
+            [
+                '1',
+                'to heading 1',
+                convertCellToHeading(1)
+            ],
+            [
+                '2',
+                'to heading 2',
+                convertCellToHeading(2)
+            ],
+            [
+                '3',
+                'to heading 3',
+                convertCellToHeading(3)
+            ],
+            [
+                '4',
+                'to heading 4',
+                convertCellToHeading(4)
+            ],
+            [
+                '5',
+                'to heading 5',
+                convertCellToHeading(5)
+            ],
+            [
+                '6',
+                'to heading 6',
+                convertCellToHeading(6)
+            ],
+            [
+                'up',
+                'select previous cell',
+                selectPreviousCell
+            ],
+            [
+                'down',
+                'select next cell',
+                selectNextCell
+            ],
+            [
+                'k',
+                'select previous cell',
+                selectPreviousCell
+            ],
+            [
+                'j',
+                'select next cell',
+                selectNextCell
+            ],
+            [
+                'ctrl+k',
+                'move cell up',
+                moveCellUp
+            ],
+            [
+                'ctrl+j',
+                'move cell down',
+                moveCellDown
+            ],
+            [
+                'a',
+                'insert cell above',
+                insertNewCellAbove
+            ],
+            [
+                'b',
+                'insert cell below',
+                insertNewCellBelow
+            ],
+            [
+                'x',
+                'cut cell',
+                cutCell
+            ],
+            [
+                'c',
+                'copy cell',
+                copyCell
+            ],
+            [
+                'shift+v',
+                'paste cell above',
+                pasteCellAbove
+            ],
+            [
+                'v',
+                'paste cell below',
+                pasteCellBelow
+            ],
+            [
+                'z',
+                'undo last delete',
+                undoLastDelete
+            ],
+            [
+                'd d',
+                'delete cell (press twice)',
+                deleteCell
+            ],
+            [
+                'shift+m',
+                'merge cell below',
+                mergeCellBelow
+            ],
+            [
+                's',
+                'save notebook',
+                saveNotebook
+            ],
+            [
+                'o',
+                'toggle output',
+                toggleOutput
+            ],
+            [
+                'h',
+                'keyboard shortcuts',
+                displayKeyboardShortcuts
+            ]
+        ];
+        editModeKeyboardShortcuts = [
+            [
+                'esc',
+                'command mode',
+                switchToCommandMode
+            ],
+            [
+                'ctrl+m',
+                'command mode',
+                switchToCommandMode
+            ],
+            [
+                'shift+enter',
+                'run cell, select below',
+                runCellAndSelectBelow
+            ],
+            [
+                'ctrl+enter',
+                'run cell',
+                runCell
+            ],
+            [
+                'alt+enter',
+                'run cell, insert below',
+                runCellAndInsertBelow
+            ],
+            [
+                'ctrl+shift+-',
+                'split cell',
+                splitCell
+            ],
+            [
+                'mod+s',
+                'save notebook',
+                saveNotebook
+            ]
+        ];
+        toKeyboardHelp = function (shortcut) {
+            var caption, keystrokes, seq;
+            seq = shortcut[0], caption = shortcut[1];
+            keystrokes = lodash.map(seq.split(/\+/g), function (key) {
+                return '<kbd>' + key + '</kbd>';
+            }).join(' ');
+            return {
+                keystrokes: keystrokes,
+                caption: caption
+            };
+        };
+        normalModeKeyboardShortcutsHelp = lodash.map(normalModeKeyboardShortcuts, toKeyboardHelp);
+        editModeKeyboardShortcutsHelp = lodash.map(editModeKeyboardShortcuts, toKeyboardHelp);
+        setupKeyboardHandling = function (mode) {
+            var caption, f, shortcut, _i, _j, _len, _len1, _ref, _ref1;
+            for (_i = 0, _len = normalModeKeyboardShortcuts.length; _i < _len; _i++) {
+                _ref = normalModeKeyboardShortcuts[_i], shortcut = _ref[0], caption = _ref[1], f = _ref[2];
+                Mousetrap.bind(shortcut, f);
+            }
+            for (_j = 0, _len1 = editModeKeyboardShortcuts.length; _j < _len1; _j++) {
+                _ref1 = editModeKeyboardShortcuts[_j], shortcut = _ref1[0], caption = _ref1[1], f = _ref1[2];
+                Mousetrap.bindGlobal(shortcut, f);
+            }
+        };
+        initialize = function () {
+            setupKeyboardHandling('normal');
+            setupMenus();
+            Flow.Dataflow.link(_.load, loadNotebook);
+            Flow.Dataflow.link(_.open, openNotebook);
+            Flow.Dataflow.link(_.selectCell, selectCell);
+            Flow.Dataflow.link(_.executeAllCells, executeAllCells);
+            Flow.Dataflow.link(_.insertAndExecuteCell, function (type, input) {
+                return lodash.defer(appendCellAndRun, type, input);
+            });
+            Flow.Dataflow.link(_.insertCell, function (type, input) {
+                return lodash.defer(insertCellBelow, type, input);
+            });
+            Flow.Dataflow.link(_.saved, function () {
+                return _.growl('Notebook saved.');
+            });
+            Flow.Dataflow.link(_.loaded, function () {
+                return _.growl('Notebook loaded.');
+            });
+            executeCommand('assist')();
+            return _.setDirty();
+        };
+        Flow.Dataflow.link(_.ready, initialize);
         return {
-            title: _title,
-            importViews: _importViews,
-            canParse: _canParse,
-            parse: parse,
-            template: 'flow-import-files-output',
+            name: _localName,
+            isEditingName: _isEditingName,
+            editName: editName,
+            saveName: saveName,
+            menus: _menus,
+            sidebar: _sidebar,
+            status: _status,
+            toolbar: _toolbar,
+            cells: _cells,
+            areInputsHidden: _areInputsHidden,
+            areOutputsHidden: _areOutputsHidden,
+            isSidebarHidden: _isSidebarHidden,
+            isRunningAll: _isRunningAll,
+            runningCaption: _runningCaption,
+            runningPercent: _runningPercent,
+            runningCellInput: _runningCellInput,
+            stopRunningAll: stopRunningAll,
+            toggleSidebar: toggleSidebar,
+            shortcutsHelp: {
+                normalMode: normalModeKeyboardShortcutsHelp,
+                editMode: editModeKeyboardShortcutsHelp
+            },
+            about: _about,
+            dialogs: _dialogs,
             templateOf: function (view) {
                 return view.template;
             }
@@ -1432,3075 +2011,2199 @@
     };
 }.call(this));
 (function () {
-    H2O.ImportModelInput = function (_, _go, path, opt) {
-        var importModel, _canImportModel, _overwrite, _path;
-        if (opt == null) {
-            opt = {};
+    var isExpandable, preview, previewArray, previewObject;
+    isExpandable = function (type) {
+        switch (type) {
+        case 'null':
+        case 'undefined':
+        case 'Boolean':
+        case 'String':
+        case 'Number':
+        case 'Date':
+        case 'RegExp':
+        case 'Arguments':
+        case 'Function':
+            return false;
+        default:
+            return true;
         }
-        _path = Flow.Dataflow.signal(path);
-        _overwrite = Flow.Dataflow.signal(opt.overwrite ? true : false);
-        _canImportModel = Flow.Dataflow.lift(_path, function (path) {
-            return path && path.length;
-        });
-        importModel = function () {
-            return _.insertAndExecuteCell('cs', 'importModel ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
-        };
-        lodash.defer(_go);
-        return {
-            path: _path,
-            overwrite: _overwrite,
-            canImportModel: _canImportModel,
-            importModel: importModel,
-            template: 'flow-import-model-input'
-        };
     };
-}.call(this));
-(function () {
-    H2O.ImportModelOutput = function (_, _go, result) {
-        var viewModel;
-        viewModel = function () {
-            return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(result.models[0].model_id.name));
-        };
-        lodash.defer(_go);
-        return {
-            viewModel: viewModel,
-            template: 'flow-import-model-output'
-        };
-    };
-}.call(this));
-(function () {
-    var createOptions, _allCombineMethods, _allMethods;
-    createOptions = function (options) {
-        var option, _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = options.length; _i < _len; _i++) {
-            option = options[_i];
-            _results.push({
-                caption: option,
-                value: option.toUpperCase()
-            });
-        }
-        return _results;
-    };
-    _allMethods = createOptions([
-        'Mean',
-        'Median',
-        'Mode'
-    ]);
-    _allCombineMethods = createOptions([
-        'Interpolate',
-        'Average',
-        'Low',
-        'High'
-    ]);
-    H2O.ImputeInput = function (_, _go, opts) {
-        var impute, _canGroupByColumns, _canImpute, _canUseCombineMethod, _column, _columns, _combineMethod, _combineMethods, _frame, _frames, _groupByColumns, _hasFrame, _method, _methods;
-        if (opts == null) {
-            opts = {};
-        }
-        _frames = Flow.Dataflow.signal([]);
-        _frame = Flow.Dataflow.signal(null);
-        _hasFrame = Flow.Dataflow.lift(_frame, function (frame) {
-            if (frame) {
-                return true;
-            } else {
-                return false;
+    previewArray = function (array) {
+        var element, ellipsis, previews;
+        ellipsis = array.length > 5 ? ', ...' : '';
+        previews = function () {
+            var _i, _len, _ref, _results;
+            _ref = lodash.head(array, 5);
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                element = _ref[_i];
+                _results.push(preview(element));
             }
-        });
-        _columns = Flow.Dataflow.signal([]);
-        _column = Flow.Dataflow.signal(null);
-        _methods = _allMethods;
-        _method = Flow.Dataflow.signal(_allMethods[0]);
-        _canUseCombineMethod = Flow.Dataflow.lift(_method, function (method) {
-            return method.value === 'MEDIAN';
-        });
-        _combineMethods = _allCombineMethods;
-        _combineMethod = Flow.Dataflow.signal(_allCombineMethods[0]);
-        _canGroupByColumns = Flow.Dataflow.lift(_method, function (method) {
-            return method.value !== 'MEDIAN';
-        });
-        _groupByColumns = Flow.Dataflow.signals([]);
-        _canImpute = Flow.Dataflow.lift(_frame, _column, function (frame, column) {
-            return frame && column;
-        });
-        impute = function () {
-            var arg, combineMethod, groupByColumns, method;
-            method = _method();
-            arg = {
-                frame: _frame(),
-                column: _column(),
-                method: method.value
-            };
-            if (method.value === 'MEDIAN') {
-                if (combineMethod = _combineMethod()) {
-                    arg.combineMethod = combineMethod.value;
-                }
-            } else {
-                groupByColumns = _groupByColumns();
-                if (groupByColumns.length) {
-                    arg.groupByColumns = groupByColumns;
-                }
+            return _results;
+        }();
+        return '[' + previews.join(', ') + ellipsis + ']';
+    };
+    previewObject = function (object) {
+        var count, ellipsis, key, previews, value;
+        count = 0;
+        previews = [];
+        ellipsis = '';
+        for (key in object) {
+            value = object[key];
+            if (!(key !== '_flow_')) {
+                continue;
             }
-            return _.insertAndExecuteCell('cs', 'imputeColumn ' + JSON.stringify(arg));
-        };
-        _.requestFrames(function (error, frames) {
-            var frame;
-            if (error) {
+            previews.push('' + key + ': ' + preview(value));
+            if (++count === 5) {
+                ellipsis = ', ...';
+                break;
+            }
+        }
+        return '{' + previews.join(', ') + ellipsis + '}';
+    };
+    preview = function (element, recurse) {
+        var type;
+        if (recurse == null) {
+            recurse = false;
+        }
+        type = Flow.Prelude.typeOf(element);
+        switch (type) {
+        case 'Boolean':
+        case 'String':
+        case 'Number':
+        case 'Date':
+        case 'RegExp':
+            return element;
+        case 'undefined':
+        case 'null':
+        case 'Function':
+        case 'Arguments':
+            return type;
+        case 'Array':
+            if (recurse) {
+                return previewArray(element);
             } else {
-                _frames(function () {
-                    var _i, _len, _results;
-                    _results = [];
-                    for (_i = 0, _len = frames.length; _i < _len; _i++) {
-                        frame = frames[_i];
-                        if (!frame.is_text) {
-                            _results.push(frame.frame_id.name);
-                        }
+                return type;
+            }
+            break;
+        default:
+            if (recurse) {
+                return previewObject(element);
+            } else {
+                return type;
+            }
+        }
+    };
+    Flow.ObjectBrowserElement = function (key, object) {
+        var toggle, _canExpand, _expansions, _isExpanded, _type;
+        _expansions = Flow.Dataflow.signal(null);
+        _isExpanded = Flow.Dataflow.signal(false);
+        _type = Flow.Prelude.typeOf(object);
+        _canExpand = isExpandable(_type);
+        toggle = function () {
+            var expansions, value;
+            if (!_canExpand) {
+                return;
+            }
+            if (_expansions() === null) {
+                expansions = [];
+                for (key in object) {
+                    value = object[key];
+                    if (key !== '_flow_') {
+                        expansions.push(Flow.ObjectBrowserElement(key, value));
                     }
-                    return _results;
-                }());
-                if (opts.frame) {
-                    _frame(opts.frame);
+                }
+                _expansions(expansions);
+            }
+            return _isExpanded(!_isExpanded());
+        };
+        return {
+            key: key,
+            preview: preview(object, true),
+            toggle: toggle,
+            expansions: _expansions,
+            isExpanded: _isExpanded,
+            canExpand: _canExpand
+        };
+    };
+    Flow.ObjectBrowser = function (_, _go, key, object) {
+        lodash.defer(_go);
+        return {
+            object: Flow.ObjectBrowserElement(key, object),
+            template: 'flow-object'
+        };
+    };
+}.call(this));
+(function () {
+    Flow.Outline = function (_, _cells) {
+        return { cells: _cells };
+    };
+}.call(this));
+(function () {
+    Flow.Raw = function (_) {
+        var render;
+        render = function (input, output) {
+            output.data({
+                text: input,
+                template: 'flow-raw'
+            });
+            return output.end();
+        };
+        render.isCode = false;
+        return render;
+    };
+}.call(this));
+(function () {
+    Flow.Sidebar = function (_, cells) {
+        var switchToBrowser, switchToClipboard, switchToHelp, switchToOutline, _browser, _clipboard, _help, _isBrowserMode, _isClipboardMode, _isHelpMode, _isOutlineMode, _mode, _outline;
+        _mode = Flow.Dataflow.signal('help');
+        _outline = Flow.Outline(_, cells);
+        _isOutlineMode = Flow.Dataflow.lift(_mode, function (mode) {
+            return mode === 'outline';
+        });
+        switchToOutline = function () {
+            return _mode('outline');
+        };
+        _browser = Flow.Browser(_);
+        _isBrowserMode = Flow.Dataflow.lift(_mode, function (mode) {
+            return mode === 'browser';
+        });
+        switchToBrowser = function () {
+            return _mode('browser');
+        };
+        _clipboard = Flow.Clipboard(_);
+        _isClipboardMode = Flow.Dataflow.lift(_mode, function (mode) {
+            return mode === 'clipboard';
+        });
+        switchToClipboard = function () {
+            return _mode('clipboard');
+        };
+        _help = Flow.Help(_);
+        _isHelpMode = Flow.Dataflow.lift(_mode, function (mode) {
+            return mode === 'help';
+        });
+        switchToHelp = function () {
+            return _mode('help');
+        };
+        Flow.Dataflow.link(_.ready, function () {
+            Flow.Dataflow.link(_.showHelp, function () {
+                return switchToHelp();
+            });
+            Flow.Dataflow.link(_.showClipboard, function () {
+                return switchToClipboard();
+            });
+            Flow.Dataflow.link(_.showBrowser, function () {
+                return switchToBrowser();
+            });
+            return Flow.Dataflow.link(_.showOutline, function () {
+                return switchToOutline();
+            });
+        });
+        return {
+            outline: _outline,
+            isOutlineMode: _isOutlineMode,
+            switchToOutline: switchToOutline,
+            browser: _browser,
+            isBrowserMode: _isBrowserMode,
+            switchToBrowser: switchToBrowser,
+            clipboard: _clipboard,
+            isClipboardMode: _isClipboardMode,
+            switchToClipboard: switchToClipboard,
+            help: _help,
+            isHelpMode: _isHelpMode,
+            switchToHelp: switchToHelp
+        };
+    };
+}.call(this));
+(function () {
+    Flow.Status = function (_) {
+        var defaultMessage, onStatus, _connections, _isBusy, _message;
+        defaultMessage = 'Ready';
+        _message = Flow.Dataflow.signal(defaultMessage);
+        _connections = Flow.Dataflow.signal(0);
+        _isBusy = Flow.Dataflow.lift(_connections, function (connections) {
+            return connections > 0;
+        });
+        onStatus = function (category, type, data) {
+            var connections;
+            console.debug('Status:', category, type, data);
+            switch (category) {
+            case 'server':
+                switch (type) {
+                case 'request':
+                    _connections(_connections() + 1);
+                    return lodash.defer(_message, 'Requesting ' + data);
+                case 'response':
+                case 'error':
+                    _connections(connections = _connections() - 1);
+                    if (connections) {
+                        return lodash.defer(_message, 'Waiting for ' + connections + ' responses...');
+                    } else {
+                        return lodash.defer(_message, defaultMessage);
+                    }
                 }
             }
+        };
+        Flow.Dataflow.link(_.ready, function () {
+            return Flow.Dataflow.link(_.status, onStatus);
         });
-        Flow.Dataflow.react(_frame, function (frame) {
-            if (frame) {
-                return _.requestFrameSummaryWithoutData(frame, function (error, frame) {
-                    var column;
+        return {
+            message: _message,
+            connections: _connections,
+            isBusy: _isBusy
+        };
+    };
+}.call(this));
+(function () {
+    Flow.Analytics = function (_) {
+        Flow.Dataflow.link(_.trackEvent, function (category, action, label, value) {
+            return lodash.defer(function () {
+                return window.ga('send', 'event', category, action, label, value);
+            });
+        });
+        return Flow.Dataflow.link(_.trackException, function (description) {
+            return lodash.defer(function () {
+                _.requestEcho('FLOW: ' + description, function () {
+                });
+                return window.ga('send', 'exception', {
+                    exDescription: description,
+                    exFatal: false,
+                    appName: 'Flow',
+                    appVersion: Flow.Version
+                });
+            });
+        });
+    };
+}.call(this));
+(function () {
+    Flow.ApplicationContext = function (_) {
+        _.ready = Flow.Dataflow.slots();
+        _.initialized = Flow.Dataflow.slots();
+        _.open = Flow.Dataflow.slot();
+        _.load = Flow.Dataflow.slot();
+        _.saved = Flow.Dataflow.slots();
+        _.loaded = Flow.Dataflow.slots();
+        _.setDirty = Flow.Dataflow.slots();
+        _.setPristine = Flow.Dataflow.slots();
+        _.status = Flow.Dataflow.slot();
+        _.trackEvent = Flow.Dataflow.slot();
+        _.trackException = Flow.Dataflow.slot();
+        _.selectCell = Flow.Dataflow.slot();
+        _.insertCell = Flow.Dataflow.slot();
+        _.insertAndExecuteCell = Flow.Dataflow.slot();
+        _.executeAllCells = Flow.Dataflow.slot();
+        _.showHelp = Flow.Dataflow.slot();
+        _.showOutline = Flow.Dataflow.slot();
+        _.showBrowser = Flow.Dataflow.slot();
+        _.showClipboard = Flow.Dataflow.slot();
+        _.saveClip = Flow.Dataflow.slot();
+        _.growl = Flow.Dataflow.slot();
+        _.confirm = Flow.Dataflow.slot();
+        _.alert = Flow.Dataflow.slot();
+        return _.dialog = Flow.Dataflow.slot();
+    };
+}.call(this));
+(function () {
+    Flow.Application = function (_, routines) {
+        var _notebook, _renderers, _sandbox;
+        Flow.ApplicationContext(_);
+        _sandbox = Flow.Sandbox(_, routines(_));
+        _renderers = Flow.Renderers(_, _sandbox);
+        Flow.Analytics(_);
+        Flow.Growl(_);
+        Flow.Autosave(_);
+        _notebook = Flow.Notebook(_, _renderers);
+        return {
+            context: _,
+            sandbox: _sandbox,
+            view: _notebook
+        };
+    };
+}.call(this));
+(function () {
+    var createBuffer, iterate, pipe, _applicate, _async, _find, _find$2, _find$3, _fork, _get, _isFuture, _join, _noop, __slice = [].slice;
+    createBuffer = function (array) {
+        var buffer, _array, _go;
+        _array = array || [];
+        _go = null;
+        buffer = function (element) {
+            if (element === void 0) {
+                return _array;
+            } else {
+                _array.push(element);
+                if (_go) {
+                    _go(element);
+                }
+                return element;
+            }
+        };
+        buffer.subscribe = function (go) {
+            return _go = go;
+        };
+        buffer.buffer = _array;
+        buffer.isBuffer = true;
+        return buffer;
+    };
+    _noop = function (go) {
+        return go(null);
+    };
+    _applicate = function (go) {
+        return function (error, args) {
+            if (lodash.isFunction(go)) {
+                return go.apply(null, [error].concat(args));
+            }
+        };
+    };
+    _fork = function (f, args) {
+        var self;
+        if (!lodash.isFunction(f)) {
+            throw new Error('Not a function.');
+        }
+        self = function (go) {
+            var canGo;
+            canGo = lodash.isFunction(go);
+            if (self.settled) {
+                if (self.rejected) {
+                    if (canGo) {
+                        return go(self.error);
+                    }
+                } else {
+                    if (canGo) {
+                        return go(null, self.result);
+                    }
+                }
+            } else {
+                return _join(args, function (error, args) {
                     if (error) {
-                    } else {
-                        _columns(function () {
-                            var _i, _len, _ref, _results;
-                            _ref = frame.columns;
-                            _results = [];
-                            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                                column = _ref[_i];
-                                _results.push(column.label);
-                            }
-                            return _results;
-                        }());
-                        if (opts.column) {
-                            _column(opts.column);
-                            return delete opts.column;
+                        self.error = error;
+                        self.fulfilled = false;
+                        self.rejected = true;
+                        if (canGo) {
+                            return go(error);
                         }
+                    } else {
+                        return f.apply(null, args.concat(function (error, result) {
+                            if (error) {
+                                self.error = error;
+                                self.fulfilled = false;
+                                self.rejected = true;
+                                if (canGo) {
+                                    go(error);
+                                }
+                            } else {
+                                self.result = result;
+                                self.fulfilled = true;
+                                self.rejected = false;
+                                if (canGo) {
+                                    go(null, result);
+                                }
+                            }
+                            self.settled = true;
+                            return self.pending = false;
+                        }));
                     }
                 });
-            } else {
-                return _columns([]);
             }
-        });
-        lodash.defer(_go);
-        return {
-            frames: _frames,
-            frame: _frame,
-            hasFrame: _hasFrame,
-            columns: _columns,
-            column: _column,
-            methods: _methods,
-            method: _method,
-            canUseCombineMethod: _canUseCombineMethod,
-            combineMethods: _combineMethods,
-            combineMethod: _combineMethod,
-            canGroupByColumns: _canGroupByColumns,
-            groupByColumns: _groupByColumns,
-            canImpute: _canImpute,
-            impute: impute,
-            template: 'flow-impute-input'
         };
+        self.method = f;
+        self.args = args;
+        self.fulfilled = false;
+        self.rejected = false;
+        self.settled = false;
+        self.pending = true;
+        self.isFuture = true;
+        return self;
     };
-}.call(this));
-(function () {
-    H2O.InspectOutput = function (_, _go, _frame) {
-        var plot, view;
-        view = function () {
-            return _.insertAndExecuteCell('cs', 'grid inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin);
-        };
-        plot = function () {
-            return _.insertAndExecuteCell('cs', _frame.metadata.plot);
-        };
-        lodash.defer(_go);
-        return {
-            label: _frame.label,
-            vectors: _frame.vectors,
-            view: view,
-            canPlot: _frame.metadata.plot ? true : false,
-            plot: plot,
-            template: 'flow-inspect-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.InspectsOutput = function (_, _go, _tables) {
-        var createTableView;
-        createTableView = function (table) {
-            var grid, inspect, plot;
-            inspect = function () {
-                return _.insertAndExecuteCell('cs', 'inspect ' + Flow.Prelude.stringify(table.label) + ', ' + table.metadata.origin);
-            };
-            grid = function () {
-                return _.insertAndExecuteCell('cs', 'grid inspect ' + Flow.Prelude.stringify(table.label) + ', ' + table.metadata.origin);
-            };
-            plot = function () {
-                return _.insertAndExecuteCell('cs', table.metadata.plot);
-            };
-            return {
-                label: table.label,
-                description: table.metadata.description,
-                inspect: inspect,
-                grid: grid,
-                canPlot: table.metadata.plot ? true : false,
-                plot: plot
-            };
-        };
-        lodash.defer(_go);
-        return {
-            hasTables: _tables.length > 0,
-            tables: lodash.map(_tables, createTableView),
-            template: 'flow-inspects-output'
-        };
-    };
-}.call(this));
-(function () {
-    var getJobOutputStatusColor, getJobProgressPercent, jobOutputStatusColors;
-    jobOutputStatusColors = {
-        failed: '#d9534f',
-        done: '#ccc',
-        running: '#f0ad4e'
-    };
-    getJobOutputStatusColor = function (status) {
-        switch (status) {
-        case 'DONE':
-            return jobOutputStatusColors.done;
-        case 'CREATED':
-        case 'RUNNING':
-            return jobOutputStatusColors.running;
-        default:
-            return jobOutputStatusColors.failed;
+    _isFuture = function (a) {
+        if (a != null ? a.isFuture : void 0) {
+            return true;
+        } else {
+            return false;
         }
     };
-    getJobProgressPercent = function (progress) {
-        return '' + Math.ceil(100 * progress) + '%';
-    };
-    H2O.JobOutput = function (_, _go, _job) {
-        var cancel, initialize, isJobRunning, messageIcons, refresh, updateJob, view, _canCancel, _canView, _description, _destinationKey, _destinationType, _exception, _isBusy, _isLive, _key, _messages, _progress, _progressMessage, _runTime, _status, _statusColor;
-        _isBusy = Flow.Dataflow.signal(false);
-        _isLive = Flow.Dataflow.signal(false);
-        _key = _job.key.name;
-        _description = _job.description;
-        _destinationKey = _job.dest.name;
-        _destinationType = function () {
-            switch (_job.dest.type) {
-            case 'Key<Frame>':
-                return 'Frame';
-            case 'Key<Model>':
-                return 'Model';
-            case 'Key<Grid>':
-                return 'Grid';
-            case 'Key<KeyedVoid>':
-                return 'Void';
-            default:
-                return 'Unknown';
+    _join = function (args, go) {
+        var arg, i, _actual, _i, _len, _results, _settled, _tasks;
+        if (args.length === 0) {
+            return go(null, []);
+        }
+        _tasks = [];
+        _results = [];
+        for (i = _i = 0, _len = args.length; _i < _len; i = ++_i) {
+            arg = args[i];
+            if (arg != null ? arg.isFuture : void 0) {
+                _tasks.push({
+                    future: arg,
+                    resultIndex: i
+                });
+            } else {
+                _results[i] = arg;
             }
-        }();
-        _runTime = Flow.Dataflow.signal(null);
-        _progress = Flow.Dataflow.signal(null);
-        _progressMessage = Flow.Dataflow.signal(null);
-        _status = Flow.Dataflow.signal(null);
-        _statusColor = Flow.Dataflow.signal(null);
-        _exception = Flow.Dataflow.signal(null);
-        _messages = Flow.Dataflow.signal(null);
-        _canView = Flow.Dataflow.signal(false);
-        _canCancel = Flow.Dataflow.signal(false);
-        isJobRunning = function (job) {
-            return job.status === 'CREATED' || job.status === 'RUNNING';
+        }
+        if (_tasks.length === 0) {
+            return go(null, _results);
+        }
+        _actual = 0;
+        _settled = false;
+        lodash.forEach(_tasks, function (task) {
+            return task.future.call(null, function (error, result) {
+                if (_settled) {
+                    return;
+                }
+                if (error) {
+                    _settled = true;
+                    go(new Flow.Error('Error evaluating future[' + task.resultIndex + ']', error));
+                } else {
+                    _results[task.resultIndex] = result;
+                    _actual++;
+                    if (_actual === _tasks.length) {
+                        _settled = true;
+                        go(null, _results);
+                    }
+                }
+            });
+        });
+    };
+    pipe = function (tasks) {
+        var next, _tasks;
+        _tasks = tasks.slice(0);
+        next = function (args, go) {
+            var task;
+            task = _tasks.shift();
+            if (task) {
+                return task.apply(null, args.concat(function () {
+                    var error, results;
+                    error = arguments[0], results = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+                    if (error) {
+                        return go(error);
+                    } else {
+                        return next(results, go);
+                    }
+                }));
+            } else {
+                return go.apply(null, [null].concat(args));
+            }
         };
-        messageIcons = {
-            ERROR: 'fa-times-circle red',
-            WARN: 'fa-warning orange',
-            INFO: 'fa-info-circle'
+        return function () {
+            var args, go, _i;
+            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
+            return next(args, go);
         };
-        updateJob = function (job) {
-            var message, messages;
-            _runTime(Flow.Util.formatMilliseconds(job.msec));
-            _progress(getJobProgressPercent(job.progress));
-            _progressMessage(job.progress_msg);
-            _status(job.status);
-            _statusColor(getJobOutputStatusColor(job.status));
-            if (job.error_count) {
-                messages = function () {
+    };
+    iterate = function (tasks) {
+        var next, _results, _tasks;
+        _tasks = tasks.slice(0);
+        _results = [];
+        next = function (go) {
+            var task;
+            task = _tasks.shift();
+            if (task) {
+                return task(function (error, result) {
+                    if (error) {
+                        return go(error);
+                    } else {
+                        _results.push(result);
+                    }
+                    return next(go);
+                });
+            } else {
+                return go(null, _results);
+            }
+        };
+        return function (go) {
+            return next(go);
+        };
+    };
+    _async = function () {
+        var args, f, later;
+        f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+        later = function () {
+            var args, error, go, result, _i;
+            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
+            try {
+                result = f.apply(null, args);
+                return go(null, result);
+            } catch (_error) {
+                error = _error;
+                return go(error);
+            }
+        };
+        return _fork(later, args);
+    };
+    _find$3 = function (attr, prop, obj) {
+        var v, _i, _len;
+        if (_isFuture(obj)) {
+            return _async(_find$3, attr, prop, obj);
+        } else if (lodash.isArray(obj)) {
+            for (_i = 0, _len = obj.length; _i < _len; _i++) {
+                v = obj[_i];
+                if (v[attr] === prop) {
+                    return v;
+                }
+            }
+            return;
+        }
+    };
+    _find$2 = function (attr, obj) {
+        if (_isFuture(obj)) {
+            return _async(_find$2, attr, obj);
+        } else if (lodash.isString(attr)) {
+            if (lodash.isArray(obj)) {
+                return _find$3('name', attr, obj);
+            } else {
+                return obj[attr];
+            }
+        }
+    };
+    _find = function () {
+        var a, args, b, c, ta, tb, tc;
+        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        switch (args.length) {
+        case 3:
+            a = args[0], b = args[1], c = args[2];
+            ta = Flow.Prelude.typeOf(a);
+            tb = Flow.Prelude.typeOf(b);
+            tc = Flow.Prelude.typeOf(c);
+            if (ta === 'Array' && tb === 'String') {
+                return _find$3(b, c, a);
+            } else if (ta === 'String' && (tc = 'Array')) {
+                return _find$3(a, b, c);
+            }
+            break;
+        case 2:
+            a = args[0], b = args[1];
+            if (!a) {
+                return;
+            }
+            if (!b) {
+                return;
+            }
+            if (lodash.isString(b)) {
+                return _find$2(b, a);
+            } else if (lodash.isString(a)) {
+                return _find$2(a, b);
+            }
+        }
+    };
+    _get = function (attr, obj) {
+        if (_isFuture(obj)) {
+            return _async(_get, attr, obj);
+        } else if (lodash.isString(attr)) {
+            if (lodash.isArray(obj)) {
+                return _find$3('name', attr, obj);
+            } else {
+                return obj[attr];
+            }
+        }
+    };
+    Flow.Async = {
+        createBuffer: createBuffer,
+        noop: _noop,
+        applicate: _applicate,
+        isFuture: _isFuture,
+        fork: _fork,
+        join: _join,
+        pipe: pipe,
+        iterate: iterate,
+        async: _async,
+        find: _find,
+        get: _get
+    };
+}.call(this));
+(function () {
+    Flow.Autosave = function (_) {
+        var setDirty, setPristine, warnOnExit;
+        warnOnExit = function (e) {
+            var message;
+            message = 'Warning: you are about to exit Flow.';
+            if (e = e != null ? e : window.event) {
+                e.returnValue = message;
+            }
+            return message;
+        };
+        setDirty = function () {
+            return window.onbeforeunload = warnOnExit;
+        };
+        setPristine = function () {
+            return window.onbeforeunload = null;
+        };
+        return Flow.Dataflow.link(_.ready, function () {
+            Flow.Dataflow.link(_.setDirty, setDirty);
+            return Flow.Dataflow.link(_.setPristine, setPristine);
+        });
+    };
+}.call(this));
+(function () {
+    Flow.CoffeescriptKernel = function () {
+        var coalesceScopes, compileCoffeescript, compileJavascript, createGlobalScope, createLocalScope, createRootScope, deleteAstNode, executeJavascript, generateJavascript, identifyDeclarations, parseDeclarations, parseJavascript, removeHoistedDeclarations, rewriteJavascript, safetyWrapCoffeescript, traverseJavascript, traverseJavascriptScoped;
+        safetyWrapCoffeescript = function (guid) {
+            return function (cs, go) {
+                var block, lines;
+                lines = cs.replace(/[\n\r]/g, '\n').split('\n');
+                block = lodash.map(lines, function (line) {
+                    return '  ' + line;
+                });
+                block.unshift('_h2o_results_[\'' + guid + '\'].result do ->');
+                return go(null, block.join('\n'));
+            };
+        };
+        compileCoffeescript = function (cs, go) {
+            var error;
+            try {
+                return go(null, CoffeeScript.compile(cs, { bare: true }));
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error compiling coffee-script', error));
+            }
+        };
+        parseJavascript = function (js, go) {
+            var error;
+            try {
+                return go(null, esprima.parse(js));
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error parsing javascript expression', error));
+            }
+        };
+        identifyDeclarations = function (node) {
+            var declaration;
+            if (!node) {
+                return null;
+            }
+            switch (node.type) {
+            case 'VariableDeclaration':
+                return function () {
                     var _i, _len, _ref, _results;
-                    _ref = job.messages;
+                    _ref = node.declarations;
                     _results = [];
                     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        message = _ref[_i];
-                        if (message.message_type !== 'HIDE') {
+                        declaration = _ref[_i];
+                        if (declaration.type === 'VariableDeclarator' && declaration.id.type === 'Identifier') {
                             _results.push({
-                                icon: messageIcons[message.message_type],
-                                message: '' + message.field_name + ': ' + message.message
+                                name: declaration.id.name,
+                                object: '_h2o_context_'
                             });
                         }
                     }
                     return _results;
                 }();
-                _messages(messages);
-            } else if (job.exception) {
-                _exception(Flow.Failure(_, new Flow.Error('Job failure.', new Error(job.exception))));
+            case 'FunctionDeclaration':
+                if (node.id.type === 'Identifier') {
+                    return [{
+                            name: node.id.name,
+                            object: '_h2o_context_'
+                        }];
+                }
+                break;
+            case 'ForStatement':
+                return identifyDeclarations(node.init);
+            case 'ForInStatement':
+            case 'ForOfStatement':
+                return identifyDeclarations(node.left);
             }
-            _canView(!isJobRunning(job));
-            return _canCancel(isJobRunning(job));
+            return null;
         };
-        refresh = function () {
-            _isBusy(true);
-            return _.requestJob(_key, function (error, job) {
-                _isBusy(false);
-                if (error) {
-                    _exception(Flow.Failure(_, new Flow.Error('Error fetching jobs', error)));
-                    return _isLive(false);
-                } else {
-                    updateJob(job);
-                    if (isJobRunning(job)) {
-                        if (_isLive()) {
-                            return lodash.delay(refresh, 1000);
-                        }
-                    } else {
-                        _isLive(false);
-                        if (_go) {
-                            return lodash.defer(_go);
-                        }
+        parseDeclarations = function (block) {
+            var declaration, declarations, identifiers, node, _i, _j, _len, _len1, _ref;
+            identifiers = [];
+            _ref = block.body;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                node = _ref[_i];
+                if (declarations = identifyDeclarations(node)) {
+                    for (_j = 0, _len1 = declarations.length; _j < _len1; _j++) {
+                        declaration = declarations[_j];
+                        identifiers.push(declaration);
                     }
                 }
+            }
+            return lodash.indexBy(identifiers, function (identifier) {
+                return identifier.name;
             });
         };
-        Flow.Dataflow.act(_isLive, function (isLive) {
-            if (isLive) {
-                return refresh();
-            }
-        });
-        view = function () {
-            if (!_canView()) {
-                return;
-            }
-            switch (_destinationType) {
-            case 'Frame':
-                return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(_destinationKey));
-            case 'Model':
-                return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(_destinationKey));
-            case 'Grid':
-                return _.insertAndExecuteCell('cs', 'getGrid ' + Flow.Prelude.stringify(_destinationKey));
-            case 'Void':
-                return alert('This frame was exported to\n' + _job.dest.name);
-            }
-        };
-        cancel = function () {
-            return _.requestCancelJob(_key, function (error, result) {
-                if (error) {
-                    return console.debug(error);
-                } else {
-                    return updateJob(_job);
+        traverseJavascript = function (parent, key, node, f) {
+            var child, i;
+            if (lodash.isArray(node)) {
+                i = node.length;
+                while (i--) {
+                    child = node[i];
+                    if (lodash.isObject(child)) {
+                        traverseJavascript(node, i, child, f);
+                        f(node, i, child);
+                    }
                 }
-            });
-        };
-        initialize = function (job) {
-            updateJob(job);
-            if (isJobRunning(job)) {
-                return _isLive(true);
             } else {
-                if (_go) {
-                    return lodash.defer(_go);
-                }
-            }
-        };
-        initialize(_job);
-        return {
-            key: _key,
-            description: _description,
-            destinationKey: _destinationKey,
-            destinationType: _destinationType,
-            runTime: _runTime,
-            progress: _progress,
-            progressMessage: _progressMessage,
-            status: _status,
-            statusColor: _statusColor,
-            messages: _messages,
-            exception: _exception,
-            isLive: _isLive,
-            canView: _canView,
-            canCancel: _canCancel,
-            cancel: cancel,
-            view: view,
-            template: 'flow-job-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.JobsOutput = function (_, _go, jobs) {
-        var createJobView, initialize, refresh, toggleRefresh, _exception, _hasJobViews, _isBusy, _isLive, _jobViews;
-        _jobViews = Flow.Dataflow.signals([]);
-        _hasJobViews = Flow.Dataflow.lift(_jobViews, function (jobViews) {
-            return jobViews.length > 0;
-        });
-        _isLive = Flow.Dataflow.signal(false);
-        _isBusy = Flow.Dataflow.signal(false);
-        _exception = Flow.Dataflow.signal(null);
-        createJobView = function (job) {
-            var type, view;
-            view = function () {
-                return _.insertAndExecuteCell('cs', 'getJob ' + Flow.Prelude.stringify(job.key.name));
-            };
-            type = function () {
-                switch (job.dest.type) {
-                case 'Key<Frame>':
-                    return 'Frame';
-                case 'Key<Model>':
-                    return 'Model';
-                case 'Key<Grid>':
-                    return 'Grid';
-                default:
-                    return 'Unknown';
-                }
-            }();
-            return {
-                destination: job.dest.name,
-                type: type,
-                description: job.description,
-                startTime: Flow.Format.Time(new Date(job.start_time)),
-                endTime: Flow.Format.Time(new Date(job.start_time + job.msec)),
-                elapsedTime: Flow.Util.formatMilliseconds(job.msec),
-                status: job.status,
-                view: view
-            };
-        };
-        toggleRefresh = function () {
-            return _isLive(!_isLive());
-        };
-        refresh = function () {
-            _isBusy(true);
-            return _.requestJobs(function (error, jobs) {
-                _isBusy(false);
-                if (error) {
-                    _exception(Flow.Failure(_, new Flow.Error('Error fetching jobs', error)));
-                    return _isLive(false);
-                } else {
-                    _jobViews(lodash.map(jobs, createJobView));
-                    if (_isLive()) {
-                        return lodash.delay(refresh, 2000);
+                for (i in node) {
+                    child = node[i];
+                    if (lodash.isObject(child)) {
+                        traverseJavascript(node, i, child, f);
+                        f(node, i, child);
                     }
                 }
-            });
-        };
-        Flow.Dataflow.act(_isLive, function (isLive) {
-            if (isLive) {
-                return refresh();
             }
-        });
-        initialize = function () {
-            _jobViews(lodash.map(jobs, createJobView));
-            return lodash.defer(_go);
         };
-        initialize();
-        return {
-            jobViews: _jobViews,
-            hasJobViews: _hasJobViews,
-            isLive: _isLive,
-            isBusy: _isBusy,
-            toggleRefresh: toggleRefresh,
-            refresh: refresh,
-            exception: _exception,
-            template: 'flow-jobs-output'
+        deleteAstNode = function (parent, i) {
+            if (_.isArray(parent)) {
+                return parent.splice(i, 1);
+            } else if (lodash.isObject(parent)) {
+                return delete parent[i];
+            }
         };
-    };
-}.call(this));
-(function () {
-    H2O.LogFileOutput = function (_, _go, _cloud, _nodeIndex, _fileType, _logFile) {
-        var createNode, initialize, refresh, refreshActiveView, _activeFileType, _activeNode, _contents, _exception, _fileTypes, _nodes;
-        _exception = Flow.Dataflow.signal(null);
-        _contents = Flow.Dataflow.signal('');
-        _nodes = Flow.Dataflow.signal([]);
-        _activeNode = Flow.Dataflow.signal(null);
-        _fileTypes = Flow.Dataflow.signal([
-            'trace',
-            'debug',
-            'info',
-            'warn',
-            'error',
-            'fatal',
-            'httpd',
-            'stdout',
-            'stderr'
-        ]);
-        _activeFileType = Flow.Dataflow.signal(null);
-        createNode = function (node, index) {
-            return {
-                name: node.ip_port,
-                index: index
+        createLocalScope = function (node) {
+            var localScope, param, _i, _len, _ref;
+            localScope = parseDeclarations(node.body);
+            _ref = node.params;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                param = _ref[_i];
+                if (param.type === 'Identifier') {
+                    localScope[param.name] = {
+                        name: param.name,
+                        object: 'local'
+                    };
+                }
+            }
+            return localScope;
+        };
+        coalesceScopes = function (scopes) {
+            var currentScope, i, identifier, name, scope, _i, _len;
+            currentScope = {};
+            for (i = _i = 0, _len = scopes.length; _i < _len; i = ++_i) {
+                scope = scopes[i];
+                if (i === 0) {
+                    for (name in scope) {
+                        identifier = scope[name];
+                        currentScope[name] = identifier;
+                    }
+                } else {
+                    for (name in scope) {
+                        identifier = scope[name];
+                        currentScope[name] = null;
+                    }
+                }
+            }
+            return currentScope;
+        };
+        traverseJavascriptScoped = function (scopes, parentScope, parent, key, node, f) {
+            var child, currentScope, isNewScope;
+            isNewScope = node.type === 'FunctionExpression' || node.type === 'FunctionDeclaration';
+            if (isNewScope) {
+                scopes.push(createLocalScope(node));
+                currentScope = coalesceScopes(scopes);
+            } else {
+                currentScope = parentScope;
+            }
+            for (key in node) {
+                child = node[key];
+                if (lodash.isObject(child)) {
+                    traverseJavascriptScoped(scopes, currentScope, node, key, child, f);
+                    f(currentScope, node, key, child);
+                }
+            }
+            if (isNewScope) {
+                scopes.pop();
+            }
+        };
+        createRootScope = function (sandbox) {
+            return function (program, go) {
+                var error, name, rootScope;
+                try {
+                    rootScope = parseDeclarations(program.body[0].expression['arguments'][0].callee.body);
+                    for (name in sandbox.context) {
+                        rootScope[name] = {
+                            name: name,
+                            object: '_h2o_context_'
+                        };
+                    }
+                    return go(null, rootScope, program);
+                } catch (_error) {
+                    error = _error;
+                    return go(new Flow.Error('Error parsing root scope', error));
+                }
             };
         };
-        refreshActiveView = function (node, fileType) {
-            if (node) {
-                return _.requestLogFile(node.index, fileType, function (error, logFile) {
-                    if (error) {
-                        return _contents('Error fetching log file: ' + error.message);
-                    } else {
-                        return _contents(logFile.log);
+        removeHoistedDeclarations = function (rootScope, program, go) {
+            var error;
+            try {
+                traverseJavascript(null, null, program, function (parent, key, node) {
+                    var declarations;
+                    if (node.type === 'VariableDeclaration') {
+                        declarations = node.declarations.filter(function (declaration) {
+                            return declaration.type === 'VariableDeclarator' && declaration.id.type === 'Identifier' && !rootScope[declaration.id.name];
+                        });
+                        if (declarations.length === 0) {
+                            return deleteAstNode(parent, key);
+                        } else {
+                            return node.declarations = declarations;
+                        }
                     }
                 });
-            } else {
-                return _contents('');
+                return go(null, rootScope, program);
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error rewriting javascript', error));
             }
         };
-        refresh = function () {
-            return refreshActiveView(_activeNode(), _activeFileType());
+        createGlobalScope = function (rootScope, routines) {
+            var globalScope, identifier, name;
+            globalScope = {};
+            for (name in rootScope) {
+                identifier = rootScope[name];
+                globalScope[name] = identifier;
+            }
+            for (name in routines) {
+                globalScope[name] = {
+                    name: name,
+                    object: 'h2o'
+                };
+            }
+            return globalScope;
         };
-        initialize = function (cloud, nodeIndex, fileType, logFile) {
-            var NODE_INDEX_SELF, clientNode, i, n, nodes, _i, _len, _ref;
-            _activeFileType(fileType);
-            _contents(logFile.log);
-            nodes = [];
-            if (cloud.is_client) {
-                clientNode = { ip_port: 'driver' };
-                NODE_INDEX_SELF = -1;
-                nodes.push(createNode(clientNode, NODE_INDEX_SELF));
-            }
-            _ref = cloud.nodes;
-            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-                n = _ref[i];
-                nodes.push(createNode(n, i));
-            }
-            _nodes(nodes);
-            if (nodeIndex < nodes.length) {
-                _activeNode(nodes[nodeIndex]);
-            }
-            Flow.Dataflow.react(_activeNode, _activeFileType, refreshActiveView);
-            return lodash.defer(_go);
+        rewriteJavascript = function (sandbox) {
+            return function (rootScope, program, go) {
+                var error, globalScope;
+                globalScope = createGlobalScope(rootScope, sandbox.routines);
+                try {
+                    traverseJavascriptScoped([globalScope], globalScope, null, null, program, function (globalScope, parent, key, node) {
+                        var identifier;
+                        if (node.type === 'Identifier') {
+                            if (parent.type === 'VariableDeclarator' && key === 'id') {
+                                return;
+                            }
+                            if (key === 'property') {
+                                return;
+                            }
+                            if (!(identifier = globalScope[node.name])) {
+                                return;
+                            }
+                            return parent[key] = {
+                                type: 'MemberExpression',
+                                computed: false,
+                                object: {
+                                    type: 'Identifier',
+                                    name: identifier.object
+                                },
+                                property: {
+                                    type: 'Identifier',
+                                    name: identifier.name
+                                }
+                            };
+                        }
+                    });
+                    return go(null, program);
+                } catch (_error) {
+                    error = _error;
+                    return go(new Flow.Error('Error rewriting javascript', error));
+                }
+            };
         };
-        initialize(_cloud, _nodeIndex, _fileType, _logFile);
+        generateJavascript = function (program, go) {
+            var error;
+            try {
+                return go(null, escodegen.generate(program));
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error generating javascript', error));
+            }
+        };
+        compileJavascript = function (js, go) {
+            var closure, error;
+            try {
+                closure = new Function('h2o', '_h2o_context_', '_h2o_results_', 'print', js);
+                return go(null, closure);
+            } catch (_error) {
+                error = _error;
+                return go(new Flow.Error('Error compiling javascript', error));
+            }
+        };
+        executeJavascript = function (sandbox, print) {
+            return function (closure, go) {
+                var error;
+                try {
+                    return go(null, closure(sandbox.routines, sandbox.context, sandbox.results, print));
+                } catch (_error) {
+                    error = _error;
+                    return go(new Flow.Error('Error executing javascript', error));
+                }
+            };
+        };
         return {
-            nodes: _nodes,
-            activeNode: _activeNode,
-            fileTypes: _fileTypes,
-            activeFileType: _activeFileType,
-            contents: _contents,
-            refresh: refresh,
-            template: 'flow-log-file-output'
+            safetyWrapCoffeescript: safetyWrapCoffeescript,
+            compileCoffeescript: compileCoffeescript,
+            parseJavascript: parseJavascript,
+            createRootScope: createRootScope,
+            removeHoistedDeclarations: removeHoistedDeclarations,
+            rewriteJavascript: rewriteJavascript,
+            generateJavascript: generateJavascript,
+            compileJavascript: compileJavascript,
+            executeJavascript: executeJavascript
         };
+    }();
+}.call(this));
+(function () {
+    var combineRanges, computeRange, createAbstractVariable, createCompiledPrototype, createFactor, createNumericVariable, createRecordConstructor, createTable, createVariable, factor, includeZeroInRange, nextPrototypeName, permute, _prototypeCache, _prototypeId, __slice = [].slice;
+    _prototypeId = 0;
+    nextPrototypeName = function () {
+        return 'Map' + ++_prototypeId;
+    };
+    _prototypeCache = {};
+    createCompiledPrototype = function (attrs) {
+        var attr, cacheKey, i, inits, params, proto, prototypeName;
+        cacheKey = attrs.join('\0');
+        if (proto = _prototypeCache[cacheKey]) {
+            return proto;
+        }
+        params = function () {
+            var _i, _ref, _results;
+            _results = [];
+            for (i = _i = 0, _ref = attrs.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+                _results.push('a' + i);
+            }
+            return _results;
+        }();
+        inits = function () {
+            var _i, _len, _results;
+            _results = [];
+            for (i = _i = 0, _len = attrs.length; _i < _len; i = ++_i) {
+                attr = attrs[i];
+                _results.push('this[' + JSON.stringify(attr) + ']=a' + i + ';');
+            }
+            return _results;
+        }();
+        prototypeName = nextPrototypeName();
+        return _prototypeCache[cacheKey] = new Function('function ' + prototypeName + '(' + params.join(',') + '){' + inits.join('') + '} return ' + prototypeName + ';')();
+    };
+    createRecordConstructor = function (variables) {
+        var variable;
+        return createCompiledPrototype(function () {
+            var _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = variables.length; _i < _len; _i++) {
+                variable = variables[_i];
+                _results.push(variable.label);
+            }
+            return _results;
+        }());
+    };
+    createTable = function (opts) {
+        var description, expand, fill, label, meta, rows, schema, variable, variables, _i, _len;
+        label = opts.label, description = opts.description, variables = opts.variables, rows = opts.rows, meta = opts.meta;
+        if (!description) {
+            description = 'No description available.';
+        }
+        schema = {};
+        for (_i = 0, _len = variables.length; _i < _len; _i++) {
+            variable = variables[_i];
+            schema[variable.label] = variable;
+        }
+        fill = function (i, go) {
+            _fill(i, function (error, result) {
+                var index, startIndex, value, _j, _len1;
+                if (error) {
+                    return go(error);
+                } else {
+                    startIndex = result.index, lodash.values = result.values;
+                    for (index = _j = 0, _len1 = lodash.values.length; _j < _len1; index = ++_j) {
+                        value = lodash.values[index];
+                        rows[startIndex + index] = lodash.values[index];
+                    }
+                    return go(null);
+                }
+            });
+        };
+        expand = function () {
+            var type, types, _j, _len1, _results;
+            types = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+            _results = [];
+            for (_j = 0, _len1 = types.length; _j < _len1; _j++) {
+                type = types[_j];
+                label = lodash.uniqueId('__flow_variable_');
+                _results.push(schema[label] = createNumericVariable(label));
+            }
+            return _results;
+        };
+        return {
+            label: label,
+            description: description,
+            schema: schema,
+            variables: variables,
+            rows: rows,
+            meta: meta,
+            fill: fill,
+            expand: expand,
+            _is_table_: true
+        };
+    };
+    includeZeroInRange = function (range) {
+        var hi, lo;
+        lo = range[0], hi = range[1];
+        if (lo > 0 && hi > 0) {
+            return [
+                0,
+                hi
+            ];
+        } else if (lo < 0 && hi < 0) {
+            return [
+                lo,
+                0
+            ];
+        } else {
+            return range;
+        }
+    };
+    combineRanges = function () {
+        var hi, lo, range, ranges, value, _i, _len;
+        ranges = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        lo = Number.POSITIVE_INFINITY;
+        hi = Number.NEGATIVE_INFINITY;
+        for (_i = 0, _len = ranges.length; _i < _len; _i++) {
+            range = ranges[_i];
+            if (lo > (value = range[0])) {
+                lo = value;
+            }
+            if (hi < (value = range[1])) {
+                hi = value;
+            }
+        }
+        return [
+            lo,
+            hi
+        ];
+    };
+    computeRange = function (rows, attr) {
+        var hi, lo, row, value, _i, _len;
+        if (rows.length) {
+            lo = Number.POSITIVE_INFINITY;
+            hi = Number.NEGATIVE_INFINITY;
+            for (_i = 0, _len = rows.length; _i < _len; _i++) {
+                row = rows[_i];
+                value = row[attr];
+                if (value < lo) {
+                    lo = value;
+                }
+                if (value > hi) {
+                    hi = value;
+                }
+            }
+            return [
+                lo,
+                hi
+            ];
+        } else {
+            return [
+                -1,
+                1
+            ];
+        }
+    };
+    permute = function (array, indices) {
+        var i, index, permuted, _i, _len;
+        permuted = new Array(array.length);
+        for (i = _i = 0, _len = indices.length; _i < _len; i = ++_i) {
+            index = indices[i];
+            permuted[i] = array[index];
+        }
+        return permuted;
+    };
+    createAbstractVariable = function (_label, _type, _domain, _format, _read) {
+        return {
+            label: _label,
+            type: _type,
+            domain: _domain || [],
+            format: _format || lodash.identity,
+            read: _read
+        };
+    };
+    createNumericVariable = function (_label, _domain, _format, _read) {
+        var self;
+        self = createAbstractVariable(_label, Flow.TNumber, _domain || [
+            Number.POSITIVE_INFINITY,
+            Number.NEGATIVE_INFINITY
+        ], _format, _read);
+        if (!self.read) {
+            self.read = function (datum) {
+                if (datum < self.domain[0]) {
+                    self.domain[0] = datum;
+                }
+                if (datum > self.domain[1]) {
+                    self.domain[1] = datum;
+                }
+                return datum;
+            };
+        }
+        return self;
+    };
+    createVariable = function (_label, _type, _domain, _format, _read) {
+        if (_type === Flow.TNumber) {
+            return createNumericVariable(_label, _domain, _format, _read);
+        } else {
+            return createAbstractVariable(_label, _type, _domain, _format, _read);
+        }
+    };
+    createFactor = function (_label, _domain, _format, _read) {
+        var level, self, _i, _id, _len, _levels, _ref;
+        self = createAbstractVariable(_label, Flow.TFactor, _domain || [], _format, _read);
+        _id = 0;
+        _levels = {};
+        if (self.domain.length) {
+            _ref = self.domain;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                level = _ref[_i];
+                _levels[level] = _id++;
+            }
+        }
+        if (!self.read) {
+            self.read = function (datum) {
+                var id;
+                level = datum === void 0 || datum === null ? 'null' : datum;
+                if (void 0 === (id = _levels[level])) {
+                    _levels[level] = id = _id++;
+                    self.domain.push(level);
+                }
+                return id;
+            };
+        }
+        return self;
+    };
+    factor = function (array) {
+        var data, domain, i, id, level, levels, _i, _id, _len;
+        _id = 0;
+        levels = {};
+        domain = [];
+        data = new Array(array.length);
+        for (i = _i = 0, _len = array.length; _i < _len; i = ++_i) {
+            level = array[i];
+            if (void 0 === (id = levels[level])) {
+                levels[level] = id = _id++;
+                domain.push(level);
+            }
+            data[i] = id;
+        }
+        return [
+            domain,
+            data
+        ];
+    };
+    Flow.Data = {
+        Table: createTable,
+        Variable: createVariable,
+        Factor: createFactor,
+        computeColumnInterpretation: function (type) {
+            if (type === Flow.TNumber) {
+                return 'c';
+            } else if (type === Flow.TFactor) {
+                return 'd';
+            } else {
+                return 't';
+            }
+        },
+        Record: createRecordConstructor,
+        computeRange: computeRange,
+        combineRanges: combineRanges,
+        includeZeroInRange: includeZeroInRange,
+        factor: factor,
+        permute: permute
     };
 }.call(this));
 (function () {
-    var createCheckboxControl, createControl, createControlFromParameter, createDropdownControl, createGridableValues, createListControl, createTextboxControl;
-    createControl = function (kind, parameter) {
-        var _hasError, _hasInfo, _hasMessage, _hasWarning, _isGrided, _isNotGrided, _isVisible, _message;
-        _hasError = Flow.Dataflow.signal(false);
-        _hasWarning = Flow.Dataflow.signal(false);
-        _hasInfo = Flow.Dataflow.signal(false);
-        _message = Flow.Dataflow.signal('');
-        _hasMessage = Flow.Dataflow.lift(_message, function (message) {
-            if (message) {
-                return true;
-            } else {
-                return false;
-            }
-        });
-        _isVisible = Flow.Dataflow.signal(true);
-        _isGrided = Flow.Dataflow.signal(false);
-        _isNotGrided = Flow.Dataflow.lift(_isGrided, function (value) {
-            return !value;
-        });
-        return {
-            kind: kind,
-            name: parameter.name,
-            label: parameter.label,
-            description: parameter.help,
-            isRequired: parameter.required,
-            hasError: _hasError,
-            hasWarning: _hasWarning,
-            hasInfo: _hasInfo,
-            message: _message,
-            hasMessage: _hasMessage,
-            isVisible: _isVisible,
-            isGridable: parameter.gridable,
-            isGrided: _isGrided,
-            isNotGrided: _isNotGrided
-        };
-    };
-    createTextboxControl = function (parameter, type) {
-        var control, isArrayValued, isInt, isReal, textToValues, _ref, _ref1, _text, _textGrided, _value, _valueGrided;
-        isArrayValued = isInt = isReal = false;
-        switch (type) {
-        case 'byte[]':
-        case 'short[]':
-        case 'int[]':
-        case 'long[]':
-            isArrayValued = true;
-            isInt = true;
-            break;
-        case 'float[]':
-        case 'double[]':
-            isArrayValued = true;
-            isReal = true;
-            break;
-        case 'byte':
-        case 'short':
-        case 'int':
-        case 'long':
-            isInt = true;
-            break;
-        case 'float':
-        case 'double':
-            isReal = true;
-        }
-        _text = Flow.Dataflow.signal(isArrayValued ? ((_ref = parameter.actual_value) != null ? _ref : []).join(', ') : (_ref1 = parameter.actual_value) != null ? _ref1 : '');
-        _textGrided = Flow.Dataflow.signal(_text() + ';');
-        textToValues = function (text) {
-            var parsed, vals, value, _i, _len, _ref2;
-            if (isArrayValued) {
-                vals = [];
-                _ref2 = text.split(/\s*,\s*/g);
-                for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
-                    value = _ref2[_i];
-                    if (isInt) {
-                        if (!lodash.isNaN(parsed = parseInt(value, 10))) {
-                            vals.push(parsed);
-                        }
-                    } else if (isReal) {
-                        if (!lodash.isNaN(parsed = parseFloat(value))) {
-                            vals.push(parsed);
-                        }
-                    } else {
-                        vals.push(value);
-                    }
+    var __slice = [].slice;
+    Flow.Dataflow = function () {
+        var createObservable, createObservableArray, createSignal, createSignals, createSlot, createSlots, isObservable, _act, _apply, _isSignal, _lift, _link, _merge, _react, _unlink;
+        createSlot = function () {
+            var arrow, self;
+            arrow = null;
+            self = function () {
+                var args;
+                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+                if (arrow) {
+                    return arrow.func.apply(null, args);
+                } else {
+                    return void 0;
                 }
-                return vals;
-            } else {
-                return text;
-            }
-        };
-        _value = Flow.Dataflow.lift(_text, textToValues);
-        _valueGrided = Flow.Dataflow.lift(_textGrided, function (text) {
-            var part, token, _i, _len, _ref2;
-            lodash.values = [];
-            _ref2 = ('' + text).split(/\s*;\s*/g);
-            for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
-                part = _ref2[_i];
-                if (token = part.trim()) {
-                    lodash.values.push(textToValues(token));
-                }
-            }
-            return lodash.values;
-        });
-        control = createControl('textbox', parameter);
-        control.text = _text;
-        control.textGrided = _textGrided;
-        control.value = _value;
-        control.valueGrided = _valueGrided;
-        control.isArrayValued = isArrayValued;
-        return control;
-    };
-    createGridableValues = function (values, defaultValue) {
-        return lodash.map(values, function (value) {
-            return {
-                label: value,
-                value: Flow.Dataflow.signal(true)
             };
-        });
-    };
-    createDropdownControl = function (parameter) {
-        var control, _value;
-        _value = Flow.Dataflow.signal(parameter.actual_value);
-        control = createControl('dropdown', parameter);
-        control.values = Flow.Dataflow.signals(parameter.values);
-        control.value = _value;
-        control.gridedValues = Flow.Dataflow.lift(control.values, function (values) {
-            return createGridableValues(values);
-        });
-        return control;
-    };
-    createListControl = function (parameter) {
-        var MaxItemsPerPage, blockSelectionUpdates, changeSelection, control, createEntry, deselectFiltered, filterItems, goToNextPage, goToPreviousPage, incrementSelectionCount, selectFiltered, _canGoToNextPage, _canGoToPreviousPage, _currentPage, _entries, _filteredItems, _hasFilteredItems, _ignoreNATerm, _isUpdatingSelectionCount, _lastUsedIgnoreNaTerm, _lastUsedSearchTerm, _maxPages, _searchCaption, _searchTerm, _selectionCount, _values, _visibleItems;
-        MaxItemsPerPage = 100;
-        _searchTerm = Flow.Dataflow.signal('');
-        _ignoreNATerm = Flow.Dataflow.signal('');
-        _values = Flow.Dataflow.signal([]);
-        _selectionCount = Flow.Dataflow.signal(0);
-        _isUpdatingSelectionCount = false;
-        blockSelectionUpdates = function (f) {
-            _isUpdatingSelectionCount = true;
-            f();
-            return _isUpdatingSelectionCount = false;
-        };
-        incrementSelectionCount = function (amount) {
-            return _selectionCount(_selectionCount() + amount);
-        };
-        createEntry = function (value) {
-            var isSelected;
-            isSelected = Flow.Dataflow.signal(false);
-            Flow.Dataflow.react(isSelected, function (isSelected) {
-                if (!_isUpdatingSelectionCount) {
-                    if (isSelected) {
-                        incrementSelectionCount(1);
-                    } else {
-                        incrementSelectionCount(-1);
-                    }
+            self.subscribe = function (func) {
+                console.assert(lodash.isFunction(func));
+                if (arrow) {
+                    throw new Error('Cannot re-attach slot');
+                } else {
+                    return arrow = {
+                        func: func,
+                        dispose: function () {
+                            return arrow = null;
+                        }
+                    };
                 }
-            });
-            return {
-                isSelected: isSelected,
-                value: value.value,
-                type: value.type,
-                missingLabel: value.missingLabel,
-                missingPercent: value.missingPercent
             };
-        };
-        _entries = Flow.Dataflow.lift(_values, function (values) {
-            return lodash.map(values, createEntry);
-        });
-        _filteredItems = Flow.Dataflow.signal([]);
-        _visibleItems = Flow.Dataflow.signal([]);
-        _hasFilteredItems = Flow.Dataflow.lift(_filteredItems, function (entries) {
-            return entries.length > 0;
-        });
-        _currentPage = Flow.Dataflow.signal(0);
-        _maxPages = Flow.Dataflow.lift(_filteredItems, function (entries) {
-            return Math.ceil(entries.length / MaxItemsPerPage);
-        });
-        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
-            return index > 0;
-        });
-        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
-            return index < maxPages - 1;
-        });
-        _searchCaption = Flow.Dataflow.lift(_entries, _filteredItems, _selectionCount, _currentPage, _maxPages, function (entries, filteredItems, selectionCount, currentPage, maxPages) {
-            var caption;
-            caption = maxPages === 0 ? '' : 'Showing page ' + (currentPage + 1) + ' of ' + maxPages + '.';
-            if (filteredItems.length !== entries.length) {
-                caption += ' Filtered ' + filteredItems.length + ' of ' + entries.length + '.';
-            }
-            if (selectionCount !== 0) {
-                caption += ' ' + selectionCount + ' ignored.';
-            }
-            return caption;
-        });
-        Flow.Dataflow.react(_entries, function () {
-            return filterItems(true);
-        });
-        _lastUsedSearchTerm = null;
-        _lastUsedIgnoreNaTerm = null;
-        filterItems = function (force) {
-            var entry, filteredItems, hide, i, ignoreNATerm, missingPercent, searchTerm, start, _i, _len, _ref;
-            if (force == null) {
-                force = false;
-            }
-            searchTerm = _searchTerm().trim();
-            ignoreNATerm = _ignoreNATerm().trim();
-            if (force || searchTerm !== _lastUsedSearchTerm || ignoreNATerm !== _lastUsedIgnoreNaTerm) {
-                filteredItems = [];
-                _ref = _entries();
-                for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-                    entry = _ref[i];
-                    missingPercent = parseFloat(ignoreNATerm);
-                    hide = false;
-                    if (searchTerm !== '' && -1 === entry.value.toLowerCase().indexOf(searchTerm.toLowerCase())) {
-                        hide = true;
-                    } else if (!lodash.isNaN(missingPercent) && missingPercent !== 0 && entry.missingPercent <= missingPercent) {
-                        hide = true;
-                    }
-                    if (!hide) {
-                        filteredItems.push(entry);
-                    }
+            self.dispose = function () {
+                if (arrow) {
+                    return arrow.dispose();
                 }
-                _lastUsedSearchTerm = searchTerm;
-                _lastUsedIgnoreNaTerm = ignoreNATerm;
-                _currentPage(0);
-                _filteredItems(filteredItems);
-            }
-            start = _currentPage() * MaxItemsPerPage;
-            _visibleItems(_filteredItems().slice(start, start + MaxItemsPerPage));
+            };
+            return self;
         };
-        changeSelection = function (source, value) {
-            var entry, _i, _len;
-            for (_i = 0, _len = source.length; _i < _len; _i++) {
-                entry = source[_i];
-                entry.isSelected(value);
-            }
+        createSlots = function () {
+            var arrows, self;
+            arrows = [];
+            self = function () {
+                var args;
+                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+                return lodash.map(arrows, function (arrow) {
+                    return arrow.func.apply(null, args);
+                });
+            };
+            self.subscribe = function (func) {
+                var arrow;
+                console.assert(lodash.isFunction(func));
+                arrows.push(arrow = {
+                    func: func,
+                    dispose: function () {
+                        return Flow.Prelude.remove(arrows, arrow);
+                    }
+                });
+                return arrow;
+            };
+            self.dispose = function () {
+                return lodash.forEach(Flow.Prelude.copy(arrows), function (arrow) {
+                    return arrow.dispose();
+                });
+            };
+            return self;
         };
-        selectFiltered = function () {
-            var entries;
-            entries = _filteredItems();
-            blockSelectionUpdates(function () {
-                return changeSelection(entries, true);
-            });
-            return _selectionCount(entries.length);
-        };
-        deselectFiltered = function () {
-            blockSelectionUpdates(function () {
-                return changeSelection(_filteredItems(), false);
-            });
-            return _selectionCount(0);
-        };
-        goToPreviousPage = function () {
-            if (_canGoToPreviousPage()) {
-                _currentPage(_currentPage() - 1);
-                filterItems();
-            }
-        };
-        goToNextPage = function () {
-            if (_canGoToNextPage()) {
-                _currentPage(_currentPage() + 1);
-                filterItems();
-            }
-        };
-        Flow.Dataflow.react(_searchTerm, lodash.throttle(filterItems, 500));
-        Flow.Dataflow.react(_ignoreNATerm, lodash.throttle(filterItems, 500));
-        control = createControl('list', parameter);
-        control.values = _values;
-        control.entries = _visibleItems;
-        control.hasFilteredItems = _hasFilteredItems;
-        control.searchCaption = _searchCaption;
-        control.searchTerm = _searchTerm;
-        control.ignoreNATerm = _ignoreNATerm;
-        control.value = _entries;
-        control.selectFiltered = selectFiltered;
-        control.deselectFiltered = deselectFiltered;
-        control.goToPreviousPage = goToPreviousPage;
-        control.goToNextPage = goToNextPage;
-        control.canGoToPreviousPage = _canGoToPreviousPage;
-        control.canGoToNextPage = _canGoToNextPage;
-        return control;
-    };
-    createCheckboxControl = function (parameter) {
-        var control, _value;
-        _value = Flow.Dataflow.signal(parameter.actual_value);
-        control = createControl('checkbox', parameter);
-        control.clientId = lodash.uniqueId();
-        control.value = _value;
-        return control;
-    };
-    createControlFromParameter = function (parameter) {
-        switch (parameter.type) {
-        case 'enum':
-        case 'Key<Frame>':
-        case 'VecSpecifier':
-            return createDropdownControl(parameter);
-        case 'string[]':
-            return createListControl(parameter);
-        case 'boolean':
-            return createCheckboxControl(parameter);
-        case 'Key<Model>':
-        case 'string':
-        case 'byte':
-        case 'short':
-        case 'int':
-        case 'long':
-        case 'float':
-        case 'double':
-        case 'byte[]':
-        case 'short[]':
-        case 'int[]':
-        case 'long[]':
-        case 'float[]':
-        case 'double[]':
-            return createTextboxControl(parameter, parameter.type);
-        default:
-            console.error('Invalid field', JSON.stringify(parameter, null, 2));
-            return null;
-        }
-    };
-    H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
-        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _i, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
-        _exception = Flow.Dataflow.signal(null);
-        _validationFailureMessage = Flow.Dataflow.signal('');
-        _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
-        _parametersByLevel = lodash.groupBy(_parameters, function (parameter) {
-            return parameter.level;
-        });
-        _controlGroups = lodash.map([
-            'critical',
-            'secondary',
-            'expert'
-        ], function (type) {
-            return lodash.filter(lodash.map(_parametersByLevel[type], createControlFromParameter), function (a) {
-                if (a) {
+        if (typeof ko !== 'undefined' && ko !== null) {
+            createObservable = ko.observable;
+            createObservableArray = ko.observableArray;
+            isObservable = ko.isObservable;
+        } else {
+            createObservable = function (initialValue) {
+                var arrows, currentValue, notifySubscribers, self;
+                arrows = [];
+                currentValue = initialValue;
+                notifySubscribers = function (arrows, newValue) {
+                    var arrow, _i, _len;
+                    for (_i = 0, _len = arrows.length; _i < _len; _i++) {
+                        arrow = arrows[_i];
+                        arrow.func(newValue);
+                    }
+                };
+                self = function (newValue) {
+                    var unchanged;
+                    if (arguments.length === 0) {
+                        return currentValue;
+                    } else {
+                        unchanged = self.equalityComparer ? self.equalityComparer(currentValue, newValue) : currentValue === newValue;
+                        if (!unchanged) {
+                            currentValue = newValue;
+                            return notifySubscribers(arrows, newValue);
+                        }
+                    }
+                };
+                self.subscribe = function (func) {
+                    var arrow;
+                    console.assert(lodash.isFunction(func));
+                    arrows.push(arrow = {
+                        func: func,
+                        dispose: function () {
+                            return Flow.Prelude.remove(arrows, arrow);
+                        }
+                    });
+                    return arrow;
+                };
+                self.__observable__ = true;
+                return self;
+            };
+            createObservableArray = createObservable;
+            isObservable = function (obj) {
+                if (obj.__observable__) {
                     return true;
                 } else {
                     return false;
                 }
-            });
-        });
-        criticalControls = _controlGroups[0], secondaryControls = _controlGroups[1], expertControls = _controlGroups[2];
-        _form = [];
-        if (criticalControls.length) {
-            _form.push({
-                kind: 'group',
-                title: 'Parameters'
-            });
-            for (_i = 0, _len = criticalControls.length; _i < _len; _i++) {
-                control = criticalControls[_i];
-                _form.push(control);
-            }
+            };
         }
-        if (secondaryControls.length) {
-            _form.push({
-                kind: 'group',
-                title: 'Advanced'
-            });
-            for (_j = 0, _len1 = secondaryControls.length; _j < _len1; _j++) {
-                control = secondaryControls[_j];
-                _form.push(control);
-            }
-        }
-        if (expertControls.length) {
-            _form.push({
-                kind: 'group',
-                title: 'Expert'
-            });
-            for (_k = 0, _len2 = expertControls.length; _k < _len2; _k++) {
-                control = expertControls[_k];
-                _form.push(control);
-            }
-        }
-        findControl = function (name) {
-            var controls, _l, _len3, _len4, _m;
-            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
-                controls = _controlGroups[_l];
-                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
-                    control = controls[_m];
-                    if (control.name === name) {
-                        return control;
-                    }
-                }
-            }
-        };
-        parameterTemplateOf = function (control) {
-            return 'flow-' + control.kind + '-model-parameter';
-        };
-        findFormField = function (name) {
-            return lodash.find(_form, function (field) {
-                return field.name === name;
-            });
-        };
-        (function () {
-            var foldColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, responseColumnParameter, trainingFrameParameter, validationFrameParameter, weightsColumnParameter, _ref;
-            _ref = lodash.map([
-                'training_frame',
-                'validation_frame',
-                'response_column',
-                'ignored_columns',
-                'offset_column',
-                'weights_column',
-                'fold_column'
-            ], findFormField), trainingFrameParameter = _ref[0], validationFrameParameter = _ref[1], responseColumnParameter = _ref[2], ignoredColumnsParameter = _ref[3], offsetColumnsParameter = _ref[4], weightsColumnParameter = _ref[5], foldColumnParameter = _ref[6];
-            if (trainingFrameParameter) {
-                if (responseColumnParameter || ignoredColumnsParameter) {
-                    return Flow.Dataflow.act(trainingFrameParameter.value, function (frameKey) {
-                        if (frameKey) {
-                            _.requestFrameSummaryWithoutData(frameKey, function (error, frame) {
-                                var columnLabels, columnValues;
-                                if (!error) {
-                                    columnValues = lodash.map(frame.columns, function (column) {
-                                        return column.label;
-                                    });
-                                    columnLabels = lodash.map(frame.columns, function (column) {
-                                        var missingPercent;
-                                        missingPercent = 100 * column.missing_count / frame.rows;
-                                        return {
-                                            type: column.type === 'enum' ? 'enum(' + column.domain_cardinality + ')' : column.type,
-                                            value: column.label,
-                                            missingPercent: missingPercent,
-                                            missingLabel: missingPercent === 0 ? '' : '' + Math.round(missingPercent) + '% NA'
-                                        };
-                                    });
-                                    if (responseColumnParameter) {
-                                        responseColumnParameter.values(columnValues);
-                                    }
-                                    if (ignoredColumnsParameter) {
-                                        ignoredColumnsParameter.values(columnLabels);
-                                    }
-                                    if (weightsColumnParameter) {
-                                        weightsColumnParameter.values(columnValues);
-                                    }
-                                    if (foldColumnParameter) {
-                                        foldColumnParameter.values(columnValues);
-                                    }
-                                    if (offsetColumnsParameter) {
-                                        offsetColumnsParameter.values(columnValues);
-                                    }
-                                    if (responseColumnParameter && ignoredColumnsParameter) {
-                                        return Flow.Dataflow.lift(responseColumnParameter.value, function (responseVariableName) {
-                                        });
-                                    }
-                                }
-                            });
-                        }
-                    });
-                }
-            }
-        }());
-        collectParameters = function (includeUnchangedParameters) {
-            var controls, entry, hyperParameters, isGrided, item, parameters, selectedValues, value, _l, _len3, _len4, _len5, _m, _n, _ref;
-            if (includeUnchangedParameters == null) {
-                includeUnchangedParameters = false;
-            }
-            isGrided = false;
-            parameters = {};
-            hyperParameters = {};
-            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
-                controls = _controlGroups[_l];
-                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
-                    control = controls[_m];
-                    if (control.isGrided()) {
-                        isGrided = true;
-                        switch (control.kind) {
-                        case 'textbox':
-                            hyperParameters[control.name] = control.valueGrided();
-                            break;
-                        case 'dropdown':
-                            hyperParameters[control.name] = selectedValues = [];
-                            _ref = control.gridedValues();
-                            for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
-                                item = _ref[_n];
-                                if (item.value()) {
-                                    selectedValues.push(item.label);
-                                }
-                            }
-                            break;
-                        default:
-                            hyperParameters[control.name] = [
-                                true,
-                                false
-                            ];
-                        }
-                    } else {
-                        value = control.value();
-                        if (control.isVisible() && (includeUnchangedParameters || control.isRequired || control.defaultValue !== value)) {
-                            switch (control.kind) {
-                            case 'dropdown':
-                                if (value) {
-                                    parameters[control.name] = value;
-                                }
-                                break;
-                            case 'list':
-                                if (value.length) {
-                                    selectedValues = function () {
-                                        var _len6, _o, _results;
-                                        _results = [];
-                                        for (_o = 0, _len6 = value.length; _o < _len6; _o++) {
-                                            entry = value[_o];
-                                            if (entry.isSelected()) {
-                                                _results.push(entry.value);
-                                            }
-                                        }
-                                        return _results;
-                                    }();
-                                    parameters[control.name] = selectedValues;
-                                }
-                                break;
-                            default:
-                                parameters[control.name] = value;
-                            }
-                        }
-                    }
-                }
-            }
-            if (isGrided) {
-                parameters.hyper_parameters = hyperParameters;
-            }
-            return parameters;
-        };
-        performValidations = function (checkForErrors, go) {
-            var parameters;
-            _exception(null);
-            parameters = collectParameters(true);
-            if (parameters.hyper_parameters) {
-                return go();
-            }
-            _validationFailureMessage('');
-            return _.requestModelInputValidation(_algorithm, parameters, function (error, modelBuilder) {
-                var controls, hasErrors, validation, validations, validationsByControlName, _l, _len3, _len4, _len5, _m, _n;
-                if (error) {
-                    return _exception(Flow.Failure(_, new Flow.Error('Error fetching initial model builder state', error)));
-                } else {
-                    hasErrors = false;
-                    if (modelBuilder.messages.length) {
-                        validationsByControlName = lodash.groupBy(modelBuilder.messages, function (validation) {
-                            return validation.field_name;
-                        });
-                        for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
-                            controls = _controlGroups[_l];
-                            for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
-                                control = controls[_m];
-                                if (validations = validationsByControlName[control.name]) {
-                                    for (_n = 0, _len5 = validations.length; _n < _len5; _n++) {
-                                        validation = validations[_n];
-                                        if (validation.message_type === 'HIDE') {
-                                            control.isVisible(false);
-                                        } else {
-                                            control.isVisible(true);
-                                            if (checkForErrors) {
-                                                switch (validation.message_type) {
-                                                case 'INFO':
-                                                    control.hasInfo(true);
-                                                    control.message(validation.message);
-                                                    break;
-                                                case 'WARN':
-                                                    control.hasWarning(true);
-                                                    control.message(validation.message);
-                                                    break;
-                                                case 'ERROR':
-                                                    control.hasError(true);
-                                                    control.message(validation.message);
-                                                    hasErrors = true;
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    control.isVisible(true);
-                                    control.hasInfo(false);
-                                    control.hasWarning(false);
-                                    control.hasError(false);
-                                    control.message('');
-                                }
-                            }
-                        }
-                    }
-                    if (hasErrors) {
-                        return _validationFailureMessage('Your model parameters have one or more errors. Please fix them and try again.');
-                    } else {
-                        _validationFailureMessage('');
-                        return go();
-                    }
-                }
-            });
-        };
-        createModel = function () {
-            _exception(null);
-            return performValidations(true, function () {
-                var parameters;
-                parameters = collectParameters(false);
-                return _.insertAndExecuteCell('cs', 'buildModel \'' + _algorithm + '\', ' + Flow.Prelude.stringify(parameters));
-            });
-        };
-        _revalidate = function (value) {
-            if (value !== void 0) {
-                return performValidations(false, function () {
-                });
-            }
-        };
-        revalidate = lodash.throttle(_revalidate, 100, { leading: false });
-        performValidations(false, function () {
-            var controls, _l, _len3, _len4, _m;
-            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
-                controls = _controlGroups[_l];
-                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
-                    control = controls[_m];
-                    Flow.Dataflow.react(control.value, revalidate);
-                }
-            }
-        });
-        return {
-            form: _form,
-            exception: _exception,
-            parameterTemplateOf: parameterTemplateOf,
-            createModel: createModel,
-            hasValidationFailures: _hasValidationFailures,
-            validationFailureMessage: _validationFailureMessage
-        };
-    };
-    H2O.ModelInput = function (_, _go, _algo, _opts) {
-        var createModel, populateFramesAndColumns, _algorithm, _algorithms, _canCreateModel, _exception, _modelForm;
-        _exception = Flow.Dataflow.signal(null);
-        _algorithms = Flow.Dataflow.signal([]);
-        _algorithm = Flow.Dataflow.signal(null);
-        _canCreateModel = Flow.Dataflow.lift(_algorithm, function (algorithm) {
-            if (algorithm) {
-                return true;
+        createSignal = function (value, equalityComparer) {
+            var observable;
+            if (arguments.length === 0) {
+                return createSignal(void 0, Flow.Prelude.never);
             } else {
-                return false;
+                observable = createObservable(value);
+                if (lodash.isFunction(equalityComparer)) {
+                    observable.equalityComparer = equalityComparer;
+                }
+                return observable;
             }
-        });
-        _modelForm = Flow.Dataflow.signal(null);
-        populateFramesAndColumns = function (frameKey, algorithm, parameters, go) {
-            var classificationParameter, destinationKeyParameter;
-            destinationKeyParameter = lodash.find(parameters, function (parameter) {
-                return parameter.name === 'model_id';
+        };
+        _isSignal = isObservable;
+        createSignals = function (array) {
+            return createObservableArray(array || []);
+        };
+        _link = function (source, func) {
+            console.assert(lodash.isFunction(source, '[signal] is not a function'));
+            console.assert(lodash.isFunction(source.subscribe, '[signal] does not have a [dispose] method'));
+            console.assert(lodash.isFunction(func, '[func] is not a function'));
+            return source.subscribe(func);
+        };
+        _unlink = function (arrows) {
+            var arrow, _i, _len, _results;
+            if (lodash.isArray(arrows)) {
+                _results = [];
+                for (_i = 0, _len = arrows.length; _i < _len; _i++) {
+                    arrow = arrows[_i];
+                    console.assert(lodash.isFunction(arrow.dispose, '[arrow] does not have a [dispose] method'));
+                    _results.push(arrow.dispose());
+                }
+                return _results;
+            } else {
+                console.assert(lodash.isFunction(arrows.dispose, '[arrow] does not have a [dispose] method'));
+                return arrows.dispose();
+            }
+        };
+        _apply = function (sources, func) {
+            return func.apply(null, lodash.map(sources, function (source) {
+                return source();
+            }));
+        };
+        _act = function () {
+            var func, sources, _i;
+            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
+            _apply(sources, func);
+            return lodash.map(sources, function (source) {
+                return _link(source, function () {
+                    return _apply(sources, func);
+                });
             });
-            if (destinationKeyParameter && !destinationKeyParameter.actual_value) {
-                destinationKeyParameter.actual_value = '' + algorithm + '-' + Flow.Util.uuid();
-            }
-            classificationParameter = lodash.find(parameters, function (parameter) {
-                return parameter.name === 'do_classification';
+        };
+        _react = function () {
+            var func, sources, _i;
+            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
+            return lodash.map(sources, function (source) {
+                return _link(source, function () {
+                    return _apply(sources, func);
+                });
             });
-            if (classificationParameter) {
-                classificationParameter.actual_value = true;
-            }
-            return _.requestFrames(function (error, frames) {
-                var frame, frameKeys, frameParameters, parameter, _i, _len;
-                if (error) {
-                } else {
-                    frameKeys = function () {
-                        var _i, _len, _results;
-                        _results = [];
-                        for (_i = 0, _len = frames.length; _i < _len; _i++) {
-                            frame = frames[_i];
-                            _results.push(frame.frame_id.name);
-                        }
-                        return _results;
-                    }();
-                    frameParameters = lodash.filter(parameters, function (parameter) {
-                        return parameter.type === 'Key<Frame>';
-                    });
-                    for (_i = 0, _len = frameParameters.length; _i < _len; _i++) {
-                        parameter = frameParameters[_i];
-                        parameter.values = frameKeys;
-                        if (parameter.name === 'training_frame') {
-                            if (frameKey) {
-                                parameter.actual_value = frameKey;
-                            } else {
-                                frameKey = parameter.actual_value;
-                            }
-                        }
+        };
+        _lift = function () {
+            var evaluate, func, sources, target, _i;
+            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
+            evaluate = function () {
+                return _apply(sources, func);
+            };
+            target = createSignal(evaluate());
+            lodash.map(sources, function (source) {
+                return _link(source, function () {
+                    return target(evaluate());
+                });
+            });
+            return target;
+        };
+        _merge = function () {
+            var evaluate, func, sources, target, _i;
+            sources = 3 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 2) : (_i = 0, []), target = arguments[_i++], func = arguments[_i++];
+            evaluate = function () {
+                return _apply(sources, func);
+            };
+            target(evaluate());
+            return lodash.map(sources, function (source) {
+                return _link(source, function () {
+                    return target(evaluate());
+                });
+            });
+        };
+        return {
+            slot: createSlot,
+            slots: createSlots,
+            signal: createSignal,
+            signals: createSignals,
+            isSignal: _isSignal,
+            link: _link,
+            unlink: _unlink,
+            act: _act,
+            react: _react,
+            lift: _lift,
+            merge: _merge
+        };
+    }();
+}.call(this));
+(function () {
+    var __slice = [].slice;
+    Flow.Dialogs = function (_) {
+        var showDialog, _dialog;
+        _dialog = Flow.Dataflow.signal(null);
+        showDialog = function (ctor, args, _go) {
+            var $dialog, dialog, go, responded;
+            responded = false;
+            go = function (response) {
+                if (!responded) {
+                    responded = true;
+                    $dialog.modal('hide');
+                    if (_go) {
+                        return _go(response);
                     }
-                    return go();
+                }
+            };
+            _dialog(dialog = ctor.apply(null, [_].concat(args).concat(go)));
+            $dialog = $('#' + dialog.template);
+            $dialog.modal();
+            $dialog.on('hidden.bs.modal', function (e) {
+                if (!responded) {
+                    responded = true;
+                    _dialog(null);
+                    if (_go) {
+                        return _go(null);
+                    }
                 }
             });
         };
-        (function () {
-            return _.requestModelBuilders(function (error, modelBuilders) {
-                var frameKey;
-                _algorithms(modelBuilders);
-                _algorithm(_algo ? lodash.find(modelBuilders, function (builder) {
-                    return builder.algo === _algo;
-                }) : void 0);
-                frameKey = _opts != null ? _opts.training_frame : void 0;
-                return Flow.Dataflow.act(_algorithm, function (builder) {
-                    var algorithm, parameters;
-                    if (builder) {
-                        algorithm = builder.algo;
-                        parameters = Flow.Prelude.deepClone(builder.parameters);
-                        return populateFramesAndColumns(frameKey, algorithm, parameters, function () {
-                            return _modelForm(H2O.ModelBuilderForm(_, algorithm, parameters));
-                        });
-                    } else {
-                        return _modelForm(null);
-                    }
-                });
-            });
-        }());
-        createModel = function () {
-            return _modelForm().createModel();
-        };
-        lodash.defer(_go);
+        Flow.Dataflow.link(_.dialog, function () {
+            var args, ctor, go, _i;
+            ctor = arguments[0], args = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), go = arguments[_i++];
+            return showDialog(ctor, args, go);
+        });
+        Flow.Dataflow.link(_.confirm, function (message, opts, go) {
+            return showDialog(Flow.ConfirmDialog, [
+                message,
+                opts
+            ], go);
+        });
+        Flow.Dataflow.link(_.alert, function (message, opts, go) {
+            return showDialog(Flow.AlertDialog, [
+                message,
+                opts
+            ], go);
+        });
         return {
-            parentException: _exception,
-            algorithms: _algorithms,
-            algorithm: _algorithm,
-            modelForm: _modelForm,
-            canCreateModel: _canCreateModel,
-            createModel: createModel,
-            template: 'flow-model-input'
+            dialog: _dialog,
+            template: function (dialog) {
+                return 'flow-' + dialog.template;
+            }
         };
     };
 }.call(this));
 (function () {
-    H2O.ModelOutput = function (_, _go, _model) {
-        var cloneModel, confusionMatrix, deleteModel, downloadPojo, exportModel, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref14, _ref15, _ref16, _ref17, _ref18, _ref19, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
-        _isExpanded = Flow.Dataflow.signal(false);
-        _plots = Flow.Dataflow.signals([]);
-        _pojoPreview = Flow.Dataflow.signal(null);
-        _isPojoLoaded = Flow.Dataflow.lift(_pojoPreview, function (preview) {
-            if (preview) {
+    var FlowError, __hasProp = {}.hasOwnProperty, __extends = function (child, parent) {
+            for (var key in parent) {
+                if (__hasProp.call(parent, key))
+                    child[key] = parent[key];
+            }
+            function ctor() {
+                this.constructor = child;
+            }
+            ctor.prototype = parent.prototype;
+            child.prototype = new ctor();
+            child.__super__ = parent.prototype;
+            return child;
+        };
+    FlowError = function (_super) {
+        __extends(FlowError, _super);
+        function FlowError(message, cause) {
+            var error, _ref;
+            this.message = message;
+            this.cause = cause;
+            this.name = 'FlowError';
+            if ((_ref = this.cause) != null ? _ref.stack : void 0) {
+                this.stack = this.cause.stack;
+            } else {
+                error = new Error();
+                if (error.stack) {
+                    this.stack = error.stack;
+                } else {
+                    this.stack = printStackTrace();
+                }
+            }
+        }
+        return FlowError;
+    }(Error);
+    Flow.Error = FlowError;
+}.call(this));
+(function () {
+    var Digits, formatDate, formatReal, formatTime, significantDigitsBeforeDecimal, __formatReal;
+    significantDigitsBeforeDecimal = function (value) {
+        return 1 + Math.floor(Math.log(Math.abs(value)) / Math.LN10);
+    };
+    Digits = function (digits, value) {
+        var magnitude, sd;
+        if (value === 0) {
+            return 0;
+        } else {
+            sd = significantDigitsBeforeDecimal(value);
+            if (sd >= digits) {
+                return value.toFixed(0);
+            } else {
+                magnitude = Math.pow(10, digits - sd);
+                return Math.round(value * magnitude) / magnitude;
+            }
+        }
+    };
+    if (typeof exports === 'undefined' || exports === null) {
+        formatTime = d3.time.format('%Y-%m-%d %H:%M:%S');
+    }
+    formatDate = function (time) {
+        if (time) {
+            return formatTime(new Date(time));
+        } else {
+            return '-';
+        }
+    };
+    __formatReal = {};
+    formatReal = function (precision) {
+        var cached, format;
+        format = (cached = __formatReal[precision]) ? cached : __formatReal[precision] = precision === -1 ? lodash.identity : d3.format('.' + precision + 'f');
+        return function (value) {
+            return format(value);
+        };
+    };
+    Flow.Format = {
+        Digits: Digits,
+        Real: formatReal,
+        Date: formatDate,
+        Time: formatTime
+    };
+}.call(this));
+(function () {
+    Flow.Growl = function (_) {
+        return Flow.Dataflow.link(_.growl, function (message, type) {
+            if (type) {
+                return $.bootstrapGrowl(message, { type: type });
+            } else {
+                return $.bootstrapGrowl(message);
+            }
+        });
+    };
+}.call(this));
+(function () {
+    var button, checkbox, content, control, dropdown, html, listbox, markdown, text, textarea, textbox, wrapArray, wrapValue;
+    wrapValue = function (value, init) {
+        if (value === void 0) {
+            return Flow.Dataflow.signal(init);
+        } else {
+            if (Flow.Dataflow.isSignal(value)) {
+                return value;
+            } else {
+                return Flow.Dataflow.signal(value);
+            }
+        }
+    };
+    wrapArray = function (elements) {
+        var element;
+        if (elements) {
+            if (Flow.Dataflow.isSignal(elements)) {
+                element = elements();
+                if (lodash.isArray(element)) {
+                    return elements;
+                } else {
+                    return Flow.Dataflow.signal([element]);
+                }
+            } else {
+                return Flow.Dataflow.signals(lodash.isArray(elements) ? elements : [elements]);
+            }
+        } else {
+            return Flow.Dataflow.signals([]);
+        }
+    };
+    control = function (type, opts) {
+        var guid;
+        if (!opts) {
+            opts = {};
+        }
+        guid = 'gui_' + lodash.uniqueId();
+        return {
+            type: type,
+            id: opts.id || guid,
+            label: Flow.Dataflow.signal(opts.label || ' '),
+            description: Flow.Dataflow.signal(opts.description || ' '),
+            visible: Flow.Dataflow.signal(opts.visible === false ? false : true),
+            disable: Flow.Dataflow.signal(opts.disable === true ? true : false),
+            template: 'flow-form-' + type,
+            templateOf: function (control) {
+                return control.template;
+            }
+        };
+    };
+    content = function (type, opts) {
+        var self;
+        self = control(type, opts);
+        self.value = wrapValue(opts.value, '');
+        return self;
+    };
+    text = function (opts) {
+        return content('text', opts);
+    };
+    html = function (opts) {
+        return content('html', opts);
+    };
+    markdown = function (opts) {
+        return content('markdown', opts);
+    };
+    checkbox = function (opts) {
+        var self;
+        self = control('checkbox', opts);
+        self.value = wrapValue(opts.value, opts.value ? true : false);
+        return self;
+    };
+    dropdown = function (opts) {
+        var self;
+        self = control('dropdown', opts);
+        self.options = opts.options || [];
+        self.value = wrapValue(opts.value);
+        self.caption = opts.caption || 'Choose...';
+        return self;
+    };
+    listbox = function (opts) {
+        var self;
+        self = control('listbox', opts);
+        self.options = opts.options || [];
+        self.values = wrapArray(opts.values);
+        return self;
+    };
+    textbox = function (opts) {
+        var self;
+        self = control('textbox', opts);
+        self.value = wrapValue(opts.value, '');
+        self.event = lodash.isString(opts.event) ? opts.event : null;
+        return self;
+    };
+    textarea = function (opts) {
+        var self;
+        self = control('textarea', opts);
+        self.value = wrapValue(opts.value, '');
+        self.event = lodash.isString(opts.event) ? opts.event : null;
+        self.rows = lodash.isNumber(opts.rows) ? opts.rows : 5;
+        return self;
+    };
+    button = function (opts) {
+        var self;
+        self = control('button', opts);
+        self.click = lodash.isFunction(opts.click) ? opts.click : lodash.noop;
+        return self;
+    };
+    Flow.Gui = {
+        text: text,
+        html: html,
+        markdown: markdown,
+        checkbox: checkbox,
+        dropdown: dropdown,
+        listbox: listbox,
+        textbox: textbox,
+        textarea: textarea,
+        button: button
+    };
+}.call(this));
+(function () {
+    if ((typeof window !== 'undefined' && window !== null ? window.diecut : void 0) == null) {
+        return;
+    }
+    Flow.HTML = {
+        template: diecut,
+        render: function (name, html) {
+            var el;
+            el = document.createElement(name);
+            if (html) {
+                if (lodash.isString(html)) {
+                    el.innerHTML = html;
+                } else {
+                    el.appendChild(html);
+                }
+            }
+            return el;
+        }
+    };
+}.call(this));
+(function () {
+    if ((typeof window !== 'undefined' && window !== null ? window.ko : void 0) == null) {
+        return;
+    }
+    ko.bindingHandlers.raw = {
+        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $element, arg;
+            arg = ko.unwrap(valueAccessor());
+            if (arg) {
+                $element = $(element);
+                $element.empty();
+                $element.append(arg);
+            }
+        }
+    };
+    ko.bindingHandlers.markdown = {
+        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var data, error, html;
+            data = ko.unwrap(valueAccessor());
+            try {
+                html = marked(data || '');
+            } catch (_error) {
+                error = _error;
+                html = error.message || 'Error rendering markdown.';
+            }
+            return $(element).html(html);
+        }
+    };
+    ko.bindingHandlers.stringify = {
+        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var data;
+            data = ko.unwrap(valueAccessor());
+            return $(element).text(JSON.stringify(data, null, 2));
+        }
+    };
+    ko.bindingHandlers.enterKey = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $element, action;
+            if (action = ko.unwrap(valueAccessor())) {
+                if (lodash.isFunction(action)) {
+                    $element = $(element);
+                    $element.keydown(function (e) {
+                        if (e.which === 13) {
+                            action(viewModel);
+                        }
+                    });
+                } else {
+                    throw 'Enter key action is not a function';
+                }
+            }
+        }
+    };
+    ko.bindingHandlers.typeahead = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $element, action;
+            if (action = ko.unwrap(valueAccessor())) {
+                if (lodash.isFunction(action)) {
+                    $element = $(element);
+                    $element.typeahead(null, {
+                        displayKey: 'value',
+                        source: action
+                    });
+                } else {
+                    throw 'Typeahead action is not a function';
+                }
+            }
+        }
+    };
+    ko.bindingHandlers.cursorPosition = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var arg;
+            if (arg = ko.unwrap(valueAccessor())) {
+                arg.getCursorPosition = function () {
+                    return $(element).textrange('get', 'position');
+                };
+            }
+        }
+    };
+    ko.bindingHandlers.autoResize = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $el, arg, resize;
+            if (arg = ko.unwrap(valueAccessor())) {
+                arg.autoResize = resize = function () {
+                    return lodash.defer(function () {
+                        return $el.css('height', 'auto').height(element.scrollHeight);
+                    });
+                };
+                $el = $(element).on('input', resize);
+                resize();
+            }
+        }
+    };
+    ko.bindingHandlers.scrollIntoView = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $el, $viewport, arg;
+            if (arg = ko.unwrap(valueAccessor())) {
+                $el = $(element);
+                $viewport = $el.closest('.flow-box-notebook');
+                arg.scrollIntoView = function (immediate) {
+                    var height, position, top;
+                    if (immediate == null) {
+                        immediate = false;
+                    }
+                    position = $viewport.scrollTop();
+                    top = $el.position().top + position;
+                    height = $viewport.height();
+                    if (top - 20 < position || top + 20 > position + height) {
+                        if (immediate) {
+                            return $viewport.scrollTop(top);
+                        } else {
+                            return $viewport.animate({ scrollTop: top }, 'fast');
+                        }
+                    }
+                };
+            }
+        }
+    };
+    ko.bindingHandlers.collapse = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $caretEl, $el, $nextEl, caretDown, caretEl, caretRight, isCollapsed, toggle;
+            caretDown = 'fa-caret-down';
+            caretRight = 'fa-caret-right';
+            isCollapsed = ko.unwrap(valueAccessor());
+            caretEl = document.createElement('i');
+            caretEl.className = 'fa';
+            caretEl.style.marginRight = '3px';
+            element.insertBefore(caretEl, element.firstChild);
+            $el = $(element);
+            $nextEl = $el.next();
+            if (!$nextEl.length) {
+                throw new Error('No collapsible sibling found');
+            }
+            $caretEl = $(caretEl);
+            toggle = function () {
+                if (isCollapsed) {
+                    $caretEl.removeClass(caretDown).addClass(caretRight);
+                    $nextEl.hide();
+                } else {
+                    $caretEl.removeClass(caretRight).addClass(caretDown);
+                    $nextEl.show();
+                }
+                return isCollapsed = !isCollapsed;
+            };
+            $el.css('cursor', 'pointer');
+            $el.attr('title', 'Click to expand/collapse');
+            $el.on('click', toggle);
+            toggle();
+            ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+                return $el.off('click');
+            });
+        }
+    };
+    ko.bindingHandlers.dom = {
+        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $element, arg;
+            arg = ko.unwrap(valueAccessor());
+            if (arg) {
+                $element = $(element);
+                $element.empty();
+                $element.append(arg);
+            }
+        }
+    };
+    ko.bindingHandlers.dump = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var object;
+            return object = ko.unwrap(valueAccessor());
+        }
+    };
+    ko.bindingHandlers.element = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            return valueAccessor()(element);
+        }
+    };
+    ko.bindingHandlers.file = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var $file, file;
+            file = valueAccessor();
+            if (file) {
+                $file = $(element);
+                $file.change(function () {
+                    return file(this.files[0]);
+                });
+            }
+        }
+    };
+}.call(this));
+(function () {
+    var keyOf, list, purge, purgeAll, read, write, _ls;
+    if (!(typeof window !== 'undefined' && window !== null ? window.localStorage : void 0)) {
+        return;
+    }
+    _ls = window.localStorage;
+    keyOf = function (type, id) {
+        return '' + type + ':' + id;
+    };
+    list = function (type) {
+        var i, id, key, objs, t, _i, _ref, _ref1;
+        objs = [];
+        for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+            key = _ls.key(i);
+            _ref1 = key.split(':'), t = _ref1[0], id = _ref1[1];
+            if (type === t) {
+                objs.push([
+                    type,
+                    id,
+                    JSON.parse(_ls.getItem(key))
+                ]);
+            }
+        }
+        return objs;
+    };
+    read = function (type, id) {
+        var raw;
+        if (raw = _ls.getobj(keyOf(type, id))) {
+            return JSON.parse(raw);
+        } else {
+            return null;
+        }
+    };
+    write = function (type, id, obj) {
+        return _ls.setItem(keyOf(type, id), JSON.stringify(obj));
+    };
+    purge = function (type, id) {
+        if (id) {
+            return _ls.removeItem(keyOf(type, id));
+        } else {
+            return purgeAll(type);
+        }
+    };
+    purgeAll = function (type) {
+        var allKeys, i, key, _i, _len;
+        allKeys = function () {
+            var _i, _ref, _results;
+            _results = [];
+            for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+                _results.push(_ls.key(i));
+            }
+            return _results;
+        }();
+        for (_i = 0, _len = allKeys.length; _i < _len; _i++) {
+            key = allKeys[_i];
+            if (type === lodash.head(key.split(':'))) {
+                _ls.removeItem(key);
+            }
+        }
+    };
+    Flow.LocalStorage = {
+        list: list,
+        read: read,
+        write: write,
+        purge: purge
+    };
+}.call(this));
+(function () {
+    if ((typeof window !== 'undefined' && window !== null ? window.marked : void 0) == null) {
+        return;
+    }
+    marked.setOptions({
+        smartypants: true,
+        highlight: function (code, lang) {
+            if (window.hljs) {
+                return window.hljs.highlightAuto(code, [lang]).value;
+            } else {
+                return code;
+            }
+        }
+    });
+}.call(this));
+(function () {
+    Flow.Prelude = function () {
+        var _always, _copy, _deepClone, _isDefined, _isFalsy, _isTruthy, _negative, _never, _remove, _repeat, _typeOf, _words;
+        _isDefined = function (value) {
+            return !lodash.isUndefined(value);
+        };
+        _isTruthy = function (value) {
+            if (value) {
                 return true;
             } else {
                 return false;
             }
-        });
-        _inputParameters = lodash.map(_model.parameters, function (parameter) {
-            var actual_value, default_value, help, label, type, value;
-            type = parameter.type, default_value = parameter.default_value, actual_value = parameter.actual_value, label = parameter.label, help = parameter.help;
-            value = function () {
-                switch (type) {
-                case 'Key<Frame>':
-                case 'Key<Model>':
-                    if (actual_value) {
-                        return actual_value.name;
-                    } else {
-                        return null;
-                    }
-                    break;
-                case 'VecSpecifier':
-                    if (actual_value) {
-                        return actual_value.column_name;
-                    } else {
-                        return null;
-                    }
-                    break;
-                case 'string[]':
-                case 'byte[]':
-                case 'short[]':
-                case 'int[]':
-                case 'long[]':
-                case 'float[]':
-                case 'double[]':
-                    if (actual_value) {
-                        return actual_value.join(', ');
-                    } else {
-                        return null;
-                    }
-                    break;
-                default:
-                    return actual_value;
-                }
-            }();
-            return {
-                label: label,
-                value: value,
-                help: help,
-                isModified: default_value === actual_value
-            };
-        });
-        format4f = function (number) {
-            if (number) {
-                if (number === 'NaN') {
-                    return void 0;
-                } else {
-                    return number.toFixed(4).replace(/\.0+$/, '.0');
-                }
+        };
+        _isFalsy = function (value) {
+            if (value) {
+                return false;
             } else {
-                return number;
+                return true;
             }
         };
-        getAucAsLabel = function (model, tableName) {
-            var metrics;
-            if (metrics = _.inspect(tableName, model)) {
-                return ' , AUC = ' + metrics.schema.AUC.at(0);
-            } else {
-                return '';
-            }
+        _negative = function (value) {
+            return !value;
         };
-        getThresholdsAndCriteria = function (model, tableName) {
-            var criteria, criterionTable, i, idxVector, metricVector, thresholdVector, thresholds;
-            if (criterionTable = _.inspect(tableName, _model)) {
-                thresholdVector = table.schema.threshold;
-                thresholds = function () {
-                    var _i, _ref, _results;
-                    _results = [];
-                    for (i = _i = 0, _ref = thresholdVector.count(); 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-                        _results.push({
-                            index: i,
-                            value: thresholdVector.at(i)
-                        });
-                    }
-                    return _results;
-                }();
-                metricVector = criterionTable.schema.metric;
-                idxVector = criterionTable.schema.idx;
-                criteria = function () {
-                    var _i, _ref, _results;
-                    _results = [];
-                    for (i = _i = 0, _ref = metricVector.count(); 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-                        _results.push({
-                            index: idxVector.at(i),
-                            value: metricVector.valueAt(i)
-                        });
-                    }
-                    return _results;
-                }();
-                return {
-                    thresholds: thresholds,
-                    criteria: criteria
-                };
+        _always = function () {
+            return true;
+        };
+        _never = function () {
+            return false;
+        };
+        _copy = function (array) {
+            return array.slice(0);
+        };
+        _remove = function (array, element) {
+            var index;
+            if (-1 < (index = lodash.indexOf(array, element))) {
+                return lodash.head(array.splice(index, 1));
             } else {
                 return void 0;
             }
         };
-        renderPlot = function (title, isCollapsed, render, thresholdsAndCriteria) {
-            var container, linkedFrame, rocPanel;
-            container = Flow.Dataflow.signal(null);
-            linkedFrame = Flow.Dataflow.signal(null);
-            if (thresholdsAndCriteria) {
-                rocPanel = {
-                    thresholds: Flow.Dataflow.signals(thresholdsAndCriteria.thresholds),
-                    threshold: Flow.Dataflow.signal(null),
-                    criteria: Flow.Dataflow.signals(thresholdsAndCriteria.criteria),
-                    criterion: Flow.Dataflow.signal(null)
-                };
-            }
-            render(function (error, vis) {
-                var _autoHighlight;
-                if (error) {
-                    return console.debug(error);
-                } else {
-                    $('a', vis.element).on('click', function (e) {
-                        var $a;
-                        $a = $(e.target);
-                        switch ($a.attr('data-type')) {
-                        case 'frame':
-                            return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify($a.attr('data-key')));
-                        case 'model':
-                            return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify($a.attr('data-key')));
-                        }
-                    });
-                    container(vis.element);
-                    _autoHighlight = true;
-                    if (vis.subscribe) {
-                        vis.subscribe('markselect', function (_arg) {
-                            var currentCriterion, frame, indices, renderTable, selectedIndex, subframe;
-                            frame = _arg.frame, indices = _arg.indices;
-                            subframe = window.plot.createFrame(frame.label, frame.vectors, indices);
-                            renderTable = function (g) {
-                                return g(indices.length > 1 ? g.select() : g.select(lodash.head(indices)), g.from(subframe));
-                            };
-                            _.plot(renderTable)(function (error, table) {
-                                if (!error) {
-                                    return linkedFrame(table.element);
-                                }
-                            });
-                            if (rocPanel) {
-                                if (indices.length === 1) {
-                                    selectedIndex = lodash.head(indices);
-                                    _autoHighlight = false;
-                                    rocPanel.threshold(lodash.find(rocPanel.thresholds(), function (threshold) {
-                                        return threshold.index === selectedIndex;
-                                    }));
-                                    currentCriterion = rocPanel.criterion();
-                                    if (!currentCriterion || currentCriterion && currentCriterion.index !== selectedIndex) {
-                                        rocPanel.criterion(lodash.find(rocPanel.criteria(), function (criterion) {
-                                            return criterion.index === selectedIndex;
-                                        }));
-                                    }
-                                    _autoHighlight = true;
-                                } else {
-                                    rocPanel.criterion(null);
-                                    rocPanel.threshold(null);
-                                }
-                            }
-                        });
-                        vis.subscribe('markdeselect', function () {
-                            linkedFrame(null);
-                            if (rocPanel) {
-                                rocPanel.criterion(null);
-                                return rocPanel.threshold(null);
-                            }
-                        });
-                        if (rocPanel) {
-                            Flow.Dataflow.react(rocPanel.threshold, function (threshold) {
-                                if (threshold && _autoHighlight) {
-                                    return vis.highlight([threshold.index]);
-                                }
-                            });
-                            return Flow.Dataflow.react(rocPanel.criterion, function (criterion) {
-                                if (criterion && _autoHighlight) {
-                                    return vis.highlight([criterion.index]);
-                                }
-                            });
-                        }
-                    }
-                }
-            });
-            return _plots.push({
-                title: title,
-                plot: container,
-                frame: linkedFrame,
-                controls: Flow.Dataflow.signal(rocPanel),
-                isCollapsed: isCollapsed
-            });
+        _words = function (text) {
+            return text.split(/\s+/);
         };
-        renderMultinomialConfusionMatrix = function (title, cm) {
-            var bold, cell, cells, column, columnCount, errorColumnIndex, headers, i, normal, rowCount, rowIndex, rows, table, tbody, totalRowIndex, tr, yellow, _i, _ref;
-            _ref = Flow.HTML.template('table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong', 'td.bg-yellow'), table = _ref[0], tbody = _ref[1], tr = _ref[2], normal = _ref[3], bold = _ref[4], yellow = _ref[5];
-            columnCount = cm.columns.length;
-            rowCount = cm.rowcount;
-            headers = lodash.map(cm.columns, function (column, i) {
-                return bold(column.description);
-            });
-            headers.unshift(normal(' '));
-            rows = [tr(headers)];
-            errorColumnIndex = columnCount - 2;
-            totalRowIndex = rowCount - 1;
-            for (rowIndex = _i = 0; 0 <= rowCount ? _i < rowCount : _i > rowCount; rowIndex = 0 <= rowCount ? ++_i : --_i) {
-                cells = function () {
-                    var _j, _len, _ref1, _results;
-                    _ref1 = cm.data;
-                    _results = [];
-                    for (i = _j = 0, _len = _ref1.length; _j < _len; i = ++_j) {
-                        column = _ref1[i];
-                        cell = i < errorColumnIndex ? i === rowIndex ? yellow : rowIndex < totalRowIndex ? normal : bold : bold;
-                        _results.push(cell(i === errorColumnIndex ? format4f(column[rowIndex]) : column[rowIndex]));
-                    }
-                    return _results;
-                }();
-                cells.unshift(bold(rowIndex === rowCount - 1 ? 'Total' : cm.columns[rowIndex].description));
-                rows.push(tr(cells));
+        _repeat = function (count, value) {
+            var array, i, _i;
+            array = [];
+            for (i = _i = 0; 0 <= count ? _i < count : _i > count; i = 0 <= count ? ++_i : --_i) {
+                array.push(value);
             }
-            return _plots.push({
-                title: title,
-                plot: Flow.Dataflow.signal(Flow.HTML.render('div', table(tbody(rows)))),
-                frame: Flow.Dataflow.signal(null),
-                controls: Flow.Dataflow.signal(null),
-                isCollapsed: false
-            });
+            return array;
         };
-        switch (_model.algo) {
-        case 'kmeans':
-            if (table = _.inspect('output - Scoring History', _model)) {
-                renderPlot('Scoring History', false, _.plot(function (g) {
-                    return g(g.path(g.position('number_of_iterations', 'average_within_cluster_sum_of_squares'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_iterations', 'average_within_cluster_sum_of_squares'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                }));
-            }
-            break;
-        case 'glm':
-            if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - Standardized Coefficient Magnitudes', _model)) {
-                renderPlot('Standardized Coefficient Magnitudes', false, _.plot(function (g) {
-                    return g(g.rect(g.position('coefficients', 'names'), g.fillColor('sign')), g.from(table), g.limit(25));
-                }));
-            }
-            if (table = _.inspect('output - Scoring History', _model)) {
-                lambdaSearchParameter = lodash.find(_model.parameters, function (parameter) {
-                    return parameter.name === 'lambda_search';
-                });
-                if (lambdaSearchParameter != null ? lambdaSearchParameter.actual_value : void 0) {
-                    renderPlot('Scoring History', false, _.plot(function (g) {
-                        return g(g.path(g.position('lambdaid', 'explained_deviance_train'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('lambdaid', 'explained_deviance_test'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('lambdaid', 'explained_deviance_train'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('lambdaid', 'explained_deviance_test'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
-                    }));
-                } else {
-                    renderPlot('Scoring History', false, _.plot(function (g) {
-                        return g(g.path(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                    }));
-                }
-            }
-            if (output = _model.output) {
-                if (output.model_category === 'Multinomial') {
-                    if (confusionMatrix = (_ref = output.training_metrics) != null ? (_ref1 = _ref.cm) != null ? _ref1.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                    if (confusionMatrix = (_ref2 = output.validation_metrics) != null ? (_ref3 = _ref2.cm) != null ? _ref3.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                    if (confusionMatrix = (_ref4 = output.cross_validation_metrics) != null ? (_ref5 = _ref4.cm) != null ? _ref5.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                }
-            }
-            break;
-        case 'deeplearning':
-            if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - Variable Importances', _model)) {
-                renderPlot('Variable Importances', false, _.plot(function (g) {
-                    return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
-                }));
-            }
-            if (table = _.inspect('output - Scoring History', _model)) {
-                if (table.schema['validation_MSE']) {
-                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
-                        return g(g.path(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
-                    }));
-                } else {
-                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
-                        return g(g.path(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                    }));
-                }
-                if (table.schema['training_deviance']) {
-                    if (table.schema['validation_deviance']) {
-                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
-                            return g(g.path(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
-                        }));
-                    } else {
-                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
-                            return g(g.path(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                        }));
-                    }
-                }
-            }
-            if (output = _model.output) {
-                if (output.model_category === 'Multinomial') {
-                    if (confusionMatrix = (_ref6 = output.training_metrics) != null ? (_ref7 = _ref6.cm) != null ? _ref7.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                    if (confusionMatrix = (_ref8 = output.validation_metrics) != null ? (_ref9 = _ref8.cm) != null ? _ref9.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                    if (confusionMatrix = (_ref10 = output.cross_validation_metrics) != null ? (_ref11 = _ref10.cm) != null ? _ref11.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                }
-            }
-            break;
-        case 'gbm':
-        case 'drf':
-            if (table = _.inspect('output - Scoring History', _model)) {
-                if (table.schema['validation_MSE']) {
-                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
-                        return g(g.path(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
-                    }));
-                } else {
-                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
-                        return g(g.path(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                    }));
-                }
-                if (table.schema['training_deviance']) {
-                    if (table.schema['validation_deviance']) {
-                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
-                            return g(g.path(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
-                        }));
-                    } else {
-                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
-                            return g(g.path(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                        }));
-                    }
-                }
-            }
-            if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
-                plotter = _.plot(function (g) {
-                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                });
-                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
-            }
-            if (table = _.inspect('output - Variable Importances', _model)) {
-                renderPlot('Variable Importances', false, _.plot(function (g) {
-                    return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
-                }));
-            }
-            if (output = _model.output) {
-                if (output.model_category === 'Multinomial') {
-                    if (confusionMatrix = (_ref12 = output.training_metrics) != null ? (_ref13 = _ref12.cm) != null ? _ref13.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                    if (confusionMatrix = (_ref14 = output.validation_metrics) != null ? (_ref15 = _ref14.cm) != null ? _ref15.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                    if (confusionMatrix = (_ref16 = output.cross_validation_metrics) != null ? (_ref17 = _ref16.cm) != null ? _ref17.table : void 0 : void 0) {
-                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
-                    }
-                }
-            }
-        }
-        if (table = _.inspect('output - training_metrics - Gains/Lift Table', _model)) {
-            renderPlot('Training Metrics - Gains/Lift Table', false, _.plot(function (g) {
-                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.from(table));
-            }));
-        }
-        if (table = _.inspect('output - validation_metrics - Gains/Lift Table', _model)) {
-            renderPlot('Validation Metrics - Gains/Lift Table', false, _.plot(function (g) {
-                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.from(table));
-            }));
-        }
-        if (table = _.inspect('output - cross_validation_metrics - Gains/Lift Table', _model)) {
-            renderPlot('Cross Validation Metrics - Gains/Lift Table', false, _.plot(function (g) {
-                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.from(table));
-            }));
-        }
-        _ref18 = _.ls(_model);
-        for (_i = 0, _len = _ref18.length; _i < _len; _i++) {
-            tableName = _ref18[_i];
-            if (!(tableName !== 'parameters')) {
-                continue;
-            }
-            if (output = ((_ref19 = _model.output) != null ? _ref19.model_category : void 0) === 'Multinomial') {
-                if (0 === tableName.indexOf('output - training_metrics - cm')) {
-                    continue;
-                } else if (0 === tableName.indexOf('output - validation_metrics - cm')) {
-                    continue;
-                } else if (0 === tableName.indexOf('output - cross_validation_metrics - cm')) {
-                    continue;
-                }
-            }
-            if (table = _.inspect(tableName, _model)) {
-                renderPlot(tableName + (table.metadata.description ? ' (' + table.metadata.description + ')' : ''), true, _.plot(function (g) {
-                    return g(table.indices.length > 1 ? g.select() : g.select(0), g.from(table));
-                }));
-            }
-        }
-        toggle = function () {
-            return _isExpanded(!_isExpanded());
-        };
-        cloneModel = function () {
-            return alert('Not implemented');
-        };
-        predict = function () {
-            return _.insertAndExecuteCell('cs', 'predict model: ' + Flow.Prelude.stringify(_model.model_id.name));
-        };
-        inspect = function () {
-            return _.insertAndExecuteCell('cs', 'inspect getModel ' + Flow.Prelude.stringify(_model.model_id.name));
-        };
-        previewPojo = function () {
-            return _.requestPojoPreview(_model.model_id.name, function (error, result) {
-                if (error) {
-                    return _pojoPreview('<pre>' + lodash.escape(error) + '</pre>');
-                } else {
-                    return _pojoPreview('<pre>' + Flow.Util.highlight(result, 'java') + '</pre>');
-                }
-            });
-        };
-        downloadPojo = function () {
-            return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name), '_blank');
-        };
-        exportModel = function () {
-            return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_model.model_id.name));
-        };
-        deleteModel = function () {
-            return _.confirm('Are you sure you want to delete this model?', {
-                acceptCaption: 'Delete Model',
-                declineCaption: 'Cancel'
-            }, function (accept) {
-                if (accept) {
-                    return _.insertAndExecuteCell('cs', 'deleteModel ' + Flow.Prelude.stringify(_model.model_id.name));
-                }
-            });
-        };
-        lodash.defer(_go);
-        return {
-            key: _model.model_id,
-            algo: _model.algo_full_name,
-            plots: _plots,
-            inputParameters: _inputParameters,
-            isExpanded: _isExpanded,
-            toggle: toggle,
-            cloneModel: cloneModel,
-            predict: predict,
-            inspect: inspect,
-            previewPojo: previewPojo,
-            downloadPojo: downloadPojo,
-            pojoPreview: _pojoPreview,
-            isPojoLoaded: _isPojoLoaded,
-            exportModel: exportModel,
-            deleteModel: deleteModel,
-            template: 'flow-model-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.ModelsOutput = function (_, _go, _models) {
-        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspectAll, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _hasSelectedModels, _isCheckingAll, _modelViews;
-        _modelViews = Flow.Dataflow.signal([]);
-        _checkAllModels = Flow.Dataflow.signal(false);
-        _checkedModelCount = Flow.Dataflow.signal(0);
-        _canCompareModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
-            return count > 1;
-        });
-        _hasSelectedModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
-            return count > 0;
-        });
-        _isCheckingAll = false;
-        Flow.Dataflow.react(_checkAllModels, function (checkAll) {
-            var view, views, _i, _len;
-            _isCheckingAll = true;
-            views = _modelViews();
-            for (_i = 0, _len = views.length; _i < _len; _i++) {
-                view = views[_i];
-                view.isChecked(checkAll);
-            }
-            _checkedModelCount(checkAll ? views.length : 0);
-            _isCheckingAll = false;
-        });
-        createModelView = function (model) {
-            var cloneModel, inspect, predict, view, _isChecked;
-            _isChecked = Flow.Dataflow.signal(false);
-            Flow.Dataflow.react(_isChecked, function () {
-                var checkedViews, view;
-                if (_isCheckingAll) {
-                    return;
-                }
-                checkedViews = function () {
-                    var _i, _len, _ref, _results;
-                    _ref = _modelViews();
-                    _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        view = _ref[_i];
-                        if (view.isChecked()) {
-                            _results.push(view);
-                        }
-                    }
-                    return _results;
-                }();
-                return _checkedModelCount(checkedViews.length);
-            });
-            predict = function () {
-                return _.insertAndExecuteCell('cs', 'predict model: ' + Flow.Prelude.stringify(model.model_id.name));
-            };
-            cloneModel = function () {
-                return alert('Not implemented');
-                return _.insertAndExecuteCell('cs', 'cloneModel ' + Flow.Prelude.stringify(model.model_id.name));
-            };
-            view = function () {
-                return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(model.model_id.name));
-            };
-            inspect = function () {
-                return _.insertAndExecuteCell('cs', 'inspect getModel ' + Flow.Prelude.stringify(model.model_id.name));
-            };
-            return {
-                key: model.model_id.name,
-                algo: model.algo_full_name,
-                isChecked: _isChecked,
-                predict: predict,
-                clone: cloneModel,
-                inspect: inspect,
-                view: view
-            };
-        };
-        buildModel = function () {
-            return _.insertAndExecuteCell('cs', 'buildModel');
-        };
-        collectSelectedKeys = function () {
-            var view, _i, _len, _ref, _results;
-            _ref = _modelViews();
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                view = _ref[_i];
-                if (view.isChecked()) {
-                    _results.push(view.key);
-                }
-            }
-            return _results;
-        };
-        compareModels = function () {
-            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
-        };
-        predictUsingModels = function () {
-            return _.insertAndExecuteCell('cs', 'predict models: ' + Flow.Prelude.stringify(collectSelectedKeys()));
-        };
-        deleteModels = function () {
-            return _.confirm('Are you sure you want to delete these models?', {
-                acceptCaption: 'Delete Models',
-                declineCaption: 'Cancel'
-            }, function (accept) {
-                if (accept) {
-                    return _.insertAndExecuteCell('cs', 'deleteModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
-                }
-            });
-        };
-        inspectAll = function () {
-            var allKeys, view;
-            allKeys = function () {
-                var _i, _len, _ref, _results;
-                _ref = _modelViews();
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    view = _ref[_i];
-                    _results.push(view.key);
-                }
-                return _results;
-            }();
-            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(allKeys));
-        };
-        initialize = function (models) {
-            _modelViews(lodash.map(models, createModelView));
-            return lodash.defer(_go);
-        };
-        initialize(_models);
-        return {
-            modelViews: _modelViews,
-            hasModels: _models.length > 0,
-            buildModel: buildModel,
-            compareModels: compareModels,
-            predictUsingModels: predictUsingModels,
-            deleteModels: deleteModels,
-            checkedModelCount: _checkedModelCount,
-            canCompareModels: _canCompareModels,
-            hasSelectedModels: _hasSelectedModels,
-            checkAllModels: _checkAllModels,
-            inspect: inspectAll,
-            template: 'flow-models-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.NetworkTestOutput = function (_, _go, _testResult) {
-        var render, _result;
-        _result = Flow.Dataflow.signal(null);
-        render = _.plot(function (g) {
-            return g(g.select(), g.from(_.inspect('result', _testResult)));
-        });
-        render(function (error, vis) {
-            if (error) {
-                return console.debug(error);
+        _typeOf = function (a) {
+            var type;
+            type = Object.prototype.toString.call(a);
+            if (a === null) {
+                return Flow.TNull;
+            } else if (a === void 0) {
+                return Flow.TUndefined;
+            } else if (a === true || a === false || type === '[object Boolean]') {
+                return Flow.TBoolean;
             } else {
-                return _result(vis.element);
+                switch (type) {
+                case '[object String]':
+                    return Flow.TString;
+                case '[object Number]':
+                    return Flow.TNumber;
+                case '[object Function]':
+                    return Flow.TFunction;
+                case '[object Object]':
+                    return Flow.TObject;
+                case '[object Array]':
+                    return Flow.TArray;
+                case '[object Arguments]':
+                    return Flow.TArguments;
+                case '[object Date]':
+                    return Flow.TDate;
+                case '[object RegExp]':
+                    return Flow.TRegExp;
+                case '[object Error]':
+                    return Flow.TError;
+                default:
+                    return type;
+                }
             }
-        });
-        lodash.defer(_go);
+        };
+        _deepClone = function (obj) {
+            return JSON.parse(JSON.stringify(obj));
+        };
         return {
-            result: _result,
-            template: 'flow-network-test-output'
+            isDefined: _isDefined,
+            isTruthy: _isTruthy,
+            isFalsy: _isFalsy,
+            negative: _negative,
+            always: _always,
+            never: _never,
+            copy: _copy,
+            remove: _remove,
+            words: _words,
+            repeat: _repeat,
+            typeOf: _typeOf,
+            deepClone: _deepClone,
+            stringify: JSON.stringify
         };
-    };
-}.call(this));
-(function () {
-    H2O.NoAssist = function (_, _go) {
-        lodash.defer(_go);
-        return {
-            showAssist: function () {
-                return _.insertAndExecuteCell('cs', 'assist');
-            },
-            template: 'flow-no-assist'
-        };
-    };
-}.call(this));
-(function () {
-    var MaxItemsPerPage, dataTypes, parseDelimiters, parseTypes;
-    MaxItemsPerPage = 15;
-    parseTypes = lodash.map([
-        'AUTO',
-        'ARFF',
-        'XLS',
-        'XLSX',
-        'CSV',
-        'SVMLight',
-        'ORC'
-    ], function (type) {
-        return {
-            type: type,
-            caption: type
-        };
-    });
-    parseDelimiters = function () {
-        var characterDelimiters, createDelimiter, otherDelimiters, whitespaceDelimiters, whitespaceSeparators;
-        whitespaceSeparators = [
-            'NULL',
-            'SOH (start of heading)',
-            'STX (start of text)',
-            'ETX (end of text)',
-            'EOT (end of transmission)',
-            'ENQ (enquiry)',
-            'ACK (acknowledge)',
-            'BEL \'\\a\' (bell)',
-            'BS  \'\\b\' (backspace)',
-            'HT  \'\\t\' (horizontal tab)',
-            'LF  \'\\n\' (new line)',
-            'VT  \'\\v\' (vertical tab)',
-            'FF  \'\\f\' (form feed)',
-            'CR  \'\\r\' (carriage ret)',
-            'SO  (shift out)',
-            'SI  (shift in)',
-            'DLE (data link escape)',
-            'DC1 (device control 1) ',
-            'DC2 (device control 2)',
-            'DC3 (device control 3)',
-            'DC4 (device control 4)',
-            'NAK (negative ack.)',
-            'SYN (synchronous idle)',
-            'ETB (end of trans. blk)',
-            'CAN (cancel)',
-            'EM  (end of medium)',
-            'SUB (substitute)',
-            'ESC (escape)',
-            'FS  (file separator)',
-            'GS  (group separator)',
-            'RS  (record separator)',
-            'US  (unit separator)',
-            '\' \' SPACE'
-        ];
-        createDelimiter = function (caption, charCode) {
-            return {
-                charCode: charCode,
-                caption: '' + caption + ': \'' + ('00' + charCode).slice(-2) + '\''
-            };
-        };
-        whitespaceDelimiters = lodash.map(whitespaceSeparators, createDelimiter);
-        characterDelimiters = lodash.times(126 - whitespaceSeparators.length, function (i) {
-            var charCode;
-            charCode = i + whitespaceSeparators.length;
-            return createDelimiter(String.fromCharCode(charCode), charCode);
-        });
-        otherDelimiters = [{
-                charCode: -1,
-                caption: 'AUTO'
-            }];
-        return whitespaceDelimiters.concat(characterDelimiters, otherDelimiters);
     }();
-    dataTypes = [
-        'Unknown',
-        'Numeric',
-        'Enum',
-        'Time',
-        'UUID',
-        'String',
-        'Invalid'
-    ];
-    H2O.SetupParseOutput = function (_, _go, _inputs, _result) {
-        var filterColumns, goToNextPage, goToPreviousPage, makePage, parseFiles, refreshPreview, _activePage, _canGoToNextPage, _canGoToPreviousPage, _canReconfigure, _chunkSize, _columnCount, _columnNameSearchTerm, _columns, _currentPage, _deleteOnDone, _delimiter, _destinationKey, _filteredColumns, _headerOption, _headerOptions, _inputKey, _parseType, _preview, _sourceKeys, _useSingleQuotes, _visibleColumns;
-        _inputKey = _inputs.paths ? 'paths' : 'source_frames';
-        _sourceKeys = lodash.map(_result.source_frames, function (src) {
-            return src.name;
-        });
-        _parseType = Flow.Dataflow.signal(lodash.find(parseTypes, function (parseType) {
-            return parseType.type === _result.parse_type;
-        }));
-        _canReconfigure = Flow.Dataflow.lift(_parseType, function (parseType) {
-            return parseType.type !== 'SVMLight';
-        });
-        _delimiter = Flow.Dataflow.signal(lodash.find(parseDelimiters, function (delimiter) {
-            return delimiter.charCode === _result.separator;
-        }));
-        _useSingleQuotes = Flow.Dataflow.signal(_result.single_quotes);
-        _destinationKey = Flow.Dataflow.signal(_result.destination_frame);
-        _headerOptions = {
-            auto: 0,
-            header: 1,
-            data: -1
-        };
-        _headerOption = Flow.Dataflow.signal(_result.check_header === 0 ? 'auto' : _result.check_header === -1 ? 'data' : 'header');
-        _deleteOnDone = Flow.Dataflow.signal(true);
-        _columnNameSearchTerm = Flow.Dataflow.signal('');
-        _preview = Flow.Dataflow.signal(_result);
-        _chunkSize = Flow.Dataflow.lift(_preview, function (preview) {
-            return preview.chunk_size;
-        });
-        refreshPreview = function () {
-            var column, columnTypes;
-            columnTypes = function () {
-                var _i, _len, _ref, _results;
-                _ref = _columns();
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    column = _ref[_i];
-                    _results.push(column.type());
-                }
-                return _results;
-            }();
-            return _.requestParseSetupPreview(_sourceKeys, _parseType().type, _delimiter().charCode, _useSingleQuotes(), _headerOptions[_headerOption()], columnTypes, function (error, result) {
-                if (!error) {
-                    return _preview(result);
-                }
-            });
-        };
-        _columns = Flow.Dataflow.lift(_preview, function (preview) {
-            var columnCount, columnNames, columnTypes, data, i, j, previewData, row, rowCount, rows, _i, _j;
-            columnTypes = preview.column_types;
-            columnCount = columnTypes.length;
-            previewData = preview.data;
-            rowCount = previewData.length;
-            columnNames = preview.column_names;
-            rows = new Array(columnCount);
-            for (j = _i = 0; 0 <= columnCount ? _i < columnCount : _i > columnCount; j = 0 <= columnCount ? ++_i : --_i) {
-                data = new Array(rowCount);
-                for (i = _j = 0; 0 <= rowCount ? _j < rowCount : _j > rowCount; i = 0 <= rowCount ? ++_j : --_j) {
-                    data[i] = previewData[i][j];
-                }
-                rows[j] = row = {
-                    index: '' + (j + 1),
-                    name: Flow.Dataflow.signal(columnNames ? columnNames[j] : ''),
-                    type: Flow.Dataflow.signal(columnTypes[j]),
-                    data: data
-                };
-            }
-            return rows;
-        });
-        _columnCount = Flow.Dataflow.lift(_columns, function (columns) {
-            return (columns != null ? columns.length : void 0) || 0;
-        });
-        _currentPage = 0;
-        Flow.Dataflow.act(_columns, function (columns) {
-            return lodash.forEach(columns, function (column) {
-                return Flow.Dataflow.react(column.type, function () {
-                    _currentPage = _activePage().index;
-                    return refreshPreview();
-                });
-            });
-        });
-        Flow.Dataflow.react(_parseType, _delimiter, _useSingleQuotes, _headerOption, function () {
-            _currentPage = 0;
-            return refreshPreview();
-        });
-        _filteredColumns = Flow.Dataflow.lift(_columns, function (columns) {
-            return columns;
-        });
-        makePage = function (index, columns) {
-            return {
-                index: index,
-                columns: columns
-            };
-        };
-        _activePage = Flow.Dataflow.lift(_columns, function (columns) {
-            return makePage(_currentPage, columns);
-        });
-        filterColumns = function () {
-            return _activePage(makePage(0, lodash.filter(_columns(), function (column) {
-                return -1 < column.name().toLowerCase().indexOf(_columnNameSearchTerm().toLowerCase());
-            })));
-        };
-        Flow.Dataflow.react(_columnNameSearchTerm, lodash.throttle(filterColumns, 500));
-        _visibleColumns = Flow.Dataflow.lift(_activePage, function (currentPage) {
-            var start;
-            start = currentPage.index * MaxItemsPerPage;
-            return currentPage.columns.slice(start, start + MaxItemsPerPage);
-        });
-        parseFiles = function () {
-            var column, columnNames, columnTypes, headerOption;
-            columnNames = function () {
-                var _i, _len, _ref, _results;
-                _ref = _columns();
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    column = _ref[_i];
-                    _results.push(column.name());
-                }
-                return _results;
-            }();
-            headerOption = _headerOptions[_headerOption()];
-            if (lodash.every(columnNames, function (columnName) {
-                    return columnName.trim() === '';
-                })) {
-                columnNames = null;
-                headerOption = -1;
-            }
-            columnTypes = function () {
-                var _i, _len, _ref, _results;
-                _ref = _columns();
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    column = _ref[_i];
-                    _results.push(column.type());
-                }
-                return _results;
-            }();
-            return _.insertAndExecuteCell('cs', 'parseFiles\n  ' + _inputKey + ': ' + Flow.Prelude.stringify(_inputs[_inputKey]) + '\n  destination_frame: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount() + '\n  single_quotes: ' + _useSingleQuotes() + '\n  ' + (_canReconfigure() ? 'column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  ' : '') + (_canReconfigure() ? 'column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  ' : '') + 'delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + headerOption + '\n  chunk_size: ' + _chunkSize());
-        };
-        _canGoToNextPage = Flow.Dataflow.lift(_activePage, function (currentPage) {
-            return (currentPage.index + 1) * MaxItemsPerPage < currentPage.columns.length;
-        });
-        _canGoToPreviousPage = Flow.Dataflow.lift(_activePage, function (currentPage) {
-            return currentPage.index > 0;
-        });
-        goToNextPage = function () {
-            var currentPage;
-            currentPage = _activePage();
-            return _activePage(makePage(currentPage.index + 1, currentPage.columns));
-        };
-        goToPreviousPage = function () {
-            var currentPage;
-            currentPage = _activePage();
-            if (currentPage.index > 0) {
-                return _activePage(makePage(currentPage.index - 1, currentPage.columns));
-            }
-        };
-        lodash.defer(_go);
+}.call(this));
+(function () {
+    Flow.Sandbox = function (_, routines) {
         return {
-            sourceKeys: _inputs[_inputKey],
-            canReconfigure: _canReconfigure,
-            parseTypes: parseTypes,
-            dataTypes: dataTypes,
-            delimiters: parseDelimiters,
-            parseType: _parseType,
-            delimiter: _delimiter,
-            useSingleQuotes: _useSingleQuotes,
-            destinationKey: _destinationKey,
-            headerOption: _headerOption,
-            deleteOnDone: _deleteOnDone,
-            columns: _visibleColumns,
-            parseFiles: parseFiles,
-            columnNameSearchTerm: _columnNameSearchTerm,
-            canGoToNextPage: _canGoToNextPage,
-            canGoToPreviousPage: _canGoToPreviousPage,
-            goToNextPage: goToNextPage,
-            goToPreviousPage: goToPreviousPage,
-            template: 'flow-parse-raw-input'
+            routines: routines,
+            context: {},
+            results: {}
         };
     };
 }.call(this));
 (function () {
-    H2O.PlotInput = function (_, _go, _frame) {
-        var plot, vector, _canPlot, _color, _type, _types, _vectors, _x, _y;
-        _types = [
-            'point',
-            'path',
-            'rect'
+    Flow.TUndefined = 'undefined';
+    Flow.TNull = 'null';
+    Flow.TBoolean = 'Boolean';
+    Flow.TString = 'String';
+    Flow.TNumber = 'Number';
+    Flow.TFunction = 'Function';
+    Flow.TObject = 'Object';
+    Flow.TArray = 'Array';
+    Flow.TArguments = 'Arguments';
+    Flow.TDate = 'Date';
+    Flow.TRegExp = 'RegExp';
+    Flow.TError = 'Error';
+    Flow.TFactor = 'Factor';
+}.call(this));
+(function () {
+    var EOL, describeCount, format1d0, formatBytes, formatClockTime, formatElapsedTime, formatMilliseconds, fromNow, highlight, multilineTextToHTML, padTime, sanitizeName, splitTime;
+    describeCount = function (count, singular, plural) {
+        if (!plural) {
+            plural = singular + 's';
+        }
+        switch (count) {
+        case 0:
+            return 'No ' + plural;
+        case 1:
+            return '1 ' + singular;
+        default:
+            return '' + count + ' ' + plural;
+        }
+    };
+    fromNow = function (date) {
+        return moment(date).fromNow();
+    };
+    formatBytes = function (bytes) {
+        var i, sizes;
+        sizes = [
+            'Bytes',
+            'KB',
+            'MB',
+            'GB',
+            'TB'
         ];
-        _vectors = function () {
-            var _i, _len, _ref, _results;
-            _ref = _frame.vectors;
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                vector = _ref[_i];
-                if (vector.type === Flow.TString || vector.type === Flow.TNumber) {
-                    _results.push(vector.label);
-                }
-            }
-            return _results;
-        }();
-        _type = Flow.Dataflow.signal(null);
-        _x = Flow.Dataflow.signal(null);
-        _y = Flow.Dataflow.signal(null);
-        _color = Flow.Dataflow.signal(null);
-        _canPlot = Flow.Dataflow.lift(_type, _x, _y, function (type, x, y) {
-            return type && x && y;
-        });
-        plot = function () {
-            var color, command;
-            command = (color = _color()) ? 'plot (g) -> g(\n  g.' + _type() + '(\n    g.position ' + Flow.Prelude.stringify(_x()) + ', ' + Flow.Prelude.stringify(_y()) + '\n    g.color ' + Flow.Prelude.stringify(color) + '\n  )\n  g.from inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin + '\n)' : 'plot (g) -> g(\n  g.' + _type() + '(\n    g.position ' + Flow.Prelude.stringify(_x()) + ', ' + Flow.Prelude.stringify(_y()) + '\n  )\n  g.from inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin + '\n)';
-            return _.insertAndExecuteCell('cs', command);
-        };
-        lodash.defer(_go);
-        return {
-            types: _types,
-            type: _type,
-            vectors: _vectors,
-            x: _x,
-            y: _y,
-            color: _color,
-            plot: plot,
-            canPlot: _canPlot,
-            template: 'flow-plot-input'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.PlotOutput = function (_, _go, _plot) {
-        lodash.defer(_go);
-        return {
-            plot: _plot,
-            template: 'flow-plot-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.PredictInput = function (_, _go, opt) {
-        var predict, _canPredict, _computeDeepFeaturesHiddenLayer, _computeReconstructionError, _deepFeaturesHiddenLayer, _deepFeaturesHiddenLayerValue, _destinationKey, _exception, _frames, _hasAdditionalOptions, _hasFrames, _hasModels, _models, _ref, _selectedFrame, _selectedFrames, _selectedFramesCaption, _selectedModel, _selectedModels, _selectedModelsCaption;
-        _destinationKey = Flow.Dataflow.signal((_ref = opt.predictions_frame) != null ? _ref : 'prediction-' + Flow.Util.uuid());
-        _selectedModels = opt.models ? opt.models : opt.model ? [opt.model] : [];
-        _selectedFrames = opt.frames ? opt.frames : opt.frame ? [opt.frame] : [];
-        _selectedModelsCaption = _selectedModels.join(', ');
-        _selectedFramesCaption = _selectedFrames.join(', ');
-        _exception = Flow.Dataflow.signal(null);
-        _selectedFrame = Flow.Dataflow.signal(null);
-        _selectedModel = Flow.Dataflow.signal(null);
-        _hasFrames = _selectedFrames.length ? true : false;
-        _hasModels = _selectedModels.length ? true : false;
-        _frames = Flow.Dataflow.signals([]);
-        _models = Flow.Dataflow.signals([]);
-        _hasAdditionalOptions = Flow.Dataflow.lift(_selectedModel, function (model) {
-            var parameter, _i, _len, _ref1;
-            if (model) {
-                if (model.algo === 'deeplearning') {
-                    _ref1 = model.parameters;
-                    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                        parameter = _ref1[_i];
-                        if (parameter.name === 'autoencoder' && parameter.actual_value === true) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        });
-        _computeReconstructionError = Flow.Dataflow.signal(false);
-        _computeDeepFeaturesHiddenLayer = Flow.Dataflow.signal(false);
-        _deepFeaturesHiddenLayer = Flow.Dataflow.signal(0);
-        _deepFeaturesHiddenLayerValue = Flow.Dataflow.lift(_deepFeaturesHiddenLayer, function (text) {
-            return parseInt(text, 10);
-        });
-        _canPredict = Flow.Dataflow.lift(_selectedFrame, _selectedModel, _hasAdditionalOptions, _computeReconstructionError, _computeDeepFeaturesHiddenLayer, _deepFeaturesHiddenLayerValue, function (frame, model, hasAdditionalOptions, computeReconstructionError, computeDeepFeaturesHiddenLayer, deepFeaturesHiddenLayerValue) {
-            var hasFrameAndModel, hasValidOptions;
-            hasFrameAndModel = frame && model || _hasFrames && model || _hasModels && frame;
-            hasValidOptions = hasAdditionalOptions ? computeReconstructionError ? true : computeDeepFeaturesHiddenLayer ? !lodash.isNaN(deepFeaturesHiddenLayerValue) : true : true;
-            return hasFrameAndModel && hasValidOptions;
-        });
-        if (!_hasFrames) {
-            _.requestFrames(function (error, frames) {
-                var frame;
-                if (error) {
-                    return _exception(new Flow.Error('Error fetching frame list.', error));
-                } else {
-                    return _frames(function () {
-                        var _i, _len, _results;
-                        _results = [];
-                        for (_i = 0, _len = frames.length; _i < _len; _i++) {
-                            frame = frames[_i];
-                            if (!frame.is_text) {
-                                _results.push(frame.frame_id.name);
-                            }
-                        }
-                        return _results;
-                    }());
-                }
-            });
+        if (bytes === 0) {
+            return '0 Byte';
         }
-        if (!_hasModels) {
-            _.requestModels(function (error, models) {
-                var model;
-                if (error) {
-                    return _exception(new Flow.Error('Error fetching model list.', error));
-                } else {
-                    return _models(function () {
-                        var _i, _len, _results;
-                        _results = [];
-                        for (_i = 0, _len = models.length; _i < _len; _i++) {
-                            model = models[_i];
-                            _results.push(model.model_id.name);
-                        }
-                        return _results;
-                    }());
-                }
-            });
-        }
-        if (!_selectedModel()) {
-            if (opt.model && lodash.isString(opt.model)) {
-                _.requestModel(opt.model, function (error, model) {
-                    return _selectedModel(model);
-                });
-            }
-        }
-        predict = function () {
-            var cs, destinationKey, frameArg, modelArg;
-            if (_hasFrames) {
-                frameArg = _selectedFrames.length > 1 ? _selectedFrames : lodash.head(_selectedFrames);
-                modelArg = _selectedModel();
-            } else if (_hasModels) {
-                modelArg = _selectedModels.length > 1 ? _selectedModels : lodash.head(_selectedModels);
-                frameArg = _selectedFrame();
-            } else {
-                modelArg = _selectedModel();
-                frameArg = _selectedFrame();
-            }
-            destinationKey = _destinationKey();
-            cs = 'predict model: ' + Flow.Prelude.stringify(modelArg) + ', frame: ' + Flow.Prelude.stringify(frameArg);
-            if (destinationKey) {
-                cs += ', predictions_frame: ' + Flow.Prelude.stringify(destinationKey);
-            }
-            if (_hasAdditionalOptions()) {
-                if (_computeReconstructionError()) {
-                    cs += ', reconstruction_error: true';
-                } else if (_computeDeepFeaturesHiddenLayer()) {
-                    cs += ', deep_features_hidden_layer: ' + _deepFeaturesHiddenLayerValue();
-                }
-            }
-            return _.insertAndExecuteCell('cs', cs);
-        };
-        lodash.defer(_go);
-        return {
-            destinationKey: _destinationKey,
-            exception: _exception,
-            hasModels: _hasModels,
-            hasFrames: _hasFrames,
-            canPredict: _canPredict,
-            selectedFramesCaption: _selectedFramesCaption,
-            selectedModelsCaption: _selectedModelsCaption,
-            selectedFrame: _selectedFrame,
-            selectedModel: _selectedModel,
-            frames: _frames,
-            models: _models,
-            predict: predict,
-            hasAdditionalOptions: _hasAdditionalOptions,
-            computeReconstructionError: _computeReconstructionError,
-            computeDeepFeaturesHiddenLayer: _computeDeepFeaturesHiddenLayer,
-            deepFeaturesHiddenLayer: _deepFeaturesHiddenLayer,
-            template: 'flow-predict-input'
-        };
+        i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+        return Math.round(bytes / Math.pow(1024, i), 2) + sizes[i];
     };
-}.call(this));
-(function () {
-    H2O.PredictOutput = function (_, _go, prediction) {
-        var frame, inspect, model, renderPlot, table, tableName, _canInspect, _i, _len, _plots, _ref, _ref1;
-        if (prediction) {
-            frame = prediction.frame, model = prediction.model;
-        }
-        _plots = Flow.Dataflow.signals([]);
-        _canInspect = prediction.__meta ? true : false;
-        renderPlot = function (title, prediction, render) {
-            var combineWithFrame, container;
-            container = Flow.Dataflow.signal(null);
-            combineWithFrame = function () {
-                var predictionsFrameName, targetFrameName;
-                predictionsFrameName = prediction.predictions.frame_id.name;
-                targetFrameName = 'combined-' + predictionsFrameName;
-                return _.insertAndExecuteCell('cs', 'bindFrames ' + Flow.Prelude.stringify(targetFrameName) + ', [ ' + Flow.Prelude.stringify(predictionsFrameName) + ', ' + Flow.Prelude.stringify(frame.name) + ' ]');
-            };
-            render(function (error, vis) {
-                if (error) {
-                    return console.debug(error);
-                } else {
-                    $('a', vis.element).on('click', function (e) {
-                        var $a;
-                        $a = $(e.target);
-                        switch ($a.attr('data-type')) {
-                        case 'frame':
-                            return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify($a.attr('data-key')));
-                        case 'model':
-                            return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify($a.attr('data-key')));
-                        }
-                    });
-                    return container(vis.element);
-                }
-            });
-            return _plots.push({
-                title: title,
-                plot: container,
-                combineWithFrame: combineWithFrame,
-                canCombineWithFrame: title === 'Prediction'
-            });
-        };
-        if (prediction) {
-            switch ((_ref = prediction.__meta) != null ? _ref.schema_type : void 0) {
-            case 'ModelMetricsBinomial':
-                if (table = _.inspect('Prediction - Metrics for Thresholds', prediction)) {
-                    renderPlot('ROC Curve', prediction, _.plot(function (g) {
-                        return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
-                    }));
-                }
-            }
-            _ref1 = _.ls(prediction);
-            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                tableName = _ref1[_i];
-                if (table = _.inspect(tableName, prediction)) {
-                    if (table.indices.length > 1) {
-                        renderPlot(tableName, prediction, _.plot(function (g) {
-                            return g(g.select(), g.from(table));
-                        }));
-                    } else {
-                        renderPlot(tableName, prediction, _.plot(function (g) {
-                            return g(g.select(0), g.from(table));
-                        }));
-                    }
-                }
-            }
-        }
-        inspect = function () {
-            return _.insertAndExecuteCell('cs', 'inspect getPrediction model: ' + Flow.Prelude.stringify(model.name) + ', frame: ' + Flow.Prelude.stringify(frame.name));
-        };
-        lodash.defer(_go);
-        return {
-            plots: _plots,
-            inspect: inspect,
-            canInspect: _canInspect,
-            template: 'flow-predict-output'
-        };
+    padTime = function (n) {
+        return '' + (n < 10 ? '0' : '') + n;
     };
-}.call(this));
-(function () {
-    H2O.PredictsOutput = function (_, _go, opts, _predictions) {
-        var arePredictionsComparable, comparePredictions, createPredictionView, initialize, inspectAll, plotMetrics, plotPredictions, plotScores, predict, _canComparePredictions, _checkAllPredictions, _isCheckingAll, _metricsTable, _predictionViews, _predictionsTable, _rocCurve, _scoresTable;
-        _predictionViews = Flow.Dataflow.signal([]);
-        _checkAllPredictions = Flow.Dataflow.signal(false);
-        _canComparePredictions = Flow.Dataflow.signal(false);
-        _rocCurve = Flow.Dataflow.signal(null);
-        arePredictionsComparable = function (views) {
-            if (views.length === 0) {
-                return false;
-            }
-            return lodash.every(views, function (view) {
-                return view.modelCategory === 'Binomial';
-            });
-        };
-        _isCheckingAll = false;
-        Flow.Dataflow.react(_checkAllPredictions, function (checkAll) {
-            var view, _i, _len, _ref;
-            _isCheckingAll = true;
-            _ref = _predictionViews();
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                view = _ref[_i];
-                view.isChecked(checkAll);
-            }
-            _canComparePredictions(checkAll && arePredictionsComparable(_predictionViews()));
-            _isCheckingAll = false;
-        });
-        createPredictionView = function (prediction) {
-            var inspect, view, _frameKey, _hasFrame, _isChecked, _modelKey, _ref;
-            _modelKey = prediction.model.name;
-            _frameKey = (_ref = prediction.frame) != null ? _ref.name : void 0;
-            _hasFrame = _frameKey ? true : false;
-            _isChecked = Flow.Dataflow.signal(false);
-            Flow.Dataflow.react(_isChecked, function () {
-                var checkedViews, view;
-                if (_isCheckingAll) {
-                    return;
-                }
-                checkedViews = function () {
-                    var _i, _len, _ref1, _results;
-                    _ref1 = _predictionViews();
-                    _results = [];
-                    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                        view = _ref1[_i];
-                        if (view.isChecked()) {
-                            _results.push(view);
-                        }
-                    }
-                    return _results;
-                }();
-                return _canComparePredictions(arePredictionsComparable(checkedViews));
-            });
-            view = function () {
-                if (_hasFrame) {
-                    return _.insertAndExecuteCell('cs', 'getPrediction model: ' + Flow.Prelude.stringify(_modelKey) + ', frame: ' + Flow.Prelude.stringify(_frameKey));
-                }
-            };
-            inspect = function () {
-                if (_hasFrame) {
-                    return _.insertAndExecuteCell('cs', 'inspect getPrediction model: ' + Flow.Prelude.stringify(_modelKey) + ', frame: ' + Flow.Prelude.stringify(_frameKey));
-                }
-            };
-            return {
-                modelKey: _modelKey,
-                frameKey: _frameKey,
-                modelCategory: prediction.model_category,
-                isChecked: _isChecked,
-                hasFrame: _hasFrame,
-                view: view,
-                inspect: inspect
-            };
-        };
-        _predictionsTable = _.inspect('predictions', _predictions);
-        _metricsTable = _.inspect('metrics', _predictions);
-        _scoresTable = _.inspect('scores', _predictions);
-        comparePredictions = function () {
-            var selectedKeys, view;
-            selectedKeys = function () {
-                var _i, _len, _ref, _results;
-                _ref = _predictionViews();
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    view = _ref[_i];
-                    if (view.isChecked()) {
-                        _results.push({
-                            model: view.modelKey,
-                            frame: view.frameKey
-                        });
-                    }
-                }
-                return _results;
-            }();
-            return _.insertAndExecuteCell('cs', 'getPredictions ' + Flow.Prelude.stringify(selectedKeys));
-        };
-        plotPredictions = function () {
-            return _.insertAndExecuteCell('cs', _predictionsTable.metadata.plot);
-        };
-        plotScores = function () {
-            return _.insertAndExecuteCell('cs', _scoresTable.metadata.plot);
-        };
-        plotMetrics = function () {
-            return _.insertAndExecuteCell('cs', _metricsTable.metadata.plot);
-        };
-        inspectAll = function () {
-            return _.insertAndExecuteCell('cs', 'inspect ' + _predictionsTable.metadata.origin);
-        };
-        predict = function () {
-            return _.insertAndExecuteCell('cs', 'predict');
-        };
-        initialize = function (predictions) {
-            _predictionViews(lodash.map(predictions, createPredictionView));
-            return lodash.defer(_go);
-        };
-        initialize(_predictions);
-        return {
-            predictionViews: _predictionViews,
-            hasPredictions: _predictions.length > 0,
-            comparePredictions: comparePredictions,
-            canComparePredictions: _canComparePredictions,
-            checkAllPredictions: _checkAllPredictions,
-            plotPredictions: plotPredictions,
-            plotScores: plotScores,
-            plotMetrics: plotMetrics,
-            inspect: inspectAll,
-            predict: predict,
-            rocCurve: _rocCurve,
-            template: 'flow-predicts-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.ProfileOutput = function (_, _go, _profile) {
-        var createNode, i, node, _activeNode, _nodes;
-        _activeNode = Flow.Dataflow.signal(null);
-        createNode = function (node) {
-            var display, entries, entry, self;
-            display = function () {
-                return _activeNode(self);
-            };
-            entries = function () {
-                var _i, _len, _ref, _results;
-                _ref = node.entries;
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    entry = _ref[_i];
-                    _results.push({
-                        stacktrace: entry.stacktrace,
-                        caption: 'Count: ' + entry.count
-                    });
-                }
-                return _results;
-            }();
-            return self = {
-                name: node.node_name,
-                caption: '' + node.node_name + ' at ' + new Date(node.timestamp),
-                entries: entries,
-                display: display
-            };
-        };
-        _nodes = function () {
-            var _i, _len, _ref, _results;
-            _ref = _profile.nodes;
-            _results = [];
-            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-                node = _ref[i];
-                _results.push(createNode(node));
-            }
-            return _results;
-        }();
-        _activeNode(lodash.head(_nodes));
-        lodash.defer(_go);
-        return {
-            nodes: _nodes,
-            activeNode: _activeNode,
-            template: 'flow-profile-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.RDDsOutput = function (_, _go, _rDDs) {
-        var createRDDView, _rDDViews;
-        _rDDViews = Flow.Dataflow.signal([]);
-        createRDDView = function (rDD) {
-            return {
-                id: rDD.id,
-                name: rDD.name,
-                partitions: rDD.partitions
-            };
-        };
-        _rDDViews(lodash.map(_rDDs, createRDDView));
-        lodash.defer(_go);
-        return {
-            rDDViews: _rDDViews,
-            hasRDDs: _rDDs.length > 0,
-            template: 'flow-rdds-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.SplitFrameInput = function (_, _go, _frameKey) {
-        var addSplit, addSplitRatio, collectKeys, collectRatios, computeSplits, createSplit, createSplitName, format4f, initialize, splitFrame, updateSplitRatiosAndNames, _frame, _frames, _lastSplitKey, _lastSplitRatio, _lastSplitRatioText, _splits, _validationMessage;
-        _frames = Flow.Dataflow.signal([]);
-        _frame = Flow.Dataflow.signal(null);
-        _lastSplitRatio = Flow.Dataflow.signal(1);
-        format4f = function (value) {
-            return value.toPrecision(4).replace(/0+$/, '0');
-        };
-        _lastSplitRatioText = Flow.Dataflow.lift(_lastSplitRatio, function (ratio) {
-            if (lodash.isNaN(ratio)) {
-                return ratio;
-            } else {
-                return format4f(ratio);
-            }
-        });
-        _lastSplitKey = Flow.Dataflow.signal('');
-        _splits = Flow.Dataflow.signals([]);
-        Flow.Dataflow.react(_splits, function () {
-            return updateSplitRatiosAndNames();
-        });
-        _validationMessage = Flow.Dataflow.signal('');
-        collectRatios = function () {
-            var entry, _i, _len, _ref, _results;
-            _ref = _splits();
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                entry = _ref[_i];
-                _results.push(entry.ratio());
-            }
-            return _results;
-        };
-        collectKeys = function () {
-            var entry, splitKeys;
-            splitKeys = function () {
-                var _i, _len, _ref, _results;
-                _ref = _splits();
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    entry = _ref[_i];
-                    _results.push(entry.key().trim());
-                }
-                return _results;
-            }();
-            splitKeys.push(_lastSplitKey().trim());
-            return splitKeys;
-        };
-        createSplitName = function (key, ratio) {
-            return key + '_' + format4f(ratio);
-        };
-        updateSplitRatiosAndNames = function () {
-            var entry, frame, frameKey, lastSplitRatio, ratio, totalRatio, _i, _j, _len, _len1, _ref, _ref1;
-            totalRatio = 0;
-            _ref = collectRatios();
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                ratio = _ref[_i];
-                totalRatio += ratio;
-            }
-            lastSplitRatio = _lastSplitRatio(1 - totalRatio);
-            frameKey = (frame = _frame()) ? frame : 'frame';
-            _ref1 = _splits();
-            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-                entry = _ref1[_j];
-                entry.key(createSplitName(frameKey, entry.ratio()));
-            }
-            _lastSplitKey(createSplitName(frameKey, _lastSplitRatio()));
-        };
-        computeSplits = function (go) {
-            var key, ratio, splitKeys, splitRatios, totalRatio, _i, _j, _len, _len1;
-            if (!_frame()) {
-                return go('Frame not specified.');
-            }
-            splitRatios = collectRatios();
-            totalRatio = 0;
-            for (_i = 0, _len = splitRatios.length; _i < _len; _i++) {
-                ratio = splitRatios[_i];
-                if (0 < ratio && ratio < 1) {
-                    totalRatio += ratio;
-                } else {
-                    return go('One or more split ratios are invalid. Ratios should between 0 and 1.');
-                }
-            }
-            if (totalRatio >= 1) {
-                return go('Sum of ratios is >= 1.');
-            }
-            splitKeys = collectKeys();
-            for (_j = 0, _len1 = splitKeys.length; _j < _len1; _j++) {
-                key = splitKeys[_j];
-                if (key === '') {
-                    return go('One or more keys are empty or invalid.');
-                }
-            }
-            if (splitKeys.length < 2) {
-                return go('Please specify at least two splits.');
-            }
-            if (splitKeys.length !== lodash.unique(splitKeys).length) {
-                return go('Duplicate keys specified.');
-            }
-            return go(null, splitRatios, splitKeys);
-        };
-        createSplit = function (ratio) {
-            var self, _key, _ratio, _ratioText;
-            _ratioText = Flow.Dataflow.signal('' + ratio);
-            _key = Flow.Dataflow.signal('');
-            _ratio = Flow.Dataflow.lift(_ratioText, function (text) {
-                return parseFloat(text);
-            });
-            Flow.Dataflow.react(_ratioText, updateSplitRatiosAndNames);
-            Flow.Prelude.remove = function () {
-                return _splits.remove(self);
-            };
-            return self = {
-                key: _key,
-                ratioText: _ratioText,
-                ratio: _ratio,
-                remove: Flow.Prelude.remove
-            };
-        };
-        addSplitRatio = function (ratio) {
-            return _splits.push(createSplit(ratio));
-        };
-        addSplit = function () {
-            return addSplitRatio(0);
-        };
-        splitFrame = function () {
-            return computeSplits(function (error, splitRatios, splitKeys) {
-                if (error) {
-                    return _validationMessage(error);
-                } else {
-                    _validationMessage('');
-                    return _.insertAndExecuteCell('cs', 'splitFrame ' + Flow.Prelude.stringify(_frame()) + ', ' + Flow.Prelude.stringify(splitRatios) + ', ' + Flow.Prelude.stringify(splitKeys));
-                }
-            });
-        };
-        initialize = function () {
-            _.requestFrames(function (error, frames) {
-                var frame, frameKeys;
-                if (error) {
-                } else {
-                    frameKeys = function () {
-                        var _i, _len, _results;
-                        _results = [];
-                        for (_i = 0, _len = frames.length; _i < _len; _i++) {
-                            frame = frames[_i];
-                            if (!frame.is_text) {
-                                _results.push(frame.frame_id.name);
-                            }
-                        }
-                        return _results;
-                    }();
-                    frameKeys.sort();
-                    _frames(frameKeys);
-                    return _frame(_frameKey);
-                }
-            });
-            addSplitRatio(0.25);
-            return lodash.defer(_go);
-        };
-        initialize();
-        return {
-            frames: _frames,
-            frame: _frame,
-            lastSplitRatio: _lastSplitRatio,
-            lastSplitRatioText: _lastSplitRatioText,
-            lastSplitKey: _lastSplitKey,
-            splits: _splits,
-            addSplit: addSplit,
-            splitFrame: splitFrame,
-            validationMessage: _validationMessage,
-            template: 'flow-split-frame-input'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.SplitFrameOutput = function (_, _go, _splitFrameResult) {
-        var computeRatios, createFrameView, index, key, _frames, _ratios;
-        computeRatios = function (sourceRatios) {
-            var ratio, ratios, total;
-            total = 0;
-            ratios = function () {
-                var _i, _len, _results;
-                _results = [];
-                for (_i = 0, _len = sourceRatios.length; _i < _len; _i++) {
-                    ratio = sourceRatios[_i];
-                    total += ratio;
-                    _results.push(ratio);
-                }
-                return _results;
-            }();
-            ratios.push(1 - total);
-            return ratios;
-        };
-        createFrameView = function (key, ratio) {
-            var self, view;
-            view = function () {
-                return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(key));
-            };
-            return self = {
-                key: key,
-                ratio: ratio,
-                view: view
-            };
-        };
-        _ratios = computeRatios(_splitFrameResult.ratios);
-        _frames = function () {
-            var _i, _len, _ref, _results;
-            _ref = _splitFrameResult.keys;
-            _results = [];
-            for (index = _i = 0, _len = _ref.length; _i < _len; index = ++_i) {
-                key = _ref[index];
-                _results.push(createFrameView(key, _ratios[index]));
-            }
-            return _results;
-        }();
-        lodash.defer(_go);
-        return {
-            frames: _frames,
-            template: 'flow-split-frame-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.StackTraceOutput = function (_, _go, _stackTrace) {
-        var createNode, createThread, node, _activeNode, _nodes;
-        _activeNode = Flow.Dataflow.signal(null);
-        createThread = function (thread) {
-            var lines;
-            lines = thread.split('\n');
-            return {
-                title: lodash.head(lines),
-                stackTrace: lodash.tail(lines).join('\n')
-            };
-        };
-        createNode = function (node) {
-            var display, self, thread;
-            display = function () {
-                return _activeNode(self);
-            };
-            return self = {
-                name: node.node,
-                timestamp: new Date(node.time),
-                threads: function () {
-                    var _i, _len, _ref, _results;
-                    _ref = node.thread_traces;
-                    _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        thread = _ref[_i];
-                        _results.push(createThread(thread));
-                    }
-                    return _results;
-                }(),
-                display: display
-            };
-        };
-        _nodes = function () {
-            var _i, _len, _ref, _results;
-            _ref = _stackTrace.traces;
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                node = _ref[_i];
-                _results.push(createNode(node));
-            }
-            return _results;
-        }();
-        _activeNode(lodash.head(_nodes));
-        lodash.defer(_go);
-        return {
-            nodes: _nodes,
-            activeNode: _activeNode,
-            template: 'flow-stacktrace-output'
-        };
-    };
-}.call(this));
-(function () {
-    H2O.TimelineOutput = function (_, _go, _timeline) {
-        var createEvent, refresh, toggleRefresh, updateTimeline, _data, _headers, _isBusy, _isLive, _timestamp;
-        _isLive = Flow.Dataflow.signal(false);
-        _isBusy = Flow.Dataflow.signal(false);
-        _headers = [
-            'HH:MM:SS:MS',
-            'nanosec',
-            'Who',
-            'I/O Type',
-            'Event',
-            'Type',
-            'Bytes'
+    splitTime = function (s) {
+        var hrs, mins, ms, secs;
+        ms = s % 1000;
+        s = (s - ms) / 1000;
+        secs = s % 60;
+        s = (s - secs) / 60;
+        mins = s % 60;
+        hrs = (s - mins) / 60;
+        return [
+            hrs,
+            mins,
+            secs,
+            ms
         ];
-        _data = Flow.Dataflow.signal(null);
-        _timestamp = Flow.Dataflow.signal(Date.now());
-        createEvent = function (event) {
-            switch (event.type) {
-            case 'io':
-                return [
-                    event.date,
-                    event.nanos,
-                    event.node,
-                    event.io_flavor || '-',
-                    'I/O',
-                    '-',
-                    event.data
-                ];
-            case 'heartbeat':
-                return [
-                    event.date,
-                    event.nanos,
-                    'many &#8594;  many',
-                    'UDP',
-                    event.type,
-                    '-',
-                    '' + event.sends + ' sent ' + event.recvs + ' received'
-                ];
-            case 'network_msg':
-                return [
-                    event.date,
-                    event.nanos,
-                    '' + event.from + ' &#8594; ' + event.to,
-                    event.protocol,
-                    event.msg_type,
-                    event.is_send ? 'send' : 'receive',
-                    event.data
-                ];
-            }
-        };
-        updateTimeline = function (timeline) {
-            var cell, event, grid, header, table, tbody, td, th, thead, ths, tr, trs, _ref;
-            _ref = Flow.HTML.template('.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td'), grid = _ref[0], table = _ref[1], thead = _ref[2], tbody = _ref[3], tr = _ref[4], th = _ref[5], td = _ref[6];
-            ths = function () {
-                var _i, _len, _results;
-                _results = [];
-                for (_i = 0, _len = _headers.length; _i < _len; _i++) {
-                    header = _headers[_i];
-                    _results.push(th(header));
-                }
-                return _results;
-            }();
-            trs = function () {
-                var _i, _len, _ref1, _results;
-                _ref1 = timeline.events;
-                _results = [];
-                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                    event = _ref1[_i];
-                    _results.push(tr(function () {
-                        var _j, _len1, _ref2, _results1;
-                        _ref2 = createEvent(event);
-                        _results1 = [];
-                        for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
-                            cell = _ref2[_j];
-                            _results1.push(td(cell));
-                        }
-                        return _results1;
-                    }()));
-                }
-                return _results;
-            }();
-            return _data(Flow.HTML.render('div', grid([table([
-                    thead(tr(ths)),
-                    tbody(trs)
-                ])])));
-        };
-        toggleRefresh = function () {
-            return _isLive(!_isLive());
-        };
-        refresh = function () {
-            _isBusy(true);
-            return _.requestTimeline(function (error, timeline) {
-                _isBusy(false);
-                if (error) {
-                    _exception(Flow.Failure(_, new Flow.Error('Error fetching timeline', error)));
-                    return _isLive(false);
-                } else {
-                    updateTimeline(timeline);
-                    if (_isLive()) {
-                        return lodash.delay(refresh, 2000);
-                    }
-                }
-            });
-        };
-        Flow.Dataflow.act(_isLive, function (isLive) {
-            if (isLive) {
-                return refresh();
-            }
-        });
-        updateTimeline(_timeline);
-        lodash.defer(_go);
-        return {
-            data: _data,
-            isLive: _isLive,
-            isBusy: _isBusy,
-            toggleRefresh: toggleRefresh,
-            refresh: refresh,
-            template: 'flow-timeline-output'
-        };
+    };
+    formatMilliseconds = function (s) {
+        var hrs, mins, ms, secs, _ref;
+        _ref = splitTime(s), hrs = _ref[0], mins = _ref[1], secs = _ref[2], ms = _ref[3];
+        return '' + padTime(hrs) + ':' + padTime(mins) + ':' + padTime(secs) + '.' + ms;
+    };
+    format1d0 = function (n) {
+        return Math.round(n * 10) / 10;
+    };
+    formatElapsedTime = function (s) {
+        var hrs, mins, ms, secs, _ref;
+        _ref = splitTime(s), hrs = _ref[0], mins = _ref[1], secs = _ref[2], ms = _ref[3];
+        if (hrs !== 0) {
+            return '' + format1d0((hrs * 60 + mins) / 60) + 'h';
+        } else if (mins !== 0) {
+            return '' + format1d0((mins * 60 + secs) / 60) + 'm';
+        } else if (secs !== 0) {
+            return '' + format1d0((secs * 1000 + ms) / 1000) + 's';
+        } else {
+            return '' + ms + 'ms';
+        }
+    };
+    formatClockTime = function (date) {
+        return moment(date).format('h:mm:ss a');
+    };
+    EOL = '\n';
+    multilineTextToHTML = function (text) {
+        return lodash.map(text.split(EOL), function (str) {
+            return lodash.escape(str);
+        }).join('<br/>');
+    };
+    sanitizeName = function (name) {
+        return name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim();
+    };
+    highlight = function (code, lang) {
+        if (window.hljs) {
+            return window.hljs.highlightAuto(code, [lang]).value;
+        } else {
+            return code;
+        }
+    };
+    Flow.Util = {
+        describeCount: describeCount,
+        fromNow: fromNow,
+        formatBytes: formatBytes,
+        formatMilliseconds: formatMilliseconds,
+        formatElapsedTime: formatElapsedTime,
+        formatClockTime: formatClockTime,
+        multilineTextToHTML: multilineTextToHTML,
+        uuid: (typeof window !== 'undefined' && window !== null ? window.uuid : void 0) ? window.uuid : null,
+        sanitizeName: sanitizeName,
+        highlight: highlight
     };
 }.call(this));
 (function () {
@@ -7802,3950 +7505,1419 @@
     };
 }.call(this));
 (function () {
-    Flow.Analytics = function (_) {
-        Flow.Dataflow.link(_.trackEvent, function (category, action, label, value) {
-            return lodash.defer(function () {
-                return window.ga('send', 'event', category, action, label, value);
-            });
-        });
-        return Flow.Dataflow.link(_.trackException, function (description) {
-            return lodash.defer(function () {
-                _.requestEcho('FLOW: ' + description, function () {
-                });
-                return window.ga('send', 'exception', {
-                    exDescription: description,
-                    exFatal: false,
-                    appName: 'Flow',
-                    appVersion: Flow.Version
-                });
-            });
-        });
-    };
-}.call(this));
-(function () {
-    Flow.ApplicationContext = function (_) {
-        _.ready = Flow.Dataflow.slots();
-        _.initialized = Flow.Dataflow.slots();
-        _.open = Flow.Dataflow.slot();
-        _.load = Flow.Dataflow.slot();
-        _.saved = Flow.Dataflow.slots();
-        _.loaded = Flow.Dataflow.slots();
-        _.setDirty = Flow.Dataflow.slots();
-        _.setPristine = Flow.Dataflow.slots();
-        _.status = Flow.Dataflow.slot();
-        _.trackEvent = Flow.Dataflow.slot();
-        _.trackException = Flow.Dataflow.slot();
-        _.selectCell = Flow.Dataflow.slot();
-        _.insertCell = Flow.Dataflow.slot();
-        _.insertAndExecuteCell = Flow.Dataflow.slot();
-        _.executeAllCells = Flow.Dataflow.slot();
-        _.showHelp = Flow.Dataflow.slot();
-        _.showOutline = Flow.Dataflow.slot();
-        _.showBrowser = Flow.Dataflow.slot();
-        _.showClipboard = Flow.Dataflow.slot();
-        _.saveClip = Flow.Dataflow.slot();
-        _.growl = Flow.Dataflow.slot();
-        _.confirm = Flow.Dataflow.slot();
-        _.alert = Flow.Dataflow.slot();
-        return _.dialog = Flow.Dataflow.slot();
-    };
-}.call(this));
-(function () {
-    Flow.Application = function (_, routines) {
-        var _notebook, _renderers, _sandbox;
-        Flow.ApplicationContext(_);
-        _sandbox = Flow.Sandbox(_, routines(_));
-        _renderers = Flow.Renderers(_, _sandbox);
-        Flow.Analytics(_);
-        Flow.Growl(_);
-        Flow.Autosave(_);
-        _notebook = Flow.Notebook(_, _renderers);
+    H2O.Assist = function (_, _go, _items) {
+        var createAssistItem, item, name;
+        createAssistItem = function (name, item) {
+            return {
+                name: name,
+                description: item.description,
+                icon: 'fa fa-' + item.icon + ' flow-icon',
+                execute: function () {
+                    return _.insertAndExecuteCell('cs', name);
+                }
+            };
+        };
+        lodash.defer(_go);
         return {
-            context: _,
-            sandbox: _sandbox,
-            view: _notebook
-        };
-    };
-}.call(this));
-(function () {
-    var createBuffer, iterate, pipe, _applicate, _async, _find, _find$2, _find$3, _fork, _get, _isFuture, _join, _noop, __slice = [].slice;
-    createBuffer = function (array) {
-        var buffer, _array, _go;
-        _array = array || [];
-        _go = null;
-        buffer = function (element) {
-            if (element === void 0) {
-                return _array;
-            } else {
-                _array.push(element);
-                if (_go) {
-                    _go(element);
-                }
-                return element;
-            }
-        };
-        buffer.subscribe = function (go) {
-            return _go = go;
-        };
-        buffer.buffer = _array;
-        buffer.isBuffer = true;
-        return buffer;
-    };
-    _noop = function (go) {
-        return go(null);
-    };
-    _applicate = function (go) {
-        return function (error, args) {
-            if (lodash.isFunction(go)) {
-                return go.apply(null, [error].concat(args));
-            }
-        };
-    };
-    _fork = function (f, args) {
-        var self;
-        if (!lodash.isFunction(f)) {
-            throw new Error('Not a function.');
-        }
-        self = function (go) {
-            var canGo;
-            canGo = lodash.isFunction(go);
-            if (self.settled) {
-                if (self.rejected) {
-                    if (canGo) {
-                        return go(self.error);
-                    }
-                } else {
-                    if (canGo) {
-                        return go(null, self.result);
-                    }
-                }
-            } else {
-                return _join(args, function (error, args) {
-                    if (error) {
-                        self.error = error;
-                        self.fulfilled = false;
-                        self.rejected = true;
-                        if (canGo) {
-                            return go(error);
-                        }
-                    } else {
-                        return f.apply(null, args.concat(function (error, result) {
-                            if (error) {
-                                self.error = error;
-                                self.fulfilled = false;
-                                self.rejected = true;
-                                if (canGo) {
-                                    go(error);
-                                }
-                            } else {
-                                self.result = result;
-                                self.fulfilled = true;
-                                self.rejected = false;
-                                if (canGo) {
-                                    go(null, result);
-                                }
-                            }
-                            self.settled = true;
-                            return self.pending = false;
-                        }));
-                    }
-                });
-            }
-        };
-        self.method = f;
-        self.args = args;
-        self.fulfilled = false;
-        self.rejected = false;
-        self.settled = false;
-        self.pending = true;
-        self.isFuture = true;
-        return self;
-    };
-    _isFuture = function (a) {
-        if (a != null ? a.isFuture : void 0) {
-            return true;
-        } else {
-            return false;
-        }
-    };
-    _join = function (args, go) {
-        var arg, i, _actual, _i, _len, _results, _settled, _tasks;
-        if (args.length === 0) {
-            return go(null, []);
-        }
-        _tasks = [];
-        _results = [];
-        for (i = _i = 0, _len = args.length; _i < _len; i = ++_i) {
-            arg = args[i];
-            if (arg != null ? arg.isFuture : void 0) {
-                _tasks.push({
-                    future: arg,
-                    resultIndex: i
-                });
-            } else {
-                _results[i] = arg;
-            }
-        }
-        if (_tasks.length === 0) {
-            return go(null, _results);
-        }
-        _actual = 0;
-        _settled = false;
-        lodash.forEach(_tasks, function (task) {
-            return task.future.call(null, function (error, result) {
-                if (_settled) {
-                    return;
-                }
-                if (error) {
-                    _settled = true;
-                    go(new Flow.Error('Error evaluating future[' + task.resultIndex + ']', error));
-                } else {
-                    _results[task.resultIndex] = result;
-                    _actual++;
-                    if (_actual === _tasks.length) {
-                        _settled = true;
-                        go(null, _results);
-                    }
-                }
-            });
-        });
-    };
-    pipe = function (tasks) {
-        var next, _tasks;
-        _tasks = tasks.slice(0);
-        next = function (args, go) {
-            var task;
-            task = _tasks.shift();
-            if (task) {
-                return task.apply(null, args.concat(function () {
-                    var error, results;
-                    error = arguments[0], results = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-                    if (error) {
-                        return go(error);
-                    } else {
-                        return next(results, go);
-                    }
-                }));
-            } else {
-                return go.apply(null, [null].concat(args));
-            }
-        };
-        return function () {
-            var args, go, _i;
-            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
-            return next(args, go);
-        };
-    };
-    iterate = function (tasks) {
-        var next, _results, _tasks;
-        _tasks = tasks.slice(0);
-        _results = [];
-        next = function (go) {
-            var task;
-            task = _tasks.shift();
-            if (task) {
-                return task(function (error, result) {
-                    if (error) {
-                        return go(error);
-                    } else {
-                        _results.push(result);
-                    }
-                    return next(go);
-                });
-            } else {
-                return go(null, _results);
-            }
-        };
-        return function (go) {
-            return next(go);
-        };
-    };
-    _async = function () {
-        var args, f, later;
-        f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-        later = function () {
-            var args, error, go, result, _i;
-            args = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), go = arguments[_i++];
-            try {
-                result = f.apply(null, args);
-                return go(null, result);
-            } catch (_error) {
-                error = _error;
-                return go(error);
-            }
-        };
-        return _fork(later, args);
-    };
-    _find$3 = function (attr, prop, obj) {
-        var v, _i, _len;
-        if (_isFuture(obj)) {
-            return _async(_find$3, attr, prop, obj);
-        } else if (lodash.isArray(obj)) {
-            for (_i = 0, _len = obj.length; _i < _len; _i++) {
-                v = obj[_i];
-                if (v[attr] === prop) {
-                    return v;
-                }
-            }
-            return;
-        }
-    };
-    _find$2 = function (attr, obj) {
-        if (_isFuture(obj)) {
-            return _async(_find$2, attr, obj);
-        } else if (lodash.isString(attr)) {
-            if (lodash.isArray(obj)) {
-                return _find$3('name', attr, obj);
-            } else {
-                return obj[attr];
-            }
-        }
-    };
-    _find = function () {
-        var a, args, b, c, ta, tb, tc;
-        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        switch (args.length) {
-        case 3:
-            a = args[0], b = args[1], c = args[2];
-            ta = Flow.Prelude.typeOf(a);
-            tb = Flow.Prelude.typeOf(b);
-            tc = Flow.Prelude.typeOf(c);
-            if (ta === 'Array' && tb === 'String') {
-                return _find$3(b, c, a);
-            } else if (ta === 'String' && (tc = 'Array')) {
-                return _find$3(a, b, c);
-            }
-            break;
-        case 2:
-            a = args[0], b = args[1];
-            if (!a) {
-                return;
-            }
-            if (!b) {
-                return;
-            }
-            if (lodash.isString(b)) {
-                return _find$2(b, a);
-            } else if (lodash.isString(a)) {
-                return _find$2(a, b);
-            }
-        }
-    };
-    _get = function (attr, obj) {
-        if (_isFuture(obj)) {
-            return _async(_get, attr, obj);
-        } else if (lodash.isString(attr)) {
-            if (lodash.isArray(obj)) {
-                return _find$3('name', attr, obj);
-            } else {
-                return obj[attr];
-            }
-        }
-    };
-    Flow.Async = {
-        createBuffer: createBuffer,
-        noop: _noop,
-        applicate: _applicate,
-        isFuture: _isFuture,
-        fork: _fork,
-        join: _join,
-        pipe: pipe,
-        iterate: iterate,
-        async: _async,
-        find: _find,
-        get: _get
-    };
-}.call(this));
-(function () {
-    Flow.Autosave = function (_) {
-        var setDirty, setPristine, warnOnExit;
-        warnOnExit = function (e) {
-            var message;
-            message = 'Warning: you are about to exit Flow.';
-            if (e = e != null ? e : window.event) {
-                e.returnValue = message;
-            }
-            return message;
-        };
-        setDirty = function () {
-            return window.onbeforeunload = warnOnExit;
-        };
-        setPristine = function () {
-            return window.onbeforeunload = null;
-        };
-        return Flow.Dataflow.link(_.ready, function () {
-            Flow.Dataflow.link(_.setDirty, setDirty);
-            return Flow.Dataflow.link(_.setPristine, setPristine);
-        });
-    };
-}.call(this));
-(function () {
-    Flow.CoffeescriptKernel = function () {
-        var coalesceScopes, compileCoffeescript, compileJavascript, createGlobalScope, createLocalScope, createRootScope, deleteAstNode, executeJavascript, generateJavascript, identifyDeclarations, parseDeclarations, parseJavascript, removeHoistedDeclarations, rewriteJavascript, safetyWrapCoffeescript, traverseJavascript, traverseJavascriptScoped;
-        safetyWrapCoffeescript = function (guid) {
-            return function (cs, go) {
-                var block, lines;
-                lines = cs.replace(/[\n\r]/g, '\n').split('\n');
-                block = lodash.map(lines, function (line) {
-                    return '  ' + line;
-                });
-                block.unshift('_h2o_results_[\'' + guid + '\'].result do ->');
-                return go(null, block.join('\n'));
-            };
-        };
-        compileCoffeescript = function (cs, go) {
-            var error;
-            try {
-                return go(null, CoffeeScript.compile(cs, { bare: true }));
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error compiling coffee-script', error));
-            }
-        };
-        parseJavascript = function (js, go) {
-            var error;
-            try {
-                return go(null, esprima.parse(js));
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error parsing javascript expression', error));
-            }
-        };
-        identifyDeclarations = function (node) {
-            var declaration;
-            if (!node) {
-                return null;
-            }
-            switch (node.type) {
-            case 'VariableDeclaration':
-                return function () {
-                    var _i, _len, _ref, _results;
-                    _ref = node.declarations;
-                    _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        declaration = _ref[_i];
-                        if (declaration.type === 'VariableDeclarator' && declaration.id.type === 'Identifier') {
-                            _results.push({
-                                name: declaration.id.name,
-                                object: '_h2o_context_'
-                            });
-                        }
-                    }
-                    return _results;
-                }();
-            case 'FunctionDeclaration':
-                if (node.id.type === 'Identifier') {
-                    return [{
-                            name: node.id.name,
-                            object: '_h2o_context_'
-                        }];
-                }
-                break;
-            case 'ForStatement':
-                return identifyDeclarations(node.init);
-            case 'ForInStatement':
-            case 'ForOfStatement':
-                return identifyDeclarations(node.left);
-            }
-            return null;
-        };
-        parseDeclarations = function (block) {
-            var declaration, declarations, identifiers, node, _i, _j, _len, _len1, _ref;
-            identifiers = [];
-            _ref = block.body;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                node = _ref[_i];
-                if (declarations = identifyDeclarations(node)) {
-                    for (_j = 0, _len1 = declarations.length; _j < _len1; _j++) {
-                        declaration = declarations[_j];
-                        identifiers.push(declaration);
-                    }
-                }
-            }
-            return lodash.indexBy(identifiers, function (identifier) {
-                return identifier.name;
-            });
-        };
-        traverseJavascript = function (parent, key, node, f) {
-            var child, i;
-            if (lodash.isArray(node)) {
-                i = node.length;
-                while (i--) {
-                    child = node[i];
-                    if (lodash.isObject(child)) {
-                        traverseJavascript(node, i, child, f);
-                        f(node, i, child);
-                    }
-                }
-            } else {
-                for (i in node) {
-                    child = node[i];
-                    if (lodash.isObject(child)) {
-                        traverseJavascript(node, i, child, f);
-                        f(node, i, child);
-                    }
-                }
-            }
-        };
-        deleteAstNode = function (parent, i) {
-            if (_.isArray(parent)) {
-                return parent.splice(i, 1);
-            } else if (lodash.isObject(parent)) {
-                return delete parent[i];
-            }
-        };
-        createLocalScope = function (node) {
-            var localScope, param, _i, _len, _ref;
-            localScope = parseDeclarations(node.body);
-            _ref = node.params;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                param = _ref[_i];
-                if (param.type === 'Identifier') {
-                    localScope[param.name] = {
-                        name: param.name,
-                        object: 'local'
-                    };
-                }
-            }
-            return localScope;
-        };
-        coalesceScopes = function (scopes) {
-            var currentScope, i, identifier, name, scope, _i, _len;
-            currentScope = {};
-            for (i = _i = 0, _len = scopes.length; _i < _len; i = ++_i) {
-                scope = scopes[i];
-                if (i === 0) {
-                    for (name in scope) {
-                        identifier = scope[name];
-                        currentScope[name] = identifier;
-                    }
-                } else {
-                    for (name in scope) {
-                        identifier = scope[name];
-                        currentScope[name] = null;
-                    }
-                }
-            }
-            return currentScope;
-        };
-        traverseJavascriptScoped = function (scopes, parentScope, parent, key, node, f) {
-            var child, currentScope, isNewScope;
-            isNewScope = node.type === 'FunctionExpression' || node.type === 'FunctionDeclaration';
-            if (isNewScope) {
-                scopes.push(createLocalScope(node));
-                currentScope = coalesceScopes(scopes);
-            } else {
-                currentScope = parentScope;
-            }
-            for (key in node) {
-                child = node[key];
-                if (lodash.isObject(child)) {
-                    traverseJavascriptScoped(scopes, currentScope, node, key, child, f);
-                    f(currentScope, node, key, child);
-                }
-            }
-            if (isNewScope) {
-                scopes.pop();
-            }
-        };
-        createRootScope = function (sandbox) {
-            return function (program, go) {
-                var error, name, rootScope;
-                try {
-                    rootScope = parseDeclarations(program.body[0].expression['arguments'][0].callee.body);
-                    for (name in sandbox.context) {
-                        rootScope[name] = {
-                            name: name,
-                            object: '_h2o_context_'
-                        };
-                    }
-                    return go(null, rootScope, program);
-                } catch (_error) {
-                    error = _error;
-                    return go(new Flow.Error('Error parsing root scope', error));
-                }
-            };
-        };
-        removeHoistedDeclarations = function (rootScope, program, go) {
-            var error;
-            try {
-                traverseJavascript(null, null, program, function (parent, key, node) {
-                    var declarations;
-                    if (node.type === 'VariableDeclaration') {
-                        declarations = node.declarations.filter(function (declaration) {
-                            return declaration.type === 'VariableDeclarator' && declaration.id.type === 'Identifier' && !rootScope[declaration.id.name];
-                        });
-                        if (declarations.length === 0) {
-                            return deleteAstNode(parent, key);
-                        } else {
-                            return node.declarations = declarations;
-                        }
-                    }
-                });
-                return go(null, rootScope, program);
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error rewriting javascript', error));
-            }
-        };
-        createGlobalScope = function (rootScope, routines) {
-            var globalScope, identifier, name;
-            globalScope = {};
-            for (name in rootScope) {
-                identifier = rootScope[name];
-                globalScope[name] = identifier;
-            }
-            for (name in routines) {
-                globalScope[name] = {
-                    name: name,
-                    object: 'h2o'
-                };
-            }
-            return globalScope;
-        };
-        rewriteJavascript = function (sandbox) {
-            return function (rootScope, program, go) {
-                var error, globalScope;
-                globalScope = createGlobalScope(rootScope, sandbox.routines);
-                try {
-                    traverseJavascriptScoped([globalScope], globalScope, null, null, program, function (globalScope, parent, key, node) {
-                        var identifier;
-                        if (node.type === 'Identifier') {
-                            if (parent.type === 'VariableDeclarator' && key === 'id') {
-                                return;
-                            }
-                            if (key === 'property') {
-                                return;
-                            }
-                            if (!(identifier = globalScope[node.name])) {
-                                return;
-                            }
-                            return parent[key] = {
-                                type: 'MemberExpression',
-                                computed: false,
-                                object: {
-                                    type: 'Identifier',
-                                    name: identifier.object
-                                },
-                                property: {
-                                    type: 'Identifier',
-                                    name: identifier.name
-                                }
-                            };
-                        }
-                    });
-                    return go(null, program);
-                } catch (_error) {
-                    error = _error;
-                    return go(new Flow.Error('Error rewriting javascript', error));
-                }
-            };
-        };
-        generateJavascript = function (program, go) {
-            var error;
-            try {
-                return go(null, escodegen.generate(program));
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error generating javascript', error));
-            }
-        };
-        compileJavascript = function (js, go) {
-            var closure, error;
-            try {
-                closure = new Function('h2o', '_h2o_context_', '_h2o_results_', 'print', js);
-                return go(null, closure);
-            } catch (_error) {
-                error = _error;
-                return go(new Flow.Error('Error compiling javascript', error));
-            }
-        };
-        executeJavascript = function (sandbox, print) {
-            return function (closure, go) {
-                var error;
-                try {
-                    return go(null, closure(sandbox.routines, sandbox.context, sandbox.results, print));
-                } catch (_error) {
-                    error = _error;
-                    return go(new Flow.Error('Error executing javascript', error));
-                }
-            };
-        };
-        return {
-            safetyWrapCoffeescript: safetyWrapCoffeescript,
-            compileCoffeescript: compileCoffeescript,
-            parseJavascript: parseJavascript,
-            createRootScope: createRootScope,
-            removeHoistedDeclarations: removeHoistedDeclarations,
-            rewriteJavascript: rewriteJavascript,
-            generateJavascript: generateJavascript,
-            compileJavascript: compileJavascript,
-            executeJavascript: executeJavascript
-        };
-    }();
-}.call(this));
-(function () {
-    var combineRanges, computeRange, createAbstractVariable, createCompiledPrototype, createFactor, createNumericVariable, createRecordConstructor, createTable, createVariable, factor, includeZeroInRange, nextPrototypeName, permute, _prototypeCache, _prototypeId, __slice = [].slice;
-    _prototypeId = 0;
-    nextPrototypeName = function () {
-        return 'Map' + ++_prototypeId;
-    };
-    _prototypeCache = {};
-    createCompiledPrototype = function (attrs) {
-        var attr, cacheKey, i, inits, params, proto, prototypeName;
-        cacheKey = attrs.join('\0');
-        if (proto = _prototypeCache[cacheKey]) {
-            return proto;
-        }
-        params = function () {
-            var _i, _ref, _results;
-            _results = [];
-            for (i = _i = 0, _ref = attrs.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-                _results.push('a' + i);
-            }
-            return _results;
-        }();
-        inits = function () {
-            var _i, _len, _results;
-            _results = [];
-            for (i = _i = 0, _len = attrs.length; _i < _len; i = ++_i) {
-                attr = attrs[i];
-                _results.push('this[' + JSON.stringify(attr) + ']=a' + i + ';');
-            }
-            return _results;
-        }();
-        prototypeName = nextPrototypeName();
-        return _prototypeCache[cacheKey] = new Function('function ' + prototypeName + '(' + params.join(',') + '){' + inits.join('') + '} return ' + prototypeName + ';')();
-    };
-    createRecordConstructor = function (variables) {
-        var variable;
-        return createCompiledPrototype(function () {
-            var _i, _len, _results;
-            _results = [];
-            for (_i = 0, _len = variables.length; _i < _len; _i++) {
-                variable = variables[_i];
-                _results.push(variable.label);
-            }
-            return _results;
-        }());
-    };
-    createTable = function (opts) {
-        var description, expand, fill, label, meta, rows, schema, variable, variables, _i, _len;
-        label = opts.label, description = opts.description, variables = opts.variables, rows = opts.rows, meta = opts.meta;
-        if (!description) {
-            description = 'No description available.';
-        }
-        schema = {};
-        for (_i = 0, _len = variables.length; _i < _len; _i++) {
-            variable = variables[_i];
-            schema[variable.label] = variable;
-        }
-        fill = function (i, go) {
-            _fill(i, function (error, result) {
-                var index, startIndex, value, _j, _len1;
-                if (error) {
-                    return go(error);
-                } else {
-                    startIndex = result.index, lodash.values = result.values;
-                    for (index = _j = 0, _len1 = lodash.values.length; _j < _len1; index = ++_j) {
-                        value = lodash.values[index];
-                        rows[startIndex + index] = lodash.values[index];
-                    }
-                    return go(null);
-                }
-            });
-        };
-        expand = function () {
-            var type, types, _j, _len1, _results;
-            types = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-            _results = [];
-            for (_j = 0, _len1 = types.length; _j < _len1; _j++) {
-                type = types[_j];
-                label = lodash.uniqueId('__flow_variable_');
-                _results.push(schema[label] = createNumericVariable(label));
-            }
-            return _results;
-        };
-        return {
-            label: label,
-            description: description,
-            schema: schema,
-            variables: variables,
-            rows: rows,
-            meta: meta,
-            fill: fill,
-            expand: expand,
-            _is_table_: true
-        };
-    };
-    includeZeroInRange = function (range) {
-        var hi, lo;
-        lo = range[0], hi = range[1];
-        if (lo > 0 && hi > 0) {
-            return [
-                0,
-                hi
-            ];
-        } else if (lo < 0 && hi < 0) {
-            return [
-                lo,
-                0
-            ];
-        } else {
-            return range;
-        }
-    };
-    combineRanges = function () {
-        var hi, lo, range, ranges, value, _i, _len;
-        ranges = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        lo = Number.POSITIVE_INFINITY;
-        hi = Number.NEGATIVE_INFINITY;
-        for (_i = 0, _len = ranges.length; _i < _len; _i++) {
-            range = ranges[_i];
-            if (lo > (value = range[0])) {
-                lo = value;
-            }
-            if (hi < (value = range[1])) {
-                hi = value;
-            }
-        }
-        return [
-            lo,
-            hi
-        ];
-    };
-    computeRange = function (rows, attr) {
-        var hi, lo, row, value, _i, _len;
-        if (rows.length) {
-            lo = Number.POSITIVE_INFINITY;
-            hi = Number.NEGATIVE_INFINITY;
-            for (_i = 0, _len = rows.length; _i < _len; _i++) {
-                row = rows[_i];
-                value = row[attr];
-                if (value < lo) {
-                    lo = value;
-                }
-                if (value > hi) {
-                    hi = value;
-                }
-            }
-            return [
-                lo,
-                hi
-            ];
-        } else {
-            return [
-                -1,
-                1
-            ];
-        }
-    };
-    permute = function (array, indices) {
-        var i, index, permuted, _i, _len;
-        permuted = new Array(array.length);
-        for (i = _i = 0, _len = indices.length; _i < _len; i = ++_i) {
-            index = indices[i];
-            permuted[i] = array[index];
-        }
-        return permuted;
-    };
-    createAbstractVariable = function (_label, _type, _domain, _format, _read) {
-        return {
-            label: _label,
-            type: _type,
-            domain: _domain || [],
-            format: _format || lodash.identity,
-            read: _read
-        };
-    };
-    createNumericVariable = function (_label, _domain, _format, _read) {
-        var self;
-        self = createAbstractVariable(_label, Flow.TNumber, _domain || [
-            Number.POSITIVE_INFINITY,
-            Number.NEGATIVE_INFINITY
-        ], _format, _read);
-        if (!self.read) {
-            self.read = function (datum) {
-                if (datum < self.domain[0]) {
-                    self.domain[0] = datum;
-                }
-                if (datum > self.domain[1]) {
-                    self.domain[1] = datum;
-                }
-                return datum;
-            };
-        }
-        return self;
-    };
-    createVariable = function (_label, _type, _domain, _format, _read) {
-        if (_type === Flow.TNumber) {
-            return createNumericVariable(_label, _domain, _format, _read);
-        } else {
-            return createAbstractVariable(_label, _type, _domain, _format, _read);
-        }
-    };
-    createFactor = function (_label, _domain, _format, _read) {
-        var level, self, _i, _id, _len, _levels, _ref;
-        self = createAbstractVariable(_label, Flow.TFactor, _domain || [], _format, _read);
-        _id = 0;
-        _levels = {};
-        if (self.domain.length) {
-            _ref = self.domain;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                level = _ref[_i];
-                _levels[level] = _id++;
-            }
-        }
-        if (!self.read) {
-            self.read = function (datum) {
-                var id;
-                level = datum === void 0 || datum === null ? 'null' : datum;
-                if (void 0 === (id = _levels[level])) {
-                    _levels[level] = id = _id++;
-                    self.domain.push(level);
-                }
-                return id;
-            };
-        }
-        return self;
-    };
-    factor = function (array) {
-        var data, domain, i, id, level, levels, _i, _id, _len;
-        _id = 0;
-        levels = {};
-        domain = [];
-        data = new Array(array.length);
-        for (i = _i = 0, _len = array.length; _i < _len; i = ++_i) {
-            level = array[i];
-            if (void 0 === (id = levels[level])) {
-                levels[level] = id = _id++;
-                domain.push(level);
-            }
-            data[i] = id;
-        }
-        return [
-            domain,
-            data
-        ];
-    };
-    Flow.Data = {
-        Table: createTable,
-        Variable: createVariable,
-        Factor: createFactor,
-        computeColumnInterpretation: function (type) {
-            if (type === Flow.TNumber) {
-                return 'c';
-            } else if (type === Flow.TFactor) {
-                return 'd';
-            } else {
-                return 't';
-            }
-        },
-        Record: createRecordConstructor,
-        computeRange: computeRange,
-        combineRanges: combineRanges,
-        includeZeroInRange: includeZeroInRange,
-        factor: factor,
-        permute: permute
-    };
-}.call(this));
-(function () {
-    var __slice = [].slice;
-    Flow.Dataflow = function () {
-        var createObservable, createObservableArray, createSignal, createSignals, createSlot, createSlots, isObservable, _act, _apply, _isSignal, _lift, _link, _merge, _react, _unlink;
-        createSlot = function () {
-            var arrow, self;
-            arrow = null;
-            self = function () {
-                var args;
-                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-                if (arrow) {
-                    return arrow.func.apply(null, args);
-                } else {
-                    return void 0;
-                }
-            };
-            self.subscribe = function (func) {
-                console.assert(lodash.isFunction(func));
-                if (arrow) {
-                    throw new Error('Cannot re-attach slot');
-                } else {
-                    return arrow = {
-                        func: func,
-                        dispose: function () {
-                            return arrow = null;
-                        }
-                    };
-                }
-            };
-            self.dispose = function () {
-                if (arrow) {
-                    return arrow.dispose();
-                }
-            };
-            return self;
-        };
-        createSlots = function () {
-            var arrows, self;
-            arrows = [];
-            self = function () {
-                var args;
-                args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-                return lodash.map(arrows, function (arrow) {
-                    return arrow.func.apply(null, args);
-                });
-            };
-            self.subscribe = function (func) {
-                var arrow;
-                console.assert(lodash.isFunction(func));
-                arrows.push(arrow = {
-                    func: func,
-                    dispose: function () {
-                        return Flow.Prelude.remove(arrows, arrow);
-                    }
-                });
-                return arrow;
-            };
-            self.dispose = function () {
-                return lodash.forEach(Flow.Prelude.copy(arrows), function (arrow) {
-                    return arrow.dispose();
-                });
-            };
-            return self;
-        };
-        if (typeof ko !== 'undefined' && ko !== null) {
-            createObservable = ko.observable;
-            createObservableArray = ko.observableArray;
-            isObservable = ko.isObservable;
-        } else {
-            createObservable = function (initialValue) {
-                var arrows, currentValue, notifySubscribers, self;
-                arrows = [];
-                currentValue = initialValue;
-                notifySubscribers = function (arrows, newValue) {
-                    var arrow, _i, _len;
-                    for (_i = 0, _len = arrows.length; _i < _len; _i++) {
-                        arrow = arrows[_i];
-                        arrow.func(newValue);
-                    }
-                };
-                self = function (newValue) {
-                    var unchanged;
-                    if (arguments.length === 0) {
-                        return currentValue;
-                    } else {
-                        unchanged = self.equalityComparer ? self.equalityComparer(currentValue, newValue) : currentValue === newValue;
-                        if (!unchanged) {
-                            currentValue = newValue;
-                            return notifySubscribers(arrows, newValue);
-                        }
-                    }
-                };
-                self.subscribe = function (func) {
-                    var arrow;
-                    console.assert(lodash.isFunction(func));
-                    arrows.push(arrow = {
-                        func: func,
-                        dispose: function () {
-                            return Flow.Prelude.remove(arrows, arrow);
-                        }
-                    });
-                    return arrow;
-                };
-                self.__observable__ = true;
-                return self;
-            };
-            createObservableArray = createObservable;
-            isObservable = function (obj) {
-                if (obj.__observable__) {
-                    return true;
-                } else {
-                    return false;
-                }
-            };
-        }
-        createSignal = function (value, equalityComparer) {
-            var observable;
-            if (arguments.length === 0) {
-                return createSignal(void 0, Flow.Prelude.never);
-            } else {
-                observable = createObservable(value);
-                if (lodash.isFunction(equalityComparer)) {
-                    observable.equalityComparer = equalityComparer;
-                }
-                return observable;
-            }
-        };
-        _isSignal = isObservable;
-        createSignals = function (array) {
-            return createObservableArray(array || []);
-        };
-        _link = function (source, func) {
-            console.assert(lodash.isFunction(source, '[signal] is not a function'));
-            console.assert(lodash.isFunction(source.subscribe, '[signal] does not have a [dispose] method'));
-            console.assert(lodash.isFunction(func, '[func] is not a function'));
-            return source.subscribe(func);
-        };
-        _unlink = function (arrows) {
-            var arrow, _i, _len, _results;
-            if (lodash.isArray(arrows)) {
+            routines: function () {
+                var _results;
                 _results = [];
-                for (_i = 0, _len = arrows.length; _i < _len; _i++) {
-                    arrow = arrows[_i];
-                    console.assert(lodash.isFunction(arrow.dispose, '[arrow] does not have a [dispose] method'));
-                    _results.push(arrow.dispose());
+                for (name in _items) {
+                    item = _items[name];
+                    _results.push(createAssistItem(name, item));
                 }
                 return _results;
-            } else {
-                console.assert(lodash.isFunction(arrows.dispose, '[arrow] does not have a [dispose] method'));
-                return arrows.dispose();
-            }
+            }(),
+            template: 'flow-assist'
         };
-        _apply = function (sources, func) {
-            return func.apply(null, lodash.map(sources, function (source) {
-                return source();
-            }));
+    };
+}.call(this));
+(function () {
+    H2O.BindFramesOutput = function (_, _go, key, result) {
+        var viewFrame;
+        viewFrame = function () {
+            return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(key));
         };
-        _act = function () {
-            var func, sources, _i;
-            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
-            _apply(sources, func);
-            return lodash.map(sources, function (source) {
-                return _link(source, function () {
-                    return _apply(sources, func);
-                });
-            });
-        };
-        _react = function () {
-            var func, sources, _i;
-            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
-            return lodash.map(sources, function (source) {
-                return _link(source, function () {
-                    return _apply(sources, func);
-                });
-            });
-        };
-        _lift = function () {
-            var evaluate, func, sources, target, _i;
-            sources = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), func = arguments[_i++];
-            evaluate = function () {
-                return _apply(sources, func);
-            };
-            target = createSignal(evaluate());
-            lodash.map(sources, function (source) {
-                return _link(source, function () {
-                    return target(evaluate());
-                });
-            });
-            return target;
-        };
-        _merge = function () {
-            var evaluate, func, sources, target, _i;
-            sources = 3 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 2) : (_i = 0, []), target = arguments[_i++], func = arguments[_i++];
-            evaluate = function () {
-                return _apply(sources, func);
-            };
-            target(evaluate());
-            return lodash.map(sources, function (source) {
-                return _link(source, function () {
-                    return target(evaluate());
-                });
-            });
-        };
+        lodash.defer(_go);
         return {
-            slot: createSlot,
-            slots: createSlots,
-            signal: createSignal,
-            signals: createSignals,
-            isSignal: _isSignal,
-            link: _link,
-            unlink: _unlink,
-            act: _act,
-            react: _react,
-            lift: _lift,
-            merge: _merge
-        };
-    }();
-}.call(this));
-(function () {
-    var __slice = [].slice;
-    Flow.Dialogs = function (_) {
-        var showDialog, _dialog;
-        _dialog = Flow.Dataflow.signal(null);
-        showDialog = function (ctor, args, _go) {
-            var $dialog, dialog, go, responded;
-            responded = false;
-            go = function (response) {
-                if (!responded) {
-                    responded = true;
-                    $dialog.modal('hide');
-                    if (_go) {
-                        return _go(response);
-                    }
-                }
-            };
-            _dialog(dialog = ctor.apply(null, [_].concat(args).concat(go)));
-            $dialog = $('#' + dialog.template);
-            $dialog.modal();
-            $dialog.on('hidden.bs.modal', function (e) {
-                if (!responded) {
-                    responded = true;
-                    _dialog(null);
-                    if (_go) {
-                        return _go(null);
-                    }
-                }
-            });
-        };
-        Flow.Dataflow.link(_.dialog, function () {
-            var args, ctor, go, _i;
-            ctor = arguments[0], args = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), go = arguments[_i++];
-            return showDialog(ctor, args, go);
-        });
-        Flow.Dataflow.link(_.confirm, function (message, opts, go) {
-            return showDialog(Flow.ConfirmDialog, [
-                message,
-                opts
-            ], go);
-        });
-        Flow.Dataflow.link(_.alert, function (message, opts, go) {
-            return showDialog(Flow.AlertDialog, [
-                message,
-                opts
-            ], go);
-        });
-        return {
-            dialog: _dialog,
-            template: function (dialog) {
-                return 'flow-' + dialog.template;
-            }
+            viewFrame: viewFrame,
+            template: 'flow-bind-frames-output'
         };
     };
 }.call(this));
 (function () {
-    var FlowError, __hasProp = {}.hasOwnProperty, __extends = function (child, parent) {
-            for (var key in parent) {
-                if (__hasProp.call(parent, key))
-                    child[key] = parent[key];
-            }
-            function ctor() {
-                this.constructor = child;
-            }
-            ctor.prototype = parent.prototype;
-            child.prototype = new ctor();
-            child.__super__ = parent.prototype;
-            return child;
-        };
-    FlowError = function (_super) {
-        __extends(FlowError, _super);
-        function FlowError(message, cause) {
-            var error, _ref;
-            this.message = message;
-            this.cause = cause;
-            this.name = 'FlowError';
-            if ((_ref = this.cause) != null ? _ref.stack : void 0) {
-                this.stack = this.cause.stack;
-            } else {
-                error = new Error();
-                if (error.stack) {
-                    this.stack = error.stack;
-                } else {
-                    this.stack = printStackTrace();
-                }
-            }
-        }
-        return FlowError;
-    }(Error);
-    Flow.Error = FlowError;
-}.call(this));
-(function () {
-    var Digits, formatDate, formatReal, formatTime, significantDigitsBeforeDecimal, __formatReal;
-    significantDigitsBeforeDecimal = function (value) {
-        return 1 + Math.floor(Math.log(Math.abs(value)) / Math.LN10);
-    };
-    Digits = function (digits, value) {
-        var magnitude, sd;
-        if (value === 0) {
-            return 0;
-        } else {
-            sd = significantDigitsBeforeDecimal(value);
-            if (sd >= digits) {
-                return value.toFixed(0);
-            } else {
-                magnitude = Math.pow(10, digits - sd);
-                return Math.round(value * magnitude) / magnitude;
-            }
-        }
-    };
-    if (typeof exports === 'undefined' || exports === null) {
-        formatTime = d3.time.format('%Y-%m-%d %H:%M:%S');
-    }
-    formatDate = function (time) {
-        if (time) {
-            return formatTime(new Date(time));
-        } else {
-            return '-';
-        }
-    };
-    __formatReal = {};
-    formatReal = function (precision) {
-        var cached, format;
-        format = (cached = __formatReal[precision]) ? cached : __formatReal[precision] = precision === -1 ? lodash.identity : d3.format('.' + precision + 'f');
-        return function (value) {
-            return format(value);
-        };
-    };
-    Flow.Format = {
-        Digits: Digits,
-        Real: formatReal,
-        Date: formatDate,
-        Time: formatTime
+    H2O.CancelJobOutput = function (_, _go, _cancellation) {
+        lodash.defer(_go);
+        return { template: 'flow-cancel-job-output' };
     };
 }.call(this));
 (function () {
-    Flow.Growl = function (_) {
-        return Flow.Dataflow.link(_.growl, function (message, type) {
-            if (type) {
-                return $.bootstrapGrowl(message, { type: type });
-            } else {
-                return $.bootstrapGrowl(message);
-            }
-        });
-    };
-}.call(this));
-(function () {
-    var button, checkbox, content, control, dropdown, html, listbox, markdown, text, textarea, textbox, wrapArray, wrapValue;
-    wrapValue = function (value, init) {
-        if (value === void 0) {
-            return Flow.Dataflow.signal(init);
-        } else {
-            if (Flow.Dataflow.isSignal(value)) {
-                return value;
-            } else {
-                return Flow.Dataflow.signal(value);
-            }
-        }
-    };
-    wrapArray = function (elements) {
-        var element;
-        if (elements) {
-            if (Flow.Dataflow.isSignal(elements)) {
-                element = elements();
-                if (lodash.isArray(element)) {
-                    return elements;
-                } else {
-                    return Flow.Dataflow.signal([element]);
-                }
-            } else {
-                return Flow.Dataflow.signals(lodash.isArray(elements) ? elements : [elements]);
-            }
-        } else {
-            return Flow.Dataflow.signals([]);
-        }
-    };
-    control = function (type, opts) {
-        var guid;
-        if (!opts) {
-            opts = {};
-        }
-        guid = 'gui_' + lodash.uniqueId();
-        return {
-            type: type,
-            id: opts.id || guid,
-            label: Flow.Dataflow.signal(opts.label || ' '),
-            description: Flow.Dataflow.signal(opts.description || ' '),
-            visible: Flow.Dataflow.signal(opts.visible === false ? false : true),
-            disable: Flow.Dataflow.signal(opts.disable === true ? true : false),
-            template: 'flow-form-' + type,
-            templateOf: function (control) {
-                return control.template;
-            }
+    H2O.CloudOutput = function (_, _go, _cloud) {
+        var avg, createGrid, createNodeRow, createTotalRow, format3f, formatMilliseconds, formatThreads, prettyPrintBytes, refresh, sum, toggleExpansion, toggleRefresh, updateCloud, _exception, _hasConsensus, _headers, _isBusy, _isExpanded, _isHealthy, _isLive, _isLocked, _name, _nodeCounts, _nodes, _size, _sizes, _uptime, _version;
+        _exception = Flow.Dataflow.signal(null);
+        _isLive = Flow.Dataflow.signal(false);
+        _isBusy = Flow.Dataflow.signal(false);
+        _isExpanded = Flow.Dataflow.signal(false);
+        _name = Flow.Dataflow.signal();
+        _size = Flow.Dataflow.signal();
+        _uptime = Flow.Dataflow.signal();
+        _version = Flow.Dataflow.signal();
+        _nodeCounts = Flow.Dataflow.signal();
+        _hasConsensus = Flow.Dataflow.signal();
+        _isLocked = Flow.Dataflow.signal();
+        _isHealthy = Flow.Dataflow.signal();
+        _nodes = Flow.Dataflow.signals();
+        formatMilliseconds = function (ms) {
+            return Flow.Util.fromNow(new Date(new Date().getTime() - ms));
         };
-    };
-    content = function (type, opts) {
-        var self;
-        self = control(type, opts);
-        self.value = wrapValue(opts.value, '');
-        return self;
-    };
-    text = function (opts) {
-        return content('text', opts);
-    };
-    html = function (opts) {
-        return content('html', opts);
-    };
-    markdown = function (opts) {
-        return content('markdown', opts);
-    };
-    checkbox = function (opts) {
-        var self;
-        self = control('checkbox', opts);
-        self.value = wrapValue(opts.value, opts.value ? true : false);
-        return self;
-    };
-    dropdown = function (opts) {
-        var self;
-        self = control('dropdown', opts);
-        self.options = opts.options || [];
-        self.value = wrapValue(opts.value);
-        self.caption = opts.caption || 'Choose...';
-        return self;
-    };
-    listbox = function (opts) {
-        var self;
-        self = control('listbox', opts);
-        self.options = opts.options || [];
-        self.values = wrapArray(opts.values);
-        return self;
-    };
-    textbox = function (opts) {
-        var self;
-        self = control('textbox', opts);
-        self.value = wrapValue(opts.value, '');
-        self.event = lodash.isString(opts.event) ? opts.event : null;
-        return self;
-    };
-    textarea = function (opts) {
-        var self;
-        self = control('textarea', opts);
-        self.value = wrapValue(opts.value, '');
-        self.event = lodash.isString(opts.event) ? opts.event : null;
-        self.rows = lodash.isNumber(opts.rows) ? opts.rows : 5;
-        return self;
-    };
-    button = function (opts) {
-        var self;
-        self = control('button', opts);
-        self.click = lodash.isFunction(opts.click) ? opts.click : lodash.noop;
-        return self;
-    };
-    Flow.Gui = {
-        text: text,
-        html: html,
-        markdown: markdown,
-        checkbox: checkbox,
-        dropdown: dropdown,
-        listbox: listbox,
-        textbox: textbox,
-        textarea: textarea,
-        button: button
-    };
-}.call(this));
-(function () {
-    if ((typeof window !== 'undefined' && window !== null ? window.diecut : void 0) == null) {
-        return;
-    }
-    Flow.HTML = {
-        template: diecut,
-        render: function (name, html) {
-            var el;
-            el = document.createElement(name);
-            if (html) {
-                if (lodash.isString(html)) {
-                    el.innerHTML = html;
-                } else {
-                    el.appendChild(html);
-                }
-            }
-            return el;
-        }
-    };
-}.call(this));
-(function () {
-    if ((typeof window !== 'undefined' && window !== null ? window.ko : void 0) == null) {
-        return;
-    }
-    ko.bindingHandlers.raw = {
-        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $element, arg;
-            arg = ko.unwrap(valueAccessor());
-            if (arg) {
-                $element = $(element);
-                $element.empty();
-                $element.append(arg);
-            }
-        }
-    };
-    ko.bindingHandlers.markdown = {
-        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var data, error, html;
-            data = ko.unwrap(valueAccessor());
-            try {
-                html = marked(data || '');
-            } catch (_error) {
-                error = _error;
-                html = error.message || 'Error rendering markdown.';
-            }
-            return $(element).html(html);
-        }
-    };
-    ko.bindingHandlers.stringify = {
-        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var data;
-            data = ko.unwrap(valueAccessor());
-            return $(element).text(JSON.stringify(data, null, 2));
-        }
-    };
-    ko.bindingHandlers.enterKey = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $element, action;
-            if (action = ko.unwrap(valueAccessor())) {
-                if (lodash.isFunction(action)) {
-                    $element = $(element);
-                    $element.keydown(function (e) {
-                        if (e.which === 13) {
-                            action(viewModel);
-                        }
-                    });
-                } else {
-                    throw 'Enter key action is not a function';
-                }
-            }
-        }
-    };
-    ko.bindingHandlers.typeahead = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $element, action;
-            if (action = ko.unwrap(valueAccessor())) {
-                if (lodash.isFunction(action)) {
-                    $element = $(element);
-                    $element.typeahead(null, {
-                        displayKey: 'value',
-                        source: action
-                    });
-                } else {
-                    throw 'Typeahead action is not a function';
-                }
-            }
-        }
-    };
-    ko.bindingHandlers.cursorPosition = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var arg;
-            if (arg = ko.unwrap(valueAccessor())) {
-                arg.getCursorPosition = function () {
-                    return $(element).textrange('get', 'position');
-                };
-            }
-        }
-    };
-    ko.bindingHandlers.autoResize = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $el, arg, resize;
-            if (arg = ko.unwrap(valueAccessor())) {
-                arg.autoResize = resize = function () {
-                    return lodash.defer(function () {
-                        return $el.css('height', 'auto').height(element.scrollHeight);
-                    });
-                };
-                $el = $(element).on('input', resize);
-                resize();
-            }
-        }
-    };
-    ko.bindingHandlers.scrollIntoView = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $el, $viewport, arg;
-            if (arg = ko.unwrap(valueAccessor())) {
-                $el = $(element);
-                $viewport = $el.closest('.flow-box-notebook');
-                arg.scrollIntoView = function (immediate) {
-                    var height, position, top;
-                    if (immediate == null) {
-                        immediate = false;
-                    }
-                    position = $viewport.scrollTop();
-                    top = $el.position().top + position;
-                    height = $viewport.height();
-                    if (top - 20 < position || top + 20 > position + height) {
-                        if (immediate) {
-                            return $viewport.scrollTop(top);
-                        } else {
-                            return $viewport.animate({ scrollTop: top }, 'fast');
-                        }
-                    }
-                };
-            }
-        }
-    };
-    ko.bindingHandlers.collapse = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $caretEl, $el, $nextEl, caretDown, caretEl, caretRight, isCollapsed, toggle;
-            caretDown = 'fa-caret-down';
-            caretRight = 'fa-caret-right';
-            isCollapsed = ko.unwrap(valueAccessor());
-            caretEl = document.createElement('i');
-            caretEl.className = 'fa';
-            caretEl.style.marginRight = '3px';
-            element.insertBefore(caretEl, element.firstChild);
-            $el = $(element);
-            $nextEl = $el.next();
-            if (!$nextEl.length) {
-                throw new Error('No collapsible sibling found');
-            }
-            $caretEl = $(caretEl);
-            toggle = function () {
-                if (isCollapsed) {
-                    $caretEl.removeClass(caretDown).addClass(caretRight);
-                    $nextEl.hide();
-                } else {
-                    $caretEl.removeClass(caretRight).addClass(caretDown);
-                    $nextEl.show();
-                }
-                return isCollapsed = !isCollapsed;
-            };
-            $el.css('cursor', 'pointer');
-            $el.attr('title', 'Click to expand/collapse');
-            $el.on('click', toggle);
-            toggle();
-            ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
-                return $el.off('click');
-            });
-        }
-    };
-    ko.bindingHandlers.dom = {
-        update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $element, arg;
-            arg = ko.unwrap(valueAccessor());
-            if (arg) {
-                $element = $(element);
-                $element.empty();
-                $element.append(arg);
-            }
-        }
-    };
-    ko.bindingHandlers.dump = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var object;
-            return object = ko.unwrap(valueAccessor());
-        }
-    };
-    ko.bindingHandlers.element = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            return valueAccessor()(element);
-        }
-    };
-    ko.bindingHandlers.file = {
-        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var $file, file;
-            file = valueAccessor();
-            if (file) {
-                $file = $(element);
-                $file.change(function () {
-                    return file(this.files[0]);
-                });
-            }
-        }
-    };
-}.call(this));
-(function () {
-    var keyOf, list, purge, purgeAll, read, write, _ls;
-    if (!(typeof window !== 'undefined' && window !== null ? window.localStorage : void 0)) {
-        return;
-    }
-    _ls = window.localStorage;
-    keyOf = function (type, id) {
-        return '' + type + ':' + id;
-    };
-    list = function (type) {
-        var i, id, key, objs, t, _i, _ref, _ref1;
-        objs = [];
-        for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-            key = _ls.key(i);
-            _ref1 = key.split(':'), t = _ref1[0], id = _ref1[1];
-            if (type === t) {
-                objs.push([
-                    type,
-                    id,
-                    JSON.parse(_ls.getItem(key))
-                ]);
-            }
-        }
-        return objs;
-    };
-    read = function (type, id) {
-        var raw;
-        if (raw = _ls.getobj(keyOf(type, id))) {
-            return JSON.parse(raw);
-        } else {
-            return null;
-        }
-    };
-    write = function (type, id, obj) {
-        return _ls.setItem(keyOf(type, id), JSON.stringify(obj));
-    };
-    purge = function (type, id) {
-        if (id) {
-            return _ls.removeItem(keyOf(type, id));
-        } else {
-            return purgeAll(type);
-        }
-    };
-    purgeAll = function (type) {
-        var allKeys, i, key, _i, _len;
-        allKeys = function () {
-            var _i, _ref, _results;
-            _results = [];
-            for (i = _i = 0, _ref = _ls.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-                _results.push(_ls.key(i));
-            }
-            return _results;
-        }();
-        for (_i = 0, _len = allKeys.length; _i < _len; _i++) {
-            key = allKeys[_i];
-            if (type === lodash.head(key.split(':'))) {
-                _ls.removeItem(key);
-            }
-        }
-    };
-    Flow.LocalStorage = {
-        list: list,
-        read: read,
-        write: write,
-        purge: purge
-    };
-}.call(this));
-(function () {
-    if ((typeof window !== 'undefined' && window !== null ? window.marked : void 0) == null) {
-        return;
-    }
-    marked.setOptions({
-        smartypants: true,
-        highlight: function (code, lang) {
-            if (window.hljs) {
-                return window.hljs.highlightAuto(code, [lang]).value;
-            } else {
-                return code;
-            }
-        }
-    });
-}.call(this));
-(function () {
-    Flow.Prelude = function () {
-        var _always, _copy, _deepClone, _isDefined, _isFalsy, _isTruthy, _negative, _never, _remove, _repeat, _typeOf, _words;
-        _isDefined = function (value) {
-            return !lodash.isUndefined(value);
-        };
-        _isTruthy = function (value) {
-            if (value) {
-                return true;
-            } else {
-                return false;
-            }
-        };
-        _isFalsy = function (value) {
-            if (value) {
-                return false;
-            } else {
-                return true;
-            }
-        };
-        _negative = function (value) {
-            return !value;
-        };
-        _always = function () {
-            return true;
-        };
-        _never = function () {
-            return false;
-        };
-        _copy = function (array) {
-            return array.slice(0);
-        };
-        _remove = function (array, element) {
-            var index;
-            if (-1 < (index = lodash.indexOf(array, element))) {
-                return lodash.head(array.splice(index, 1));
-            } else {
-                return void 0;
-            }
-        };
-        _words = function (text) {
-            return text.split(/\s+/);
-        };
-        _repeat = function (count, value) {
-            var array, i, _i;
-            array = [];
-            for (i = _i = 0; 0 <= count ? _i < count : _i > count; i = 0 <= count ? ++_i : --_i) {
-                array.push(value);
-            }
-            return array;
-        };
-        _typeOf = function (a) {
-            var type;
-            type = Object.prototype.toString.call(a);
-            if (a === null) {
-                return Flow.TNull;
-            } else if (a === void 0) {
-                return Flow.TUndefined;
-            } else if (a === true || a === false || type === '[object Boolean]') {
-                return Flow.TBoolean;
-            } else {
-                switch (type) {
-                case '[object String]':
-                    return Flow.TString;
-                case '[object Number]':
-                    return Flow.TNumber;
-                case '[object Function]':
-                    return Flow.TFunction;
-                case '[object Object]':
-                    return Flow.TObject;
-                case '[object Array]':
-                    return Flow.TArray;
-                case '[object Arguments]':
-                    return Flow.TArguments;
-                case '[object Date]':
-                    return Flow.TDate;
-                case '[object RegExp]':
-                    return Flow.TRegExp;
-                case '[object Error]':
-                    return Flow.TError;
-                default:
-                    return type;
-                }
-            }
-        };
-        _deepClone = function (obj) {
-            return JSON.parse(JSON.stringify(obj));
-        };
-        return {
-            isDefined: _isDefined,
-            isTruthy: _isTruthy,
-            isFalsy: _isFalsy,
-            negative: _negative,
-            always: _always,
-            never: _never,
-            copy: _copy,
-            remove: _remove,
-            words: _words,
-            repeat: _repeat,
-            typeOf: _typeOf,
-            deepClone: _deepClone,
-            stringify: JSON.stringify
-        };
-    }();
-}.call(this));
-(function () {
-    Flow.Sandbox = function (_, routines) {
-        return {
-            routines: routines,
-            context: {},
-            results: {}
-        };
-    };
-}.call(this));
-(function () {
-    Flow.TUndefined = 'undefined';
-    Flow.TNull = 'null';
-    Flow.TBoolean = 'Boolean';
-    Flow.TString = 'String';
-    Flow.TNumber = 'Number';
-    Flow.TFunction = 'Function';
-    Flow.TObject = 'Object';
-    Flow.TArray = 'Array';
-    Flow.TArguments = 'Arguments';
-    Flow.TDate = 'Date';
-    Flow.TRegExp = 'RegExp';
-    Flow.TError = 'Error';
-    Flow.TFactor = 'Factor';
-}.call(this));
-(function () {
-    var EOL, describeCount, format1d0, formatBytes, formatClockTime, formatElapsedTime, formatMilliseconds, fromNow, highlight, multilineTextToHTML, padTime, sanitizeName, splitTime;
-    describeCount = function (count, singular, plural) {
-        if (!plural) {
-            plural = singular + 's';
-        }
-        switch (count) {
-        case 0:
-            return 'No ' + plural;
-        case 1:
-            return '1 ' + singular;
-        default:
-            return '' + count + ' ' + plural;
-        }
-    };
-    fromNow = function (date) {
-        return moment(date).fromNow();
-    };
-    formatBytes = function (bytes) {
-        var i, sizes;
-        sizes = [
-            'Bytes',
+        format3f = d3.format('.3f');
+        _sizes = [
+            'B',
             'KB',
             'MB',
             'GB',
-            'TB'
+            'TB',
+            'PB',
+            'EB',
+            'ZB',
+            'YB'
         ];
-        if (bytes === 0) {
-            return '0 Byte';
-        }
-        i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-        return Math.round(bytes / Math.pow(1024, i), 2) + sizes[i];
-    };
-    padTime = function (n) {
-        return '' + (n < 10 ? '0' : '') + n;
-    };
-    splitTime = function (s) {
-        var hrs, mins, ms, secs;
-        ms = s % 1000;
-        s = (s - ms) / 1000;
-        secs = s % 60;
-        s = (s - secs) / 60;
-        mins = s % 60;
-        hrs = (s - mins) / 60;
-        return [
-            hrs,
-            mins,
-            secs,
-            ms
+        prettyPrintBytes = function (bytes) {
+            var i;
+            if (bytes === 0) {
+                return '-';
+            }
+            i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + _sizes[i];
+        };
+        formatThreads = function (fjs) {
+            var i, max_lo, s, _i, _j, _k, _ref;
+            for (max_lo = _i = 120; _i > 0; max_lo = --_i) {
+                if (fjs[max_lo - 1] !== -1) {
+                    break;
+                }
+            }
+            s = '[';
+            for (i = _j = 0; 0 <= max_lo ? _j < max_lo : _j > max_lo; i = 0 <= max_lo ? ++_j : --_j) {
+                s += Math.max(fjs[i], 0);
+                s += '/';
+            }
+            s += '.../';
+            for (i = _k = 120, _ref = fjs.length - 1; 120 <= _ref ? _k < _ref : _k > _ref; i = 120 <= _ref ? ++_k : --_k) {
+                s += fjs[i];
+                s += '/';
+            }
+            s += fjs[fjs.length - 1];
+            s += ']';
+            return s;
+        };
+        sum = function (nodes, attrOf) {
+            var node, total, _i, _len;
+            total = 0;
+            for (_i = 0, _len = nodes.length; _i < _len; _i++) {
+                node = nodes[_i];
+                total += attrOf(node);
+            }
+            return total;
+        };
+        avg = function (nodes, attrOf) {
+            return sum(nodes, attrOf) / nodes.length;
+        };
+        _headers = [
+            [
+                '&nbsp;',
+                true
+            ],
+            [
+                'Name',
+                true
+            ],
+            [
+                'Ping',
+                true
+            ],
+            [
+                'Cores',
+                true
+            ],
+            [
+                'Load',
+                true
+            ],
+            [
+                'My CPU %',
+                true
+            ],
+            [
+                'Sys CPU %',
+                true
+            ],
+            [
+                'Data (Used/Total)',
+                true
+            ],
+            [
+                'Data (% Cached)',
+                true
+            ],
+            [
+                'GC (Free / Total / Max)',
+                true
+            ],
+            [
+                'Disk (Free / Max)',
+                true
+            ],
+            [
+                'Disk (% Free)',
+                true
+            ],
+            [
+                'PID',
+                false
+            ],
+            [
+                'Keys',
+                false
+            ],
+            [
+                'TCP',
+                false
+            ],
+            [
+                'FD',
+                false
+            ],
+            [
+                'RPCs',
+                false
+            ],
+            [
+                'Threads',
+                false
+            ],
+            [
+                'Tasks',
+                false
+            ]
         ];
-    };
-    formatMilliseconds = function (s) {
-        var hrs, mins, ms, secs, _ref;
-        _ref = splitTime(s), hrs = _ref[0], mins = _ref[1], secs = _ref[2], ms = _ref[3];
-        return '' + padTime(hrs) + ':' + padTime(mins) + ':' + padTime(secs) + '.' + ms;
-    };
-    format1d0 = function (n) {
-        return Math.round(n * 10) / 10;
-    };
-    formatElapsedTime = function (s) {
-        var hrs, mins, ms, secs, _ref;
-        _ref = splitTime(s), hrs = _ref[0], mins = _ref[1], secs = _ref[2], ms = _ref[3];
-        if (hrs !== 0) {
-            return '' + format1d0((hrs * 60 + mins) / 60) + 'h';
-        } else if (mins !== 0) {
-            return '' + format1d0((mins * 60 + secs) / 60) + 'm';
-        } else if (secs !== 0) {
-            return '' + format1d0((secs * 1000 + ms) / 1000) + 's';
-        } else {
-            return '' + ms + 'ms';
-        }
-    };
-    formatClockTime = function (date) {
-        return moment(date).format('h:mm:ss a');
-    };
-    EOL = '\n';
-    multilineTextToHTML = function (text) {
-        return lodash.map(text.split(EOL), function (str) {
-            return lodash.escape(str);
-        }).join('<br/>');
-    };
-    sanitizeName = function (name) {
-        return name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim();
-    };
-    highlight = function (code, lang) {
-        if (window.hljs) {
-            return window.hljs.highlightAuto(code, [lang]).value;
-        } else {
-            return code;
-        }
-    };
-    Flow.Util = {
-        describeCount: describeCount,
-        fromNow: fromNow,
-        formatBytes: formatBytes,
-        formatMilliseconds: formatMilliseconds,
-        formatElapsedTime: formatElapsedTime,
-        formatClockTime: formatClockTime,
-        multilineTextToHTML: multilineTextToHTML,
-        uuid: (typeof window !== 'undefined' && window !== null ? window.uuid : void 0) ? window.uuid : null,
-        sanitizeName: sanitizeName,
-        highlight: highlight
-    };
-}.call(this));
-(function () {
-    Flow.Version = '0.4.5';
-    Flow.About = function (_) {
-        var _properties;
-        _properties = Flow.Dataflow.signals([]);
-        Flow.Dataflow.link(_.ready, function () {
-            if (Flow.BuildProperties) {
-                return _properties(Flow.BuildProperties);
-            } else {
-                return _.requestAbout(function (error, response) {
-                    var name, properties, value, _i, _len, _ref, _ref1;
-                    properties = [];
-                    if (!error) {
-                        _ref = response.entries;
-                        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                            _ref1 = _ref[_i], name = _ref1.name, value = _ref1.value;
-                            properties.push({
-                                caption: 'H2O ' + name,
-                                value: value
-                            });
-                        }
+        createNodeRow = function (node) {
+            return [
+                node.healthy,
+                node.ip_port,
+                moment(new Date(node.last_ping)).fromNow(),
+                node.num_cpus,
+                format3f(node.sys_load),
+                node.my_cpu_pct,
+                node.sys_cpu_pct,
+                '' + prettyPrintBytes(node.mem_value_size) + ' / ' + prettyPrintBytes(node.total_value_size),
+                '' + Math.floor(node.mem_value_size * 100 / node.total_value_size) + '%',
+                '' + prettyPrintBytes(node.free_mem) + ' / ' + prettyPrintBytes(node.tot_mem) + ' / ' + prettyPrintBytes(node.max_mem),
+                '' + prettyPrintBytes(node.free_disk) + ' / ' + prettyPrintBytes(node.max_disk),
+                '' + Math.floor(node.free_disk * 100 / node.max_disk) + '%',
+                node.pid,
+                node.num_keys,
+                node.tcps_active,
+                node.open_fds,
+                node.rpcs_active,
+                formatThreads(node.fjthrds),
+                formatThreads(node.fjqueue)
+            ];
+        };
+        createTotalRow = function (cloud) {
+            var nodes;
+            nodes = cloud.nodes;
+            return [
+                cloud.cloud_healthy,
+                'TOTAL',
+                '-',
+                sum(nodes, function (node) {
+                    return node.num_cpus;
+                }),
+                format3f(sum(nodes, function (node) {
+                    return node.sys_load;
+                })),
+                '-',
+                '-',
+                '' + prettyPrintBytes(sum(nodes, function (node) {
+                    return node.mem_value_size;
+                })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
+                    return node.total_value_size;
+                })),
+                '' + Math.floor(avg(nodes, function (node) {
+                    return node.mem_value_size * 100 / node.total_value_size;
+                })) + '%',
+                '' + prettyPrintBytes(sum(nodes, function (node) {
+                    return node.free_mem;
+                })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
+                    return node.tot_mem;
+                })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
+                    return node.max_mem;
+                })),
+                '' + prettyPrintBytes(sum(nodes, function (node) {
+                    return node.free_disk;
+                })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
+                    return node.max_disk;
+                })),
+                '' + Math.floor(avg(nodes, function (node) {
+                    return node.free_disk * 100 / node.max_disk;
+                })) + '%',
+                '-',
+                sum(nodes, function (node) {
+                    return node.num_keys;
+                }),
+                sum(nodes, function (node) {
+                    return node.tcps_active;
+                }),
+                sum(nodes, function (node) {
+                    return node.open_fds;
+                }),
+                sum(nodes, function (node) {
+                    return node.rpcs_active;
+                }),
+                '-',
+                '-'
+            ];
+        };
+        createGrid = function (cloud, isExpanded) {
+            var caption, cell, danger, grid, i, nodeRows, row, showAlways, success, table, tbody, td, tds, th, thead, ths, tr, trs, _ref;
+            _ref = Flow.HTML.template('.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'i.fa.fa-check-circle.text-success', 'i.fa.fa-exclamation-circle.text-danger'), grid = _ref[0], table = _ref[1], thead = _ref[2], tbody = _ref[3], tr = _ref[4], th = _ref[5], td = _ref[6], success = _ref[7], danger = _ref[8];
+            nodeRows = lodash.map(cloud.nodes, createNodeRow);
+            nodeRows.push(createTotalRow(cloud));
+            ths = function () {
+                var _i, _len, _ref1, _results;
+                _results = [];
+                for (_i = 0, _len = _headers.length; _i < _len; _i++) {
+                    _ref1 = _headers[_i], caption = _ref1[0], showAlways = _ref1[1];
+                    if (showAlways || isExpanded) {
+                        _results.push(th(caption));
                     }
-                    properties.push({
-                        caption: 'Flow version',
-                        value: Flow.Version
-                    });
-                    return _properties(Flow.BuildProperties = properties);
-                });
+                }
+                return _results;
+            }();
+            trs = function () {
+                var _i, _len, _results;
+                _results = [];
+                for (_i = 0, _len = nodeRows.length; _i < _len; _i++) {
+                    row = nodeRows[_i];
+                    tds = function () {
+                        var _j, _len1, _results1;
+                        _results1 = [];
+                        for (i = _j = 0, _len1 = row.length; _j < _len1; i = ++_j) {
+                            cell = row[i];
+                            if (_headers[i][1] || isExpanded) {
+                                if (i === 0) {
+                                    _results1.push(td(cell ? success() : danger()));
+                                } else {
+                                    _results1.push(td(cell));
+                                }
+                            }
+                        }
+                        return _results1;
+                    }();
+                    _results.push(tr(tds));
+                }
+                return _results;
+            }();
+            return Flow.HTML.render('div', grid([table([
+                    thead(tr(ths)),
+                    tbody(trs)
+                ])]));
+        };
+        updateCloud = function (cloud, isExpanded) {
+            _name(cloud.cloud_name);
+            _version(cloud.version);
+            _hasConsensus(cloud.consensus);
+            _uptime(formatMilliseconds(cloud.cloud_uptime_millis));
+            _nodeCounts('' + (cloud.cloud_size - cloud.bad_nodes) + ' / ' + cloud.cloud_size);
+            _isLocked(cloud.locked);
+            _isHealthy(cloud.cloud_healthy);
+            return _nodes(createGrid(cloud, isExpanded));
+        };
+        toggleRefresh = function () {
+            return _isLive(!_isLive());
+        };
+        refresh = function () {
+            _isBusy(true);
+            return _.requestCloud(function (error, cloud) {
+                _isBusy(false);
+                if (error) {
+                    _exception(Flow.Failure(_, new Flow.Error('Error fetching cloud status', error)));
+                    return _isLive(false);
+                } else {
+                    updateCloud(_cloud = cloud, _isExpanded());
+                    if (_isLive()) {
+                        return lodash.delay(refresh, 2000);
+                    }
+                }
+            });
+        };
+        Flow.Dataflow.act(_isLive, function (isLive) {
+            if (isLive) {
+                return refresh();
             }
         });
-        return { properties: _properties };
-    };
-}.call(this));
-(function () {
-    Flow.AlertDialog = function (_, _message, _opts, _go) {
-        var accept;
-        if (_opts == null) {
-            _opts = {};
-        }
-        lodash.defaults(_opts, {
-            title: 'Alert',
-            acceptCaption: 'OK'
-        });
-        accept = function () {
-            return _go(true);
+        toggleExpansion = function () {
+            return _isExpanded(!_isExpanded());
         };
+        Flow.Dataflow.act(_isExpanded, function (isExpanded) {
+            return updateCloud(_cloud, isExpanded);
+        });
+        updateCloud(_cloud, _isExpanded());
+        lodash.defer(_go);
         return {
-            title: _opts.title,
-            acceptCaption: _opts.acceptCaption,
-            message: Flow.Util.multilineTextToHTML(_message),
-            accept: accept,
-            template: 'alert-dialog'
+            name: _name,
+            size: _size,
+            uptime: _uptime,
+            version: _version,
+            nodeCounts: _nodeCounts,
+            hasConsensus: _hasConsensus,
+            isLocked: _isLocked,
+            isHealthy: _isHealthy,
+            nodes: _nodes,
+            isLive: _isLive,
+            isBusy: _isBusy,
+            toggleRefresh: toggleRefresh,
+            refresh: refresh,
+            isExpanded: _isExpanded,
+            toggleExpansion: toggleExpansion,
+            template: 'flow-cloud-output'
         };
     };
 }.call(this));
 (function () {
-    Flow.Browser = function (_) {
-        var createNotebookView, loadNotebooks, _docs, _hasDocs, _sortedDocs;
-        _docs = Flow.Dataflow.signals([]);
-        _sortedDocs = Flow.Dataflow.lift(_docs, function (docs) {
-            return lodash.sortBy(docs, function (doc) {
-                return -doc.date().getTime();
-            });
-        });
-        _hasDocs = Flow.Dataflow.lift(_docs, function (docs) {
-            return docs.length > 0;
-        });
-        createNotebookView = function (notebook) {
-            var load, purge, self, _date, _fromNow, _name;
-            _name = notebook.name;
-            _date = Flow.Dataflow.signal(new Date(notebook.timestamp_millis));
-            _fromNow = Flow.Dataflow.lift(_date, Flow.Util.fromNow);
-            load = function () {
-                return _.confirm('This action will replace your active notebook.\nAre you sure you want to continue?', {
-                    acceptCaption: 'Load Notebook',
-                    declineCaption: 'Cancel'
-                }, function (accept) {
-                    if (accept) {
-                        return _.load(_name);
-                    }
-                });
-            };
-            purge = function () {
-                return _.confirm('Are you sure you want to delete this notebook?\n"' + _name + '"', {
-                    acceptCaption: 'Delete',
-                    declineCaption: 'Keep'
-                }, function (accept) {
-                    if (accept) {
-                        return _.requestDeleteObject('notebook', _name, function (error) {
-                            var _ref;
-                            if (error) {
-                                return _alert((_ref = error.message) != null ? _ref : error);
-                            } else {
-                                _docs.remove(self);
-                                return _.growl('Notebook deleted.');
-                            }
-                        });
-                    }
-                });
-            };
-            return self = {
-                name: _name,
-                date: _date,
-                fromNow: _fromNow,
-                load: load,
-                purge: purge
-            };
-        };
-        loadNotebooks = function () {
-            return _.requestObjects('notebook', function (error, notebooks) {
+    H2O.ColumnSummaryOutput = function (_, _go, frameKey, frame, columnName) {
+        var column, impute, inspect, renderPlot, table, _characteristicsPlot, _distributionPlot, _domainPlot, _summaryPlot;
+        column = lodash.head(frame.columns);
+        _characteristicsPlot = Flow.Dataflow.signal(null);
+        _summaryPlot = Flow.Dataflow.signal(null);
+        _distributionPlot = Flow.Dataflow.signal(null);
+        _domainPlot = Flow.Dataflow.signal(null);
+        renderPlot = function (target, render) {
+            return render(function (error, vis) {
                 if (error) {
                     return console.debug(error);
                 } else {
-                    return _docs(lodash.map(notebooks, function (notebook) {
-                        return createNotebookView(notebook);
-                    }));
+                    return target(vis.element);
                 }
             });
         };
-        Flow.Dataflow.link(_.ready, function () {
-            loadNotebooks();
-            Flow.Dataflow.link(_.saved, function () {
-                return loadNotebooks();
-            });
-            return Flow.Dataflow.link(_.loaded, function () {
-                return loadNotebooks();
-            });
-        });
-        return {
-            docs: _sortedDocs,
-            hasDocs: _hasDocs,
-            loadNotebooks: loadNotebooks
-        };
-    };
-}.call(this));
-(function () {
-    Flow.Cell = function (_, _renderers, type, input) {
-        var activate, clear, clip, execute, navigate, select, self, toggleInput, toggleOutput, _actions, _errors, _guid, _hasError, _hasInput, _hasOutput, _input, _isActive, _isBusy, _isCode, _isInputVisible, _isOutputHidden, _isReady, _isSelected, _outputs, _render, _result, _time, _type;
-        if (type == null) {
-            type = 'cs';
-        }
-        if (input == null) {
-            input = '';
-        }
-        _guid = lodash.uniqueId();
-        _type = Flow.Dataflow.signal(type);
-        _render = Flow.Dataflow.lift(_type, function (type) {
-            return _renderers[type](_guid);
-        });
-        _isCode = Flow.Dataflow.lift(_render, function (render) {
-            return render.isCode;
-        });
-        _isSelected = Flow.Dataflow.signal(false);
-        _isActive = Flow.Dataflow.signal(false);
-        _hasError = Flow.Dataflow.signal(false);
-        _isBusy = Flow.Dataflow.signal(false);
-        _isReady = Flow.Dataflow.lift(_isBusy, function (isBusy) {
-            return !isBusy;
-        });
-        _time = Flow.Dataflow.signal('');
-        _hasInput = Flow.Dataflow.signal(true);
-        _input = Flow.Dataflow.signal(input);
-        _outputs = Flow.Dataflow.signals([]);
-        _errors = [];
-        _result = Flow.Dataflow.signal(null);
-        _hasOutput = Flow.Dataflow.lift(_outputs, function (outputs) {
-            return outputs.length > 0;
-        });
-        _isInputVisible = Flow.Dataflow.signal(true);
-        _isOutputHidden = Flow.Dataflow.signal(false);
-        _actions = {};
-        Flow.Dataflow.act(_isActive, function (isActive) {
-            if (isActive) {
-                _.selectCell(self);
-                _hasInput(true);
-                if (!_isCode()) {
-                    _outputs([]);
-                }
-            }
-        });
-        Flow.Dataflow.act(_isSelected, function (isSelected) {
-            if (!isSelected) {
-                return _isActive(false);
-            }
-        });
-        select = function () {
-            _.selectCell(self, false);
-            return true;
-        };
-        navigate = function () {
-            _.selectCell(self);
-            return true;
-        };
-        activate = function () {
-            return _isActive(true);
-        };
-        clip = function () {
-            return _.saveClip('user', _type(), _input());
-        };
-        toggleInput = function () {
-            return _isInputVisible(!_isInputVisible());
-        };
-        toggleOutput = function () {
-            return _isOutputHidden(!_isOutputHidden());
-        };
-        clear = function () {
-            _result(null);
-            _outputs([]);
-            _errors.length = 0;
-            _hasError(false);
-            if (!_isCode()) {
-                return _hasInput(true);
-            }
-        };
-        execute = function (go) {
-            var render, startTime;
-            startTime = Date.now();
-            _time('Started at ' + Flow.Util.formatClockTime(startTime));
-            input = _input().trim();
-            if (!input) {
-                if (go) {
-                    return go(null);
-                } else {
-                    return void 0;
-                }
-            }
-            render = _render();
-            _isBusy(true);
-            clear();
-            render(input, {
-                data: function (result) {
-                    return _outputs.push(result);
-                },
-                close: function (result) {
-                    return _result(result);
-                },
-                error: function (error) {
-                    _hasError(true);
-                    if (error.name === 'FlowError') {
-                        _outputs.push(Flow.Failure(_, error));
-                    } else {
-                        _outputs.push({
-                            text: JSON.stringify(error, null, 2),
-                            template: 'flow-raw'
-                        });
-                    }
-                    return _errors.push(error);
-                },
-                end: function () {
-                    _hasInput(_isCode());
-                    _isBusy(false);
-                    _time(Flow.Util.formatElapsedTime(Date.now() - startTime));
-                    if (go) {
-                        go(_hasError() ? _errors.slice(0) : null);
-                    }
-                }
-            });
-            return _isActive(false);
-        };
-        return self = {
-            guid: _guid,
-            type: _type,
-            isCode: _isCode,
-            isSelected: _isSelected,
-            isActive: _isActive,
-            hasError: _hasError,
-            isBusy: _isBusy,
-            isReady: _isReady,
-            time: _time,
-            input: _input,
-            hasInput: _hasInput,
-            outputs: _outputs,
-            result: _result,
-            hasOutput: _hasOutput,
-            isInputVisible: _isInputVisible,
-            toggleInput: toggleInput,
-            isOutputHidden: _isOutputHidden,
-            toggleOutput: toggleOutput,
-            select: select,
-            navigate: navigate,
-            activate: activate,
-            execute: execute,
-            clear: clear,
-            clip: clip,
-            _actions: _actions,
-            getCursorPosition: function () {
-                return _actions.getCursorPosition();
-            },
-            autoResize: function () {
-                return _actions.autoResize();
-            },
-            scrollIntoView: function (immediate) {
-                return _actions.scrollIntoView(immediate);
-            },
-            templateOf: function (view) {
-                return view.template;
-            },
-            template: 'flow-cell'
-        };
-    };
-}.call(this));
-(function () {
-    var SystemClips;
-    SystemClips = [
-        'assist',
-        'importFiles',
-        'getFrames',
-        'getModels',
-        'getPredictions',
-        'getJobs',
-        'buildModel',
-        'predict'
-    ];
-    Flow.Clipboard = function (_) {
-        var addClip, createClip, emptyTrash, initialize, lengthOf, loadUserClips, removeClip, saveUserClips, serializeUserClips, _hasTrashClips, _hasUserClips, _systemClipCount, _systemClips, _trashClipCount, _trashClips, _userClipCount, _userClips;
-        lengthOf = function (array) {
-            if (array.length) {
-                return '(' + array.length + ')';
-            } else {
-                return '';
-            }
-        };
-        _systemClips = Flow.Dataflow.signals([]);
-        _systemClipCount = Flow.Dataflow.lift(_systemClips, lengthOf);
-        _userClips = Flow.Dataflow.signals([]);
-        _userClipCount = Flow.Dataflow.lift(_userClips, lengthOf);
-        _hasUserClips = Flow.Dataflow.lift(_userClips, function (clips) {
-            return clips.length > 0;
-        });
-        _trashClips = Flow.Dataflow.signals([]);
-        _trashClipCount = Flow.Dataflow.lift(_trashClips, lengthOf);
-        _hasTrashClips = Flow.Dataflow.lift(_trashClips, function (clips) {
-            return clips.length > 0;
-        });
-        createClip = function (_list, _type, _input, _canRemove) {
-            var execute, insert, self;
-            if (_canRemove == null) {
-                _canRemove = true;
-            }
-            execute = function () {
-                return _.insertAndExecuteCell(_type, _input);
-            };
-            insert = function () {
-                return _.insertCell(_type, _input);
-            };
-            Flow.Prelude.remove = function () {
-                if (_canRemove) {
-                    return removeClip(_list, self);
-                }
-            };
-            return self = {
-                type: _type,
-                input: _input,
-                execute: execute,
-                insert: insert,
-                remove: Flow.Prelude.remove,
-                canRemove: _canRemove
-            };
-        };
-        addClip = function (list, type, input) {
-            return list.push(createClip(list, type, input));
-        };
-        removeClip = function (list, clip) {
-            if (list === _userClips) {
-                _userClips.remove(clip);
-                saveUserClips();
-                return _trashClips.push(createClip(_trashClips, clip.type, clip.input));
-            } else {
-                return _trashClips.remove(clip);
-            }
-        };
-        emptyTrash = function () {
-            return _trashClips.removeAll();
-        };
-        loadUserClips = function () {
-            return _.requestObjectExists('environment', 'clips', function (error, exists) {
-                if (exists) {
-                    return _.requestObject('environment', 'clips', function (error, doc) {
-                        if (!error) {
-                            return _userClips(lodash.map(doc.clips, function (clip) {
-                                return createClip(_userClips, clip.type, clip.input);
-                            }));
-                        }
-                    });
-                }
-            });
-        };
-        serializeUserClips = function () {
-            return {
-                version: '1.0.0',
-                clips: lodash.map(_userClips(), function (clip) {
-                    return {
-                        type: clip.type,
-                        input: clip.input
-                    };
-                })
-            };
-        };
-        saveUserClips = function () {
-            return _.requestPutObject('environment', 'clips', serializeUserClips(), function (error) {
-                if (error) {
-                    _.alert('Error saving clips: ' + error.message);
-                }
-            });
-        };
-        initialize = function () {
-            _systemClips(lodash.map(SystemClips, function (input) {
-                return createClip(_systemClips, 'cs', input, false);
+        if (table = _.inspect('characteristics', frame)) {
+            renderPlot(_characteristicsPlot, _.plot(function (g) {
+                return g(g.rect(g.position(g.stack(g.avg('percent'), 0), 'All'), g.fillColor('characteristic')), g.groupBy(g.factor(g.value('All')), 'characteristic'), g.from(table));
             }));
-            return Flow.Dataflow.link(_.ready, function () {
-                loadUserClips();
-                return Flow.Dataflow.link(_.saveClip, function (category, type, input) {
-                    input = input.trim();
-                    if (input) {
-                        if (category === 'user') {
-                            addClip(_userClips, type, input);
-                            return saveUserClips();
-                        } else {
-                            return addClip(_trashClips, type, input);
-                        }
-                    }
-                });
-            });
-        };
-        initialize();
-        return {
-            systemClips: _systemClips,
-            systemClipCount: _systemClipCount,
-            userClips: _userClips,
-            hasUserClips: _hasUserClips,
-            userClipCount: _userClipCount,
-            trashClips: _trashClips,
-            trashClipCount: _trashClipCount,
-            hasTrashClips: _hasTrashClips,
-            emptyTrash: emptyTrash
-        };
-    };
-}.call(this));
-(function () {
-    Flow.Coffeescript = function (_, guid, sandbox) {
-        var isRoutine, print, render, _kernel;
-        _kernel = Flow.CoffeescriptKernel;
-        print = function (arg) {
-            if (arg !== print) {
-                sandbox.results[guid].outputs(arg);
-            }
-            return print;
-        };
-        isRoutine = function (f) {
-            var name, routine, _ref;
-            _ref = sandbox.routines;
-            for (name in _ref) {
-                routine = _ref[name];
-                if (f === routine) {
-                    return true;
-                }
-            }
-            return false;
-        };
-        render = function (input, output) {
-            var cellResult, evaluate, outputBuffer, tasks;
-            sandbox.results[guid] = cellResult = {
-                result: Flow.Dataflow.signal(null),
-                outputs: outputBuffer = Flow.Async.createBuffer([])
-            };
-            evaluate = function (ft) {
-                if (ft != null ? ft.isFuture : void 0) {
-                    return ft(function (error, result) {
-                        var _ref;
-                        if (error) {
-                            output.error(new Flow.Error('Error evaluating cell', error));
-                            return output.end();
-                        } else {
-                            if (result != null ? (_ref = result._flow_) != null ? _ref.render : void 0 : void 0) {
-                                return output.data(result._flow_.render(function () {
-                                    return output.end();
-                                }));
-                            } else {
-                                return output.data(Flow.ObjectBrowser(_, function () {
-                                    return output.end();
-                                }('output', result)));
-                            }
-                        }
-                    });
-                } else {
-                    return output.data(Flow.ObjectBrowser(_, function () {
-                        return output.end();
-                    }, 'output', ft));
-                }
-            };
-            outputBuffer.subscribe(evaluate);
-            tasks = [
-                _kernel.safetyWrapCoffeescript(guid),
-                _kernel.compileCoffeescript,
-                _kernel.parseJavascript,
-                _kernel.createRootScope(sandbox),
-                _kernel.removeHoistedDeclarations,
-                _kernel.rewriteJavascript(sandbox),
-                _kernel.generateJavascript,
-                _kernel.compileJavascript,
-                _kernel.executeJavascript(sandbox, print)
-            ];
-            return Flow.Async.pipe(tasks)(input, function (error) {
-                var result;
-                if (error) {
-                    output.error(error);
-                }
-                result = cellResult.result();
-                if (lodash.isFunction(result)) {
-                    if (isRoutine(result)) {
-                        return print(result());
-                    } else {
-                        return evaluate(result);
-                    }
-                } else {
-                    return output.close(Flow.ObjectBrowser(_, function () {
-                        return output.end();
-                    }, 'result', result));
-                }
-            });
-        };
-        render.isCode = true;
-        return render;
-    };
-}.call(this));
-(function () {
-    Flow.ConfirmDialog = function (_, _message, _opts, _go) {
-        var accept, decline;
-        if (_opts == null) {
-            _opts = {};
         }
-        lodash.defaults(_opts, {
-            title: 'Confirm',
-            acceptCaption: 'Yes',
-            declineCaption: 'No'
-        });
-        accept = function () {
-            return _go(true);
-        };
-        decline = function () {
-            return _go(false);
-        };
-        return {
-            title: _opts.title,
-            acceptCaption: _opts.acceptCaption,
-            declineCaption: _opts.declineCaption,
-            message: Flow.Util.multilineTextToHTML(_message),
-            accept: accept,
-            decline: decline,
-            template: 'confirm-dialog'
-        };
-    };
-}.call(this));
-(function () {
-}.call(this));
-(function () {
-    var traceCauses;
-    traceCauses = function (error, causes) {
-        causes.push(error.message);
-        if (error.cause) {
-            traceCauses(error.cause, causes);
+        if (table = _.inspect('distribution', frame)) {
+            renderPlot(_distributionPlot, _.plot(function (g) {
+                return g(g.rect(g.position('interval', 'count'), g.width(g.value(1))), g.from(table));
+            }));
         }
-        return causes;
-    };
-    Flow.Failure = function (_, error) {
-        var causes, message, toggleStack, _isStackVisible;
-        causes = traceCauses(error, []);
-        message = causes.shift();
-        _isStackVisible = Flow.Dataflow.signal(false);
-        toggleStack = function () {
-            return _isStackVisible(!_isStackVisible());
+        if (table = _.inspect('summary', frame)) {
+            renderPlot(_summaryPlot, _.plot(function (g) {
+                return g(g.schema(g.position('min', 'q1', 'q2', 'q3', 'max', 'column')), g.from(table));
+            }));
+        }
+        if (table = _.inspect('domain', frame)) {
+            renderPlot(_domainPlot, _.plot(function (g) {
+                return g(g.rect(g.position('count', 'label')), g.from(table), g.limit(1000));
+            }));
+        }
+        impute = function () {
+            return _.insertAndExecuteCell('cs', 'imputeColumn frame: ' + Flow.Prelude.stringify(frameKey) + ', column: ' + Flow.Prelude.stringify(columnName));
         };
-        _.trackException(message + '; ' + causes.join('; '));
-        return {
-            message: message,
-            stack: error.stack,
-            causes: causes,
-            isStackVisible: _isStackVisible,
-            toggleStack: toggleStack,
-            template: 'flow-failure'
+        inspect = function () {
+            return _.insertAndExecuteCell('cs', 'inspect getColumnSummary ' + Flow.Prelude.stringify(frameKey) + ', ' + Flow.Prelude.stringify(columnName));
         };
-    };
-}.call(this));
-(function () {
-    Flow.Form = function (_, _form, _go) {
         lodash.defer(_go);
         return {
-            form: _form,
-            template: 'flow-form',
-            templateOf: function (control) {
-                return control.template;
-            }
+            label: column.label,
+            characteristicsPlot: _characteristicsPlot,
+            summaryPlot: _summaryPlot,
+            distributionPlot: _distributionPlot,
+            domainPlot: _domainPlot,
+            impute: impute,
+            inspect: inspect,
+            template: 'flow-column-summary-output'
         };
     };
 }.call(this));
 (function () {
-    Flow.Heading = function (_, level) {
-        var render;
-        render = function (input, output) {
-            output.data({
-                text: input.trim() || '(Untitled)',
-                template: 'flow-' + level
-            });
-            return output.end();
+    H2O.CreateFrameInput = function (_, _go) {
+        var createFrame, _binaryFraction, _binaryOnesFraction, _categoricalFraction, _columns, _factors, _hasResponse, _integerFraction, _integerRange, _key, _missingFraction, _randomize, _realRange, _responseFactors, _rows, _seed, _value;
+        _key = Flow.Dataflow.signal('');
+        _rows = Flow.Dataflow.signal(10000);
+        _columns = Flow.Dataflow.signal(100);
+        _seed = Flow.Dataflow.signal(7595850248774472000);
+        _randomize = Flow.Dataflow.signal(true);
+        _value = Flow.Dataflow.signal(0);
+        _realRange = Flow.Dataflow.signal(100);
+        _categoricalFraction = Flow.Dataflow.signal(0.1);
+        _factors = Flow.Dataflow.signal(5);
+        _integerFraction = Flow.Dataflow.signal(0.5);
+        _binaryFraction = Flow.Dataflow.signal(0.1);
+        _binaryOnesFraction = Flow.Dataflow.signal(0.02);
+        _integerRange = Flow.Dataflow.signal(1);
+        _missingFraction = Flow.Dataflow.signal(0.01);
+        _responseFactors = Flow.Dataflow.signal(2);
+        _hasResponse = Flow.Dataflow.signal(false);
+        createFrame = function () {
+            var opts;
+            opts = {
+                dest: _key(),
+                rows: _rows(),
+                cols: _columns(),
+                seed: _seed(),
+                randomize: _randomize(),
+                value: _value(),
+                real_range: _realRange(),
+                categorical_fraction: _categoricalFraction(),
+                factors: _factors(),
+                integer_fraction: _integerFraction(),
+                binary_fraction: _binaryFraction(),
+                binary_ones_fraction: _binaryOnesFraction(),
+                integer_range: _integerRange(),
+                missing_fraction: _missingFraction(),
+                response_factors: _responseFactors(),
+                has_response: _hasResponse()
+            };
+            return _.insertAndExecuteCell('cs', 'createFrame ' + Flow.Prelude.stringify(opts));
         };
-        render.isCode = false;
-        return render;
+        lodash.defer(_go);
+        return {
+            key: _key,
+            rows: _rows,
+            columns: _columns,
+            seed: _seed,
+            randomize: _randomize,
+            value: _value,
+            realRange: _realRange,
+            categoricalFraction: _categoricalFraction,
+            factors: _factors,
+            integerFraction: _integerFraction,
+            binaryFraction: _binaryFraction,
+            binaryOnesFraction: _binaryOnesFraction,
+            integerRange: _integerRange,
+            missingFraction: _missingFraction,
+            responseFactors: _responseFactors,
+            hasResponse: _hasResponse,
+            createFrame: createFrame,
+            template: 'flow-create-frame-input'
+        };
     };
 }.call(this));
 (function () {
-    var _catalog, _homeContent, _homeMarkdown, _index;
-    _catalog = null;
-    _index = {};
-    _homeContent = null;
-    _homeMarkdown = '<blockquote>\nUsing Flow for the first time?\n<br/>\n<div style=\'margin-top:10px\'>\n  <button type=\'button\' data-action=\'get-flow\' data-pack-name=\'examples\' data-flow-name=\'QuickStartVideos.flow\' class=\'flow-button\'><i class=\'fa fa-file-movie-o\'></i><span>Quickstart Videos</span>\n  </button>\n</div>\n</blockquote>\n\nOr, <a href=\'#\' data-action=\'get-pack\' data-pack-name=\'examples\'>view example Flows</a> to explore and learn H<sub>2</sub>O.\n\n###### Star H2O on Github!\n\n<iframe src="https://ghbtns.com/github-btn.html?user=h2oai&repo=h2o-3&type=star&count=true" frameborder="0" scrolling="0" width="170px" height="20px"></iframe>\n\n###### General\n\n%HELP_TOPICS%\n\n###### Examples\n\nFlow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Flows and run them in your browser.<br/><a href=\'#\' data-action=\'get-packs\'>Browse installed packs...</a>\n\n###### H<sub>2</sub>O REST API\n\n- <a href=\'#\' data-action=\'endpoints\'>Routes</a>\n- <a href=\'#\' data-action=\'schemas\'>Schemas</a>\n';
-    Flow.Help = function (_) {
-        var buildToc, buildTopics, displayEndpoint, displayEndpoints, displayFlows, displayHtml, displayPacks, displaySchema, displaySchemas, fixImageSources, goBack, goForward, goHome, goTo, initialize, performAction, _canGoBack, _canGoForward, _content, _history, _historyIndex;
-        _content = Flow.Dataflow.signal(null);
-        _history = [];
-        _historyIndex = -1;
-        _canGoBack = Flow.Dataflow.signal(false);
-        _canGoForward = Flow.Dataflow.signal(false);
-        goTo = function (index) {
-            var content;
-            content = _history[_historyIndex = index];
-            $('a, button', $(content)).each(function (i) {
-                var $a, action;
-                $a = $(this);
-                if (action = $a.attr('data-action')) {
-                    return $a.click(function () {
-                        return performAction(action, $a);
-                    });
-                }
-            });
-            _content(content);
-            _canGoForward(_historyIndex < _history.length - 1);
-            _canGoBack(_historyIndex > 0);
+    H2O.DeleteObjectsOutput = function (_, _go, _keys) {
+        lodash.defer(_go);
+        return {
+            hasKeys: _keys.length > 0,
+            keys: _keys,
+            template: 'flow-delete-objects-output'
         };
-        goBack = function () {
-            if (_historyIndex > 0) {
-                return goTo(_historyIndex - 1);
-            }
+    };
+}.call(this));
+(function () {
+    H2O.ExportFrameInput = function (_, _go, frameKey, path, opt) {
+        var exportFrame, _canExportFrame, _frames, _overwrite, _path, _selectedFrame;
+        _frames = Flow.Dataflow.signal([]);
+        _selectedFrame = Flow.Dataflow.signal(frameKey);
+        _path = Flow.Dataflow.signal(null);
+        _overwrite = Flow.Dataflow.signal(true);
+        _canExportFrame = Flow.Dataflow.lift(_selectedFrame, _path, function (frame, path) {
+            return frame && path;
+        });
+        exportFrame = function () {
+            return _.insertAndExecuteCell('cs', 'exportFrame ' + Flow.Prelude.stringify(_selectedFrame()) + ', ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
         };
-        goForward = function () {
-            if (_historyIndex < _history.length - 1) {
-                return goTo(_historyIndex + 1);
-            }
-        };
-        displayHtml = function (content) {
-            if (_historyIndex < _history.length - 1) {
-                _history.splice(_historyIndex + 1, _history.length - (_historyIndex + 1), content);
+        _.requestFrames(function (error, frames) {
+            var frame;
+            if (error) {
             } else {
-                _history.push(content);
-            }
-            return goTo(_history.length - 1);
-        };
-        fixImageSources = function (html) {
-            return html.replace(/\s+src\s*\=\s*\"images\//g, ' src="help/images/');
-        };
-        performAction = function (action, $el) {
-            var packName, routeIndex, schemaName, topic;
-            switch (action) {
-            case 'help':
-                topic = _index[$el.attr('data-topic')];
-                _.requestHelpContent(topic.name, function (error, html) {
-                    var contents, div, h5, h6, mark, _ref;
-                    _ref = Flow.HTML.template('div', 'mark', 'h5', 'h6'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3];
-                    contents = [
-                        mark('Help'),
-                        h5(topic.title),
-                        fixImageSources(div(html))
-                    ];
-                    if (topic.children.length) {
-                        contents.push(h6('Topics'));
-                        contents.push(buildToc(topic.children));
-                    }
-                    return displayHtml(Flow.HTML.render('div', div(contents)));
-                });
-                break;
-            case 'assist':
-                _.insertAndExecuteCell('cs', 'assist');
-                break;
-            case 'get-packs':
-                _.requestPacks(function (error, packNames) {
-                    if (!error) {
-                        return displayPacks(lodash.filter(packNames, function (packName) {
-                            return packName !== 'test';
-                        }));
-                    }
-                });
-                break;
-            case 'get-pack':
-                packName = $el.attr('data-pack-name');
-                _.requestPack(packName, function (error, flowNames) {
-                    if (!error) {
-                        return displayFlows(packName, flowNames);
-                    }
-                });
-                break;
-            case 'get-flow':
-                _.confirm('This action will replace your active notebook.\nAre you sure you want to continue?', {
-                    acceptCaption: 'Load Notebook',
-                    declineCaption: 'Cancel'
-                }, function (accept) {
-                    var flowName;
-                    if (accept) {
-                        packName = $el.attr('data-pack-name');
-                        flowName = $el.attr('data-flow-name');
-                        if (H2O.Util.validateFileExtension(flowName, '.flow')) {
-                            return _.requestFlow(packName, flowName, function (error, flow) {
-                                if (!error) {
-                                    return _.open(H2O.Util.getFileBaseName(flowName, '.flow'), flow);
-                                }
-                            });
-                        }
-                    }
-                });
-                break;
-            case 'endpoints':
-                _.requestEndpoints(function (error, response) {
-                    if (!error) {
-                        return displayEndpoints(response.routes);
-                    }
-                });
-                break;
-            case 'endpoint':
-                routeIndex = $el.attr('data-index');
-                _.requestEndpoint(routeIndex, function (error, response) {
-                    if (!error) {
-                        return displayEndpoint(lodash.head(response.routes));
-                    }
-                });
-                break;
-            case 'schemas':
-                _.requestSchemas(function (error, response) {
-                    if (!error) {
-                        return displaySchemas(lodash.sortBy(response.schemas, function (schema) {
-                            return schema.name;
-                        }));
-                    }
-                });
-                break;
-            case 'schema':
-                schemaName = $el.attr('data-schema');
-                _.requestSchema(schemaName, function (error, response) {
-                    if (!error) {
-                        return displaySchema(lodash.head(response.schemas));
-                    }
-                });
-            }
-        };
-        buildToc = function (nodes) {
-            var a, li, ul, _ref;
-            _ref = Flow.HTML.template('ul', 'li', 'a href=\'#\' data-action=\'help\' data-topic=\'$1\''), ul = _ref[0], li = _ref[1], a = _ref[2];
-            return ul(lodash.map(nodes, function (node) {
-                return li(a(node.title, node.name));
-            }));
-        };
-        buildTopics = function (index, topics) {
-            var topic, _i, _len;
-            for (_i = 0, _len = topics.length; _i < _len; _i++) {
-                topic = topics[_i];
-                index[topic.name] = topic;
-                if (topic.children.length) {
-                    buildTopics(index, topic.children);
-                }
-            }
-        };
-        displayPacks = function (packNames) {
-            var a, div, h5, i, mark, p, _ref;
-            _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'i.fa.fa-folder-o', 'a href=\'#\' data-action=\'get-pack\' data-pack-name=\'$1\''), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], i = _ref[4], a = _ref[5];
-            displayHtml(Flow.HTML.render('div', div([
-                mark('Packs'),
-                h5('Installed Packs'),
-                div(lodash.map(packNames, function (packName) {
-                    return p([
-                        i(),
-                        a(packName, packName)
-                    ]);
-                }))
-            ])));
-        };
-        displayFlows = function (packName, flowNames) {
-            var a, div, h5, i, mark, p, _ref;
-            _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'i.fa.fa-file-text-o', 'a href=\'#\' data-action=\'get-flow\' data-pack-name=\'' + packName + '\' data-flow-name=\'$1\''), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], i = _ref[4], a = _ref[5];
-            displayHtml(Flow.HTML.render('div', div([
-                mark('Pack'),
-                h5(packName),
-                div(lodash.map(flowNames, function (flowName) {
-                    return p([
-                        i(),
-                        a(flowName, flowName)
-                    ]);
-                }))
-            ])));
-        };
-        displayEndpoints = function (routes) {
-            var action, code, div, els, h5, mark, p, route, routeIndex, _i, _len, _ref;
-            _ref = Flow.HTML.template('div', 'mark', 'h5', 'p', 'a href=\'#\' data-action=\'endpoint\' data-index=\'$1\'', 'code'), div = _ref[0], mark = _ref[1], h5 = _ref[2], p = _ref[3], action = _ref[4], code = _ref[5];
-            els = [
-                mark('API'),
-                h5('List of Routes')
-            ];
-            for (routeIndex = _i = 0, _len = routes.length; _i < _len; routeIndex = ++_i) {
-                route = routes[routeIndex];
-                els.push(p(action(code(route.http_method + ' ' + route.url_pattern), routeIndex) + '<br/>' + route.summary));
-            }
-            displayHtml(Flow.HTML.render('div', div(els)));
-        };
-        goHome = function () {
-            return displayHtml(Flow.HTML.render('div', _homeContent));
-        };
-        displayEndpoint = function (route) {
-            var action, code, div, h5, h6, mark, p, _ref, _ref1;
-            _ref = Flow.HTML.template('div', 'mark', 'h5', 'h6', 'p', 'a href=\'#\' data-action=\'schema\' data-schema=\'$1\'', 'code'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3], p = _ref[4], action = _ref[5], code = _ref[6];
-            return displayHtml(Flow.HTML.render('div', div([
-                mark('Route'),
-                h5(route.url_pattern),
-                h6('Method'),
-                p(code(route.http_method)),
-                h6('Summary'),
-                p(route.summary),
-                h6('Parameters'),
-                p(((_ref1 = route.path_params) != null ? _ref1.length : void 0) ? route.path_params.join(', ') : '-'),
-                h6('Input Schema'),
-                p(action(code(route.input_schema), route.input_schema)),
-                h6('Output Schema'),
-                p(action(code(route.output_schema), route.output_schema))
-            ])));
-        };
-        displaySchemas = function (schemas) {
-            var action, code, div, els, h5, li, mark, schema, ul, variable, _ref;
-            _ref = Flow.HTML.template('div', 'h5', 'ul', 'li', 'var', 'mark', 'code', 'a href=\'#\' data-action=\'schema\' data-schema=\'$1\''), div = _ref[0], h5 = _ref[1], ul = _ref[2], li = _ref[3], variable = _ref[4], mark = _ref[5], code = _ref[6], action = _ref[7];
-            els = [
-                mark('API'),
-                h5('List of Schemas'),
-                ul(function () {
+                _frames(function () {
                     var _i, _len, _results;
                     _results = [];
-                    for (_i = 0, _len = schemas.length; _i < _len; _i++) {
-                        schema = schemas[_i];
-                        _results.push(li('' + action(code(schema.name), schema.name) + ' ' + variable(lodash.escape(schema.type))));
+                    for (_i = 0, _len = frames.length; _i < _len; _i++) {
+                        frame = frames[_i];
+                        _results.push(frame.frame_id.name);
                     }
                     return _results;
-                }())
-            ];
-            return displayHtml(Flow.HTML.render('div', div(els)));
-        };
-        displaySchema = function (schema) {
-            var code, content, div, field, h5, h6, mark, p, small, variable, _i, _len, _ref, _ref1;
-            _ref = Flow.HTML.template('div', 'mark', 'h5', 'h6', 'p', 'code', 'var', 'small'), div = _ref[0], mark = _ref[1], h5 = _ref[2], h6 = _ref[3], p = _ref[4], code = _ref[5], variable = _ref[6], small = _ref[7];
-            content = [
-                mark('Schema'),
-                h5('' + schema.name + ' (' + lodash.escape(schema.type) + ')'),
-                h6('Fields')
-            ];
-            _ref1 = schema.fields;
-            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                field = _ref1[_i];
-                if (field.name !== '__meta') {
-                    content.push(p('' + variable(field.name) + (field.required ? '*' : '') + ' ' + code(lodash.escape(field.type)) + '<br/>' + small(field.help)));
-                }
+                }());
+                return _selectedFrame(frameKey);
             }
-            return displayHtml(Flow.HTML.render('div', div(content)));
-        };
-        initialize = function (catalog) {
-            _catalog = catalog;
-            buildTopics(_index, _catalog);
-            _homeContent = marked(_homeMarkdown).replace('%HELP_TOPICS%', buildToc(_catalog));
-            return goHome();
-        };
-        Flow.Dataflow.link(_.ready, function () {
-            return _.requestHelpIndex(function (error, catalog) {
-                if (!error) {
-                    return initialize(catalog);
-                }
-            });
         });
+        lodash.defer(_go);
         return {
-            content: _content,
-            goHome: goHome,
-            goBack: goBack,
-            canGoBack: _canGoBack,
-            goForward: goForward,
-            canGoForward: _canGoForward
+            frames: _frames,
+            selectedFrame: _selectedFrame,
+            path: _path,
+            overwrite: _overwrite,
+            canExportFrame: _canExportFrame,
+            exportFrame: exportFrame,
+            template: 'flow-export-frame-input'
         };
     };
 }.call(this));
 (function () {
-    Flow.Markdown = function (_) {
-        var render;
-        render = function (input, output) {
-            var error;
-            try {
-                return output.data({
-                    html: marked(input.trim() || '(No content)'),
-                    template: 'flow-html'
-                });
-            } catch (_error) {
-                error = _error;
-                return output.error(error);
-            } finally {
-                output.end();
-            }
-        };
-        render.isCode = false;
-        return render;
+    H2O.ExportFrameOutput = function (_, _go, result) {
+        lodash.defer(_go);
+        return { template: 'flow-export-frame-output' };
     };
 }.call(this));
 (function () {
-    Flow.Renderers = function (_, _sandbox) {
-        return {
-            h1: function () {
-                return Flow.Heading(_, 'h1');
-            },
-            h2: function () {
-                return Flow.Heading(_, 'h2');
-            },
-            h3: function () {
-                return Flow.Heading(_, 'h3');
-            },
-            h4: function () {
-                return Flow.Heading(_, 'h4');
-            },
-            h5: function () {
-                return Flow.Heading(_, 'h5');
-            },
-            h6: function () {
-                return Flow.Heading(_, 'h6');
-            },
-            md: function () {
-                return Flow.Markdown(_);
-            },
-            cs: function (guid) {
-                return Flow.Coffeescript(_, guid, _sandbox);
-            },
-            raw: function () {
-                return Flow.Raw(_);
+    H2O.ExportModelInput = function (_, _go, modelKey, path, opt) {
+        var exportModel, _canExportModel, _models, _overwrite, _path, _selectedModelKey;
+        if (opt == null) {
+            opt = {};
+        }
+        _models = Flow.Dataflow.signal([]);
+        _selectedModelKey = Flow.Dataflow.signal(null);
+        _path = Flow.Dataflow.signal(null);
+        _overwrite = Flow.Dataflow.signal(opt.overwrite ? true : false);
+        _canExportModel = Flow.Dataflow.lift(_selectedModelKey, _path, function (modelKey, path) {
+            return modelKey && path;
+        });
+        exportModel = function () {
+            return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_selectedModelKey()) + ', ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
+        };
+        _.requestModels(function (error, models) {
+            var model;
+            if (error) {
+            } else {
+                _models(function () {
+                    var _i, _len, _results;
+                    _results = [];
+                    for (_i = 0, _len = models.length; _i < _len; _i++) {
+                        model = models[_i];
+                        _results.push(model.model_id.name);
+                    }
+                    return _results;
+                }());
+                return _selectedModelKey(modelKey);
             }
+        });
+        lodash.defer(_go);
+        return {
+            models: _models,
+            selectedModelKey: _selectedModelKey,
+            path: _path,
+            overwrite: _overwrite,
+            canExportModel: _canExportModel,
+            exportModel: exportModel,
+            template: 'flow-export-model-input'
         };
     };
-    Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createShortcutHint, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
-        _localName = Flow.Dataflow.signal('Untitled Flow');
-        Flow.Dataflow.react(_localName, function (name) {
-            return document.title = 'H2O' + (name && name.trim() ? '- ' + name : '');
+}.call(this));
+(function () {
+    H2O.ExportModelOutput = function (_, _go, result) {
+        lodash.defer(_go);
+        return { template: 'flow-export-model-output' };
+    };
+}.call(this));
+(function () {
+    Flow.FileOpenDialog = function (_, _go) {
+        var accept, checkIfNameIsInUse, decline, uploadFile, _canAccept, _file, _form, _overwrite;
+        _overwrite = Flow.Dataflow.signal(false);
+        _form = Flow.Dataflow.signal(null);
+        _file = Flow.Dataflow.signal(null);
+        _canAccept = Flow.Dataflow.lift(_file, function (file) {
+            if (file != null ? file.name : void 0) {
+                return H2O.Util.validateFileExtension(file.name, '.flow');
+            } else {
+                return false;
+            }
         });
-        _remoteName = Flow.Dataflow.signal(null);
-        _isEditingName = Flow.Dataflow.signal(false);
-        editName = function () {
-            return _isEditingName(true);
-        };
-        saveName = function () {
-            return _isEditingName(false);
-        };
-        _cells = Flow.Dataflow.signals([]);
-        _selectedCell = null;
-        _selectedCellIndex = -1;
-        _clipboardCell = null;
-        _lastDeletedCell = null;
-        _areInputsHidden = Flow.Dataflow.signal(false);
-        _areOutputsHidden = Flow.Dataflow.signal(false);
-        _isSidebarHidden = Flow.Dataflow.signal(false);
-        _isRunningAll = Flow.Dataflow.signal(false);
-        _runningCaption = Flow.Dataflow.signal('Running');
-        _runningPercent = Flow.Dataflow.signal('0%');
-        _runningCellInput = Flow.Dataflow.signal('');
-        _status = Flow.Status(_);
-        _sidebar = Flow.Sidebar(_, _cells);
-        _about = Flow.About(_);
-        _dialogs = Flow.Dialogs(_);
-        serialize = function () {
-            var cell, cells;
-            cells = function () {
-                var _i, _len, _ref, _results;
-                _ref = _cells();
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    cell = _ref[_i];
-                    _results.push({
-                        type: cell.type(),
-                        input: cell.input()
-                    });
-                }
-                return _results;
-            }();
-            return {
-                version: '1.0.0',
-                cells: cells
-            };
-        };
-        deserialize = function (localName, remoteName, doc) {
-            var cell, cells, _i, _len, _ref;
-            _localName(localName);
-            _remoteName(remoteName);
-            cells = function () {
-                var _i, _len, _ref, _results;
-                _ref = doc.cells;
-                _results = [];
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    cell = _ref[_i];
-                    _results.push(createCell(cell.type, cell.input));
-                }
-                return _results;
-            }();
-            _cells(cells);
-            selectCell(lodash.head(cells));
-            _ref = _cells();
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                cell = _ref[_i];
-                if (!cell.isCode()) {
-                    cell.execute();
-                }
-            }
-        };
-        createCell = function (type, input) {
-            if (type == null) {
-                type = 'cs';
-            }
-            if (input == null) {
-                input = '';
-            }
-            return Flow.Cell(_, _renderers, type, input);
-        };
-        checkConsistency = function () {
-            var cell, i, selectionCount, _i, _len, _ref;
-            selectionCount = 0;
-            _ref = _cells();
-            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-                cell = _ref[i];
-                if (!cell) {
-                    error('index ' + i + ' is empty');
-                } else {
-                    if (cell.isSelected()) {
-                        selectionCount++;
-                    }
-                }
-            }
-            if (selectionCount !== 1) {
-                error('selected cell count = ' + selectionCount);
-            }
-        };
-        selectCell = function (target, scrollIntoView, scrollImmediately) {
-            if (scrollIntoView == null) {
-                scrollIntoView = true;
-            }
-            if (scrollImmediately == null) {
-                scrollImmediately = false;
-            }
-            if (_selectedCell === target) {
-                return;
-            }
-            if (_selectedCell) {
-                _selectedCell.isSelected(false);
-            }
-            _selectedCell = target;
-            _selectedCell.isSelected(true);
-            _selectedCellIndex = _cells.indexOf(_selectedCell);
-            checkConsistency();
-            if (scrollIntoView) {
-                lodash.defer(function () {
-                    return _selectedCell.scrollIntoView(scrollImmediately);
-                });
-            }
-            return _selectedCell;
-        };
-        cloneCell = function (cell) {
-            return createCell(cell.type(), cell.input());
-        };
-        switchToCommandMode = function () {
-            return _selectedCell.isActive(false);
-        };
-        switchToEditMode = function () {
-            _selectedCell.isActive(true);
-            return false;
-        };
-        convertCellToCode = function () {
-            return _selectedCell.type('cs');
-        };
-        convertCellToHeading = function (level) {
-            return function () {
-                _selectedCell.type('h' + level);
-                return _selectedCell.execute();
-            };
-        };
-        convertCellToMarkdown = function () {
-            _selectedCell.type('md');
-            return _selectedCell.execute();
-        };
-        convertCellToRaw = function () {
-            _selectedCell.type('raw');
-            return _selectedCell.execute();
-        };
-        copyCell = function () {
-            return _clipboardCell = _selectedCell;
-        };
-        cutCell = function () {
-            copyCell();
-            return removeCell();
-        };
-        deleteCell = function () {
-            _lastDeletedCell = _selectedCell;
-            return removeCell();
-        };
-        removeCell = function () {
-            var cells, removedCell;
-            cells = _cells();
-            if (cells.length > 1) {
-                if (_selectedCellIndex === cells.length - 1) {
-                    removedCell = lodash.head(_cells.splice(_selectedCellIndex, 1));
-                    selectCell(cells[_selectedCellIndex - 1]);
-                } else {
-                    removedCell = lodash.head(_cells.splice(_selectedCellIndex, 1));
-                    selectCell(cells[_selectedCellIndex]);
-                }
-                if (removedCell) {
-                    _.saveClip('trash', removedCell.type(), removedCell.input());
-                }
-            }
-        };
-        insertCell = function (index, cell) {
-            _cells.splice(index, 0, cell);
-            selectCell(cell);
-            return cell;
-        };
-        insertAbove = function (cell) {
-            return insertCell(_selectedCellIndex, cell);
-        };
-        insertBelow = function (cell) {
-            return insertCell(_selectedCellIndex + 1, cell);
-        };
-        appendCell = function (cell) {
-            return insertCell(_cells().length, cell);
-        };
-        insertCellAbove = function (type, input) {
-            return insertAbove(createCell(type, input));
-        };
-        insertCellBelow = function (type, input) {
-            return insertBelow(createCell(type, input));
-        };
-        insertNewCellAbove = function () {
-            return insertAbove(createCell('cs'));
-        };
-        insertNewCellBelow = function () {
-            return insertBelow(createCell('cs'));
-        };
-        insertCellAboveAndRun = function (type, input) {
-            var cell;
-            cell = insertAbove(createCell(type, input));
-            cell.execute();
-            return cell;
-        };
-        insertCellBelowAndRun = function (type, input) {
-            var cell;
-            cell = insertBelow(createCell(type, input));
-            cell.execute();
-            return cell;
-        };
-        appendCellAndRun = function (type, input) {
-            var cell;
-            cell = appendCell(createCell(type, input));
-            cell.execute();
-            return cell;
-        };
-        moveCellDown = function () {
-            var cells;
-            cells = _cells();
-            if (_selectedCellIndex !== cells.length - 1) {
-                _cells.splice(_selectedCellIndex, 1);
-                _selectedCellIndex++;
-                _cells.splice(_selectedCellIndex, 0, _selectedCell);
-            }
-        };
-        moveCellUp = function () {
-            var cells;
-            if (_selectedCellIndex !== 0) {
-                cells = _cells();
-                _cells.splice(_selectedCellIndex, 1);
-                _selectedCellIndex--;
-                _cells.splice(_selectedCellIndex, 0, _selectedCell);
-            }
-        };
-        mergeCellBelow = function () {
-            var cells, nextCell;
-            cells = _cells();
-            if (_selectedCellIndex !== cells.length - 1) {
-                nextCell = cells[_selectedCellIndex + 1];
-                if (_selectedCell.type() === nextCell.type()) {
-                    nextCell.input(_selectedCell.input() + '\n' + nextCell.input());
-                    removeCell();
-                }
-            }
-        };
-        splitCell = function () {
-            var cursorPosition, input, left, right;
-            if (_selectedCell.isActive()) {
-                input = _selectedCell.input();
-                if (input.length > 1) {
-                    cursorPosition = _selectedCell.getCursorPosition();
-                    if (0 < cursorPosition && cursorPosition < input.length - 1) {
-                        left = input.substr(0, cursorPosition);
-                        right = input.substr(cursorPosition);
-                        _selectedCell.input(left);
-                        insertCell(_selectedCellIndex + 1, createCell('cs', right));
-                        _selectedCell.isActive(true);
-                    }
-                }
-            }
-        };
-        pasteCellAbove = function () {
-            if (_clipboardCell) {
-                return insertCell(_selectedCellIndex, cloneCell(_clipboardCell));
-            }
-        };
-        pasteCellBelow = function () {
-            if (_clipboardCell) {
-                return insertCell(_selectedCellIndex + 1, cloneCell(_clipboardCell));
-            }
-        };
-        undoLastDelete = function () {
-            if (_lastDeletedCell) {
-                insertCell(_selectedCellIndex + 1, _lastDeletedCell);
-            }
-            return _lastDeletedCell = null;
-        };
-        runCell = function () {
-            _selectedCell.execute();
-            return false;
-        };
-        runCellAndInsertBelow = function () {
-            _selectedCell.execute(function () {
-                return insertNewCellBelow();
-            });
-            return false;
-        };
-        runCellAndSelectBelow = function () {
-            _selectedCell.execute(function () {
-                return selectNextCell();
-            });
-            return false;
-        };
         checkIfNameIsInUse = function (name, go) {
             return _.requestObjectExists('notebook', name, function (error, exists) {
                 return go(exists);
             });
         };
-        storeNotebook = function (localName, remoteName) {
-            return _.requestPutObject('notebook', localName, serialize(), function (error) {
-                if (error) {
-                    return _.alert('Error saving notebook: ' + error.message);
-                } else {
-                    _remoteName(localName);
-                    _localName(localName);
-                    if (remoteName !== localName) {
-                        return _.requestDeleteObject('notebook', remoteName, function (error) {
-                            if (error) {
-                                _.alert('Error deleting remote notebook [' + remoteName + ']: ' + error.message);
-                            }
-                            return _.saved();
-                        });
-                    } else {
-                        return _.saved();
-                    }
-                }
-            });
-        };
-        saveNotebook = function () {
-            var localName, remoteName;
-            localName = Flow.Util.sanitizeName(_localName());
-            if (localName === '') {
-                return _.alert('Invalid notebook name.');
-            }
-            remoteName = _remoteName();
-            if (remoteName) {
-                storeNotebook(localName, remoteName);
-            } else {
-                checkIfNameIsInUse(localName, function (isNameInUse) {
-                    if (isNameInUse) {
-                        return _.confirm('A notebook with that name already exists.\nDo you want to replace it with the one you\'re saving?', {
-                            acceptCaption: 'Replace',
-                            declineCaption: 'Cancel'
-                        }, function (accept) {
-                            if (accept) {
-                                return storeNotebook(localName, remoteName);
-                            }
-                        });
-                    } else {
-                        return storeNotebook(localName, remoteName);
-                    }
+        uploadFile = function (basename) {
+            return _.requestUploadObject('notebook', basename, new FormData(_form()), function (error, filename) {
+                return _go({
+                    error: error,
+                    filename: filename
                 });
-            }
-        };
-        promptForNotebook = function () {
-            return _.dialog(Flow.FileOpenDialog, function (result) {
-                var error, filename, _ref;
-                if (result) {
-                    error = result.error, filename = result.filename;
-                    if (error) {
-                        return _.growl((_ref = error.message) != null ? _ref : error);
-                    } else {
-                        loadNotebook(filename);
-                        return _.loaded();
-                    }
-                }
             });
         };
-        uploadFile = function () {
-            return _.dialog(Flow.FileUploadDialog, function (result) {
-                var error, _ref;
-                if (result) {
-                    error = result.error;
-                    if (error) {
-                        return _.growl((_ref = error.message) != null ? _ref : error);
-                    } else {
-                        _.growl('File uploaded successfully!');
-                        return _.insertAndExecuteCell('cs', 'setupParse source_frames: [ ' + Flow.Prelude.stringify(result.result.destination_frame) + ']');
-                    }
-                }
-            });
-        };
-        toggleInput = function () {
-            return _selectedCell.toggleInput();
-        };
-        toggleOutput = function () {
-            return _selectedCell.toggleOutput();
-        };
-        toggleAllInputs = function () {
-            var cell, wereHidden, _i, _len, _ref;
-            wereHidden = _areInputsHidden();
-            _areInputsHidden(!wereHidden);
-            if (wereHidden) {
-                _ref = _cells();
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                    cell = _ref[_i];
-                    cell.autoResize();
-                }
-            }
-        };
-        toggleAllOutputs = function () {
-            return _areOutputsHidden(!_areOutputsHidden());
-        };
-        toggleSidebar = function () {
-            return _isSidebarHidden(!_isSidebarHidden());
-        };
-        showBrowser = function () {
-            _isSidebarHidden(false);
-            return _.showBrowser();
-        };
-        showOutline = function () {
-            _isSidebarHidden(false);
-            return _.showOutline();
-        };
-        showClipboard = function () {
-            _isSidebarHidden(false);
-            return _.showClipboard();
-        };
-        selectNextCell = function () {
-            var cells;
-            cells = _cells();
-            if (_selectedCellIndex !== cells.length - 1) {
-                selectCell(cells[_selectedCellIndex + 1]);
-            }
-            return false;
-        };
-        selectPreviousCell = function () {
-            var cells;
-            if (_selectedCellIndex !== 0) {
-                cells = _cells();
-                selectCell(cells[_selectedCellIndex - 1]);
-            }
-            return false;
-        };
-        displayKeyboardShortcuts = function () {
-            return $('#keyboardHelpDialog').modal();
-        };
-        findBuildProperty = function (caption) {
-            var entry;
-            if (Flow.BuildProperties) {
-                if (entry = lodash.find(Flow.BuildProperties, function (entry) {
-                        return entry.caption === caption;
-                    })) {
-                    return entry.value;
+        accept = function () {
+            var basename, file;
+            if (file = _file()) {
+                basename = H2O.Util.getFileBaseName(file.name, '.flow');
+                if (_overwrite()) {
+                    return uploadFile(basename);
                 } else {
-                    return void 0;
-                }
-            } else {
-                return void 0;
-            }
-        };
-        getBuildProperties = function () {
-            var projectVersion;
-            projectVersion = findBuildProperty('H2O Build project version');
-            return [
-                findBuildProperty('H2O Build git branch'),
-                projectVersion,
-                projectVersion ? lodash.last(projectVersion.split('.')) : void 0,
-                findBuildProperty('H2O Build git hash') || 'master'
-            ];
-        };
-        displayDocumentation = function () {
-            var buildVersion, gitBranch, gitHash, projectVersion, _ref;
-            _ref = getBuildProperties(), gitBranch = _ref[0], projectVersion = _ref[1], buildVersion = _ref[2], gitHash = _ref[3];
-            if (buildVersion && buildVersion !== '99999') {
-                return window.open('http://h2o-release.s3.amazonaws.com/h2o/' + gitBranch + '/' + buildVersion + '/docs-website/h2o-docs/index.html', '_blank');
-            } else {
-                return window.open('https://github.com/h2oai/h2o-3/blob/' + gitHash + '/h2o-docs/src/product/flow/README.md', '_blank');
-            }
-        };
-        displayFAQ = function () {
-            var buildVersion, gitBranch, gitHash, projectVersion, _ref;
-            _ref = getBuildProperties(), gitBranch = _ref[0], projectVersion = _ref[1], buildVersion = _ref[2], gitHash = _ref[3];
-            if (buildVersion && buildVersion !== '99999') {
-                return window.open('http://h2o-release.s3.amazonaws.com/h2o/' + gitBranch + '/' + buildVersion + '/docs-website/h2o-docs/index.html', '_blank');
-            } else {
-                return window.open('https://github.com/h2oai/h2o-3/blob/' + gitHash + '/h2o-docs/src/product/howto/FAQ.md', '_blank');
-            }
-        };
-        executeCommand = function (command) {
-            return function () {
-                return _.insertAndExecuteCell('cs', command);
-            };
-        };
-        displayAbout = function () {
-            return $('#aboutDialog').modal();
-        };
-        shutdown = function () {
-            return _.requestShutdown(function (error, result) {
-                if (error) {
-                    return _.growl('Shutdown failed: ' + error.message, 'danger');
-                } else {
-                    return _.growl('Shutdown complete!', 'warning');
-                }
-            });
-        };
-        showHelp = function () {
-            _isSidebarHidden(false);
-            return _.showHelp();
-        };
-        createNotebook = function () {
-            return _.confirm('This action will replace your active notebook.\nAre you sure you want to continue?', {
-                acceptCaption: 'Create New Notebook',
-                declineCaption: 'Cancel'
-            }, function (accept) {
-                var currentTime;
-                if (accept) {
-                    currentTime = new Date().getTime();
-                    return deserialize('Untitled Flow', null, {
-                        cells: [{
-                                type: 'cs',
-                                input: ''
-                            }]
+                    return checkIfNameIsInUse(basename, function (isNameInUse) {
+                        if (isNameInUse) {
+                            return _overwrite(true);
+                        } else {
+                            return uploadFile(basename);
+                        }
                     });
                 }
-            });
-        };
-        duplicateNotebook = function () {
-            return deserialize('Copy of ' + _localName(), null, serialize());
-        };
-        openNotebook = function (name, doc) {
-            return deserialize(name, null, doc);
-        };
-        loadNotebook = function (name) {
-            return _.requestObject('notebook', name, function (error, doc) {
-                var _ref;
-                if (error) {
-                    return _.alert((_ref = error.message) != null ? _ref : error);
-                } else {
-                    return deserialize(name, name, doc);
-                }
-            });
-        };
-        exportNotebook = function () {
-            var remoteName;
-            if (remoteName = _remoteName()) {
-                return window.open('/3/NodePersistentStorage.bin/notebook/' + remoteName, '_blank');
-            } else {
-                return _.alert('Please save this notebook before exporting.');
             }
         };
-        goToUrl = function (url) {
-            return function () {
-                return window.open(url, '_blank');
-            };
+        decline = function () {
+            return _go(null);
         };
-        executeAllCells = function (fromBeginning, go) {
-            var cellCount, cellIndex, cells, executeNextCell;
-            _isRunningAll(true);
-            cells = _cells().slice(0);
-            cellCount = cells.length;
-            cellIndex = 0;
-            if (!fromBeginning) {
-                cells = cells.slice(_selectedCellIndex);
-                cellIndex = _selectedCellIndex;
-            }
-            executeNextCell = function () {
-                var cell;
-                if (_isRunningAll()) {
-                    cell = cells.shift();
-                    if (cell) {
-                        cell.scrollIntoView(true);
-                        cellIndex++;
-                        _runningCaption('Running cell ' + cellIndex + ' of ' + cellCount);
-                        _runningPercent('' + Math.floor(100 * cellIndex / cellCount) + '%');
-                        _runningCellInput(cell.input());
-                        return cell.execute(function (errors) {
-                            if (errors) {
-                                return go('failed', errors);
-                            } else {
-                                return executeNextCell();
-                            }
-                        });
-                    } else {
-                        return go('done');
-                    }
-                } else {
-                    return go('aborted');
-                }
-            };
-            return executeNextCell();
-        };
-        runAllCells = function (fromBeginning) {
-            if (fromBeginning == null) {
-                fromBeginning = true;
-            }
-            return executeAllCells(fromBeginning, function (status) {
-                _isRunningAll(false);
-                switch (status) {
-                case 'aborted':
-                    return _.growl('Stopped running your flow.', 'warning');
-                case 'failed':
-                    return _.growl('Failed running your flow.', 'danger');
-                default:
-                    return _.growl('Finished running your flow!', 'success');
-                }
-            });
-        };
-        continueRunningAllCells = function () {
-            return runAllCells(false);
-        };
-        stopRunningAll = function () {
-            return _isRunningAll(false);
-        };
-        clearCell = function () {
-            _selectedCell.clear();
-            return _selectedCell.autoResize();
-        };
-        clearAllCells = function () {
-            var cell, _i, _len, _ref;
-            _ref = _cells();
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                cell = _ref[_i];
-                cell.clear();
-                cell.autoResize();
-            }
-        };
-        notImplemented = function () {
-        };
-        pasteCellandReplace = notImplemented;
-        mergeCellAbove = notImplemented;
-        startTour = notImplemented;
-        createMenu = function (label, items) {
-            return {
-                label: label,
-                items: items
-            };
-        };
-        createMenuHeader = function (label) {
-            return {
-                label: label,
-                action: null
-            };
-        };
-        createShortcutHint = function (shortcut) {
-            return '<span style=\'float:right\'>' + lodash.map(shortcut, function (key) {
-                return '<kbd>' + key + '</kbd>';
-            }).join(' ') + '</span>';
-        };
-        createMenuItem = function (label, action, shortcut) {
-            var kbds;
-            kbds = shortcut ? createShortcutHint(shortcut) : '';
-            return {
-                label: '' + lodash.escape(label) + kbds,
-                action: action
-            };
-        };
-        menuDivider = {
-            label: null,
-            action: null
-        };
-        _menus = Flow.Dataflow.signal(null);
-        initializeMenus = function (builder) {
-            var modelMenuItems;
-            modelMenuItems = lodash.map(builder, function (builder) {
-                return createMenuItem('' + builder.algo_full_name + '...', executeCommand('buildModel ' + Flow.Prelude.stringify(builder.algo)));
-            }).concat([
-                menuDivider,
-                createMenuItem('List All Models', executeCommand('getModels')),
-                createMenuItem('List Grid Search Results', executeCommand('getGrids')),
-                createMenuItem('Import Model...', executeCommand('importModel')),
-                createMenuItem('Export Model...', executeCommand('exportModel'))
-            ]);
-            return [
-                createMenu('Flow', [
-                    createMenuItem('New Flow', createNotebook),
-                    createMenuItem('Open Flow...', promptForNotebook),
-                    createMenuItem('Save Flow', saveNotebook, ['s']),
-                    createMenuItem('Make a Copy...', duplicateNotebook),
-                    menuDivider,
-                    createMenuItem('Run All Cells', runAllCells),
-                    createMenuItem('Run All Cells Below', continueRunningAllCells),
-                    menuDivider,
-                    createMenuItem('Toggle All Cell Inputs', toggleAllInputs),
-                    createMenuItem('Toggle All Cell Outputs', toggleAllOutputs),
-                    createMenuItem('Clear All Cell Outputs', clearAllCells),
-                    menuDivider,
-                    createMenuItem('Download this Flow...', exportNotebook)
-                ]),
-                createMenu('Cell', [
-                    createMenuItem('Run Cell', runCell, [
-                        'ctrl',
-                        'enter'
-                    ]),
-                    menuDivider,
-                    createMenuItem('Cut Cell', cutCell, ['x']),
-                    createMenuItem('Copy Cell', copyCell, ['c']),
-                    createMenuItem('Paste Cell Above', pasteCellAbove, [
-                        'shift',
-                        'v'
-                    ]),
-                    createMenuItem('Paste Cell Below', pasteCellBelow, ['v']),
-                    createMenuItem('Delete Cell', deleteCell, [
-                        'd',
-                        'd'
-                    ]),
-                    createMenuItem('Undo Delete Cell', undoLastDelete, ['z']),
-                    menuDivider,
-                    createMenuItem('Move Cell Up', moveCellUp, [
-                        'ctrl',
-                        'k'
-                    ]),
-                    createMenuItem('Move Cell Down', moveCellDown, [
-                        'ctrl',
-                        'j'
-                    ]),
-                    menuDivider,
-                    createMenuItem('Insert Cell Above', insertNewCellAbove, ['a']),
-                    createMenuItem('Insert Cell Below', insertNewCellBelow, ['b']),
-                    menuDivider,
-                    createMenuItem('Toggle Cell Input', toggleInput),
-                    createMenuItem('Toggle Cell Output', toggleOutput, ['o']),
-                    createMenuItem('Clear Cell Output', clearCell)
-                ]),
-                createMenu('Data', [
-                    createMenuItem('Import Files...', executeCommand('importFiles')),
-                    createMenuItem('Upload File...', uploadFile),
-                    createMenuItem('Split Frame...', executeCommand('splitFrame')),
-                    menuDivider,
-                    createMenuItem('List All Frames', executeCommand('getFrames')),
-                    menuDivider,
-                    createMenuItem('Impute...', executeCommand('imputeColumn'))
-                ]),
-                createMenu('Model', modelMenuItems),
-                createMenu('Score', [
-                    createMenuItem('Predict...', executeCommand('predict')),
-                    menuDivider,
-                    createMenuItem('List All Predictions', executeCommand('getPredictions'))
-                ]),
-                createMenu('Admin', [
-                    createMenuItem('Jobs', executeCommand('getJobs')),
-                    createMenuItem('Cluster Status', executeCommand('getCloud')),
-                    createMenuItem('Water Meter (CPU meter)', goToUrl('/perfbar.html')),
-                    menuDivider,
-                    createMenuHeader('Inspect Log'),
-                    createMenuItem('View Log', executeCommand('getLogFile')),
-                    createMenuItem('Download Logs', goToUrl('/Logs/download')),
-                    menuDivider,
-                    createMenuHeader('Advanced'),
-                    createMenuItem('Create Synthetic Frame...', executeCommand('createFrame')),
-                    createMenuItem('Stack Trace', executeCommand('getStackTrace')),
-                    createMenuItem('Network Test', executeCommand('testNetwork')),
-                    createMenuItem('Profiler', executeCommand('getProfile depth: 10')),
-                    createMenuItem('Timeline', executeCommand('getTimeline')),
-                    createMenuItem('Shut Down', shutdown)
-                ]),
-                createMenu('Help', [
-                    createMenuItem('Assist Me', executeCommand('assist')),
-                    menuDivider,
-                    createMenuItem('Contents', showHelp),
-                    createMenuItem('Keyboard Shortcuts', displayKeyboardShortcuts, ['h']),
-                    menuDivider,
-                    createMenuItem('Documentation', displayDocumentation),
-                    createMenuItem('FAQ', displayFAQ),
-                    createMenuItem('H2O.ai', goToUrl('http://h2o.ai/')),
-                    createMenuItem('H2O on Github', goToUrl('https://github.com/h2oai/h2o-3')),
-                    createMenuItem('Report an issue', goToUrl('http://jira.h2o.ai')),
-                    createMenuItem('Forum / Ask a question', goToUrl('https://groups.google.com/d/forum/h2ostream')),
-                    menuDivider,
-                    createMenuItem('About', displayAbout)
-                ])
-            ];
-        };
-        setupMenus = function () {
-            return _.requestModelBuilders(function (error, builders) {
-                return _menus(initializeMenus(error ? [] : builders));
-            });
-        };
-        createTool = function (icon, label, action, isDisabled) {
-            if (isDisabled == null) {
-                isDisabled = false;
-            }
-            return {
-                label: label,
-                action: action,
-                isDisabled: isDisabled,
-                icon: 'fa fa-' + icon
-            };
-        };
-        _toolbar = [
-            [
-                createTool('file-o', 'New', createNotebook),
-                createTool('folder-open-o', 'Open', promptForNotebook),
-                createTool('save', 'Save (s)', saveNotebook)
-            ],
-            [
-                createTool('plus', 'Insert Cell Below (b)', insertNewCellBelow),
-                createTool('arrow-up', 'Move Cell Up (ctrl+k)', moveCellUp),
-                createTool('arrow-down', 'Move Cell Down (ctrl+j)', moveCellDown)
-            ],
-            [
-                createTool('cut', 'Cut Cell (x)', cutCell),
-                createTool('copy', 'Copy Cell (c)', copyCell),
-                createTool('paste', 'Paste Cell Below (v)', pasteCellBelow),
-                createTool('eraser', 'Clear Cell', clearCell),
-                createTool('trash-o', 'Delete Cell (d d)', deleteCell)
-            ],
-            [
-                createTool('step-forward', 'Run and Select Below', runCellAndSelectBelow),
-                createTool('play', 'Run (ctrl+enter)', runCell),
-                createTool('forward', 'Run All', runAllCells)
-            ],
-            [createTool('question-circle', 'Assist Me', executeCommand('assist'))]
-        ];
-        normalModeKeyboardShortcuts = [
-            [
-                'enter',
-                'edit mode',
-                switchToEditMode
-            ],
-            [
-                'y',
-                'to code',
-                convertCellToCode
-            ],
-            [
-                'm',
-                'to markdown',
-                convertCellToMarkdown
-            ],
-            [
-                'r',
-                'to raw',
-                convertCellToRaw
-            ],
-            [
-                '1',
-                'to heading 1',
-                convertCellToHeading(1)
-            ],
-            [
-                '2',
-                'to heading 2',
-                convertCellToHeading(2)
-            ],
-            [
-                '3',
-                'to heading 3',
-                convertCellToHeading(3)
-            ],
-            [
-                '4',
-                'to heading 4',
-                convertCellToHeading(4)
-            ],
-            [
-                '5',
-                'to heading 5',
-                convertCellToHeading(5)
-            ],
-            [
-                '6',
-                'to heading 6',
-                convertCellToHeading(6)
-            ],
-            [
-                'up',
-                'select previous cell',
-                selectPreviousCell
-            ],
-            [
-                'down',
-                'select next cell',
-                selectNextCell
-            ],
-            [
-                'k',
-                'select previous cell',
-                selectPreviousCell
-            ],
-            [
-                'j',
-                'select next cell',
-                selectNextCell
-            ],
-            [
-                'ctrl+k',
-                'move cell up',
-                moveCellUp
-            ],
-            [
-                'ctrl+j',
-                'move cell down',
-                moveCellDown
-            ],
-            [
-                'a',
-                'insert cell above',
-                insertNewCellAbove
-            ],
-            [
-                'b',
-                'insert cell below',
-                insertNewCellBelow
-            ],
-            [
-                'x',
-                'cut cell',
-                cutCell
-            ],
-            [
-                'c',
-                'copy cell',
-                copyCell
-            ],
-            [
-                'shift+v',
-                'paste cell above',
-                pasteCellAbove
-            ],
-            [
-                'v',
-                'paste cell below',
-                pasteCellBelow
-            ],
-            [
-                'z',
-                'undo last delete',
-                undoLastDelete
-            ],
-            [
-                'd d',
-                'delete cell (press twice)',
-                deleteCell
-            ],
-            [
-                'shift+m',
-                'merge cell below',
-                mergeCellBelow
-            ],
-            [
-                's',
-                'save notebook',
-                saveNotebook
-            ],
-            [
-                'o',
-                'toggle output',
-                toggleOutput
-            ],
-            [
-                'h',
-                'keyboard shortcuts',
-                displayKeyboardShortcuts
-            ]
-        ];
-        editModeKeyboardShortcuts = [
-            [
-                'esc',
-                'command mode',
-                switchToCommandMode
-            ],
-            [
-                'ctrl+m',
-                'command mode',
-                switchToCommandMode
-            ],
-            [
-                'shift+enter',
-                'run cell, select below',
-                runCellAndSelectBelow
-            ],
-            [
-                'ctrl+enter',
-                'run cell',
-                runCell
-            ],
-            [
-                'alt+enter',
-                'run cell, insert below',
-                runCellAndInsertBelow
-            ],
-            [
-                'ctrl+shift+-',
-                'split cell',
-                splitCell
-            ],
-            [
-                'mod+s',
-                'save notebook',
-                saveNotebook
-            ]
-        ];
-        toKeyboardHelp = function (shortcut) {
-            var caption, keystrokes, seq;
-            seq = shortcut[0], caption = shortcut[1];
-            keystrokes = lodash.map(seq.split(/\+/g), function (key) {
-                return '<kbd>' + key + '</kbd>';
-            }).join(' ');
-            return {
-                keystrokes: keystrokes,
-                caption: caption
-            };
-        };
-        normalModeKeyboardShortcutsHelp = lodash.map(normalModeKeyboardShortcuts, toKeyboardHelp);
-        editModeKeyboardShortcutsHelp = lodash.map(editModeKeyboardShortcuts, toKeyboardHelp);
-        setupKeyboardHandling = function (mode) {
-            var caption, f, shortcut, _i, _j, _len, _len1, _ref, _ref1;
-            for (_i = 0, _len = normalModeKeyboardShortcuts.length; _i < _len; _i++) {
-                _ref = normalModeKeyboardShortcuts[_i], shortcut = _ref[0], caption = _ref[1], f = _ref[2];
-                Mousetrap.bind(shortcut, f);
-            }
-            for (_j = 0, _len1 = editModeKeyboardShortcuts.length; _j < _len1; _j++) {
-                _ref1 = editModeKeyboardShortcuts[_j], shortcut = _ref1[0], caption = _ref1[1], f = _ref1[2];
-                Mousetrap.bindGlobal(shortcut, f);
-            }
-        };
-        initialize = function () {
-            setupKeyboardHandling('normal');
-            setupMenus();
-            Flow.Dataflow.link(_.load, loadNotebook);
-            Flow.Dataflow.link(_.open, openNotebook);
-            Flow.Dataflow.link(_.selectCell, selectCell);
-            Flow.Dataflow.link(_.executeAllCells, executeAllCells);
-            Flow.Dataflow.link(_.insertAndExecuteCell, function (type, input) {
-                return lodash.defer(appendCellAndRun, type, input);
-            });
-            Flow.Dataflow.link(_.insertCell, function (type, input) {
-                return lodash.defer(insertCellBelow, type, input);
-            });
-            Flow.Dataflow.link(_.saved, function () {
-                return _.growl('Notebook saved.');
-            });
-            Flow.Dataflow.link(_.loaded, function () {
-                return _.growl('Notebook loaded.');
-            });
-            executeCommand('assist')();
-            return _.setDirty();
-        };
-        Flow.Dataflow.link(_.ready, initialize);
         return {
-            name: _localName,
-            isEditingName: _isEditingName,
-            editName: editName,
-            saveName: saveName,
-            menus: _menus,
-            sidebar: _sidebar,
-            status: _status,
-            toolbar: _toolbar,
-            cells: _cells,
-            areInputsHidden: _areInputsHidden,
-            areOutputsHidden: _areOutputsHidden,
-            isSidebarHidden: _isSidebarHidden,
-            isRunningAll: _isRunningAll,
-            runningCaption: _runningCaption,
-            runningPercent: _runningPercent,
-            runningCellInput: _runningCellInput,
-            stopRunningAll: stopRunningAll,
-            toggleSidebar: toggleSidebar,
-            shortcutsHelp: {
-                normalMode: normalModeKeyboardShortcutsHelp,
-                editMode: editModeKeyboardShortcutsHelp
-            },
-            about: _about,
-            dialogs: _dialogs,
+            form: _form,
+            file: _file,
+            overwrite: _overwrite,
+            canAccept: _canAccept,
+            accept: accept,
+            decline: decline,
+            template: 'file-open-dialog'
+        };
+    };
+}.call(this));
+(function () {
+    Flow.FileUploadDialog = function (_, _go) {
+        var accept, decline, uploadFile, _file, _form;
+        _form = Flow.Dataflow.signal(null);
+        _file = Flow.Dataflow.signal(null);
+        uploadFile = function (key) {
+            return _.requestUploadFile(key, new FormData(_form()), function (error, result) {
+                return _go({
+                    error: error,
+                    result: result
+                });
+            });
+        };
+        accept = function () {
+            var file;
+            if (file = _file()) {
+                return uploadFile(file.name);
+            }
+        };
+        decline = function () {
+            return _go(null);
+        };
+        return {
+            form: _form,
+            file: _file,
+            accept: accept,
+            decline: decline,
+            template: 'file-upload-dialog'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.FrameDataOutput = function (_, _go, _frame) {
+        var MaxItemsPerPage, goToNextPage, goToPreviousPage, refreshColumns, renderFrame, renderPlot, _canGoToNextPage, _canGoToPreviousPage, _columnNameSearchTerm, _currentPage, _data, _lastUsedSearchTerm, _maxPages;
+        MaxItemsPerPage = 20;
+        _data = Flow.Dataflow.signal(null);
+        _columnNameSearchTerm = Flow.Dataflow.signal(null);
+        _currentPage = Flow.Dataflow.signal(0);
+        _maxPages = Flow.Dataflow.signal(Math.ceil(_frame.total_column_count / MaxItemsPerPage));
+        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
+            return index > 0;
+        });
+        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
+            return index < maxPages - 1;
+        });
+        renderPlot = function (container, render) {
+            return render(function (error, vis) {
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    return container(vis.element);
+                }
+            });
+        };
+        renderFrame = function (frame) {
+            return renderPlot(_data, _.plot(function (g) {
+                return g(g.select(), g.from(_.inspect('data', frame)));
+            }));
+        };
+        _lastUsedSearchTerm = null;
+        refreshColumns = function (pageIndex) {
+            var itemCount, searchTerm, startIndex;
+            searchTerm = _columnNameSearchTerm();
+            if (searchTerm !== _lastUsedSearchTerm) {
+                pageIndex = 0;
+            }
+            startIndex = pageIndex * MaxItemsPerPage;
+            itemCount = startIndex + MaxItemsPerPage < _frame.total_column_count ? MaxItemsPerPage : _frame.total_column_count - startIndex;
+            return _.requestFrameDataE(_frame.frame_id.name, searchTerm, startIndex, itemCount, function (error, frame) {
+                if (error) {
+                } else {
+                    _lastUsedSearchTerm = searchTerm;
+                    _currentPage(pageIndex);
+                    return renderFrame(frame);
+                }
+            });
+        };
+        goToPreviousPage = function () {
+            var currentPage;
+            currentPage = _currentPage();
+            if (currentPage > 0) {
+                refreshColumns(currentPage - 1);
+            }
+        };
+        goToNextPage = function () {
+            var currentPage;
+            currentPage = _currentPage();
+            if (currentPage < _maxPages() - 1) {
+                refreshColumns(currentPage + 1);
+            }
+        };
+        Flow.Dataflow.react(_columnNameSearchTerm, lodash.throttle(refreshColumns, 500));
+        renderFrame(_frame);
+        lodash.defer(_go);
+        return {
+            key: _frame.frame_id.name,
+            data: _data,
+            columnNameSearchTerm: _columnNameSearchTerm,
+            canGoToPreviousPage: _canGoToPreviousPage,
+            canGoToNextPage: _canGoToNextPage,
+            goToPreviousPage: goToPreviousPage,
+            goToNextPage: goToNextPage,
+            template: 'flow-frame-data-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.FrameOutput = function (_, _go, _frame) {
+        var MaxItemsPerPage, createModel, deleteFrame, download, exportFrame, goToNextPage, goToPreviousPage, inspect, inspectData, predict, refreshColumns, renderFrame, renderGrid, renderPlot, splitFrame, _canGoToNextPage, _canGoToPreviousPage, _chunkSummary, _columnNameSearchTerm, _currentPage, _distributionSummary, _grid, _lastUsedSearchTerm, _maxPages;
+        MaxItemsPerPage = 20;
+        _grid = Flow.Dataflow.signal(null);
+        _chunkSummary = Flow.Dataflow.signal(null);
+        _distributionSummary = Flow.Dataflow.signal(null);
+        _columnNameSearchTerm = Flow.Dataflow.signal(null);
+        _currentPage = Flow.Dataflow.signal(0);
+        _maxPages = Flow.Dataflow.signal(Math.ceil(_frame.total_column_count / MaxItemsPerPage));
+        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
+            return index > 0;
+        });
+        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
+            return index < maxPages - 1;
+        });
+        renderPlot = function (container, render) {
+            return render(function (error, vis) {
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    return container(vis.element);
+                }
+            });
+        };
+        renderGrid = function (render) {
+            return render(function (error, vis) {
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    $('a', vis.element).on('click', function (e) {
+                        var $a;
+                        $a = $(e.target);
+                        switch ($a.attr('data-type')) {
+                        case 'summary-link':
+                            return _.insertAndExecuteCell('cs', 'getColumnSummary ' + Flow.Prelude.stringify(_frame.frame_id.name) + ', ' + Flow.Prelude.stringify($a.attr('data-key')));
+                        case 'as-factor-link':
+                            return _.insertAndExecuteCell('cs', 'changeColumnType frame: ' + Flow.Prelude.stringify(_frame.frame_id.name) + ', column: ' + Flow.Prelude.stringify($a.attr('data-key')) + ', type: \'enum\'');
+                        case 'as-numeric-link':
+                            return _.insertAndExecuteCell('cs', 'changeColumnType frame: ' + Flow.Prelude.stringify(_frame.frame_id.name) + ', column: ' + Flow.Prelude.stringify($a.attr('data-key')) + ', type: \'int\'');
+                        }
+                    });
+                    return _grid(vis.element);
+                }
+            });
+        };
+        createModel = function () {
+            return _.insertAndExecuteCell('cs', 'assist buildModel, null, training_frame: ' + Flow.Prelude.stringify(_frame.frame_id.name));
+        };
+        inspect = function () {
+            return _.insertAndExecuteCell('cs', 'inspect getFrameSummary ' + Flow.Prelude.stringify(_frame.frame_id.name));
+        };
+        inspectData = function () {
+            return _.insertAndExecuteCell('cs', 'getFrameData ' + Flow.Prelude.stringify(_frame.frame_id.name));
+        };
+        splitFrame = function () {
+            return _.insertAndExecuteCell('cs', 'assist splitFrame, ' + Flow.Prelude.stringify(_frame.frame_id.name));
+        };
+        predict = function () {
+            return _.insertAndExecuteCell('cs', 'predict frame: ' + Flow.Prelude.stringify(_frame.frame_id.name));
+        };
+        download = function () {
+            return window.open('/3/DownloadDataset?frame_id=' + encodeURIComponent(_frame.frame_id.name), '_blank');
+        };
+        exportFrame = function () {
+            return _.insertAndExecuteCell('cs', 'exportFrame ' + Flow.Prelude.stringify(_frame.frame_id.name));
+        };
+        deleteFrame = function () {
+            return _.confirm('Are you sure you want to delete this frame?', {
+                acceptCaption: 'Delete Frame',
+                declineCaption: 'Cancel'
+            }, function (accept) {
+                if (accept) {
+                    return _.insertAndExecuteCell('cs', 'deleteFrame ' + Flow.Prelude.stringify(_frame.frame_id.name));
+                }
+            });
+        };
+        renderFrame = function (frame) {
+            renderGrid(_.plot(function (g) {
+                return g(g.select(), g.from(_.inspect('columns', frame)));
+            }));
+            renderPlot(_chunkSummary, _.plot(function (g) {
+                return g(g.select(), g.from(_.inspect('Chunk compression summary', frame)));
+            }));
+            return renderPlot(_distributionSummary, _.plot(function (g) {
+                return g(g.select(), g.from(_.inspect('Frame distribution summary', frame)));
+            }));
+        };
+        _lastUsedSearchTerm = null;
+        refreshColumns = function (pageIndex) {
+            var itemCount, searchTerm, startIndex;
+            searchTerm = _columnNameSearchTerm();
+            if (searchTerm !== _lastUsedSearchTerm) {
+                pageIndex = 0;
+            }
+            startIndex = pageIndex * MaxItemsPerPage;
+            itemCount = startIndex + MaxItemsPerPage < _frame.total_column_count ? MaxItemsPerPage : _frame.total_column_count - startIndex;
+            return _.requestFrameSummarySliceE(_frame.frame_id.name, searchTerm, startIndex, itemCount, function (error, frame) {
+                if (error) {
+                } else {
+                    _lastUsedSearchTerm = searchTerm;
+                    _currentPage(pageIndex);
+                    return renderFrame(frame);
+                }
+            });
+        };
+        goToPreviousPage = function () {
+            var currentPage;
+            currentPage = _currentPage();
+            if (currentPage > 0) {
+                refreshColumns(currentPage - 1);
+            }
+        };
+        goToNextPage = function () {
+            var currentPage;
+            currentPage = _currentPage();
+            if (currentPage < _maxPages() - 1) {
+                refreshColumns(currentPage + 1);
+            }
+        };
+        Flow.Dataflow.react(_columnNameSearchTerm, lodash.throttle(refreshColumns, 500));
+        renderFrame(_frame);
+        lodash.defer(_go);
+        return {
+            key: _frame.frame_id.name,
+            rowCount: _frame.rows,
+            columnCount: _frame.total_column_count,
+            size: Flow.Util.formatBytes(_frame.byte_size),
+            chunkSummary: _chunkSummary,
+            distributionSummary: _distributionSummary,
+            columnNameSearchTerm: _columnNameSearchTerm,
+            grid: _grid,
+            inspect: inspect,
+            createModel: createModel,
+            inspectData: inspectData,
+            splitFrame: splitFrame,
+            predict: predict,
+            download: download,
+            exportFrame: exportFrame,
+            canGoToPreviousPage: _canGoToPreviousPage,
+            canGoToNextPage: _canGoToNextPage,
+            goToPreviousPage: goToPreviousPage,
+            goToNextPage: goToNextPage,
+            deleteFrame: deleteFrame,
+            template: 'flow-frame-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.FramesOutput = function (_, _go, _frames) {
+        var collectSelectedKeys, createFrameView, deleteFrames, importFiles, predictOnFrames, _checkAllFrames, _frameViews, _hasSelectedFrames, _isCheckingAll;
+        _frameViews = Flow.Dataflow.signal([]);
+        _checkAllFrames = Flow.Dataflow.signal(false);
+        _hasSelectedFrames = Flow.Dataflow.signal(false);
+        _isCheckingAll = false;
+        Flow.Dataflow.react(_checkAllFrames, function (checkAll) {
+            var view, _i, _len, _ref;
+            _isCheckingAll = true;
+            _ref = _frameViews();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                view = _ref[_i];
+                view.isChecked(checkAll);
+            }
+            _hasSelectedFrames(checkAll);
+            _isCheckingAll = false;
+        });
+        createFrameView = function (frame) {
+            var columnLabels, createModel, inspect, predict, view, _isChecked;
+            _isChecked = Flow.Dataflow.signal(false);
+            Flow.Dataflow.react(_isChecked, function () {
+                var checkedViews, view;
+                if (_isCheckingAll) {
+                    return;
+                }
+                checkedViews = function () {
+                    var _i, _len, _ref, _results;
+                    _ref = _frameViews();
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        view = _ref[_i];
+                        if (view.isChecked()) {
+                            _results.push(view);
+                        }
+                    }
+                    return _results;
+                }();
+                return _hasSelectedFrames(checkedViews.length > 0);
+            });
+            columnLabels = lodash.head(lodash.map(frame.columns, function (column) {
+                return column.label;
+            }), 15);
+            view = function () {
+                if (frame.is_text) {
+                    return _.insertAndExecuteCell('cs', 'setupParse source_frames: [ ' + Flow.Prelude.stringify(frame.frame_id.name) + ' ]');
+                } else {
+                    return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(frame.frame_id.name));
+                }
+            };
+            predict = function () {
+                return _.insertAndExecuteCell('cs', 'predict frame: ' + Flow.Prelude.stringify(frame.frame_id.name));
+            };
+            inspect = function () {
+                return _.insertAndExecuteCell('cs', 'inspect getFrameSummary ' + Flow.Prelude.stringify(frame.frame_id.name));
+            };
+            createModel = function () {
+                return _.insertAndExecuteCell('cs', 'assist buildModel, null, training_frame: ' + Flow.Prelude.stringify(frame.frame_id.name));
+            };
+            return {
+                key: frame.frame_id.name,
+                isChecked: _isChecked,
+                size: Flow.Util.formatBytes(frame.byte_size),
+                rowCount: frame.rows,
+                columnCount: frame.columns,
+                isText: frame.is_text,
+                view: view,
+                predict: predict,
+                inspect: inspect,
+                createModel: createModel
+            };
+        };
+        importFiles = function () {
+            return _.insertAndExecuteCell('cs', 'importFiles');
+        };
+        collectSelectedKeys = function () {
+            var view, _i, _len, _ref, _results;
+            _ref = _frameViews();
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                view = _ref[_i];
+                if (view.isChecked()) {
+                    _results.push(view.key);
+                }
+            }
+            return _results;
+        };
+        predictOnFrames = function () {
+            return _.insertAndExecuteCell('cs', 'predict frames: ' + Flow.Prelude.stringify(collectSelectedKeys()));
+        };
+        deleteFrames = function () {
+            return _.confirm('Are you sure you want to delete these frames?', {
+                acceptCaption: 'Delete Frames',
+                declineCaption: 'Cancel'
+            }, function (accept) {
+                if (accept) {
+                    return _.insertAndExecuteCell('cs', 'deleteFrames ' + Flow.Prelude.stringify(collectSelectedKeys()));
+                }
+            });
+        };
+        _frameViews(lodash.map(_frames, createFrameView));
+        lodash.defer(_go);
+        return {
+            frameViews: _frameViews,
+            hasFrames: _frames.length > 0,
+            importFiles: importFiles,
+            predictOnFrames: predictOnFrames,
+            deleteFrames: deleteFrames,
+            hasSelectedFrames: _hasSelectedFrames,
+            checkAllFrames: _checkAllFrames,
+            template: 'flow-frames-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.GridOutput = function (_, _go, _grid) {
+        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspectAll, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _errorViews, _hasErrors, _hasModels, _hasSelectedModels, _isCheckingAll, _modelViews;
+        _modelViews = Flow.Dataflow.signal([]);
+        _hasModels = _grid.model_ids.length > 0;
+        _errorViews = Flow.Dataflow.signal([]);
+        _hasErrors = _grid.failure_details.length > 0;
+        _checkAllModels = Flow.Dataflow.signal(false);
+        _checkedModelCount = Flow.Dataflow.signal(0);
+        _canCompareModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
+            return count > 1;
+        });
+        _hasSelectedModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
+            return count > 0;
+        });
+        _isCheckingAll = false;
+        Flow.Dataflow.react(_checkAllModels, function (checkAll) {
+            var view, views, _i, _len;
+            _isCheckingAll = true;
+            views = _modelViews();
+            for (_i = 0, _len = views.length; _i < _len; _i++) {
+                view = views[_i];
+                view.isChecked(checkAll);
+            }
+            _checkedModelCount(checkAll ? views.length : 0);
+            _isCheckingAll = false;
+        });
+        createModelView = function (model_id) {
+            var cloneModel, inspect, predict, view, _isChecked;
+            _isChecked = Flow.Dataflow.signal(false);
+            Flow.Dataflow.react(_isChecked, function () {
+                var checkedViews, view;
+                if (_isCheckingAll) {
+                    return;
+                }
+                checkedViews = function () {
+                    var _i, _len, _ref, _results;
+                    _ref = _modelViews();
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        view = _ref[_i];
+                        if (view.isChecked()) {
+                            _results.push(view);
+                        }
+                    }
+                    return _results;
+                }();
+                return _checkedModelCount(checkedViews.length);
+            });
+            predict = function () {
+                return _.insertAndExecuteCell('cs', 'predict model: ' + Flow.Prelude.stringify(model_id.name));
+            };
+            cloneModel = function () {
+                return alert('Not implemented');
+                return _.insertAndExecuteCell('cs', 'cloneModel ' + Flow.Prelude.stringify(model_id.name));
+            };
+            view = function () {
+                return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(model_id.name));
+            };
+            inspect = function () {
+                return _.insertAndExecuteCell('cs', 'inspect getModel ' + Flow.Prelude.stringify(model_id.name));
+            };
+            return {
+                key: model_id.name,
+                isChecked: _isChecked,
+                predict: predict,
+                clone: cloneModel,
+                inspect: inspect,
+                view: view
+            };
+        };
+        buildModel = function () {
+            return _.insertAndExecuteCell('cs', 'buildModel');
+        };
+        collectSelectedKeys = function () {
+            var view, _i, _len, _ref, _results;
+            _ref = _modelViews();
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                view = _ref[_i];
+                if (view.isChecked()) {
+                    _results.push(view.key);
+                }
+            }
+            return _results;
+        };
+        compareModels = function () {
+            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
+        };
+        predictUsingModels = function () {
+            return _.insertAndExecuteCell('cs', 'predict models: ' + Flow.Prelude.stringify(collectSelectedKeys()));
+        };
+        deleteModels = function () {
+            return _.confirm('Are you sure you want to delete these models?', {
+                acceptCaption: 'Delete Models',
+                declineCaption: 'Cancel'
+            }, function (accept) {
+                if (accept) {
+                    return _.insertAndExecuteCell('cs', 'deleteModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
+                }
+            });
+        };
+        inspectAll = function () {
+            var allKeys, view;
+            allKeys = function () {
+                var _i, _len, _ref, _results;
+                _ref = _modelViews();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    view = _ref[_i];
+                    _results.push(view.key);
+                }
+                return _results;
+            }();
+            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(allKeys));
+        };
+        initialize = function (grid) {
+            var errorViews, i;
+            _modelViews(lodash.map(grid.model_ids, createModelView));
+            errorViews = function () {
+                var _i, _ref, _results;
+                _results = [];
+                for (i = _i = 0, _ref = grid.failure_details.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+                    _results.push({
+                        title: 'Error ' + (i + 1),
+                        detail: grid.failure_details[i],
+                        params: 'Parameters: [ ' + grid.failed_raw_params[i].join(', ') + ' ]',
+                        stacktrace: grid.failure_stack_traces[i]
+                    });
+                }
+                return _results;
+            }();
+            _errorViews(errorViews);
+            return lodash.defer(_go);
+        };
+        initialize(_grid);
+        return {
+            modelViews: _modelViews,
+            hasModels: _hasModels,
+            errorViews: _errorViews,
+            hasErrors: _hasErrors,
+            buildModel: buildModel,
+            compareModels: compareModels,
+            predictUsingModels: predictUsingModels,
+            deleteModels: deleteModels,
+            checkedModelCount: _checkedModelCount,
+            canCompareModels: _canCompareModels,
+            hasSelectedModels: _hasSelectedModels,
+            checkAllModels: _checkAllModels,
+            inspect: inspectAll,
+            template: 'flow-grid-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.GridsOutput = function (_, _go, _grids) {
+        var buildModel, createGridView, initialize, _gridViews;
+        _gridViews = Flow.Dataflow.signal([]);
+        createGridView = function (grid) {
+            var view;
+            view = function () {
+                return _.insertAndExecuteCell('cs', 'getGrid ' + Flow.Prelude.stringify(grid.grid_id.name));
+            };
+            return {
+                key: grid.grid_id.name,
+                size: grid.model_ids.length,
+                view: view
+            };
+        };
+        buildModel = function () {
+            return _.insertAndExecuteCell('cs', 'buildModel');
+        };
+        initialize = function (grids) {
+            _gridViews(lodash.map(grids, createGridView));
+            return lodash.defer(_go);
+        };
+        initialize(_grids);
+        return {
+            gridViews: _gridViews,
+            hasGrids: _grids.length > 0,
+            buildModel: buildModel,
+            template: 'flow-grids-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ImportFilesInput = function (_, _go) {
+        var createFileItem, createFileItems, createSelectedFileItem, deselectAllFiles, importFiles, importSelectedFiles, listPathHints, processImportResult, selectAllFiles, tryImportFiles, _exception, _hasErrorMessage, _hasImportedFiles, _hasSelectedFiles, _hasUnselectedFiles, _importedFileCount, _importedFiles, _selectedFileCount, _selectedFiles, _selectedFilesDictionary, _specifiedPath;
+        _specifiedPath = Flow.Dataflow.signal('');
+        _exception = Flow.Dataflow.signal('');
+        _hasErrorMessage = Flow.Dataflow.lift(_exception, function (exception) {
+            if (exception) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        tryImportFiles = function () {
+            var specifiedPath;
+            specifiedPath = _specifiedPath();
+            return _.requestFileGlob(specifiedPath, -1, function (error, result) {
+                if (error) {
+                    return _exception(error.stack);
+                } else {
+                    _exception('');
+                    return processImportResult(result);
+                }
+            });
+        };
+        _importedFiles = Flow.Dataflow.signals([]);
+        _importedFileCount = Flow.Dataflow.lift(_importedFiles, function (files) {
+            if (files.length) {
+                return 'Found ' + Flow.Util.describeCount(files.length, 'file') + ':';
+            } else {
+                return '';
+            }
+        });
+        _hasImportedFiles = Flow.Dataflow.lift(_importedFiles, function (files) {
+            return files.length > 0;
+        });
+        _hasUnselectedFiles = Flow.Dataflow.lift(_importedFiles, function (files) {
+            return lodash.some(files, function (file) {
+                return !file.isSelected();
+            });
+        });
+        _selectedFiles = Flow.Dataflow.signals([]);
+        _selectedFilesDictionary = Flow.Dataflow.lift(_selectedFiles, function (files) {
+            var dictionary, file, _i, _len;
+            dictionary = {};
+            for (_i = 0, _len = files.length; _i < _len; _i++) {
+                file = files[_i];
+                dictionary[file.path] = true;
+            }
+            return dictionary;
+        });
+        _selectedFileCount = Flow.Dataflow.lift(_selectedFiles, function (files) {
+            if (files.length) {
+                return '' + Flow.Util.describeCount(files.length, 'file') + ' selected:';
+            } else {
+                return '(No files selected)';
+            }
+        });
+        _hasSelectedFiles = Flow.Dataflow.lift(_selectedFiles, function (files) {
+            return files.length > 0;
+        });
+        importFiles = function (files) {
+            var paths;
+            paths = lodash.map(files, function (file) {
+                return Flow.Prelude.stringify(file.path);
+            });
+            return _.insertAndExecuteCell('cs', 'importFiles [ ' + paths.join(',') + ' ]');
+        };
+        importSelectedFiles = function () {
+            return importFiles(_selectedFiles());
+        };
+        createSelectedFileItem = function (path) {
+            var self;
+            return self = {
+                path: path,
+                deselect: function () {
+                    var file, _i, _len, _ref;
+                    _selectedFiles.remove(self);
+                    _ref = _importedFiles();
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        file = _ref[_i];
+                        if (file.path === path) {
+                            file.isSelected(false);
+                        }
+                    }
+                }
+            };
+        };
+        createFileItem = function (path, isSelected) {
+            var self;
+            self = {
+                path: path,
+                isSelected: Flow.Dataflow.signal(isSelected),
+                select: function () {
+                    _selectedFiles.push(createSelectedFileItem(self.path));
+                    return self.isSelected(true);
+                }
+            };
+            Flow.Dataflow.act(self.isSelected, function (isSelected) {
+                return _hasUnselectedFiles(lodash.some(_importedFiles(), function (file) {
+                    return !file.isSelected();
+                }));
+            });
+            return self;
+        };
+        createFileItems = function (result) {
+            return lodash.map(result.matches, function (path) {
+                return createFileItem(path, _selectedFilesDictionary()[path]);
+            });
+        };
+        listPathHints = function (query, process) {
+            return _.requestFileGlob(query, 10, function (error, result) {
+                if (!error) {
+                    return process(lodash.map(result.matches, function (value) {
+                        return { value: value };
+                    }));
+                }
+            });
+        };
+        selectAllFiles = function () {
+            var dict, file, _i, _j, _len, _len1, _ref, _ref1;
+            dict = {};
+            _ref = _selectedFiles();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                file = _ref[_i];
+                dict[file.path] = true;
+            }
+            _ref1 = _importedFiles();
+            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+                file = _ref1[_j];
+                if (!dict[file.path]) {
+                    file.select();
+                }
+            }
+        };
+        deselectAllFiles = function () {
+            var file, _i, _len, _ref;
+            _selectedFiles([]);
+            _ref = _importedFiles();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                file = _ref[_i];
+                file.isSelected(false);
+            }
+        };
+        processImportResult = function (result) {
+            var files;
+            files = createFileItems(result);
+            return _importedFiles(files);
+        };
+        lodash.defer(_go);
+        return {
+            specifiedPath: _specifiedPath,
+            hasErrorMessage: _hasErrorMessage,
+            exception: _exception,
+            tryImportFiles: tryImportFiles,
+            listPathHints: lodash.throttle(listPathHints, 100),
+            hasImportedFiles: _hasImportedFiles,
+            importedFiles: _importedFiles,
+            importedFileCount: _importedFileCount,
+            selectedFiles: _selectedFiles,
+            selectAllFiles: selectAllFiles,
+            deselectAllFiles: deselectAllFiles,
+            hasUnselectedFiles: _hasUnselectedFiles,
+            hasSelectedFiles: _hasSelectedFiles,
+            selectedFileCount: _selectedFileCount,
+            importSelectedFiles: importSelectedFiles,
+            template: 'flow-import-files'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ImportFilesOutput = function (_, _go, _importResults) {
+        var createImportView, parse, _allPaths, _canParse, _importViews, _title;
+        _allPaths = lodash.flatten(lodash.compact(lodash.map(_importResults, function (result) {
+            return result.files;
+        })));
+        _canParse = _allPaths.length > 0;
+        _title = '' + _allPaths.length + ' / ' + _importResults.length + ' files imported.';
+        createImportView = function (result) {
+            return {
+                files: result.files,
+                template: 'flow-import-file-output'
+            };
+        };
+        _importViews = lodash.map(_importResults, createImportView);
+        parse = function () {
+            var paths;
+            paths = lodash.map(_allPaths, Flow.Prelude.stringify);
+            return _.insertAndExecuteCell('cs', 'setupParse paths: [ ' + paths.join(',') + ' ]');
+        };
+        lodash.defer(_go);
+        return {
+            title: _title,
+            importViews: _importViews,
+            canParse: _canParse,
+            parse: parse,
+            template: 'flow-import-files-output',
             templateOf: function (view) {
                 return view.template;
             }
@@ -11753,246 +8925,3074 @@
     };
 }.call(this));
 (function () {
-    var isExpandable, preview, previewArray, previewObject;
-    isExpandable = function (type) {
-        switch (type) {
-        case 'null':
-        case 'undefined':
-        case 'Boolean':
-        case 'String':
-        case 'Number':
-        case 'Date':
-        case 'RegExp':
-        case 'Arguments':
-        case 'Function':
-            return false;
+    H2O.ImportModelInput = function (_, _go, path, opt) {
+        var importModel, _canImportModel, _overwrite, _path;
+        if (opt == null) {
+            opt = {};
+        }
+        _path = Flow.Dataflow.signal(path);
+        _overwrite = Flow.Dataflow.signal(opt.overwrite ? true : false);
+        _canImportModel = Flow.Dataflow.lift(_path, function (path) {
+            return path && path.length;
+        });
+        importModel = function () {
+            return _.insertAndExecuteCell('cs', 'importModel ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
+        };
+        lodash.defer(_go);
+        return {
+            path: _path,
+            overwrite: _overwrite,
+            canImportModel: _canImportModel,
+            importModel: importModel,
+            template: 'flow-import-model-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ImportModelOutput = function (_, _go, result) {
+        var viewModel;
+        viewModel = function () {
+            return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(result.models[0].model_id.name));
+        };
+        lodash.defer(_go);
+        return {
+            viewModel: viewModel,
+            template: 'flow-import-model-output'
+        };
+    };
+}.call(this));
+(function () {
+    var createOptions, _allCombineMethods, _allMethods;
+    createOptions = function (options) {
+        var option, _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = options.length; _i < _len; _i++) {
+            option = options[_i];
+            _results.push({
+                caption: option,
+                value: option.toUpperCase()
+            });
+        }
+        return _results;
+    };
+    _allMethods = createOptions([
+        'Mean',
+        'Median',
+        'Mode'
+    ]);
+    _allCombineMethods = createOptions([
+        'Interpolate',
+        'Average',
+        'Low',
+        'High'
+    ]);
+    H2O.ImputeInput = function (_, _go, opts) {
+        var impute, _canGroupByColumns, _canImpute, _canUseCombineMethod, _column, _columns, _combineMethod, _combineMethods, _frame, _frames, _groupByColumns, _hasFrame, _method, _methods;
+        if (opts == null) {
+            opts = {};
+        }
+        _frames = Flow.Dataflow.signal([]);
+        _frame = Flow.Dataflow.signal(null);
+        _hasFrame = Flow.Dataflow.lift(_frame, function (frame) {
+            if (frame) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        _columns = Flow.Dataflow.signal([]);
+        _column = Flow.Dataflow.signal(null);
+        _methods = _allMethods;
+        _method = Flow.Dataflow.signal(_allMethods[0]);
+        _canUseCombineMethod = Flow.Dataflow.lift(_method, function (method) {
+            return method.value === 'MEDIAN';
+        });
+        _combineMethods = _allCombineMethods;
+        _combineMethod = Flow.Dataflow.signal(_allCombineMethods[0]);
+        _canGroupByColumns = Flow.Dataflow.lift(_method, function (method) {
+            return method.value !== 'MEDIAN';
+        });
+        _groupByColumns = Flow.Dataflow.signals([]);
+        _canImpute = Flow.Dataflow.lift(_frame, _column, function (frame, column) {
+            return frame && column;
+        });
+        impute = function () {
+            var arg, combineMethod, groupByColumns, method;
+            method = _method();
+            arg = {
+                frame: _frame(),
+                column: _column(),
+                method: method.value
+            };
+            if (method.value === 'MEDIAN') {
+                if (combineMethod = _combineMethod()) {
+                    arg.combineMethod = combineMethod.value;
+                }
+            } else {
+                groupByColumns = _groupByColumns();
+                if (groupByColumns.length) {
+                    arg.groupByColumns = groupByColumns;
+                }
+            }
+            return _.insertAndExecuteCell('cs', 'imputeColumn ' + JSON.stringify(arg));
+        };
+        _.requestFrames(function (error, frames) {
+            var frame;
+            if (error) {
+            } else {
+                _frames(function () {
+                    var _i, _len, _results;
+                    _results = [];
+                    for (_i = 0, _len = frames.length; _i < _len; _i++) {
+                        frame = frames[_i];
+                        if (!frame.is_text) {
+                            _results.push(frame.frame_id.name);
+                        }
+                    }
+                    return _results;
+                }());
+                if (opts.frame) {
+                    _frame(opts.frame);
+                }
+            }
+        });
+        Flow.Dataflow.react(_frame, function (frame) {
+            if (frame) {
+                return _.requestFrameSummaryWithoutData(frame, function (error, frame) {
+                    var column;
+                    if (error) {
+                    } else {
+                        _columns(function () {
+                            var _i, _len, _ref, _results;
+                            _ref = frame.columns;
+                            _results = [];
+                            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                                column = _ref[_i];
+                                _results.push(column.label);
+                            }
+                            return _results;
+                        }());
+                        if (opts.column) {
+                            _column(opts.column);
+                            return delete opts.column;
+                        }
+                    }
+                });
+            } else {
+                return _columns([]);
+            }
+        });
+        lodash.defer(_go);
+        return {
+            frames: _frames,
+            frame: _frame,
+            hasFrame: _hasFrame,
+            columns: _columns,
+            column: _column,
+            methods: _methods,
+            method: _method,
+            canUseCombineMethod: _canUseCombineMethod,
+            combineMethods: _combineMethods,
+            combineMethod: _combineMethod,
+            canGroupByColumns: _canGroupByColumns,
+            groupByColumns: _groupByColumns,
+            canImpute: _canImpute,
+            impute: impute,
+            template: 'flow-impute-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.InspectOutput = function (_, _go, _frame) {
+        var plot, view;
+        view = function () {
+            return _.insertAndExecuteCell('cs', 'grid inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin);
+        };
+        plot = function () {
+            return _.insertAndExecuteCell('cs', _frame.metadata.plot);
+        };
+        lodash.defer(_go);
+        return {
+            label: _frame.label,
+            vectors: _frame.vectors,
+            view: view,
+            canPlot: _frame.metadata.plot ? true : false,
+            plot: plot,
+            template: 'flow-inspect-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.InspectsOutput = function (_, _go, _tables) {
+        var createTableView;
+        createTableView = function (table) {
+            var grid, inspect, plot;
+            inspect = function () {
+                return _.insertAndExecuteCell('cs', 'inspect ' + Flow.Prelude.stringify(table.label) + ', ' + table.metadata.origin);
+            };
+            grid = function () {
+                return _.insertAndExecuteCell('cs', 'grid inspect ' + Flow.Prelude.stringify(table.label) + ', ' + table.metadata.origin);
+            };
+            plot = function () {
+                return _.insertAndExecuteCell('cs', table.metadata.plot);
+            };
+            return {
+                label: table.label,
+                description: table.metadata.description,
+                inspect: inspect,
+                grid: grid,
+                canPlot: table.metadata.plot ? true : false,
+                plot: plot
+            };
+        };
+        lodash.defer(_go);
+        return {
+            hasTables: _tables.length > 0,
+            tables: lodash.map(_tables, createTableView),
+            template: 'flow-inspects-output'
+        };
+    };
+}.call(this));
+(function () {
+    var getJobOutputStatusColor, getJobProgressPercent, jobOutputStatusColors;
+    jobOutputStatusColors = {
+        failed: '#d9534f',
+        done: '#ccc',
+        running: '#f0ad4e'
+    };
+    getJobOutputStatusColor = function (status) {
+        switch (status) {
+        case 'DONE':
+            return jobOutputStatusColors.done;
+        case 'CREATED':
+        case 'RUNNING':
+            return jobOutputStatusColors.running;
         default:
-            return true;
+            return jobOutputStatusColors.failed;
         }
     };
-    previewArray = function (array) {
-        var element, ellipsis, previews;
-        ellipsis = array.length > 5 ? ', ...' : '';
-        previews = function () {
-            var _i, _len, _ref, _results;
-            _ref = lodash.head(array, 5);
+    getJobProgressPercent = function (progress) {
+        return '' + Math.ceil(100 * progress) + '%';
+    };
+    H2O.JobOutput = function (_, _go, _job) {
+        var cancel, initialize, isJobRunning, messageIcons, refresh, updateJob, view, _canCancel, _canView, _description, _destinationKey, _destinationType, _exception, _isBusy, _isLive, _key, _messages, _progress, _progressMessage, _runTime, _status, _statusColor;
+        _isBusy = Flow.Dataflow.signal(false);
+        _isLive = Flow.Dataflow.signal(false);
+        _key = _job.key.name;
+        _description = _job.description;
+        _destinationKey = _job.dest.name;
+        _destinationType = function () {
+            switch (_job.dest.type) {
+            case 'Key<Frame>':
+                return 'Frame';
+            case 'Key<Model>':
+                return 'Model';
+            case 'Key<Grid>':
+                return 'Grid';
+            case 'Key<KeyedVoid>':
+                return 'Void';
+            default:
+                return 'Unknown';
+            }
+        }();
+        _runTime = Flow.Dataflow.signal(null);
+        _progress = Flow.Dataflow.signal(null);
+        _progressMessage = Flow.Dataflow.signal(null);
+        _status = Flow.Dataflow.signal(null);
+        _statusColor = Flow.Dataflow.signal(null);
+        _exception = Flow.Dataflow.signal(null);
+        _messages = Flow.Dataflow.signal(null);
+        _canView = Flow.Dataflow.signal(false);
+        _canCancel = Flow.Dataflow.signal(false);
+        isJobRunning = function (job) {
+            return job.status === 'CREATED' || job.status === 'RUNNING';
+        };
+        messageIcons = {
+            ERROR: 'fa-times-circle red',
+            WARN: 'fa-warning orange',
+            INFO: 'fa-info-circle'
+        };
+        updateJob = function (job) {
+            var message, messages;
+            _runTime(Flow.Util.formatMilliseconds(job.msec));
+            _progress(getJobProgressPercent(job.progress));
+            _progressMessage(job.progress_msg);
+            _status(job.status);
+            _statusColor(getJobOutputStatusColor(job.status));
+            if (job.error_count) {
+                messages = function () {
+                    var _i, _len, _ref, _results;
+                    _ref = job.messages;
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        message = _ref[_i];
+                        if (message.message_type !== 'HIDE') {
+                            _results.push({
+                                icon: messageIcons[message.message_type],
+                                message: '' + message.field_name + ': ' + message.message
+                            });
+                        }
+                    }
+                    return _results;
+                }();
+                _messages(messages);
+            } else if (job.exception) {
+                _exception(Flow.Failure(_, new Flow.Error('Job failure.', new Error(job.exception))));
+            }
+            _canView(!isJobRunning(job));
+            return _canCancel(isJobRunning(job));
+        };
+        refresh = function () {
+            _isBusy(true);
+            return _.requestJob(_key, function (error, job) {
+                _isBusy(false);
+                if (error) {
+                    _exception(Flow.Failure(_, new Flow.Error('Error fetching jobs', error)));
+                    return _isLive(false);
+                } else {
+                    updateJob(job);
+                    if (isJobRunning(job)) {
+                        if (_isLive()) {
+                            return lodash.delay(refresh, 1000);
+                        }
+                    } else {
+                        _isLive(false);
+                        if (_go) {
+                            return lodash.defer(_go);
+                        }
+                    }
+                }
+            });
+        };
+        Flow.Dataflow.act(_isLive, function (isLive) {
+            if (isLive) {
+                return refresh();
+            }
+        });
+        view = function () {
+            if (!_canView()) {
+                return;
+            }
+            switch (_destinationType) {
+            case 'Frame':
+                return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(_destinationKey));
+            case 'Model':
+                return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(_destinationKey));
+            case 'Grid':
+                return _.insertAndExecuteCell('cs', 'getGrid ' + Flow.Prelude.stringify(_destinationKey));
+            case 'Void':
+                return alert('This frame was exported to\n' + _job.dest.name);
+            }
+        };
+        cancel = function () {
+            return _.requestCancelJob(_key, function (error, result) {
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    return updateJob(_job);
+                }
+            });
+        };
+        initialize = function (job) {
+            updateJob(job);
+            if (isJobRunning(job)) {
+                return _isLive(true);
+            } else {
+                if (_go) {
+                    return lodash.defer(_go);
+                }
+            }
+        };
+        initialize(_job);
+        return {
+            key: _key,
+            description: _description,
+            destinationKey: _destinationKey,
+            destinationType: _destinationType,
+            runTime: _runTime,
+            progress: _progress,
+            progressMessage: _progressMessage,
+            status: _status,
+            statusColor: _statusColor,
+            messages: _messages,
+            exception: _exception,
+            isLive: _isLive,
+            canView: _canView,
+            canCancel: _canCancel,
+            cancel: cancel,
+            view: view,
+            template: 'flow-job-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.JobsOutput = function (_, _go, jobs) {
+        var createJobView, initialize, refresh, toggleRefresh, _exception, _hasJobViews, _isBusy, _isLive, _jobViews;
+        _jobViews = Flow.Dataflow.signals([]);
+        _hasJobViews = Flow.Dataflow.lift(_jobViews, function (jobViews) {
+            return jobViews.length > 0;
+        });
+        _isLive = Flow.Dataflow.signal(false);
+        _isBusy = Flow.Dataflow.signal(false);
+        _exception = Flow.Dataflow.signal(null);
+        createJobView = function (job) {
+            var type, view;
+            view = function () {
+                return _.insertAndExecuteCell('cs', 'getJob ' + Flow.Prelude.stringify(job.key.name));
+            };
+            type = function () {
+                switch (job.dest.type) {
+                case 'Key<Frame>':
+                    return 'Frame';
+                case 'Key<Model>':
+                    return 'Model';
+                case 'Key<Grid>':
+                    return 'Grid';
+                default:
+                    return 'Unknown';
+                }
+            }();
+            return {
+                destination: job.dest.name,
+                type: type,
+                description: job.description,
+                startTime: Flow.Format.Time(new Date(job.start_time)),
+                endTime: Flow.Format.Time(new Date(job.start_time + job.msec)),
+                elapsedTime: Flow.Util.formatMilliseconds(job.msec),
+                status: job.status,
+                view: view
+            };
+        };
+        toggleRefresh = function () {
+            return _isLive(!_isLive());
+        };
+        refresh = function () {
+            _isBusy(true);
+            return _.requestJobs(function (error, jobs) {
+                _isBusy(false);
+                if (error) {
+                    _exception(Flow.Failure(_, new Flow.Error('Error fetching jobs', error)));
+                    return _isLive(false);
+                } else {
+                    _jobViews(lodash.map(jobs, createJobView));
+                    if (_isLive()) {
+                        return lodash.delay(refresh, 2000);
+                    }
+                }
+            });
+        };
+        Flow.Dataflow.act(_isLive, function (isLive) {
+            if (isLive) {
+                return refresh();
+            }
+        });
+        initialize = function () {
+            _jobViews(lodash.map(jobs, createJobView));
+            return lodash.defer(_go);
+        };
+        initialize();
+        return {
+            jobViews: _jobViews,
+            hasJobViews: _hasJobViews,
+            isLive: _isLive,
+            isBusy: _isBusy,
+            toggleRefresh: toggleRefresh,
+            refresh: refresh,
+            exception: _exception,
+            template: 'flow-jobs-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.LogFileOutput = function (_, _go, _cloud, _nodeIndex, _fileType, _logFile) {
+        var createNode, initialize, refresh, refreshActiveView, _activeFileType, _activeNode, _contents, _exception, _fileTypes, _nodes;
+        _exception = Flow.Dataflow.signal(null);
+        _contents = Flow.Dataflow.signal('');
+        _nodes = Flow.Dataflow.signal([]);
+        _activeNode = Flow.Dataflow.signal(null);
+        _fileTypes = Flow.Dataflow.signal([
+            'trace',
+            'debug',
+            'info',
+            'warn',
+            'error',
+            'fatal',
+            'httpd',
+            'stdout',
+            'stderr'
+        ]);
+        _activeFileType = Flow.Dataflow.signal(null);
+        createNode = function (node, index) {
+            return {
+                name: node.ip_port,
+                index: index
+            };
+        };
+        refreshActiveView = function (node, fileType) {
+            if (node) {
+                return _.requestLogFile(node.index, fileType, function (error, logFile) {
+                    if (error) {
+                        return _contents('Error fetching log file: ' + error.message);
+                    } else {
+                        return _contents(logFile.log);
+                    }
+                });
+            } else {
+                return _contents('');
+            }
+        };
+        refresh = function () {
+            return refreshActiveView(_activeNode(), _activeFileType());
+        };
+        initialize = function (cloud, nodeIndex, fileType, logFile) {
+            var NODE_INDEX_SELF, clientNode, i, n, nodes, _i, _len, _ref;
+            _activeFileType(fileType);
+            _contents(logFile.log);
+            nodes = [];
+            if (cloud.is_client) {
+                clientNode = { ip_port: 'driver' };
+                NODE_INDEX_SELF = -1;
+                nodes.push(createNode(clientNode, NODE_INDEX_SELF));
+            }
+            _ref = cloud.nodes;
+            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                n = _ref[i];
+                nodes.push(createNode(n, i));
+            }
+            _nodes(nodes);
+            if (nodeIndex < nodes.length) {
+                _activeNode(nodes[nodeIndex]);
+            }
+            Flow.Dataflow.react(_activeNode, _activeFileType, refreshActiveView);
+            return lodash.defer(_go);
+        };
+        initialize(_cloud, _nodeIndex, _fileType, _logFile);
+        return {
+            nodes: _nodes,
+            activeNode: _activeNode,
+            fileTypes: _fileTypes,
+            activeFileType: _activeFileType,
+            contents: _contents,
+            refresh: refresh,
+            template: 'flow-log-file-output'
+        };
+    };
+}.call(this));
+(function () {
+    var createCheckboxControl, createControl, createControlFromParameter, createDropdownControl, createGridableValues, createListControl, createTextboxControl;
+    createControl = function (kind, parameter) {
+        var _hasError, _hasInfo, _hasMessage, _hasWarning, _isGrided, _isNotGrided, _isVisible, _message;
+        _hasError = Flow.Dataflow.signal(false);
+        _hasWarning = Flow.Dataflow.signal(false);
+        _hasInfo = Flow.Dataflow.signal(false);
+        _message = Flow.Dataflow.signal('');
+        _hasMessage = Flow.Dataflow.lift(_message, function (message) {
+            if (message) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        _isVisible = Flow.Dataflow.signal(true);
+        _isGrided = Flow.Dataflow.signal(false);
+        _isNotGrided = Flow.Dataflow.lift(_isGrided, function (value) {
+            return !value;
+        });
+        return {
+            kind: kind,
+            name: parameter.name,
+            label: parameter.label,
+            description: parameter.help,
+            isRequired: parameter.required,
+            hasError: _hasError,
+            hasWarning: _hasWarning,
+            hasInfo: _hasInfo,
+            message: _message,
+            hasMessage: _hasMessage,
+            isVisible: _isVisible,
+            isGridable: parameter.gridable,
+            isGrided: _isGrided,
+            isNotGrided: _isNotGrided
+        };
+    };
+    createTextboxControl = function (parameter, type) {
+        var control, isArrayValued, isInt, isReal, textToValues, _ref, _ref1, _text, _textGrided, _value, _valueGrided;
+        isArrayValued = isInt = isReal = false;
+        switch (type) {
+        case 'byte[]':
+        case 'short[]':
+        case 'int[]':
+        case 'long[]':
+            isArrayValued = true;
+            isInt = true;
+            break;
+        case 'float[]':
+        case 'double[]':
+            isArrayValued = true;
+            isReal = true;
+            break;
+        case 'byte':
+        case 'short':
+        case 'int':
+        case 'long':
+            isInt = true;
+            break;
+        case 'float':
+        case 'double':
+            isReal = true;
+        }
+        _text = Flow.Dataflow.signal(isArrayValued ? ((_ref = parameter.actual_value) != null ? _ref : []).join(', ') : (_ref1 = parameter.actual_value) != null ? _ref1 : '');
+        _textGrided = Flow.Dataflow.signal(_text() + ';');
+        textToValues = function (text) {
+            var parsed, vals, value, _i, _len, _ref2;
+            if (isArrayValued) {
+                vals = [];
+                _ref2 = text.split(/\s*,\s*/g);
+                for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+                    value = _ref2[_i];
+                    if (isInt) {
+                        if (!lodash.isNaN(parsed = parseInt(value, 10))) {
+                            vals.push(parsed);
+                        }
+                    } else if (isReal) {
+                        if (!lodash.isNaN(parsed = parseFloat(value))) {
+                            vals.push(parsed);
+                        }
+                    } else {
+                        vals.push(value);
+                    }
+                }
+                return vals;
+            } else {
+                return text;
+            }
+        };
+        _value = Flow.Dataflow.lift(_text, textToValues);
+        _valueGrided = Flow.Dataflow.lift(_textGrided, function (text) {
+            var part, token, _i, _len, _ref2;
+            lodash.values = [];
+            _ref2 = ('' + text).split(/\s*;\s*/g);
+            for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+                part = _ref2[_i];
+                if (token = part.trim()) {
+                    lodash.values.push(textToValues(token));
+                }
+            }
+            return lodash.values;
+        });
+        control = createControl('textbox', parameter);
+        control.text = _text;
+        control.textGrided = _textGrided;
+        control.value = _value;
+        control.valueGrided = _valueGrided;
+        control.isArrayValued = isArrayValued;
+        return control;
+    };
+    createGridableValues = function (values, defaultValue) {
+        return lodash.map(values, function (value) {
+            return {
+                label: value,
+                value: Flow.Dataflow.signal(true)
+            };
+        });
+    };
+    createDropdownControl = function (parameter) {
+        var control, _value;
+        _value = Flow.Dataflow.signal(parameter.actual_value);
+        control = createControl('dropdown', parameter);
+        control.values = Flow.Dataflow.signals(parameter.values);
+        control.value = _value;
+        control.gridedValues = Flow.Dataflow.lift(control.values, function (values) {
+            return createGridableValues(values);
+        });
+        return control;
+    };
+    createListControl = function (parameter) {
+        var MaxItemsPerPage, blockSelectionUpdates, changeSelection, control, createEntry, deselectFiltered, filterItems, goToNextPage, goToPreviousPage, incrementSelectionCount, selectFiltered, _canGoToNextPage, _canGoToPreviousPage, _currentPage, _entries, _filteredItems, _hasFilteredItems, _ignoreNATerm, _isUpdatingSelectionCount, _lastUsedIgnoreNaTerm, _lastUsedSearchTerm, _maxPages, _searchCaption, _searchTerm, _selectionCount, _values, _visibleItems;
+        MaxItemsPerPage = 100;
+        _searchTerm = Flow.Dataflow.signal('');
+        _ignoreNATerm = Flow.Dataflow.signal('');
+        _values = Flow.Dataflow.signal([]);
+        _selectionCount = Flow.Dataflow.signal(0);
+        _isUpdatingSelectionCount = false;
+        blockSelectionUpdates = function (f) {
+            _isUpdatingSelectionCount = true;
+            f();
+            return _isUpdatingSelectionCount = false;
+        };
+        incrementSelectionCount = function (amount) {
+            return _selectionCount(_selectionCount() + amount);
+        };
+        createEntry = function (value) {
+            var isSelected;
+            isSelected = Flow.Dataflow.signal(false);
+            Flow.Dataflow.react(isSelected, function (isSelected) {
+                if (!_isUpdatingSelectionCount) {
+                    if (isSelected) {
+                        incrementSelectionCount(1);
+                    } else {
+                        incrementSelectionCount(-1);
+                    }
+                }
+            });
+            return {
+                isSelected: isSelected,
+                value: value.value,
+                type: value.type,
+                missingLabel: value.missingLabel,
+                missingPercent: value.missingPercent
+            };
+        };
+        _entries = Flow.Dataflow.lift(_values, function (values) {
+            return lodash.map(values, createEntry);
+        });
+        _filteredItems = Flow.Dataflow.signal([]);
+        _visibleItems = Flow.Dataflow.signal([]);
+        _hasFilteredItems = Flow.Dataflow.lift(_filteredItems, function (entries) {
+            return entries.length > 0;
+        });
+        _currentPage = Flow.Dataflow.signal(0);
+        _maxPages = Flow.Dataflow.lift(_filteredItems, function (entries) {
+            return Math.ceil(entries.length / MaxItemsPerPage);
+        });
+        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
+            return index > 0;
+        });
+        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
+            return index < maxPages - 1;
+        });
+        _searchCaption = Flow.Dataflow.lift(_entries, _filteredItems, _selectionCount, _currentPage, _maxPages, function (entries, filteredItems, selectionCount, currentPage, maxPages) {
+            var caption;
+            caption = maxPages === 0 ? '' : 'Showing page ' + (currentPage + 1) + ' of ' + maxPages + '.';
+            if (filteredItems.length !== entries.length) {
+                caption += ' Filtered ' + filteredItems.length + ' of ' + entries.length + '.';
+            }
+            if (selectionCount !== 0) {
+                caption += ' ' + selectionCount + ' ignored.';
+            }
+            return caption;
+        });
+        Flow.Dataflow.react(_entries, function () {
+            return filterItems(true);
+        });
+        _lastUsedSearchTerm = null;
+        _lastUsedIgnoreNaTerm = null;
+        filterItems = function (force) {
+            var entry, filteredItems, hide, i, ignoreNATerm, missingPercent, searchTerm, start, _i, _len, _ref;
+            if (force == null) {
+                force = false;
+            }
+            searchTerm = _searchTerm().trim();
+            ignoreNATerm = _ignoreNATerm().trim();
+            if (force || searchTerm !== _lastUsedSearchTerm || ignoreNATerm !== _lastUsedIgnoreNaTerm) {
+                filteredItems = [];
+                _ref = _entries();
+                for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                    entry = _ref[i];
+                    missingPercent = parseFloat(ignoreNATerm);
+                    hide = false;
+                    if (searchTerm !== '' && -1 === entry.value.toLowerCase().indexOf(searchTerm.toLowerCase())) {
+                        hide = true;
+                    } else if (!lodash.isNaN(missingPercent) && missingPercent !== 0 && entry.missingPercent <= missingPercent) {
+                        hide = true;
+                    }
+                    if (!hide) {
+                        filteredItems.push(entry);
+                    }
+                }
+                _lastUsedSearchTerm = searchTerm;
+                _lastUsedIgnoreNaTerm = ignoreNATerm;
+                _currentPage(0);
+                _filteredItems(filteredItems);
+            }
+            start = _currentPage() * MaxItemsPerPage;
+            _visibleItems(_filteredItems().slice(start, start + MaxItemsPerPage));
+        };
+        changeSelection = function (source, value) {
+            var entry, _i, _len;
+            for (_i = 0, _len = source.length; _i < _len; _i++) {
+                entry = source[_i];
+                entry.isSelected(value);
+            }
+        };
+        selectFiltered = function () {
+            var entries;
+            entries = _filteredItems();
+            blockSelectionUpdates(function () {
+                return changeSelection(entries, true);
+            });
+            return _selectionCount(entries.length);
+        };
+        deselectFiltered = function () {
+            blockSelectionUpdates(function () {
+                return changeSelection(_filteredItems(), false);
+            });
+            return _selectionCount(0);
+        };
+        goToPreviousPage = function () {
+            if (_canGoToPreviousPage()) {
+                _currentPage(_currentPage() - 1);
+                filterItems();
+            }
+        };
+        goToNextPage = function () {
+            if (_canGoToNextPage()) {
+                _currentPage(_currentPage() + 1);
+                filterItems();
+            }
+        };
+        Flow.Dataflow.react(_searchTerm, lodash.throttle(filterItems, 500));
+        Flow.Dataflow.react(_ignoreNATerm, lodash.throttle(filterItems, 500));
+        control = createControl('list', parameter);
+        control.values = _values;
+        control.entries = _visibleItems;
+        control.hasFilteredItems = _hasFilteredItems;
+        control.searchCaption = _searchCaption;
+        control.searchTerm = _searchTerm;
+        control.ignoreNATerm = _ignoreNATerm;
+        control.value = _entries;
+        control.selectFiltered = selectFiltered;
+        control.deselectFiltered = deselectFiltered;
+        control.goToPreviousPage = goToPreviousPage;
+        control.goToNextPage = goToNextPage;
+        control.canGoToPreviousPage = _canGoToPreviousPage;
+        control.canGoToNextPage = _canGoToNextPage;
+        return control;
+    };
+    createCheckboxControl = function (parameter) {
+        var control, _value;
+        _value = Flow.Dataflow.signal(parameter.actual_value);
+        control = createControl('checkbox', parameter);
+        control.clientId = lodash.uniqueId();
+        control.value = _value;
+        return control;
+    };
+    createControlFromParameter = function (parameter) {
+        switch (parameter.type) {
+        case 'enum':
+        case 'Key<Frame>':
+        case 'VecSpecifier':
+            return createDropdownControl(parameter);
+        case 'string[]':
+            return createListControl(parameter);
+        case 'boolean':
+            return createCheckboxControl(parameter);
+        case 'Key<Model>':
+        case 'string':
+        case 'byte':
+        case 'short':
+        case 'int':
+        case 'long':
+        case 'float':
+        case 'double':
+        case 'byte[]':
+        case 'short[]':
+        case 'int[]':
+        case 'long[]':
+        case 'float[]':
+        case 'double[]':
+            return createTextboxControl(parameter, parameter.type);
+        default:
+            console.error('Invalid field', JSON.stringify(parameter, null, 2));
+            return null;
+        }
+    };
+    H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
+        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _i, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
+        _exception = Flow.Dataflow.signal(null);
+        _validationFailureMessage = Flow.Dataflow.signal('');
+        _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
+        _parametersByLevel = lodash.groupBy(_parameters, function (parameter) {
+            return parameter.level;
+        });
+        _controlGroups = lodash.map([
+            'critical',
+            'secondary',
+            'expert'
+        ], function (type) {
+            return lodash.filter(lodash.map(_parametersByLevel[type], createControlFromParameter), function (a) {
+                if (a) {
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+        });
+        criticalControls = _controlGroups[0], secondaryControls = _controlGroups[1], expertControls = _controlGroups[2];
+        _form = [];
+        if (criticalControls.length) {
+            _form.push({
+                kind: 'group',
+                title: 'Parameters'
+            });
+            for (_i = 0, _len = criticalControls.length; _i < _len; _i++) {
+                control = criticalControls[_i];
+                _form.push(control);
+            }
+        }
+        if (secondaryControls.length) {
+            _form.push({
+                kind: 'group',
+                title: 'Advanced'
+            });
+            for (_j = 0, _len1 = secondaryControls.length; _j < _len1; _j++) {
+                control = secondaryControls[_j];
+                _form.push(control);
+            }
+        }
+        if (expertControls.length) {
+            _form.push({
+                kind: 'group',
+                title: 'Expert'
+            });
+            for (_k = 0, _len2 = expertControls.length; _k < _len2; _k++) {
+                control = expertControls[_k];
+                _form.push(control);
+            }
+        }
+        findControl = function (name) {
+            var controls, _l, _len3, _len4, _m;
+            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
+                controls = _controlGroups[_l];
+                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
+                    control = controls[_m];
+                    if (control.name === name) {
+                        return control;
+                    }
+                }
+            }
+        };
+        parameterTemplateOf = function (control) {
+            return 'flow-' + control.kind + '-model-parameter';
+        };
+        findFormField = function (name) {
+            return lodash.find(_form, function (field) {
+                return field.name === name;
+            });
+        };
+        (function () {
+            var foldColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, responseColumnParameter, trainingFrameParameter, validationFrameParameter, weightsColumnParameter, _ref;
+            _ref = lodash.map([
+                'training_frame',
+                'validation_frame',
+                'response_column',
+                'ignored_columns',
+                'offset_column',
+                'weights_column',
+                'fold_column'
+            ], findFormField), trainingFrameParameter = _ref[0], validationFrameParameter = _ref[1], responseColumnParameter = _ref[2], ignoredColumnsParameter = _ref[3], offsetColumnsParameter = _ref[4], weightsColumnParameter = _ref[5], foldColumnParameter = _ref[6];
+            if (trainingFrameParameter) {
+                if (responseColumnParameter || ignoredColumnsParameter) {
+                    return Flow.Dataflow.act(trainingFrameParameter.value, function (frameKey) {
+                        if (frameKey) {
+                            _.requestFrameSummaryWithoutData(frameKey, function (error, frame) {
+                                var columnLabels, columnValues;
+                                if (!error) {
+                                    columnValues = lodash.map(frame.columns, function (column) {
+                                        return column.label;
+                                    });
+                                    columnLabels = lodash.map(frame.columns, function (column) {
+                                        var missingPercent;
+                                        missingPercent = 100 * column.missing_count / frame.rows;
+                                        return {
+                                            type: column.type === 'enum' ? 'enum(' + column.domain_cardinality + ')' : column.type,
+                                            value: column.label,
+                                            missingPercent: missingPercent,
+                                            missingLabel: missingPercent === 0 ? '' : '' + Math.round(missingPercent) + '% NA'
+                                        };
+                                    });
+                                    if (responseColumnParameter) {
+                                        responseColumnParameter.values(columnValues);
+                                    }
+                                    if (ignoredColumnsParameter) {
+                                        ignoredColumnsParameter.values(columnLabels);
+                                    }
+                                    if (weightsColumnParameter) {
+                                        weightsColumnParameter.values(columnValues);
+                                    }
+                                    if (foldColumnParameter) {
+                                        foldColumnParameter.values(columnValues);
+                                    }
+                                    if (offsetColumnsParameter) {
+                                        offsetColumnsParameter.values(columnValues);
+                                    }
+                                    if (responseColumnParameter && ignoredColumnsParameter) {
+                                        return Flow.Dataflow.lift(responseColumnParameter.value, function (responseVariableName) {
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        }());
+        collectParameters = function (includeUnchangedParameters) {
+            var controls, entry, hyperParameters, isGrided, item, parameters, selectedValues, value, _l, _len3, _len4, _len5, _m, _n, _ref;
+            if (includeUnchangedParameters == null) {
+                includeUnchangedParameters = false;
+            }
+            isGrided = false;
+            parameters = {};
+            hyperParameters = {};
+            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
+                controls = _controlGroups[_l];
+                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
+                    control = controls[_m];
+                    if (control.isGrided()) {
+                        isGrided = true;
+                        switch (control.kind) {
+                        case 'textbox':
+                            hyperParameters[control.name] = control.valueGrided();
+                            break;
+                        case 'dropdown':
+                            hyperParameters[control.name] = selectedValues = [];
+                            _ref = control.gridedValues();
+                            for (_n = 0, _len5 = _ref.length; _n < _len5; _n++) {
+                                item = _ref[_n];
+                                if (item.value()) {
+                                    selectedValues.push(item.label);
+                                }
+                            }
+                            break;
+                        default:
+                            hyperParameters[control.name] = [
+                                true,
+                                false
+                            ];
+                        }
+                    } else {
+                        value = control.value();
+                        if (control.isVisible() && (includeUnchangedParameters || control.isRequired || control.defaultValue !== value)) {
+                            switch (control.kind) {
+                            case 'dropdown':
+                                if (value) {
+                                    parameters[control.name] = value;
+                                }
+                                break;
+                            case 'list':
+                                if (value.length) {
+                                    selectedValues = function () {
+                                        var _len6, _o, _results;
+                                        _results = [];
+                                        for (_o = 0, _len6 = value.length; _o < _len6; _o++) {
+                                            entry = value[_o];
+                                            if (entry.isSelected()) {
+                                                _results.push(entry.value);
+                                            }
+                                        }
+                                        return _results;
+                                    }();
+                                    parameters[control.name] = selectedValues;
+                                }
+                                break;
+                            default:
+                                parameters[control.name] = value;
+                            }
+                        }
+                    }
+                }
+            }
+            if (isGrided) {
+                parameters.hyper_parameters = hyperParameters;
+            }
+            return parameters;
+        };
+        performValidations = function (checkForErrors, go) {
+            var parameters;
+            _exception(null);
+            parameters = collectParameters(true);
+            if (parameters.hyper_parameters) {
+                return go();
+            }
+            _validationFailureMessage('');
+            return _.requestModelInputValidation(_algorithm, parameters, function (error, modelBuilder) {
+                var controls, hasErrors, validation, validations, validationsByControlName, _l, _len3, _len4, _len5, _m, _n;
+                if (error) {
+                    return _exception(Flow.Failure(_, new Flow.Error('Error fetching initial model builder state', error)));
+                } else {
+                    hasErrors = false;
+                    if (modelBuilder.messages.length) {
+                        validationsByControlName = lodash.groupBy(modelBuilder.messages, function (validation) {
+                            return validation.field_name;
+                        });
+                        for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
+                            controls = _controlGroups[_l];
+                            for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
+                                control = controls[_m];
+                                if (validations = validationsByControlName[control.name]) {
+                                    for (_n = 0, _len5 = validations.length; _n < _len5; _n++) {
+                                        validation = validations[_n];
+                                        if (validation.message_type === 'HIDE') {
+                                            control.isVisible(false);
+                                        } else {
+                                            control.isVisible(true);
+                                            if (checkForErrors) {
+                                                switch (validation.message_type) {
+                                                case 'INFO':
+                                                    control.hasInfo(true);
+                                                    control.message(validation.message);
+                                                    break;
+                                                case 'WARN':
+                                                    control.hasWarning(true);
+                                                    control.message(validation.message);
+                                                    break;
+                                                case 'ERROR':
+                                                    control.hasError(true);
+                                                    control.message(validation.message);
+                                                    hasErrors = true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    control.isVisible(true);
+                                    control.hasInfo(false);
+                                    control.hasWarning(false);
+                                    control.hasError(false);
+                                    control.message('');
+                                }
+                            }
+                        }
+                    }
+                    if (hasErrors) {
+                        return _validationFailureMessage('Your model parameters have one or more errors. Please fix them and try again.');
+                    } else {
+                        _validationFailureMessage('');
+                        return go();
+                    }
+                }
+            });
+        };
+        createModel = function () {
+            _exception(null);
+            return performValidations(true, function () {
+                var parameters;
+                parameters = collectParameters(false);
+                return _.insertAndExecuteCell('cs', 'buildModel \'' + _algorithm + '\', ' + Flow.Prelude.stringify(parameters));
+            });
+        };
+        _revalidate = function (value) {
+            if (value !== void 0) {
+                return performValidations(false, function () {
+                });
+            }
+        };
+        revalidate = lodash.throttle(_revalidate, 100, { leading: false });
+        performValidations(false, function () {
+            var controls, _l, _len3, _len4, _m;
+            for (_l = 0, _len3 = _controlGroups.length; _l < _len3; _l++) {
+                controls = _controlGroups[_l];
+                for (_m = 0, _len4 = controls.length; _m < _len4; _m++) {
+                    control = controls[_m];
+                    Flow.Dataflow.react(control.value, revalidate);
+                }
+            }
+        });
+        return {
+            form: _form,
+            exception: _exception,
+            parameterTemplateOf: parameterTemplateOf,
+            createModel: createModel,
+            hasValidationFailures: _hasValidationFailures,
+            validationFailureMessage: _validationFailureMessage
+        };
+    };
+    H2O.ModelInput = function (_, _go, _algo, _opts) {
+        var createModel, populateFramesAndColumns, _algorithm, _algorithms, _canCreateModel, _exception, _modelForm;
+        _exception = Flow.Dataflow.signal(null);
+        _algorithms = Flow.Dataflow.signal([]);
+        _algorithm = Flow.Dataflow.signal(null);
+        _canCreateModel = Flow.Dataflow.lift(_algorithm, function (algorithm) {
+            if (algorithm) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        _modelForm = Flow.Dataflow.signal(null);
+        populateFramesAndColumns = function (frameKey, algorithm, parameters, go) {
+            var classificationParameter, destinationKeyParameter;
+            destinationKeyParameter = lodash.find(parameters, function (parameter) {
+                return parameter.name === 'model_id';
+            });
+            if (destinationKeyParameter && !destinationKeyParameter.actual_value) {
+                destinationKeyParameter.actual_value = '' + algorithm + '-' + Flow.Util.uuid();
+            }
+            classificationParameter = lodash.find(parameters, function (parameter) {
+                return parameter.name === 'do_classification';
+            });
+            if (classificationParameter) {
+                classificationParameter.actual_value = true;
+            }
+            return _.requestFrames(function (error, frames) {
+                var frame, frameKeys, frameParameters, parameter, _i, _len;
+                if (error) {
+                } else {
+                    frameKeys = function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = frames.length; _i < _len; _i++) {
+                            frame = frames[_i];
+                            _results.push(frame.frame_id.name);
+                        }
+                        return _results;
+                    }();
+                    frameParameters = lodash.filter(parameters, function (parameter) {
+                        return parameter.type === 'Key<Frame>';
+                    });
+                    for (_i = 0, _len = frameParameters.length; _i < _len; _i++) {
+                        parameter = frameParameters[_i];
+                        parameter.values = frameKeys;
+                        if (parameter.name === 'training_frame') {
+                            if (frameKey) {
+                                parameter.actual_value = frameKey;
+                            } else {
+                                frameKey = parameter.actual_value;
+                            }
+                        }
+                    }
+                    return go();
+                }
+            });
+        };
+        (function () {
+            return _.requestModelBuilders(function (error, modelBuilders) {
+                var frameKey;
+                _algorithms(modelBuilders);
+                _algorithm(_algo ? lodash.find(modelBuilders, function (builder) {
+                    return builder.algo === _algo;
+                }) : void 0);
+                frameKey = _opts != null ? _opts.training_frame : void 0;
+                return Flow.Dataflow.act(_algorithm, function (builder) {
+                    var algorithm, parameters;
+                    if (builder) {
+                        algorithm = builder.algo;
+                        parameters = Flow.Prelude.deepClone(builder.parameters);
+                        return populateFramesAndColumns(frameKey, algorithm, parameters, function () {
+                            return _modelForm(H2O.ModelBuilderForm(_, algorithm, parameters));
+                        });
+                    } else {
+                        return _modelForm(null);
+                    }
+                });
+            });
+        }());
+        createModel = function () {
+            return _modelForm().createModel();
+        };
+        lodash.defer(_go);
+        return {
+            parentException: _exception,
+            algorithms: _algorithms,
+            algorithm: _algorithm,
+            modelForm: _modelForm,
+            canCreateModel: _canCreateModel,
+            createModel: createModel,
+            template: 'flow-model-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ModelOutput = function (_, _go, _model) {
+        var cloneModel, confusionMatrix, deleteModel, downloadPojo, exportModel, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref14, _ref15, _ref16, _ref17, _ref18, _ref19, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
+        _isExpanded = Flow.Dataflow.signal(false);
+        _plots = Flow.Dataflow.signals([]);
+        _pojoPreview = Flow.Dataflow.signal(null);
+        _isPojoLoaded = Flow.Dataflow.lift(_pojoPreview, function (preview) {
+            if (preview) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        _inputParameters = lodash.map(_model.parameters, function (parameter) {
+            var actual_value, default_value, help, label, type, value;
+            type = parameter.type, default_value = parameter.default_value, actual_value = parameter.actual_value, label = parameter.label, help = parameter.help;
+            value = function () {
+                switch (type) {
+                case 'Key<Frame>':
+                case 'Key<Model>':
+                    if (actual_value) {
+                        return actual_value.name;
+                    } else {
+                        return null;
+                    }
+                    break;
+                case 'VecSpecifier':
+                    if (actual_value) {
+                        return actual_value.column_name;
+                    } else {
+                        return null;
+                    }
+                    break;
+                case 'string[]':
+                case 'byte[]':
+                case 'short[]':
+                case 'int[]':
+                case 'long[]':
+                case 'float[]':
+                case 'double[]':
+                    if (actual_value) {
+                        return actual_value.join(', ');
+                    } else {
+                        return null;
+                    }
+                    break;
+                default:
+                    return actual_value;
+                }
+            }();
+            return {
+                label: label,
+                value: value,
+                help: help,
+                isModified: default_value === actual_value
+            };
+        });
+        format4f = function (number) {
+            if (number) {
+                if (number === 'NaN') {
+                    return void 0;
+                } else {
+                    return number.toFixed(4).replace(/\.0+$/, '.0');
+                }
+            } else {
+                return number;
+            }
+        };
+        getAucAsLabel = function (model, tableName) {
+            var metrics;
+            if (metrics = _.inspect(tableName, model)) {
+                return ' , AUC = ' + metrics.schema.AUC.at(0);
+            } else {
+                return '';
+            }
+        };
+        getThresholdsAndCriteria = function (model, tableName) {
+            var criteria, criterionTable, i, idxVector, metricVector, thresholdVector, thresholds;
+            if (criterionTable = _.inspect(tableName, _model)) {
+                thresholdVector = table.schema.threshold;
+                thresholds = function () {
+                    var _i, _ref, _results;
+                    _results = [];
+                    for (i = _i = 0, _ref = thresholdVector.count(); 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+                        _results.push({
+                            index: i,
+                            value: thresholdVector.at(i)
+                        });
+                    }
+                    return _results;
+                }();
+                metricVector = criterionTable.schema.metric;
+                idxVector = criterionTable.schema.idx;
+                criteria = function () {
+                    var _i, _ref, _results;
+                    _results = [];
+                    for (i = _i = 0, _ref = metricVector.count(); 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+                        _results.push({
+                            index: idxVector.at(i),
+                            value: metricVector.valueAt(i)
+                        });
+                    }
+                    return _results;
+                }();
+                return {
+                    thresholds: thresholds,
+                    criteria: criteria
+                };
+            } else {
+                return void 0;
+            }
+        };
+        renderPlot = function (title, isCollapsed, render, thresholdsAndCriteria) {
+            var container, linkedFrame, rocPanel;
+            container = Flow.Dataflow.signal(null);
+            linkedFrame = Flow.Dataflow.signal(null);
+            if (thresholdsAndCriteria) {
+                rocPanel = {
+                    thresholds: Flow.Dataflow.signals(thresholdsAndCriteria.thresholds),
+                    threshold: Flow.Dataflow.signal(null),
+                    criteria: Flow.Dataflow.signals(thresholdsAndCriteria.criteria),
+                    criterion: Flow.Dataflow.signal(null)
+                };
+            }
+            render(function (error, vis) {
+                var _autoHighlight;
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    $('a', vis.element).on('click', function (e) {
+                        var $a;
+                        $a = $(e.target);
+                        switch ($a.attr('data-type')) {
+                        case 'frame':
+                            return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify($a.attr('data-key')));
+                        case 'model':
+                            return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify($a.attr('data-key')));
+                        }
+                    });
+                    container(vis.element);
+                    _autoHighlight = true;
+                    if (vis.subscribe) {
+                        vis.subscribe('markselect', function (_arg) {
+                            var currentCriterion, frame, indices, renderTable, selectedIndex, subframe;
+                            frame = _arg.frame, indices = _arg.indices;
+                            subframe = window.plot.createFrame(frame.label, frame.vectors, indices);
+                            renderTable = function (g) {
+                                return g(indices.length > 1 ? g.select() : g.select(lodash.head(indices)), g.from(subframe));
+                            };
+                            _.plot(renderTable)(function (error, table) {
+                                if (!error) {
+                                    return linkedFrame(table.element);
+                                }
+                            });
+                            if (rocPanel) {
+                                if (indices.length === 1) {
+                                    selectedIndex = lodash.head(indices);
+                                    _autoHighlight = false;
+                                    rocPanel.threshold(lodash.find(rocPanel.thresholds(), function (threshold) {
+                                        return threshold.index === selectedIndex;
+                                    }));
+                                    currentCriterion = rocPanel.criterion();
+                                    if (!currentCriterion || currentCriterion && currentCriterion.index !== selectedIndex) {
+                                        rocPanel.criterion(lodash.find(rocPanel.criteria(), function (criterion) {
+                                            return criterion.index === selectedIndex;
+                                        }));
+                                    }
+                                    _autoHighlight = true;
+                                } else {
+                                    rocPanel.criterion(null);
+                                    rocPanel.threshold(null);
+                                }
+                            }
+                        });
+                        vis.subscribe('markdeselect', function () {
+                            linkedFrame(null);
+                            if (rocPanel) {
+                                rocPanel.criterion(null);
+                                return rocPanel.threshold(null);
+                            }
+                        });
+                        if (rocPanel) {
+                            Flow.Dataflow.react(rocPanel.threshold, function (threshold) {
+                                if (threshold && _autoHighlight) {
+                                    return vis.highlight([threshold.index]);
+                                }
+                            });
+                            return Flow.Dataflow.react(rocPanel.criterion, function (criterion) {
+                                if (criterion && _autoHighlight) {
+                                    return vis.highlight([criterion.index]);
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+            return _plots.push({
+                title: title,
+                plot: container,
+                frame: linkedFrame,
+                controls: Flow.Dataflow.signal(rocPanel),
+                isCollapsed: isCollapsed
+            });
+        };
+        renderMultinomialConfusionMatrix = function (title, cm) {
+            var bold, cell, cells, column, columnCount, errorColumnIndex, headers, i, normal, rowCount, rowIndex, rows, table, tbody, totalRowIndex, tr, yellow, _i, _ref;
+            _ref = Flow.HTML.template('table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong', 'td.bg-yellow'), table = _ref[0], tbody = _ref[1], tr = _ref[2], normal = _ref[3], bold = _ref[4], yellow = _ref[5];
+            columnCount = cm.columns.length;
+            rowCount = cm.rowcount;
+            headers = lodash.map(cm.columns, function (column, i) {
+                return bold(column.description);
+            });
+            headers.unshift(normal(' '));
+            rows = [tr(headers)];
+            errorColumnIndex = columnCount - 2;
+            totalRowIndex = rowCount - 1;
+            for (rowIndex = _i = 0; 0 <= rowCount ? _i < rowCount : _i > rowCount; rowIndex = 0 <= rowCount ? ++_i : --_i) {
+                cells = function () {
+                    var _j, _len, _ref1, _results;
+                    _ref1 = cm.data;
+                    _results = [];
+                    for (i = _j = 0, _len = _ref1.length; _j < _len; i = ++_j) {
+                        column = _ref1[i];
+                        cell = i < errorColumnIndex ? i === rowIndex ? yellow : rowIndex < totalRowIndex ? normal : bold : bold;
+                        _results.push(cell(i === errorColumnIndex ? format4f(column[rowIndex]) : column[rowIndex]));
+                    }
+                    return _results;
+                }();
+                cells.unshift(bold(rowIndex === rowCount - 1 ? 'Total' : cm.columns[rowIndex].description));
+                rows.push(tr(cells));
+            }
+            return _plots.push({
+                title: title,
+                plot: Flow.Dataflow.signal(Flow.HTML.render('div', table(tbody(rows)))),
+                frame: Flow.Dataflow.signal(null),
+                controls: Flow.Dataflow.signal(null),
+                isCollapsed: false
+            });
+        };
+        switch (_model.algo) {
+        case 'kmeans':
+            if (table = _.inspect('output - Scoring History', _model)) {
+                renderPlot('Scoring History', false, _.plot(function (g) {
+                    return g(g.path(g.position('number_of_iterations', 'average_within_cluster_sum_of_squares'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_iterations', 'average_within_cluster_sum_of_squares'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                }));
+            }
+            break;
+        case 'glm':
+            if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - Standardized Coefficient Magnitudes', _model)) {
+                renderPlot('Standardized Coefficient Magnitudes', false, _.plot(function (g) {
+                    return g(g.rect(g.position('coefficients', 'names'), g.fillColor('sign')), g.from(table), g.limit(25));
+                }));
+            }
+            if (table = _.inspect('output - Scoring History', _model)) {
+                lambdaSearchParameter = lodash.find(_model.parameters, function (parameter) {
+                    return parameter.name === 'lambda_search';
+                });
+                if (lambdaSearchParameter != null ? lambdaSearchParameter.actual_value : void 0) {
+                    renderPlot('Scoring History', false, _.plot(function (g) {
+                        return g(g.path(g.position('lambdaid', 'explained_deviance_train'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('lambdaid', 'explained_deviance_test'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('lambdaid', 'explained_deviance_train'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('lambdaid', 'explained_deviance_test'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                    }));
+                } else {
+                    renderPlot('Scoring History', false, _.plot(function (g) {
+                        return g(g.path(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                    }));
+                }
+            }
+            if (output = _model.output) {
+                if (output.model_category === 'Multinomial') {
+                    if (confusionMatrix = (_ref = output.training_metrics) != null ? (_ref1 = _ref.cm) != null ? _ref1.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref2 = output.validation_metrics) != null ? (_ref3 = _ref2.cm) != null ? _ref3.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref4 = output.cross_validation_metrics) != null ? (_ref5 = _ref4.cm) != null ? _ref5.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                }
+            }
+            break;
+        case 'deeplearning':
+            if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - Variable Importances', _model)) {
+                renderPlot('Variable Importances', false, _.plot(function (g) {
+                    return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
+                }));
+            }
+            if (table = _.inspect('output - Scoring History', _model)) {
+                if (table.schema['validation_MSE']) {
+                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
+                        return g(g.path(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                    }));
+                } else {
+                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
+                        return g(g.path(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                    }));
+                }
+                if (table.schema['training_deviance']) {
+                    if (table.schema['validation_deviance']) {
+                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
+                            return g(g.path(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                        }));
+                    } else {
+                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
+                            return g(g.path(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                        }));
+                    }
+                }
+            }
+            if (output = _model.output) {
+                if (output.model_category === 'Multinomial') {
+                    if (confusionMatrix = (_ref6 = output.training_metrics) != null ? (_ref7 = _ref6.cm) != null ? _ref7.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref8 = output.validation_metrics) != null ? (_ref9 = _ref8.cm) != null ? _ref9.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref10 = output.cross_validation_metrics) != null ? (_ref11 = _ref10.cm) != null ? _ref11.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                }
+            }
+            break;
+        case 'gbm':
+        case 'drf':
+            if (table = _.inspect('output - Scoring History', _model)) {
+                if (table.schema['validation_MSE']) {
+                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
+                        return g(g.path(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_MSE'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                    }));
+                } else {
+                    renderPlot('Scoring History - MSE', false, _.plot(function (g) {
+                        return g(g.path(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_MSE'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                    }));
+                }
+                if (table.schema['training_deviance']) {
+                    if (table.schema['validation_deviance']) {
+                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
+                            return g(g.path(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('number_of_trees', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                        }));
+                    } else {
+                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
+                            return g(g.path(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('number_of_trees', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                        }));
+                    }
+                }
+            }
+            if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Training Metrics' + getAucAsLabel(_model, 'output - training_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - training_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Validation Metrics' + getAucAsLabel(_model, 'output - validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - validation_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - cross_validation_metrics - Metrics for Thresholds', _model)) {
+                plotter = _.plot(function (g) {
+                    return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                });
+                renderPlot('ROC Curve - Cross Validation Metrics' + getAucAsLabel(_model, 'output - cross_validation_metrics'), false, plotter, getThresholdsAndCriteria(_model, 'output - cross_validation_metrics - Maximum Metrics'));
+            }
+            if (table = _.inspect('output - Variable Importances', _model)) {
+                renderPlot('Variable Importances', false, _.plot(function (g) {
+                    return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
+                }));
+            }
+            if (output = _model.output) {
+                if (output.model_category === 'Multinomial') {
+                    if (confusionMatrix = (_ref12 = output.training_metrics) != null ? (_ref13 = _ref12.cm) != null ? _ref13.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Training Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref14 = output.validation_metrics) != null ? (_ref15 = _ref14.cm) != null ? _ref15.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                    if (confusionMatrix = (_ref16 = output.cross_validation_metrics) != null ? (_ref17 = _ref16.cm) != null ? _ref17.table : void 0 : void 0) {
+                        renderMultinomialConfusionMatrix('Cross Validation Metrics - Confusion Matrix', confusionMatrix);
+                    }
+                }
+            }
+        }
+        if (table = _.inspect('output - training_metrics - Gains/Lift Table', _model)) {
+            renderPlot('Training Metrics - Gains/Lift Table', false, _.plot(function (g) {
+                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.from(table));
+            }));
+        }
+        if (table = _.inspect('output - validation_metrics - Gains/Lift Table', _model)) {
+            renderPlot('Validation Metrics - Gains/Lift Table', false, _.plot(function (g) {
+                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.from(table));
+            }));
+        }
+        if (table = _.inspect('output - cross_validation_metrics - Gains/Lift Table', _model)) {
+            renderPlot('Cross Validation Metrics - Gains/Lift Table', false, _.plot(function (g) {
+                return g(g.path(g.position('cumulative_data_fraction', 'cumulative_lift'), g.strokeColor(g.value('green'))), g.path(g.position('cumulative_data_fraction', 'cumulative_capture_rate'), g.strokeColor(g.value('black'))), g.from(table));
+            }));
+        }
+        _ref18 = _.ls(_model);
+        for (_i = 0, _len = _ref18.length; _i < _len; _i++) {
+            tableName = _ref18[_i];
+            if (!(tableName !== 'parameters')) {
+                continue;
+            }
+            if (output = ((_ref19 = _model.output) != null ? _ref19.model_category : void 0) === 'Multinomial') {
+                if (0 === tableName.indexOf('output - training_metrics - cm')) {
+                    continue;
+                } else if (0 === tableName.indexOf('output - validation_metrics - cm')) {
+                    continue;
+                } else if (0 === tableName.indexOf('output - cross_validation_metrics - cm')) {
+                    continue;
+                }
+            }
+            if (table = _.inspect(tableName, _model)) {
+                renderPlot(tableName + (table.metadata.description ? ' (' + table.metadata.description + ')' : ''), true, _.plot(function (g) {
+                    return g(table.indices.length > 1 ? g.select() : g.select(0), g.from(table));
+                }));
+            }
+        }
+        toggle = function () {
+            return _isExpanded(!_isExpanded());
+        };
+        cloneModel = function () {
+            return alert('Not implemented');
+        };
+        predict = function () {
+            return _.insertAndExecuteCell('cs', 'predict model: ' + Flow.Prelude.stringify(_model.model_id.name));
+        };
+        inspect = function () {
+            return _.insertAndExecuteCell('cs', 'inspect getModel ' + Flow.Prelude.stringify(_model.model_id.name));
+        };
+        previewPojo = function () {
+            return _.requestPojoPreview(_model.model_id.name, function (error, result) {
+                if (error) {
+                    return _pojoPreview('<pre>' + lodash.escape(error) + '</pre>');
+                } else {
+                    return _pojoPreview('<pre>' + Flow.Util.highlight(result, 'java') + '</pre>');
+                }
+            });
+        };
+        downloadPojo = function () {
+            return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name), '_blank');
+        };
+        exportModel = function () {
+            return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_model.model_id.name));
+        };
+        deleteModel = function () {
+            return _.confirm('Are you sure you want to delete this model?', {
+                acceptCaption: 'Delete Model',
+                declineCaption: 'Cancel'
+            }, function (accept) {
+                if (accept) {
+                    return _.insertAndExecuteCell('cs', 'deleteModel ' + Flow.Prelude.stringify(_model.model_id.name));
+                }
+            });
+        };
+        lodash.defer(_go);
+        return {
+            key: _model.model_id,
+            algo: _model.algo_full_name,
+            plots: _plots,
+            inputParameters: _inputParameters,
+            isExpanded: _isExpanded,
+            toggle: toggle,
+            cloneModel: cloneModel,
+            predict: predict,
+            inspect: inspect,
+            previewPojo: previewPojo,
+            downloadPojo: downloadPojo,
+            pojoPreview: _pojoPreview,
+            isPojoLoaded: _isPojoLoaded,
+            exportModel: exportModel,
+            deleteModel: deleteModel,
+            template: 'flow-model-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ModelsOutput = function (_, _go, _models) {
+        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspectAll, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _hasSelectedModels, _isCheckingAll, _modelViews;
+        _modelViews = Flow.Dataflow.signal([]);
+        _checkAllModels = Flow.Dataflow.signal(false);
+        _checkedModelCount = Flow.Dataflow.signal(0);
+        _canCompareModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
+            return count > 1;
+        });
+        _hasSelectedModels = Flow.Dataflow.lift(_checkedModelCount, function (count) {
+            return count > 0;
+        });
+        _isCheckingAll = false;
+        Flow.Dataflow.react(_checkAllModels, function (checkAll) {
+            var view, views, _i, _len;
+            _isCheckingAll = true;
+            views = _modelViews();
+            for (_i = 0, _len = views.length; _i < _len; _i++) {
+                view = views[_i];
+                view.isChecked(checkAll);
+            }
+            _checkedModelCount(checkAll ? views.length : 0);
+            _isCheckingAll = false;
+        });
+        createModelView = function (model) {
+            var cloneModel, inspect, predict, view, _isChecked;
+            _isChecked = Flow.Dataflow.signal(false);
+            Flow.Dataflow.react(_isChecked, function () {
+                var checkedViews, view;
+                if (_isCheckingAll) {
+                    return;
+                }
+                checkedViews = function () {
+                    var _i, _len, _ref, _results;
+                    _ref = _modelViews();
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        view = _ref[_i];
+                        if (view.isChecked()) {
+                            _results.push(view);
+                        }
+                    }
+                    return _results;
+                }();
+                return _checkedModelCount(checkedViews.length);
+            });
+            predict = function () {
+                return _.insertAndExecuteCell('cs', 'predict model: ' + Flow.Prelude.stringify(model.model_id.name));
+            };
+            cloneModel = function () {
+                return alert('Not implemented');
+                return _.insertAndExecuteCell('cs', 'cloneModel ' + Flow.Prelude.stringify(model.model_id.name));
+            };
+            view = function () {
+                return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify(model.model_id.name));
+            };
+            inspect = function () {
+                return _.insertAndExecuteCell('cs', 'inspect getModel ' + Flow.Prelude.stringify(model.model_id.name));
+            };
+            return {
+                key: model.model_id.name,
+                algo: model.algo_full_name,
+                isChecked: _isChecked,
+                predict: predict,
+                clone: cloneModel,
+                inspect: inspect,
+                view: view
+            };
+        };
+        buildModel = function () {
+            return _.insertAndExecuteCell('cs', 'buildModel');
+        };
+        collectSelectedKeys = function () {
+            var view, _i, _len, _ref, _results;
+            _ref = _modelViews();
             _results = [];
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                element = _ref[_i];
-                _results.push(preview(element));
+                view = _ref[_i];
+                if (view.isChecked()) {
+                    _results.push(view.key);
+                }
+            }
+            return _results;
+        };
+        compareModels = function () {
+            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
+        };
+        predictUsingModels = function () {
+            return _.insertAndExecuteCell('cs', 'predict models: ' + Flow.Prelude.stringify(collectSelectedKeys()));
+        };
+        deleteModels = function () {
+            return _.confirm('Are you sure you want to delete these models?', {
+                acceptCaption: 'Delete Models',
+                declineCaption: 'Cancel'
+            }, function (accept) {
+                if (accept) {
+                    return _.insertAndExecuteCell('cs', 'deleteModels ' + Flow.Prelude.stringify(collectSelectedKeys()));
+                }
+            });
+        };
+        inspectAll = function () {
+            var allKeys, view;
+            allKeys = function () {
+                var _i, _len, _ref, _results;
+                _ref = _modelViews();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    view = _ref[_i];
+                    _results.push(view.key);
+                }
+                return _results;
+            }();
+            return _.insertAndExecuteCell('cs', 'inspect getModels ' + Flow.Prelude.stringify(allKeys));
+        };
+        initialize = function (models) {
+            _modelViews(lodash.map(models, createModelView));
+            return lodash.defer(_go);
+        };
+        initialize(_models);
+        return {
+            modelViews: _modelViews,
+            hasModels: _models.length > 0,
+            buildModel: buildModel,
+            compareModels: compareModels,
+            predictUsingModels: predictUsingModels,
+            deleteModels: deleteModels,
+            checkedModelCount: _checkedModelCount,
+            canCompareModels: _canCompareModels,
+            hasSelectedModels: _hasSelectedModels,
+            checkAllModels: _checkAllModels,
+            inspect: inspectAll,
+            template: 'flow-models-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.NetworkTestOutput = function (_, _go, _testResult) {
+        var render, _result;
+        _result = Flow.Dataflow.signal(null);
+        render = _.plot(function (g) {
+            return g(g.select(), g.from(_.inspect('result', _testResult)));
+        });
+        render(function (error, vis) {
+            if (error) {
+                return console.debug(error);
+            } else {
+                return _result(vis.element);
+            }
+        });
+        lodash.defer(_go);
+        return {
+            result: _result,
+            template: 'flow-network-test-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.NoAssist = function (_, _go) {
+        lodash.defer(_go);
+        return {
+            showAssist: function () {
+                return _.insertAndExecuteCell('cs', 'assist');
+            },
+            template: 'flow-no-assist'
+        };
+    };
+}.call(this));
+(function () {
+    var MaxItemsPerPage, dataTypes, parseDelimiters, parseTypes;
+    MaxItemsPerPage = 15;
+    parseTypes = lodash.map([
+        'AUTO',
+        'ARFF',
+        'XLS',
+        'XLSX',
+        'CSV',
+        'SVMLight',
+        'ORC'
+    ], function (type) {
+        return {
+            type: type,
+            caption: type
+        };
+    });
+    parseDelimiters = function () {
+        var characterDelimiters, createDelimiter, otherDelimiters, whitespaceDelimiters, whitespaceSeparators;
+        whitespaceSeparators = [
+            'NULL',
+            'SOH (start of heading)',
+            'STX (start of text)',
+            'ETX (end of text)',
+            'EOT (end of transmission)',
+            'ENQ (enquiry)',
+            'ACK (acknowledge)',
+            'BEL \'\\a\' (bell)',
+            'BS  \'\\b\' (backspace)',
+            'HT  \'\\t\' (horizontal tab)',
+            'LF  \'\\n\' (new line)',
+            'VT  \'\\v\' (vertical tab)',
+            'FF  \'\\f\' (form feed)',
+            'CR  \'\\r\' (carriage ret)',
+            'SO  (shift out)',
+            'SI  (shift in)',
+            'DLE (data link escape)',
+            'DC1 (device control 1) ',
+            'DC2 (device control 2)',
+            'DC3 (device control 3)',
+            'DC4 (device control 4)',
+            'NAK (negative ack.)',
+            'SYN (synchronous idle)',
+            'ETB (end of trans. blk)',
+            'CAN (cancel)',
+            'EM  (end of medium)',
+            'SUB (substitute)',
+            'ESC (escape)',
+            'FS  (file separator)',
+            'GS  (group separator)',
+            'RS  (record separator)',
+            'US  (unit separator)',
+            '\' \' SPACE'
+        ];
+        createDelimiter = function (caption, charCode) {
+            return {
+                charCode: charCode,
+                caption: '' + caption + ': \'' + ('00' + charCode).slice(-2) + '\''
+            };
+        };
+        whitespaceDelimiters = lodash.map(whitespaceSeparators, createDelimiter);
+        characterDelimiters = lodash.times(126 - whitespaceSeparators.length, function (i) {
+            var charCode;
+            charCode = i + whitespaceSeparators.length;
+            return createDelimiter(String.fromCharCode(charCode), charCode);
+        });
+        otherDelimiters = [{
+                charCode: -1,
+                caption: 'AUTO'
+            }];
+        return whitespaceDelimiters.concat(characterDelimiters, otherDelimiters);
+    }();
+    dataTypes = [
+        'Unknown',
+        'Numeric',
+        'Enum',
+        'Time',
+        'UUID',
+        'String',
+        'Invalid'
+    ];
+    H2O.SetupParseOutput = function (_, _go, _inputs, _result) {
+        var filterColumns, goToNextPage, goToPreviousPage, makePage, parseFiles, refreshPreview, _activePage, _canGoToNextPage, _canGoToPreviousPage, _canReconfigure, _chunkSize, _columnCount, _columnNameSearchTerm, _columns, _currentPage, _deleteOnDone, _delimiter, _destinationKey, _filteredColumns, _headerOption, _headerOptions, _inputKey, _parseType, _preview, _sourceKeys, _useSingleQuotes, _visibleColumns;
+        _inputKey = _inputs.paths ? 'paths' : 'source_frames';
+        _sourceKeys = lodash.map(_result.source_frames, function (src) {
+            return src.name;
+        });
+        _parseType = Flow.Dataflow.signal(lodash.find(parseTypes, function (parseType) {
+            return parseType.type === _result.parse_type;
+        }));
+        _canReconfigure = Flow.Dataflow.lift(_parseType, function (parseType) {
+            return parseType.type !== 'SVMLight';
+        });
+        _delimiter = Flow.Dataflow.signal(lodash.find(parseDelimiters, function (delimiter) {
+            return delimiter.charCode === _result.separator;
+        }));
+        _useSingleQuotes = Flow.Dataflow.signal(_result.single_quotes);
+        _destinationKey = Flow.Dataflow.signal(_result.destination_frame);
+        _headerOptions = {
+            auto: 0,
+            header: 1,
+            data: -1
+        };
+        _headerOption = Flow.Dataflow.signal(_result.check_header === 0 ? 'auto' : _result.check_header === -1 ? 'data' : 'header');
+        _deleteOnDone = Flow.Dataflow.signal(true);
+        _columnNameSearchTerm = Flow.Dataflow.signal('');
+        _preview = Flow.Dataflow.signal(_result);
+        _chunkSize = Flow.Dataflow.lift(_preview, function (preview) {
+            return preview.chunk_size;
+        });
+        refreshPreview = function () {
+            var column, columnTypes;
+            columnTypes = function () {
+                var _i, _len, _ref, _results;
+                _ref = _columns();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    column = _ref[_i];
+                    _results.push(column.type());
+                }
+                return _results;
+            }();
+            return _.requestParseSetupPreview(_sourceKeys, _parseType().type, _delimiter().charCode, _useSingleQuotes(), _headerOptions[_headerOption()], columnTypes, function (error, result) {
+                if (!error) {
+                    return _preview(result);
+                }
+            });
+        };
+        _columns = Flow.Dataflow.lift(_preview, function (preview) {
+            var columnCount, columnNames, columnTypes, data, i, j, previewData, row, rowCount, rows, _i, _j;
+            columnTypes = preview.column_types;
+            columnCount = columnTypes.length;
+            previewData = preview.data;
+            rowCount = previewData.length;
+            columnNames = preview.column_names;
+            rows = new Array(columnCount);
+            for (j = _i = 0; 0 <= columnCount ? _i < columnCount : _i > columnCount; j = 0 <= columnCount ? ++_i : --_i) {
+                data = new Array(rowCount);
+                for (i = _j = 0; 0 <= rowCount ? _j < rowCount : _j > rowCount; i = 0 <= rowCount ? ++_j : --_j) {
+                    data[i] = previewData[i][j];
+                }
+                rows[j] = row = {
+                    index: '' + (j + 1),
+                    name: Flow.Dataflow.signal(columnNames ? columnNames[j] : ''),
+                    type: Flow.Dataflow.signal(columnTypes[j]),
+                    data: data
+                };
+            }
+            return rows;
+        });
+        _columnCount = Flow.Dataflow.lift(_columns, function (columns) {
+            return (columns != null ? columns.length : void 0) || 0;
+        });
+        _currentPage = 0;
+        Flow.Dataflow.act(_columns, function (columns) {
+            return lodash.forEach(columns, function (column) {
+                return Flow.Dataflow.react(column.type, function () {
+                    _currentPage = _activePage().index;
+                    return refreshPreview();
+                });
+            });
+        });
+        Flow.Dataflow.react(_parseType, _delimiter, _useSingleQuotes, _headerOption, function () {
+            _currentPage = 0;
+            return refreshPreview();
+        });
+        _filteredColumns = Flow.Dataflow.lift(_columns, function (columns) {
+            return columns;
+        });
+        makePage = function (index, columns) {
+            return {
+                index: index,
+                columns: columns
+            };
+        };
+        _activePage = Flow.Dataflow.lift(_columns, function (columns) {
+            return makePage(_currentPage, columns);
+        });
+        filterColumns = function () {
+            return _activePage(makePage(0, lodash.filter(_columns(), function (column) {
+                return -1 < column.name().toLowerCase().indexOf(_columnNameSearchTerm().toLowerCase());
+            })));
+        };
+        Flow.Dataflow.react(_columnNameSearchTerm, lodash.throttle(filterColumns, 500));
+        _visibleColumns = Flow.Dataflow.lift(_activePage, function (currentPage) {
+            var start;
+            start = currentPage.index * MaxItemsPerPage;
+            return currentPage.columns.slice(start, start + MaxItemsPerPage);
+        });
+        parseFiles = function () {
+            var column, columnNames, columnTypes, headerOption;
+            columnNames = function () {
+                var _i, _len, _ref, _results;
+                _ref = _columns();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    column = _ref[_i];
+                    _results.push(column.name());
+                }
+                return _results;
+            }();
+            headerOption = _headerOptions[_headerOption()];
+            if (lodash.every(columnNames, function (columnName) {
+                    return columnName.trim() === '';
+                })) {
+                columnNames = null;
+                headerOption = -1;
+            }
+            columnTypes = function () {
+                var _i, _len, _ref, _results;
+                _ref = _columns();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    column = _ref[_i];
+                    _results.push(column.type());
+                }
+                return _results;
+            }();
+            return _.insertAndExecuteCell('cs', 'parseFiles\n  ' + _inputKey + ': ' + Flow.Prelude.stringify(_inputs[_inputKey]) + '\n  destination_frame: ' + Flow.Prelude.stringify(_destinationKey()) + '\n  parse_type: ' + Flow.Prelude.stringify(_parseType().type) + '\n  separator: ' + _delimiter().charCode + '\n  number_columns: ' + _columnCount() + '\n  single_quotes: ' + _useSingleQuotes() + '\n  ' + (_canReconfigure() ? 'column_names: ' + Flow.Prelude.stringify(columnNames) + '\n  ' : '') + (_canReconfigure() ? 'column_types: ' + Flow.Prelude.stringify(columnTypes) + '\n  ' : '') + 'delete_on_done: ' + _deleteOnDone() + '\n  check_header: ' + headerOption + '\n  chunk_size: ' + _chunkSize());
+        };
+        _canGoToNextPage = Flow.Dataflow.lift(_activePage, function (currentPage) {
+            return (currentPage.index + 1) * MaxItemsPerPage < currentPage.columns.length;
+        });
+        _canGoToPreviousPage = Flow.Dataflow.lift(_activePage, function (currentPage) {
+            return currentPage.index > 0;
+        });
+        goToNextPage = function () {
+            var currentPage;
+            currentPage = _activePage();
+            return _activePage(makePage(currentPage.index + 1, currentPage.columns));
+        };
+        goToPreviousPage = function () {
+            var currentPage;
+            currentPage = _activePage();
+            if (currentPage.index > 0) {
+                return _activePage(makePage(currentPage.index - 1, currentPage.columns));
+            }
+        };
+        lodash.defer(_go);
+        return {
+            sourceKeys: _inputs[_inputKey],
+            canReconfigure: _canReconfigure,
+            parseTypes: parseTypes,
+            dataTypes: dataTypes,
+            delimiters: parseDelimiters,
+            parseType: _parseType,
+            delimiter: _delimiter,
+            useSingleQuotes: _useSingleQuotes,
+            destinationKey: _destinationKey,
+            headerOption: _headerOption,
+            deleteOnDone: _deleteOnDone,
+            columns: _visibleColumns,
+            parseFiles: parseFiles,
+            columnNameSearchTerm: _columnNameSearchTerm,
+            canGoToNextPage: _canGoToNextPage,
+            canGoToPreviousPage: _canGoToPreviousPage,
+            goToNextPage: goToNextPage,
+            goToPreviousPage: goToPreviousPage,
+            template: 'flow-parse-raw-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.PlotInput = function (_, _go, _frame) {
+        var plot, vector, _canPlot, _color, _type, _types, _vectors, _x, _y;
+        _types = [
+            'point',
+            'path',
+            'rect'
+        ];
+        _vectors = function () {
+            var _i, _len, _ref, _results;
+            _ref = _frame.vectors;
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                vector = _ref[_i];
+                if (vector.type === Flow.TString || vector.type === Flow.TNumber) {
+                    _results.push(vector.label);
+                }
             }
             return _results;
         }();
-        return '[' + previews.join(', ') + ellipsis + ']';
-    };
-    previewObject = function (object) {
-        var count, ellipsis, key, previews, value;
-        count = 0;
-        previews = [];
-        ellipsis = '';
-        for (key in object) {
-            value = object[key];
-            if (!(key !== '_flow_')) {
-                continue;
-            }
-            previews.push('' + key + ': ' + preview(value));
-            if (++count === 5) {
-                ellipsis = ', ...';
-                break;
-            }
-        }
-        return '{' + previews.join(', ') + ellipsis + '}';
-    };
-    preview = function (element, recurse) {
-        var type;
-        if (recurse == null) {
-            recurse = false;
-        }
-        type = Flow.Prelude.typeOf(element);
-        switch (type) {
-        case 'Boolean':
-        case 'String':
-        case 'Number':
-        case 'Date':
-        case 'RegExp':
-            return element;
-        case 'undefined':
-        case 'null':
-        case 'Function':
-        case 'Arguments':
-            return type;
-        case 'Array':
-            if (recurse) {
-                return previewArray(element);
-            } else {
-                return type;
-            }
-            break;
-        default:
-            if (recurse) {
-                return previewObject(element);
-            } else {
-                return type;
-            }
-        }
-    };
-    Flow.ObjectBrowserElement = function (key, object) {
-        var toggle, _canExpand, _expansions, _isExpanded, _type;
-        _expansions = Flow.Dataflow.signal(null);
-        _isExpanded = Flow.Dataflow.signal(false);
-        _type = Flow.Prelude.typeOf(object);
-        _canExpand = isExpandable(_type);
-        toggle = function () {
-            var expansions, value;
-            if (!_canExpand) {
-                return;
-            }
-            if (_expansions() === null) {
-                expansions = [];
-                for (key in object) {
-                    value = object[key];
-                    if (key !== '_flow_') {
-                        expansions.push(Flow.ObjectBrowserElement(key, value));
-                    }
-                }
-                _expansions(expansions);
-            }
-            return _isExpanded(!_isExpanded());
+        _type = Flow.Dataflow.signal(null);
+        _x = Flow.Dataflow.signal(null);
+        _y = Flow.Dataflow.signal(null);
+        _color = Flow.Dataflow.signal(null);
+        _canPlot = Flow.Dataflow.lift(_type, _x, _y, function (type, x, y) {
+            return type && x && y;
+        });
+        plot = function () {
+            var color, command;
+            command = (color = _color()) ? 'plot (g) -> g(\n  g.' + _type() + '(\n    g.position ' + Flow.Prelude.stringify(_x()) + ', ' + Flow.Prelude.stringify(_y()) + '\n    g.color ' + Flow.Prelude.stringify(color) + '\n  )\n  g.from inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin + '\n)' : 'plot (g) -> g(\n  g.' + _type() + '(\n    g.position ' + Flow.Prelude.stringify(_x()) + ', ' + Flow.Prelude.stringify(_y()) + '\n  )\n  g.from inspect ' + Flow.Prelude.stringify(_frame.label) + ', ' + _frame.metadata.origin + '\n)';
+            return _.insertAndExecuteCell('cs', command);
         };
-        return {
-            key: key,
-            preview: preview(object, true),
-            toggle: toggle,
-            expansions: _expansions,
-            isExpanded: _isExpanded,
-            canExpand: _canExpand
-        };
-    };
-    Flow.ObjectBrowser = function (_, _go, key, object) {
         lodash.defer(_go);
         return {
-            object: Flow.ObjectBrowserElement(key, object),
-            template: 'flow-object'
+            types: _types,
+            type: _type,
+            vectors: _vectors,
+            x: _x,
+            y: _y,
+            color: _color,
+            plot: plot,
+            canPlot: _canPlot,
+            template: 'flow-plot-input'
         };
     };
 }.call(this));
 (function () {
-    Flow.Outline = function (_, _cells) {
-        return { cells: _cells };
-    };
-}.call(this));
-(function () {
-    Flow.Raw = function (_) {
-        var render;
-        render = function (input, output) {
-            output.data({
-                text: input,
-                template: 'flow-raw'
-            });
-            return output.end();
-        };
-        render.isCode = false;
-        return render;
-    };
-}.call(this));
-(function () {
-    Flow.Sidebar = function (_, cells) {
-        var switchToBrowser, switchToClipboard, switchToHelp, switchToOutline, _browser, _clipboard, _help, _isBrowserMode, _isClipboardMode, _isHelpMode, _isOutlineMode, _mode, _outline;
-        _mode = Flow.Dataflow.signal('help');
-        _outline = Flow.Outline(_, cells);
-        _isOutlineMode = Flow.Dataflow.lift(_mode, function (mode) {
-            return mode === 'outline';
-        });
-        switchToOutline = function () {
-            return _mode('outline');
-        };
-        _browser = Flow.Browser(_);
-        _isBrowserMode = Flow.Dataflow.lift(_mode, function (mode) {
-            return mode === 'browser';
-        });
-        switchToBrowser = function () {
-            return _mode('browser');
-        };
-        _clipboard = Flow.Clipboard(_);
-        _isClipboardMode = Flow.Dataflow.lift(_mode, function (mode) {
-            return mode === 'clipboard';
-        });
-        switchToClipboard = function () {
-            return _mode('clipboard');
-        };
-        _help = Flow.Help(_);
-        _isHelpMode = Flow.Dataflow.lift(_mode, function (mode) {
-            return mode === 'help';
-        });
-        switchToHelp = function () {
-            return _mode('help');
-        };
-        Flow.Dataflow.link(_.ready, function () {
-            Flow.Dataflow.link(_.showHelp, function () {
-                return switchToHelp();
-            });
-            Flow.Dataflow.link(_.showClipboard, function () {
-                return switchToClipboard();
-            });
-            Flow.Dataflow.link(_.showBrowser, function () {
-                return switchToBrowser();
-            });
-            return Flow.Dataflow.link(_.showOutline, function () {
-                return switchToOutline();
-            });
-        });
+    H2O.PlotOutput = function (_, _go, _plot) {
+        lodash.defer(_go);
         return {
-            outline: _outline,
-            isOutlineMode: _isOutlineMode,
-            switchToOutline: switchToOutline,
-            browser: _browser,
-            isBrowserMode: _isBrowserMode,
-            switchToBrowser: switchToBrowser,
-            clipboard: _clipboard,
-            isClipboardMode: _isClipboardMode,
-            switchToClipboard: switchToClipboard,
-            help: _help,
-            isHelpMode: _isHelpMode,
-            switchToHelp: switchToHelp
+            plot: _plot,
+            template: 'flow-plot-output'
         };
     };
 }.call(this));
 (function () {
-    Flow.Status = function (_) {
-        var defaultMessage, onStatus, _connections, _isBusy, _message;
-        defaultMessage = 'Ready';
-        _message = Flow.Dataflow.signal(defaultMessage);
-        _connections = Flow.Dataflow.signal(0);
-        _isBusy = Flow.Dataflow.lift(_connections, function (connections) {
-            return connections > 0;
-        });
-        onStatus = function (category, type, data) {
-            var connections;
-            console.debug('Status:', category, type, data);
-            switch (category) {
-            case 'server':
-                switch (type) {
-                case 'request':
-                    _connections(_connections() + 1);
-                    return lodash.defer(_message, 'Requesting ' + data);
-                case 'response':
-                case 'error':
-                    _connections(connections = _connections() - 1);
-                    if (connections) {
-                        return lodash.defer(_message, 'Waiting for ' + connections + ' responses...');
-                    } else {
-                        return lodash.defer(_message, defaultMessage);
+    H2O.PredictInput = function (_, _go, opt) {
+        var predict, _canPredict, _computeDeepFeaturesHiddenLayer, _computeReconstructionError, _deepFeaturesHiddenLayer, _deepFeaturesHiddenLayerValue, _destinationKey, _exception, _frames, _hasAdditionalOptions, _hasFrames, _hasModels, _models, _ref, _selectedFrame, _selectedFrames, _selectedFramesCaption, _selectedModel, _selectedModels, _selectedModelsCaption;
+        _destinationKey = Flow.Dataflow.signal((_ref = opt.predictions_frame) != null ? _ref : 'prediction-' + Flow.Util.uuid());
+        _selectedModels = opt.models ? opt.models : opt.model ? [opt.model] : [];
+        _selectedFrames = opt.frames ? opt.frames : opt.frame ? [opt.frame] : [];
+        _selectedModelsCaption = _selectedModels.join(', ');
+        _selectedFramesCaption = _selectedFrames.join(', ');
+        _exception = Flow.Dataflow.signal(null);
+        _selectedFrame = Flow.Dataflow.signal(null);
+        _selectedModel = Flow.Dataflow.signal(null);
+        _hasFrames = _selectedFrames.length ? true : false;
+        _hasModels = _selectedModels.length ? true : false;
+        _frames = Flow.Dataflow.signals([]);
+        _models = Flow.Dataflow.signals([]);
+        _hasAdditionalOptions = Flow.Dataflow.lift(_selectedModel, function (model) {
+            var parameter, _i, _len, _ref1;
+            if (model) {
+                if (model.algo === 'deeplearning') {
+                    _ref1 = model.parameters;
+                    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                        parameter = _ref1[_i];
+                        if (parameter.name === 'autoencoder' && parameter.actual_value === true) {
+                            return true;
+                        }
                     }
                 }
             }
-        };
-        Flow.Dataflow.link(_.ready, function () {
-            return Flow.Dataflow.link(_.status, onStatus);
+            return false;
         });
+        _computeReconstructionError = Flow.Dataflow.signal(false);
+        _computeDeepFeaturesHiddenLayer = Flow.Dataflow.signal(false);
+        _deepFeaturesHiddenLayer = Flow.Dataflow.signal(0);
+        _deepFeaturesHiddenLayerValue = Flow.Dataflow.lift(_deepFeaturesHiddenLayer, function (text) {
+            return parseInt(text, 10);
+        });
+        _canPredict = Flow.Dataflow.lift(_selectedFrame, _selectedModel, _hasAdditionalOptions, _computeReconstructionError, _computeDeepFeaturesHiddenLayer, _deepFeaturesHiddenLayerValue, function (frame, model, hasAdditionalOptions, computeReconstructionError, computeDeepFeaturesHiddenLayer, deepFeaturesHiddenLayerValue) {
+            var hasFrameAndModel, hasValidOptions;
+            hasFrameAndModel = frame && model || _hasFrames && model || _hasModels && frame;
+            hasValidOptions = hasAdditionalOptions ? computeReconstructionError ? true : computeDeepFeaturesHiddenLayer ? !lodash.isNaN(deepFeaturesHiddenLayerValue) : true : true;
+            return hasFrameAndModel && hasValidOptions;
+        });
+        if (!_hasFrames) {
+            _.requestFrames(function (error, frames) {
+                var frame;
+                if (error) {
+                    return _exception(new Flow.Error('Error fetching frame list.', error));
+                } else {
+                    return _frames(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = frames.length; _i < _len; _i++) {
+                            frame = frames[_i];
+                            if (!frame.is_text) {
+                                _results.push(frame.frame_id.name);
+                            }
+                        }
+                        return _results;
+                    }());
+                }
+            });
+        }
+        if (!_hasModels) {
+            _.requestModels(function (error, models) {
+                var model;
+                if (error) {
+                    return _exception(new Flow.Error('Error fetching model list.', error));
+                } else {
+                    return _models(function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = models.length; _i < _len; _i++) {
+                            model = models[_i];
+                            _results.push(model.model_id.name);
+                        }
+                        return _results;
+                    }());
+                }
+            });
+        }
+        if (!_selectedModel()) {
+            if (opt.model && lodash.isString(opt.model)) {
+                _.requestModel(opt.model, function (error, model) {
+                    return _selectedModel(model);
+                });
+            }
+        }
+        predict = function () {
+            var cs, destinationKey, frameArg, modelArg;
+            if (_hasFrames) {
+                frameArg = _selectedFrames.length > 1 ? _selectedFrames : lodash.head(_selectedFrames);
+                modelArg = _selectedModel();
+            } else if (_hasModels) {
+                modelArg = _selectedModels.length > 1 ? _selectedModels : lodash.head(_selectedModels);
+                frameArg = _selectedFrame();
+            } else {
+                modelArg = _selectedModel();
+                frameArg = _selectedFrame();
+            }
+            destinationKey = _destinationKey();
+            cs = 'predict model: ' + Flow.Prelude.stringify(modelArg) + ', frame: ' + Flow.Prelude.stringify(frameArg);
+            if (destinationKey) {
+                cs += ', predictions_frame: ' + Flow.Prelude.stringify(destinationKey);
+            }
+            if (_hasAdditionalOptions()) {
+                if (_computeReconstructionError()) {
+                    cs += ', reconstruction_error: true';
+                } else if (_computeDeepFeaturesHiddenLayer()) {
+                    cs += ', deep_features_hidden_layer: ' + _deepFeaturesHiddenLayerValue();
+                }
+            }
+            return _.insertAndExecuteCell('cs', cs);
+        };
+        lodash.defer(_go);
         return {
-            message: _message,
-            connections: _connections,
-            isBusy: _isBusy
+            destinationKey: _destinationKey,
+            exception: _exception,
+            hasModels: _hasModels,
+            hasFrames: _hasFrames,
+            canPredict: _canPredict,
+            selectedFramesCaption: _selectedFramesCaption,
+            selectedModelsCaption: _selectedModelsCaption,
+            selectedFrame: _selectedFrame,
+            selectedModel: _selectedModel,
+            frames: _frames,
+            models: _models,
+            predict: predict,
+            hasAdditionalOptions: _hasAdditionalOptions,
+            computeReconstructionError: _computeReconstructionError,
+            computeDeepFeaturesHiddenLayer: _computeDeepFeaturesHiddenLayer,
+            deepFeaturesHiddenLayer: _deepFeaturesHiddenLayer,
+            template: 'flow-predict-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.PredictOutput = function (_, _go, prediction) {
+        var frame, inspect, model, renderPlot, table, tableName, _canInspect, _i, _len, _plots, _ref, _ref1;
+        if (prediction) {
+            frame = prediction.frame, model = prediction.model;
+        }
+        _plots = Flow.Dataflow.signals([]);
+        _canInspect = prediction.__meta ? true : false;
+        renderPlot = function (title, prediction, render) {
+            var combineWithFrame, container;
+            container = Flow.Dataflow.signal(null);
+            combineWithFrame = function () {
+                var predictionsFrameName, targetFrameName;
+                predictionsFrameName = prediction.predictions.frame_id.name;
+                targetFrameName = 'combined-' + predictionsFrameName;
+                return _.insertAndExecuteCell('cs', 'bindFrames ' + Flow.Prelude.stringify(targetFrameName) + ', [ ' + Flow.Prelude.stringify(predictionsFrameName) + ', ' + Flow.Prelude.stringify(frame.name) + ' ]');
+            };
+            render(function (error, vis) {
+                if (error) {
+                    return console.debug(error);
+                } else {
+                    $('a', vis.element).on('click', function (e) {
+                        var $a;
+                        $a = $(e.target);
+                        switch ($a.attr('data-type')) {
+                        case 'frame':
+                            return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify($a.attr('data-key')));
+                        case 'model':
+                            return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify($a.attr('data-key')));
+                        }
+                    });
+                    return container(vis.element);
+                }
+            });
+            return _plots.push({
+                title: title,
+                plot: container,
+                combineWithFrame: combineWithFrame,
+                canCombineWithFrame: title === 'Prediction'
+            });
+        };
+        if (prediction) {
+            switch ((_ref = prediction.__meta) != null ? _ref.schema_type : void 0) {
+            case 'ModelMetricsBinomial':
+                if (table = _.inspect('Prediction - Metrics for Thresholds', prediction)) {
+                    renderPlot('ROC Curve', prediction, _.plot(function (g) {
+                        return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
+                    }));
+                }
+            }
+            _ref1 = _.ls(prediction);
+            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                tableName = _ref1[_i];
+                if (table = _.inspect(tableName, prediction)) {
+                    if (table.indices.length > 1) {
+                        renderPlot(tableName, prediction, _.plot(function (g) {
+                            return g(g.select(), g.from(table));
+                        }));
+                    } else {
+                        renderPlot(tableName, prediction, _.plot(function (g) {
+                            return g(g.select(0), g.from(table));
+                        }));
+                    }
+                }
+            }
+        }
+        inspect = function () {
+            return _.insertAndExecuteCell('cs', 'inspect getPrediction model: ' + Flow.Prelude.stringify(model.name) + ', frame: ' + Flow.Prelude.stringify(frame.name));
+        };
+        lodash.defer(_go);
+        return {
+            plots: _plots,
+            inspect: inspect,
+            canInspect: _canInspect,
+            template: 'flow-predict-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.PredictsOutput = function (_, _go, opts, _predictions) {
+        var arePredictionsComparable, comparePredictions, createPredictionView, initialize, inspectAll, plotMetrics, plotPredictions, plotScores, predict, _canComparePredictions, _checkAllPredictions, _isCheckingAll, _metricsTable, _predictionViews, _predictionsTable, _rocCurve, _scoresTable;
+        _predictionViews = Flow.Dataflow.signal([]);
+        _checkAllPredictions = Flow.Dataflow.signal(false);
+        _canComparePredictions = Flow.Dataflow.signal(false);
+        _rocCurve = Flow.Dataflow.signal(null);
+        arePredictionsComparable = function (views) {
+            if (views.length === 0) {
+                return false;
+            }
+            return lodash.every(views, function (view) {
+                return view.modelCategory === 'Binomial';
+            });
+        };
+        _isCheckingAll = false;
+        Flow.Dataflow.react(_checkAllPredictions, function (checkAll) {
+            var view, _i, _len, _ref;
+            _isCheckingAll = true;
+            _ref = _predictionViews();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                view = _ref[_i];
+                view.isChecked(checkAll);
+            }
+            _canComparePredictions(checkAll && arePredictionsComparable(_predictionViews()));
+            _isCheckingAll = false;
+        });
+        createPredictionView = function (prediction) {
+            var inspect, view, _frameKey, _hasFrame, _isChecked, _modelKey, _ref;
+            _modelKey = prediction.model.name;
+            _frameKey = (_ref = prediction.frame) != null ? _ref.name : void 0;
+            _hasFrame = _frameKey ? true : false;
+            _isChecked = Flow.Dataflow.signal(false);
+            Flow.Dataflow.react(_isChecked, function () {
+                var checkedViews, view;
+                if (_isCheckingAll) {
+                    return;
+                }
+                checkedViews = function () {
+                    var _i, _len, _ref1, _results;
+                    _ref1 = _predictionViews();
+                    _results = [];
+                    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                        view = _ref1[_i];
+                        if (view.isChecked()) {
+                            _results.push(view);
+                        }
+                    }
+                    return _results;
+                }();
+                return _canComparePredictions(arePredictionsComparable(checkedViews));
+            });
+            view = function () {
+                if (_hasFrame) {
+                    return _.insertAndExecuteCell('cs', 'getPrediction model: ' + Flow.Prelude.stringify(_modelKey) + ', frame: ' + Flow.Prelude.stringify(_frameKey));
+                }
+            };
+            inspect = function () {
+                if (_hasFrame) {
+                    return _.insertAndExecuteCell('cs', 'inspect getPrediction model: ' + Flow.Prelude.stringify(_modelKey) + ', frame: ' + Flow.Prelude.stringify(_frameKey));
+                }
+            };
+            return {
+                modelKey: _modelKey,
+                frameKey: _frameKey,
+                modelCategory: prediction.model_category,
+                isChecked: _isChecked,
+                hasFrame: _hasFrame,
+                view: view,
+                inspect: inspect
+            };
+        };
+        _predictionsTable = _.inspect('predictions', _predictions);
+        _metricsTable = _.inspect('metrics', _predictions);
+        _scoresTable = _.inspect('scores', _predictions);
+        comparePredictions = function () {
+            var selectedKeys, view;
+            selectedKeys = function () {
+                var _i, _len, _ref, _results;
+                _ref = _predictionViews();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    view = _ref[_i];
+                    if (view.isChecked()) {
+                        _results.push({
+                            model: view.modelKey,
+                            frame: view.frameKey
+                        });
+                    }
+                }
+                return _results;
+            }();
+            return _.insertAndExecuteCell('cs', 'getPredictions ' + Flow.Prelude.stringify(selectedKeys));
+        };
+        plotPredictions = function () {
+            return _.insertAndExecuteCell('cs', _predictionsTable.metadata.plot);
+        };
+        plotScores = function () {
+            return _.insertAndExecuteCell('cs', _scoresTable.metadata.plot);
+        };
+        plotMetrics = function () {
+            return _.insertAndExecuteCell('cs', _metricsTable.metadata.plot);
+        };
+        inspectAll = function () {
+            return _.insertAndExecuteCell('cs', 'inspect ' + _predictionsTable.metadata.origin);
+        };
+        predict = function () {
+            return _.insertAndExecuteCell('cs', 'predict');
+        };
+        initialize = function (predictions) {
+            _predictionViews(lodash.map(predictions, createPredictionView));
+            return lodash.defer(_go);
+        };
+        initialize(_predictions);
+        return {
+            predictionViews: _predictionViews,
+            hasPredictions: _predictions.length > 0,
+            comparePredictions: comparePredictions,
+            canComparePredictions: _canComparePredictions,
+            checkAllPredictions: _checkAllPredictions,
+            plotPredictions: plotPredictions,
+            plotScores: plotScores,
+            plotMetrics: plotMetrics,
+            inspect: inspectAll,
+            predict: predict,
+            rocCurve: _rocCurve,
+            template: 'flow-predicts-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ProfileOutput = function (_, _go, _profile) {
+        var createNode, i, node, _activeNode, _nodes;
+        _activeNode = Flow.Dataflow.signal(null);
+        createNode = function (node) {
+            var display, entries, entry, self;
+            display = function () {
+                return _activeNode(self);
+            };
+            entries = function () {
+                var _i, _len, _ref, _results;
+                _ref = node.entries;
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    entry = _ref[_i];
+                    _results.push({
+                        stacktrace: entry.stacktrace,
+                        caption: 'Count: ' + entry.count
+                    });
+                }
+                return _results;
+            }();
+            return self = {
+                name: node.node_name,
+                caption: '' + node.node_name + ' at ' + new Date(node.timestamp),
+                entries: entries,
+                display: display
+            };
+        };
+        _nodes = function () {
+            var _i, _len, _ref, _results;
+            _ref = _profile.nodes;
+            _results = [];
+            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                node = _ref[i];
+                _results.push(createNode(node));
+            }
+            return _results;
+        }();
+        _activeNode(lodash.head(_nodes));
+        lodash.defer(_go);
+        return {
+            nodes: _nodes,
+            activeNode: _activeNode,
+            template: 'flow-profile-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.RDDsOutput = function (_, _go, _rDDs) {
+        var createRDDView, _rDDViews;
+        _rDDViews = Flow.Dataflow.signal([]);
+        createRDDView = function (rDD) {
+            return {
+                id: rDD.id,
+                name: rDD.name,
+                partitions: rDD.partitions
+            };
+        };
+        _rDDViews(lodash.map(_rDDs, createRDDView));
+        lodash.defer(_go);
+        return {
+            rDDViews: _rDDViews,
+            hasRDDs: _rDDs.length > 0,
+            template: 'flow-rdds-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.SplitFrameInput = function (_, _go, _frameKey) {
+        var addSplit, addSplitRatio, collectKeys, collectRatios, computeSplits, createSplit, createSplitName, format4f, initialize, splitFrame, updateSplitRatiosAndNames, _frame, _frames, _lastSplitKey, _lastSplitRatio, _lastSplitRatioText, _splits, _validationMessage;
+        _frames = Flow.Dataflow.signal([]);
+        _frame = Flow.Dataflow.signal(null);
+        _lastSplitRatio = Flow.Dataflow.signal(1);
+        format4f = function (value) {
+            return value.toPrecision(4).replace(/0+$/, '0');
+        };
+        _lastSplitRatioText = Flow.Dataflow.lift(_lastSplitRatio, function (ratio) {
+            if (lodash.isNaN(ratio)) {
+                return ratio;
+            } else {
+                return format4f(ratio);
+            }
+        });
+        _lastSplitKey = Flow.Dataflow.signal('');
+        _splits = Flow.Dataflow.signals([]);
+        Flow.Dataflow.react(_splits, function () {
+            return updateSplitRatiosAndNames();
+        });
+        _validationMessage = Flow.Dataflow.signal('');
+        collectRatios = function () {
+            var entry, _i, _len, _ref, _results;
+            _ref = _splits();
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                entry = _ref[_i];
+                _results.push(entry.ratio());
+            }
+            return _results;
+        };
+        collectKeys = function () {
+            var entry, splitKeys;
+            splitKeys = function () {
+                var _i, _len, _ref, _results;
+                _ref = _splits();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    entry = _ref[_i];
+                    _results.push(entry.key().trim());
+                }
+                return _results;
+            }();
+            splitKeys.push(_lastSplitKey().trim());
+            return splitKeys;
+        };
+        createSplitName = function (key, ratio) {
+            return key + '_' + format4f(ratio);
+        };
+        updateSplitRatiosAndNames = function () {
+            var entry, frame, frameKey, lastSplitRatio, ratio, totalRatio, _i, _j, _len, _len1, _ref, _ref1;
+            totalRatio = 0;
+            _ref = collectRatios();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                ratio = _ref[_i];
+                totalRatio += ratio;
+            }
+            lastSplitRatio = _lastSplitRatio(1 - totalRatio);
+            frameKey = (frame = _frame()) ? frame : 'frame';
+            _ref1 = _splits();
+            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+                entry = _ref1[_j];
+                entry.key(createSplitName(frameKey, entry.ratio()));
+            }
+            _lastSplitKey(createSplitName(frameKey, _lastSplitRatio()));
+        };
+        computeSplits = function (go) {
+            var key, ratio, splitKeys, splitRatios, totalRatio, _i, _j, _len, _len1;
+            if (!_frame()) {
+                return go('Frame not specified.');
+            }
+            splitRatios = collectRatios();
+            totalRatio = 0;
+            for (_i = 0, _len = splitRatios.length; _i < _len; _i++) {
+                ratio = splitRatios[_i];
+                if (0 < ratio && ratio < 1) {
+                    totalRatio += ratio;
+                } else {
+                    return go('One or more split ratios are invalid. Ratios should between 0 and 1.');
+                }
+            }
+            if (totalRatio >= 1) {
+                return go('Sum of ratios is >= 1.');
+            }
+            splitKeys = collectKeys();
+            for (_j = 0, _len1 = splitKeys.length; _j < _len1; _j++) {
+                key = splitKeys[_j];
+                if (key === '') {
+                    return go('One or more keys are empty or invalid.');
+                }
+            }
+            if (splitKeys.length < 2) {
+                return go('Please specify at least two splits.');
+            }
+            if (splitKeys.length !== lodash.unique(splitKeys).length) {
+                return go('Duplicate keys specified.');
+            }
+            return go(null, splitRatios, splitKeys);
+        };
+        createSplit = function (ratio) {
+            var self, _key, _ratio, _ratioText;
+            _ratioText = Flow.Dataflow.signal('' + ratio);
+            _key = Flow.Dataflow.signal('');
+            _ratio = Flow.Dataflow.lift(_ratioText, function (text) {
+                return parseFloat(text);
+            });
+            Flow.Dataflow.react(_ratioText, updateSplitRatiosAndNames);
+            Flow.Prelude.remove = function () {
+                return _splits.remove(self);
+            };
+            return self = {
+                key: _key,
+                ratioText: _ratioText,
+                ratio: _ratio,
+                remove: Flow.Prelude.remove
+            };
+        };
+        addSplitRatio = function (ratio) {
+            return _splits.push(createSplit(ratio));
+        };
+        addSplit = function () {
+            return addSplitRatio(0);
+        };
+        splitFrame = function () {
+            return computeSplits(function (error, splitRatios, splitKeys) {
+                if (error) {
+                    return _validationMessage(error);
+                } else {
+                    _validationMessage('');
+                    return _.insertAndExecuteCell('cs', 'splitFrame ' + Flow.Prelude.stringify(_frame()) + ', ' + Flow.Prelude.stringify(splitRatios) + ', ' + Flow.Prelude.stringify(splitKeys));
+                }
+            });
+        };
+        initialize = function () {
+            _.requestFrames(function (error, frames) {
+                var frame, frameKeys;
+                if (error) {
+                } else {
+                    frameKeys = function () {
+                        var _i, _len, _results;
+                        _results = [];
+                        for (_i = 0, _len = frames.length; _i < _len; _i++) {
+                            frame = frames[_i];
+                            if (!frame.is_text) {
+                                _results.push(frame.frame_id.name);
+                            }
+                        }
+                        return _results;
+                    }();
+                    frameKeys.sort();
+                    _frames(frameKeys);
+                    return _frame(_frameKey);
+                }
+            });
+            addSplitRatio(0.25);
+            return lodash.defer(_go);
+        };
+        initialize();
+        return {
+            frames: _frames,
+            frame: _frame,
+            lastSplitRatio: _lastSplitRatio,
+            lastSplitRatioText: _lastSplitRatioText,
+            lastSplitKey: _lastSplitKey,
+            splits: _splits,
+            addSplit: addSplit,
+            splitFrame: splitFrame,
+            validationMessage: _validationMessage,
+            template: 'flow-split-frame-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.SplitFrameOutput = function (_, _go, _splitFrameResult) {
+        var computeRatios, createFrameView, index, key, _frames, _ratios;
+        computeRatios = function (sourceRatios) {
+            var ratio, ratios, total;
+            total = 0;
+            ratios = function () {
+                var _i, _len, _results;
+                _results = [];
+                for (_i = 0, _len = sourceRatios.length; _i < _len; _i++) {
+                    ratio = sourceRatios[_i];
+                    total += ratio;
+                    _results.push(ratio);
+                }
+                return _results;
+            }();
+            ratios.push(1 - total);
+            return ratios;
+        };
+        createFrameView = function (key, ratio) {
+            var self, view;
+            view = function () {
+                return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(key));
+            };
+            return self = {
+                key: key,
+                ratio: ratio,
+                view: view
+            };
+        };
+        _ratios = computeRatios(_splitFrameResult.ratios);
+        _frames = function () {
+            var _i, _len, _ref, _results;
+            _ref = _splitFrameResult.keys;
+            _results = [];
+            for (index = _i = 0, _len = _ref.length; _i < _len; index = ++_i) {
+                key = _ref[index];
+                _results.push(createFrameView(key, _ratios[index]));
+            }
+            return _results;
+        }();
+        lodash.defer(_go);
+        return {
+            frames: _frames,
+            template: 'flow-split-frame-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.StackTraceOutput = function (_, _go, _stackTrace) {
+        var createNode, createThread, node, _activeNode, _nodes;
+        _activeNode = Flow.Dataflow.signal(null);
+        createThread = function (thread) {
+            var lines;
+            lines = thread.split('\n');
+            return {
+                title: lodash.head(lines),
+                stackTrace: lodash.tail(lines).join('\n')
+            };
+        };
+        createNode = function (node) {
+            var display, self, thread;
+            display = function () {
+                return _activeNode(self);
+            };
+            return self = {
+                name: node.node,
+                timestamp: new Date(node.time),
+                threads: function () {
+                    var _i, _len, _ref, _results;
+                    _ref = node.thread_traces;
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        thread = _ref[_i];
+                        _results.push(createThread(thread));
+                    }
+                    return _results;
+                }(),
+                display: display
+            };
+        };
+        _nodes = function () {
+            var _i, _len, _ref, _results;
+            _ref = _stackTrace.traces;
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                node = _ref[_i];
+                _results.push(createNode(node));
+            }
+            return _results;
+        }();
+        _activeNode(lodash.head(_nodes));
+        lodash.defer(_go);
+        return {
+            nodes: _nodes,
+            activeNode: _activeNode,
+            template: 'flow-stacktrace-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.TimelineOutput = function (_, _go, _timeline) {
+        var createEvent, refresh, toggleRefresh, updateTimeline, _data, _headers, _isBusy, _isLive, _timestamp;
+        _isLive = Flow.Dataflow.signal(false);
+        _isBusy = Flow.Dataflow.signal(false);
+        _headers = [
+            'HH:MM:SS:MS',
+            'nanosec',
+            'Who',
+            'I/O Type',
+            'Event',
+            'Type',
+            'Bytes'
+        ];
+        _data = Flow.Dataflow.signal(null);
+        _timestamp = Flow.Dataflow.signal(Date.now());
+        createEvent = function (event) {
+            switch (event.type) {
+            case 'io':
+                return [
+                    event.date,
+                    event.nanos,
+                    event.node,
+                    event.io_flavor || '-',
+                    'I/O',
+                    '-',
+                    event.data
+                ];
+            case 'heartbeat':
+                return [
+                    event.date,
+                    event.nanos,
+                    'many &#8594;  many',
+                    'UDP',
+                    event.type,
+                    '-',
+                    '' + event.sends + ' sent ' + event.recvs + ' received'
+                ];
+            case 'network_msg':
+                return [
+                    event.date,
+                    event.nanos,
+                    '' + event.from + ' &#8594; ' + event.to,
+                    event.protocol,
+                    event.msg_type,
+                    event.is_send ? 'send' : 'receive',
+                    event.data
+                ];
+            }
+        };
+        updateTimeline = function (timeline) {
+            var cell, event, grid, header, table, tbody, td, th, thead, ths, tr, trs, _ref;
+            _ref = Flow.HTML.template('.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td'), grid = _ref[0], table = _ref[1], thead = _ref[2], tbody = _ref[3], tr = _ref[4], th = _ref[5], td = _ref[6];
+            ths = function () {
+                var _i, _len, _results;
+                _results = [];
+                for (_i = 0, _len = _headers.length; _i < _len; _i++) {
+                    header = _headers[_i];
+                    _results.push(th(header));
+                }
+                return _results;
+            }();
+            trs = function () {
+                var _i, _len, _ref1, _results;
+                _ref1 = timeline.events;
+                _results = [];
+                for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                    event = _ref1[_i];
+                    _results.push(tr(function () {
+                        var _j, _len1, _ref2, _results1;
+                        _ref2 = createEvent(event);
+                        _results1 = [];
+                        for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
+                            cell = _ref2[_j];
+                            _results1.push(td(cell));
+                        }
+                        return _results1;
+                    }()));
+                }
+                return _results;
+            }();
+            return _data(Flow.HTML.render('div', grid([table([
+                    thead(tr(ths)),
+                    tbody(trs)
+                ])])));
+        };
+        toggleRefresh = function () {
+            return _isLive(!_isLive());
+        };
+        refresh = function () {
+            _isBusy(true);
+            return _.requestTimeline(function (error, timeline) {
+                _isBusy(false);
+                if (error) {
+                    _exception(Flow.Failure(_, new Flow.Error('Error fetching timeline', error)));
+                    return _isLive(false);
+                } else {
+                    updateTimeline(timeline);
+                    if (_isLive()) {
+                        return lodash.delay(refresh, 2000);
+                    }
+                }
+            });
+        };
+        Flow.Dataflow.act(_isLive, function (isLive) {
+            if (isLive) {
+                return refresh();
+            }
+        });
+        updateTimeline(_timeline);
+        lodash.defer(_go);
+        return {
+            data: _data,
+            isLive: _isLive,
+            isBusy: _isBusy,
+            toggleRefresh: toggleRefresh,
+            refresh: refresh,
+            template: 'flow-timeline-output'
         };
     };
 }.call(this));}).call(this);
