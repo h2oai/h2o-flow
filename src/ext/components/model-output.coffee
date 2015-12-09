@@ -576,12 +576,12 @@ H2O.ModelOutput = (_, _go, _model) ->
     renderPlot 'Training Metrics - Gains/Lift Table', no, _.plot (g) ->
       g(
         g.path(
-          g.position 'cumulative_data_fraction', 'cumulative_lift'
-          g.strokeColor g.value 'green'
-        )
-        g.path(
           g.position 'cumulative_data_fraction', 'cumulative_capture_rate'
           g.strokeColor g.value 'black'
+        )
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_lift'
+          g.strokeColor g.value 'green'
         )
         g.from table
       )
@@ -589,12 +589,12 @@ H2O.ModelOutput = (_, _go, _model) ->
     renderPlot 'Validation Metrics - Gains/Lift Table', no, _.plot (g) ->
       g(
         g.path(
-          g.position 'cumulative_data_fraction', 'cumulative_lift'
-          g.strokeColor g.value 'green'
-        )
-        g.path(
           g.position 'cumulative_data_fraction', 'cumulative_capture_rate'
           g.strokeColor g.value 'black'
+        )
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_lift'
+          g.strokeColor g.value 'green'
         )
         g.from table
       )
@@ -602,12 +602,12 @@ H2O.ModelOutput = (_, _go, _model) ->
     renderPlot 'Cross Validation Metrics - Gains/Lift Table', no, _.plot (g) ->
       g(
         g.path(
-          g.position 'cumulative_data_fraction', 'cumulative_lift'
-          g.strokeColor g.value 'green'
-        )
-        g.path(
           g.position 'cumulative_data_fraction', 'cumulative_capture_rate'
           g.strokeColor g.value 'black'
+        )
+        g.path(
+          g.position 'cumulative_data_fraction', 'cumulative_lift'
+          g.strokeColor g.value 'green'
         )
         g.from table
       )
