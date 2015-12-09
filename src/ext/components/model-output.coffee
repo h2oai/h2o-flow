@@ -352,36 +352,36 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
       if table = _.inspect 'output - Scoring History', _model
-        if table.schema['validation_MSE']
-          renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+        if table.schema['validation_logloss']
+          renderPlot 'Scoring History - logloss', no, _.plot (g) ->
             g(
               g.path(
-                g.position 'epochs', 'training_MSE'
+                g.position 'epochs', 'training_logloss'
                 g.strokeColor g.value '#1f77b4'
               )
               g.path(
-                g.position 'epochs', 'validation_MSE'
+                g.position 'epochs', 'validation_logloss'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.point(
-                g.position 'epochs', 'training_MSE'
+                g.position 'epochs', 'training_logloss'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'epochs', 'validation_MSE'
+                g.position 'epochs', 'validation_logloss'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.from table
             )
         else
-          renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+          renderPlot 'Scoring History - logloss', no, _.plot (g) ->
             g(
               g.path(
-                g.position 'epochs', 'training_MSE'
+                g.position 'epochs', 'training_logloss'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'epochs', 'training_MSE'
+                g.position 'epochs', 'training_logloss'
                 g.strokeColor g.value '#1f77b4'
               )
               g.from table
@@ -434,36 +434,36 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'gbm', 'drf'
       if table = _.inspect 'output - Scoring History', _model
-        if table.schema['validation_MSE']
-          renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+        if table.schema['validation_logloss']
+          renderPlot 'Scoring History - logloss', no, _.plot (g) ->
             g(
               g.path(
-                g.position 'number_of_trees', 'training_MSE'
+                g.position 'number_of_trees', 'training_logloss'
                 g.strokeColor g.value '#1f77b4'
               )
               g.path(
-                g.position 'number_of_trees', 'validation_MSE'
+                g.position 'number_of_trees', 'validation_logloss'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.point(
-                g.position 'number_of_trees', 'training_MSE'
+                g.position 'number_of_trees', 'training_logloss'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'number_of_trees', 'validation_MSE'
+                g.position 'number_of_trees', 'validation_logloss'
                 g.strokeColor g.value '#ff7f0e'
               )
               g.from table
             )
         else
-          renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+          renderPlot 'Scoring History - logloss', no, _.plot (g) ->
             g(
               g.path(
-                g.position 'number_of_trees', 'training_MSE'
+                g.position 'number_of_trees', 'training_logloss'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'number_of_trees', 'training_MSE'
+                g.position 'number_of_trees', 'training_logloss'
                 g.strokeColor g.value '#1f77b4'
               )
               g.from table
