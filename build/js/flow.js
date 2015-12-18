@@ -1964,7 +1964,7 @@
     };
 }.call(this));
 (function () {
-    Flow.Version = '0.4.7';
+    Flow.Version = '0.4.8';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -7653,6 +7653,14 @@
                 true
             ],
             [
+                'GFLOPS',
+                true
+            ],
+            [
+                'Memory Bandwidth',
+                true
+            ],
+            [
                 'Data (Used/Total)',
                 true
             ],
@@ -7710,6 +7718,8 @@
                 format3f(node.sys_load),
                 node.my_cpu_pct,
                 node.sys_cpu_pct,
+                format3f(node.gflops),
+                '' + prettyPrintBytes(node.mem_bw) + ' / s',
                 '' + prettyPrintBytes(node.mem_value_size) + ' / ' + prettyPrintBytes(node.total_value_size),
                 '' + Math.floor(node.mem_value_size * 100 / node.total_value_size) + '%',
                 '' + prettyPrintBytes(node.free_mem) + ' / ' + prettyPrintBytes(node.tot_mem) + ' / ' + prettyPrintBytes(node.max_mem),
@@ -7739,6 +7749,12 @@
                 })),
                 '-',
                 '-',
+                '' + format3f(sum(nodes, function (node) {
+                    return node.gflops;
+                })),
+                '' + prettyPrintBytes(sum(nodes, function (node) {
+                    return node.mem_bw;
+                })) + ' / s',
                 '' + prettyPrintBytes(sum(nodes, function (node) {
                     return node.mem_value_size;
                 })) + ' / ' + prettyPrintBytes(sum(nodes, function (node) {
