@@ -306,6 +306,7 @@ H2O.Proxy = (_) ->
   requestExportModel = (key, path, overwrite, go) ->
     doGet "/99/Models.bin/#{encodeURIComponent key}?dir=#{encodeURIComponent path}&force=#{overwrite}", go
 
+  # TODO Obsolete
   requestModelBuildersVisibility = (go) ->
     doGet '/3/Configuration/ModelBuilders/visibility', unwrap go, (result) -> result.value
 
@@ -330,20 +331,21 @@ H2O.Proxy = (_) ->
     if modelBuilders = getModelBuilders()
       go null, modelBuilders
     else
-      requestModelBuildersVisibility (error, visibility) ->
-        visibility = if error then 'Stable' else visibility
-        doGet "/3/ModelBuilders", unwrap go, (result) ->
-          builders = (builder for algo, builder of result.model_builders)
-          availableBuilders = switch visibility
-            when 'Stable'
-              for builder in builders when builder.visibility is visibility
-                builder
-            when 'Beta'
-              for builder in builders when builder.visibility is visibility or builder.visibility is 'Stable'
-                builder
-            else
-              builders
-          cacheModelBuilders availableBuilders
+      # requestModelBuildersVisibility (error, visibility) ->
+      #  visibility = if error then 'Stable' else visibility
+      visibility = 'Stable'
+      doGet "/3/ModelBuilders", unwrap go, (result) ->
+        builders = (builder for algo, builder of result.model_builders)
+        availableBuilders = switch visibility
+          when 'Stable'
+            for builder in builders when builder.visibility is visibility
+              builder
+          when 'Beta'
+            for builder in builders when builder.visibility is visibility or builder.visibility is 'Stable'
+              builder
+          else
+            builders
+        cacheModelBuilders availableBuilders
 
   requestModelBuilder = (algo, go) ->
     doGet getModelBuilderEndpoint(algo), go
