@@ -66,6 +66,8 @@ config =
       'vendor/h2oai/lightning.min.js'
     ]
     css: [
+      'fonts/lato/fonts.css'
+      'fonts/source-code-pro/fonts.css'
       'lib/fontawesome/css/font-awesome.css'
       'lib/highlightjs/styles/tomorrow.css'
       'lib/bootstrap/dist/css/bootstrap.css'
@@ -74,7 +76,14 @@ config =
       'lib/bootstrap/dist/css/bootstrap.css.map'
     ]
     fonts: [
-      'fonts/*.*'
+      'fonts/lato/fonts/Lato-Regular.*'
+      'fonts/lato/fonts/Lato-Italic.*'
+      'fonts/lato/fonts/Lato-Bold.*'
+      'fonts/lato/fonts/Lato-BoldItalic.*'
+      'fonts/source-code-pro/fonts/SourceCodePro-Regular.*'
+      'fonts/source-code-pro/fonts/SourceCodePro-It.*'
+      'fonts/source-code-pro/fonts/SourceCodePro-Bold.*'
+      'fonts/source-code-pro/fonts/SourceCodePro-BoldIt.*'
       'lib/bootstrap/dist/fonts/*.*'
       'lib/fontawesome/fonts/*.*'
     ]
