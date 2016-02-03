@@ -540,6 +540,20 @@ H2O.Proxy = (_) ->
       else
         go null, result
 
+  asH2OFrameFromRDD = (rdd_id, go) ->
+    doPost "/3/RDDs/#{rdd_id}/h2oframe", {}, (error, result) ->
+      if error
+        go error
+      else
+        go null, result
+
+  asH2OFrameFromDF = (df_id, go) ->
+    doPost "/3/dataframes/#{df_id}/h2oframe", {}, (error, result) ->
+      if error
+        go error
+      else
+        go null, result
+
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
   link _.requestSplitFrame, requestSplitFrame

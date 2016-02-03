@@ -1651,6 +1651,30 @@ H2O.Routines = (_) ->
   getRDDs = ->
     _fork requestRDDs
 
+  extendAsH2OFrame = (h2oframe_id) ->
+    render_ h2oframe_id, H2O.H2OFrameOutput, h2oframe_id
+    h2oframe_id
+
+  requestAsH2OFrameFromRDD = (rdd_id, go) ->
+    _.requestAsH2OFrameFromRDD rdd_id, code,  (error, h2oframe_id) ->
+      if error
+        go error
+      else
+        go null, extendAsH2OFrame h2oframe_id
+
+  asH2OFrameFromRDD = (rdd_id) ->
+    _fork requestAsH2OFrameFromRDD, rdd_id
+
+  requestAsH2OFrameFromDF = (df_id, go) ->
+    _.requestAsH2OFrameFromRDD df_id, code,  (error, h2oframe_id) ->
+      if error
+        go error
+      else
+        go null, extendAsH2OFrame h2oframe_id
+
+  asH2OFrameFromDF = (df_id) ->
+    _fork requestAsH2OFrameFromDF, df_id
+
   requestScalaCode = (session_id, code, go) ->
     _.requestScalaCode session_id, code,  (error, result) ->
       if error
@@ -1837,3 +1861,6 @@ H2O.Routines = (_) ->
   getRDDs: getRDDs
   getScalaIntp: getScalaIntp
   runScalaCode: runScalaCode
+  asH2OFrameFromRDD: asH2OFrameFromRDD
+  asH2OFrameFromDF: asH2OFrameFromDF
+
