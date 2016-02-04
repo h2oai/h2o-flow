@@ -699,7 +699,7 @@ H2O.Routines = (_) ->
       switch type
         when 'enum'
           "<a href='#' data-type='as-numeric-link' data-key=#{stringify label}>Convert to numeric</a>"
-        when 'int'
+        when 'int', 'string'
           "<a href='#' data-type='as-factor-link' data-key=#{stringify label}>Convert to enum</a>"
         else
           undefined
