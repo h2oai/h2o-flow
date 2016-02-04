@@ -384,7 +384,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
             for control in controls
               if validations = validationsByControlName[control.name]
                 for validation in validations
-                  if validation.message_type is 'HIDE'
+                  if validation.message_type is 'TRACE'
                     control.isVisible no
                   else
                     control.isVisible yes
@@ -396,7 +396,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                         when 'WARN'
                           control.hasWarning yes
                           control.message validation.message
-                        when 'ERROR'
+                        when 'ERRR'
                           control.hasError yes
                           control.message validation.message
                           hasErrors = yes
