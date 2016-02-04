@@ -352,7 +352,7 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
       if table = _.inspect 'output - Scoring History', _model
-        if table.schema['validation_logloss']
+        if table.schema['validation_logloss'] and table.schema['training_logloss']
           renderPlot 'Scoring History - logloss', no, _.plot (g) ->
             g(
               g.path(
@@ -373,7 +373,7 @@ H2O.ModelOutput = (_, _go, _model) ->
               )
               g.from table
             )
-        else
+        else if table.schema['training_logloss']
           renderPlot 'Scoring History - logloss', no, _.plot (g) ->
             g(
               g.path(
@@ -434,7 +434,7 @@ H2O.ModelOutput = (_, _go, _model) ->
 
     when 'gbm', 'drf'
       if table = _.inspect 'output - Scoring History', _model
-        if table.schema['validation_logloss']
+        if table.schema['validation_logloss'] and table.schema['training_logloss']
           renderPlot 'Scoring History - logloss', no, _.plot (g) ->
             g(
               g.path(
@@ -455,7 +455,7 @@ H2O.ModelOutput = (_, _go, _model) ->
               )
               g.from table
             )
-        else
+        else if table.schema['training_logloss']
           renderPlot 'Scoring History - logloss', no, _.plot (g) ->
             g(
               g.path(
