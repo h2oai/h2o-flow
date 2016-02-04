@@ -192,6 +192,44 @@ H2O.ModelOutput = (_, _go, _model) ->
           )
 
     when 'glm'
+      if table = _.inspect 'output - Scoring History', _model
+        lambdaSearchParameter = find _model.parameters, (parameter) -> parameter.name is 'lambda_search'
+      
+        if lambdaSearchParameter?.actual_value
+          renderPlot 'Scoring History', no, _.plot (g) ->
+            g(
+              g.path(
+                g.position 'lambdaid', 'explained_deviance_train'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.path(
+                g.position 'lambdaid', 'explained_deviance_test'
+                g.strokeColor g.value '#ff7f0e'
+              )
+              g.point(
+                g.position 'lambdaid', 'explained_deviance_train'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.point(
+                g.position 'lambdaid', 'explained_deviance_test'
+                g.strokeColor g.value '#ff7f0e'
+              )
+              g.from table
+            )
+        else
+          renderPlot 'Scoring History', no, _.plot (g) ->
+            g(
+              g.path(
+                g.position 'iteration', 'objective'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.point(
+                g.position 'iteration', 'objective'
+                g.strokeColor g.value '#1f77b4'
+              )
+              g.from table
+            )
+
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
         plotter = _.plot (g) ->
           g(
@@ -248,44 +286,6 @@ H2O.ModelOutput = (_, _go, _model) ->
             g.limit 25
           )
 
-      if table = _.inspect 'output - Scoring History', _model
-        lambdaSearchParameter = find _model.parameters, (parameter) -> parameter.name is 'lambda_search'
-      
-        if lambdaSearchParameter?.actual_value
-          renderPlot 'Scoring History', no, _.plot (g) ->
-            g(
-              g.path(
-                g.position 'lambdaid', 'explained_deviance_train'
-                g.strokeColor g.value '#1f77b4'
-              )
-              g.path(
-                g.position 'lambdaid', 'explained_deviance_test'
-                g.strokeColor g.value '#ff7f0e'
-              )
-              g.point(
-                g.position 'lambdaid', 'explained_deviance_train'
-                g.strokeColor g.value '#1f77b4'
-              )
-              g.point(
-                g.position 'lambdaid', 'explained_deviance_test'
-                g.strokeColor g.value '#ff7f0e'
-              )
-              g.from table
-            )
-        else
-          renderPlot 'Scoring History', no, _.plot (g) ->
-            g(
-              g.path(
-                g.position 'iteration', 'objective'
-                g.strokeColor g.value '#1f77b4'
-              )
-              g.point(
-                g.position 'iteration', 'objective'
-                g.strokeColor g.value '#1f77b4'
-              )
-              g.from table
-            )
-
       if output = _model.output
         if output.model_category is 'Multinomial'
           if confusionMatrix = output.training_metrics?.cm?.table
@@ -296,61 +296,6 @@ H2O.ModelOutput = (_, _go, _model) ->
             renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
     when 'deeplearning'
-      if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
-        plotter = _.plot (g) ->
-          g(
-            g.path g.position 'fpr', 'tpr'
-            g.line(
-              g.position (g.value 1), (g.value 0)
-              g.strokeColor g.value 'red'
-            )
-            g.from table
-            g.domainX_HACK 0, 1
-            g.domainY_HACK 0, 1
-          )
-        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
-
-      if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
-        plotter = _.plot (g) ->
-          g(
-            g.path g.position 'fpr', 'tpr'
-            g.line(
-              g.position (g.value 1), (g.value 0)
-              g.strokeColor g.value 'red'
-            )
-            g.from table
-            g.domainX_HACK 0, 1
-            g.domainY_HACK 0, 1
-          )
-        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
-
-      if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
-        plotter = _.plot (g) ->
-          g(
-            g.path g.position 'fpr', 'tpr'
-            g.line(
-              g.position (g.value 1), (g.value 0)
-              g.strokeColor g.value 'red'
-            )
-            g.from table
-            g.domainX_HACK 0, 1
-            g.domainY_HACK 0, 1
-          )
-        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-        renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
-
-      if table = _.inspect 'output - Variable Importances', _model
-        renderPlot 'Variable Importances', no, _.plot (g) ->
-          g(
-            g.rect(
-              g.position 'scaled_importance', 'variable'
-            )
-            g.from table
-            g.limit 25
-          )
-
       if table = _.inspect 'output - Scoring History', _model
         if table.schema['validation_logloss'] and table.schema['training_logloss']
           renderPlot 'Scoring History - logloss', no, _.plot (g) ->
@@ -422,6 +367,60 @@ H2O.ModelOutput = (_, _go, _model) ->
                 )
                 g.from table
               )
+      if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
+        plotter = _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
+
+      if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
+        plotter = _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
+
+      if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
+        plotter = _.plot (g) ->
+          g(
+            g.path g.position 'fpr', 'tpr'
+            g.line(
+              g.position (g.value 1), (g.value 0)
+              g.strokeColor g.value 'red'
+            )
+            g.from table
+            g.domainX_HACK 0, 1
+            g.domainY_HACK 0, 1
+          )
+        # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
+        renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
+
+      if table = _.inspect 'output - Variable Importances', _model
+        renderPlot 'Variable Importances', no, _.plot (g) ->
+          g(
+            g.rect(
+              g.position 'scaled_importance', 'variable'
+            )
+            g.from table
+            g.limit 25
+          )
 
       if output = _model.output
         if output.model_category is 'Multinomial'
