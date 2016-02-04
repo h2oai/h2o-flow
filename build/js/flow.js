@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.12';
+    Flow.Version = '0.4.13';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -10456,6 +10456,20 @@
             }
             break;
         case 'glm':
+            if (table = _.inspect('output - Scoring History', _model)) {
+                lambdaSearchParameter = lodash.find(_model.parameters, function (parameter) {
+                    return parameter.name === 'lambda_search';
+                });
+                if (lambdaSearchParameter != null ? lambdaSearchParameter.actual_value : void 0) {
+                    renderPlot('Scoring History', false, _.plot(function (g) {
+                        return g(g.path(g.position('lambdaid', 'explained_deviance_train'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('lambdaid', 'explained_deviance_test'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('lambdaid', 'explained_deviance_train'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('lambdaid', 'explained_deviance_test'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                    }));
+                } else {
+                    renderPlot('Scoring History', false, _.plot(function (g) {
+                        return g(g.path(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                    }));
+                }
+            }
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
                 plotter = _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
@@ -10479,20 +10493,6 @@
                     return g(g.rect(g.position('coefficients', 'names'), g.fillColor('sign')), g.from(table), g.limit(25));
                 }));
             }
-            if (table = _.inspect('output - Scoring History', _model)) {
-                lambdaSearchParameter = lodash.find(_model.parameters, function (parameter) {
-                    return parameter.name === 'lambda_search';
-                });
-                if (lambdaSearchParameter != null ? lambdaSearchParameter.actual_value : void 0) {
-                    renderPlot('Scoring History', false, _.plot(function (g) {
-                        return g(g.path(g.position('lambdaid', 'explained_deviance_train'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('lambdaid', 'explained_deviance_test'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('lambdaid', 'explained_deviance_train'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('lambdaid', 'explained_deviance_test'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
-                    }));
-                } else {
-                    renderPlot('Scoring History', false, _.plot(function (g) {
-                        return g(g.path(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('iteration', 'objective'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                    }));
-                }
-            }
             if (output = _model.output) {
                 if (output.model_category === 'Multinomial') {
                     if (confusionMatrix = (_ref = output.training_metrics) != null ? (_ref1 = _ref.cm) != null ? _ref1.table : void 0 : void 0) {
@@ -10508,6 +10508,28 @@
             }
             break;
         case 'deeplearning':
+            if (table = _.inspect('output - Scoring History', _model)) {
+                if (table.schema['validation_logloss'] && table.schema['training_logloss']) {
+                    renderPlot('Scoring History - logloss', false, _.plot(function (g) {
+                        return g(g.path(g.position('epochs', 'training_logloss'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_logloss'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_logloss'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_logloss'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                    }));
+                } else if (table.schema['training_logloss']) {
+                    renderPlot('Scoring History - logloss', false, _.plot(function (g) {
+                        return g(g.path(g.position('epochs', 'training_logloss'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_logloss'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                    }));
+                }
+                if (table.schema['training_deviance']) {
+                    if (table.schema['validation_deviance']) {
+                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
+                            return g(g.path(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
+                        }));
+                    } else {
+                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
+                            return g(g.path(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
+                        }));
+                    }
+                }
+            }
             if (table = _.inspect('output - training_metrics - Metrics for Thresholds', _model)) {
                 plotter = _.plot(function (g) {
                     return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
@@ -10530,28 +10552,6 @@
                 renderPlot('Variable Importances', false, _.plot(function (g) {
                     return g(g.rect(g.position('scaled_importance', 'variable')), g.from(table), g.limit(25));
                 }));
-            }
-            if (table = _.inspect('output - Scoring History', _model)) {
-                if (table.schema['validation_logloss'] && table.schema['training_logloss']) {
-                    renderPlot('Scoring History - logloss', false, _.plot(function (g) {
-                        return g(g.path(g.position('epochs', 'training_logloss'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_logloss'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_logloss'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_logloss'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
-                    }));
-                } else if (table.schema['training_logloss']) {
-                    renderPlot('Scoring History - logloss', false, _.plot(function (g) {
-                        return g(g.path(g.position('epochs', 'training_logloss'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_logloss'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                    }));
-                }
-                if (table.schema['training_deviance']) {
-                    if (table.schema['validation_deviance']) {
-                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
-                            return g(g.path(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.path(g.position('epochs', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.point(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'validation_deviance'), g.strokeColor(g.value('#ff7f0e'))), g.from(table));
-                        }));
-                    } else {
-                        renderPlot('Scoring History - Deviance', false, _.plot(function (g) {
-                            return g(g.path(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.point(g.position('epochs', 'training_deviance'), g.strokeColor(g.value('#1f77b4'))), g.from(table));
-                        }));
-                    }
-                }
             }
             if (output = _model.output) {
                 if (output.model_category === 'Multinomial') {
