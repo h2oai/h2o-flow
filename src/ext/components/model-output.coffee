@@ -169,7 +169,7 @@ H2O.ModelOutput = (_, _go, _model) ->
       rows.push tr cells
 
     _plots.push
-      title: title
+      title: title + if cm.description then " #{cm.description}" else ''
       plot: signal Flow.HTML.render 'div', table tbody rows
       frame: signal null
       controls: signal null
