@@ -809,7 +809,7 @@ H2O.Routines = (_) ->
     inspectDistribution = ->
       minBinCount = 32
       { histogram_base:base, histogram_stride:stride, histogram_bins:bins } = column
-      width = Math.floor bins.length / minBinCount
+      width = Math.ceil bins.length / minBinCount
       interval = stride * width
       
       rows = []
@@ -837,6 +837,15 @@ H2O.Routines = (_) ->
           intervalData[i] = base + i * stride
           widthData[i] = stride
           countData[i] = count
+
+      # Trim off empty bins from the end
+      for i in [binCount - 1 .. 0]
+        if countData[i] isnt 0
+          binCount = i + 1
+          intervalData = slice intervalData, 0, binCount
+          widthData = slice widthData, 0, binCount
+          countData = slice countData, 0, binCount
+          break
 
       vectors = [
         createFactor 'interval', TString, intervalData
