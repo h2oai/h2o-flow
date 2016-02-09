@@ -245,9 +245,28 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   _validationFailureMessage = signal ''
   _hasValidationFailures = lift _validationFailureMessage, isTruthy
 
+  _gridStrategies = [ 'Cartesian', 'RandomDiscrete' ]
+  _isGrided = signal false
+  _gridStrategy = signal 'Cartesian'
+  _isGridRandomDiscrete = lift _gridStrategy, (strategy) -> strategy isnt _gridStrategies[0]
+  _gridMaxModels = signal 1000
+  _gridMaxRuntime = signal 28800
+
   _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
   _controlGroups = map [ 'critical', 'secondary', 'expert' ], (type) ->
-    filter (map _parametersByLevel[type], createControlFromParameter), (a) -> if a then yes else no
+    controls = filter (map _parametersByLevel[type], createControlFromParameter), (a) -> if a then yes else no
+    # Show/hide grid settings if any controls are grid-ified.
+    forEach controls, (control) ->
+      react control.isGrided, ->
+        isGrided = no
+        for control in controls
+          if control.isGrided()
+            _isGrided isGrided = yes
+            break
+        unless isGrided
+          _isGrided no
+
+    controls
 
   [ criticalControls, secondaryControls, expertControls ] = _controlGroups
 
@@ -350,6 +369,19 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                 parameters[control.name] = value
     if isGrided
       parameters.hyper_parameters = hyperParameters
+
+      # { 'strategy': "RandomDiscrete/Cartesian", 'max_models': 3, 'max_runtime_secs': 20 }
+
+      searchCriteria =
+        strategy: _gridStrategy()
+      switch searchCriteria.strategy
+        when 'RandomDiscrete'
+          unless isNaN maxModels = parseInt _gridMaxModels(), 10
+            searchCriteria.max_models = maxModels
+          unless isNaN maxRuntime = parseInt _gridMaxRuntime(), 10
+            searchCriteria.max_runtime_secs = maxRuntime
+      parameters.search_criteria = searchCriteria
+
     parameters
 
   #
@@ -434,6 +466,12 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
     return
 
   form: _form
+  isGrided: _isGrided
+  gridStrategy: _gridStrategy
+  gridStrategies: _gridStrategies
+  isGridRandomDiscrete: _isGridRandomDiscrete
+  gridMaxModels: _gridMaxModels
+  gridMaxRuntime: _gridMaxRuntime
   exception: _exception
   parameterTemplateOf: parameterTemplateOf
   createModel: createModel

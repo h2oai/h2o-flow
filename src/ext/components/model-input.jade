@@ -20,6 +20,31 @@
 
   table.flow-form(data-bind='template: { name: parameterTemplateOf, foreach:form }')
 
+  // ko if:isGrided
+  table.flow-form
+    tbody
+      tr
+        td(colspan='3')
+          h4(style="margin-top:20px; border-bottom:1px dotted #ccc") Grid Settings:
+      tr
+        th(style='width:140px') Strategy
+        td
+          select(data-bind="options:gridStrategies, value:gridStrategy")
+        td The default strategy 'Cartesian' covers the entire space of hyperparameter combinations. Specify the 'RandomDiscrete' strategy to get random search of all the combinations of your hyperparameters. RandomDiscrete should usually be combined with at least one early stopping criterion, max_models and/or max_runtime_secs.
+      // ko if:isGridRandomDiscrete
+      tr
+        th Max Models
+        td
+          input.flow-textbox(type='text' data-bind="value:gridMaxModels")
+        td Stop grid search after building these many number of models.
+      tr
+        th Max Runtime (seconds)
+        td
+          input.flow-textbox(type='text' data-bind="value:gridMaxRuntime")
+        td Stop grid search after running for this amount of time.
+      // /ko
+  // /ko
+
   // /ko
 
   .flow-panel

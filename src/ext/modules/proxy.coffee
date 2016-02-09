@@ -358,6 +358,8 @@ H2O.Proxy = (_) ->
     if parameters.hyper_parameters
       # super-hack: nest this object as stringified json
       parameters.hyper_parameters = stringify parameters.hyper_parameters
+      if parameters.search_criteria
+        parameters.search_criteria = stringify parameters.search_criteria
       doPost getGridModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
     else
       doPost getModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
