@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.14';
+    Flow.Version = '0.4.15';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4771,6 +4771,9 @@
             _.trackEvent('model', algo);
             if (parameters.hyper_parameters) {
                 parameters.hyper_parameters = Flow.Prelude.stringify(parameters.hyper_parameters);
+                if (parameters.search_criteria) {
+                    parameters.search_criteria = Flow.Prelude.stringify(parameters.search_criteria);
+                }
                 return doPost(getGridModelBuilderEndpoint(algo), encodeObjectForPost(parameters), go);
             } else {
                 return doPost(getModelBuilderEndpoint(algo), encodeObjectForPost(parameters), go);
@@ -9822,10 +9825,21 @@
         }
     };
     H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
-        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _hasValidationFailures, _i, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
+        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _gridMaxModels, _gridMaxRuntime, _gridStrategies, _gridStrategy, _hasValidationFailures, _i, _isGridRandomDiscrete, _isGrided, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
         _exception = Flow.Dataflow.signal(null);
         _validationFailureMessage = Flow.Dataflow.signal('');
         _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
+        _gridStrategies = [
+            'Cartesian',
+            'RandomDiscrete'
+        ];
+        _isGrided = Flow.Dataflow.signal(false);
+        _gridStrategy = Flow.Dataflow.signal('Cartesian');
+        _isGridRandomDiscrete = Flow.Dataflow.lift(_gridStrategy, function (strategy) {
+            return strategy !== _gridStrategies[0];
+        });
+        _gridMaxModels = Flow.Dataflow.signal(1000);
+        _gridMaxRuntime = Flow.Dataflow.signal(28800);
         _parametersByLevel = lodash.groupBy(_parameters, function (parameter) {
             return parameter.level;
         });
@@ -9834,13 +9848,31 @@
             'secondary',
             'expert'
         ], function (type) {
-            return lodash.filter(lodash.map(_parametersByLevel[type], createControlFromParameter), function (a) {
+            var controls;
+            controls = lodash.filter(lodash.map(_parametersByLevel[type], createControlFromParameter), function (a) {
                 if (a) {
                     return true;
                 } else {
                     return false;
                 }
             });
+            lodash.forEach(controls, function (control) {
+                return Flow.Dataflow.react(control.isGrided, function () {
+                    var isGrided, _i, _len;
+                    isGrided = false;
+                    for (_i = 0, _len = controls.length; _i < _len; _i++) {
+                        control = controls[_i];
+                        if (control.isGrided()) {
+                            _isGrided(isGrided = true);
+                            break;
+                        }
+                    }
+                    if (!isGrided) {
+                        return _isGrided(false);
+                    }
+                });
+            });
+            return controls;
         });
         criticalControls = _controlGroups[0], secondaryControls = _controlGroups[1], expertControls = _controlGroups[2];
         _form = [];
@@ -9952,7 +9984,7 @@
             }
         }());
         collectParameters = function (includeUnchangedParameters) {
-            var controls, entry, hyperParameters, isGrided, item, parameters, selectedValues, value, _l, _len3, _len4, _len5, _m, _n, _ref;
+            var controls, entry, hyperParameters, isGrided, item, maxModels, maxRuntime, parameters, searchCriteria, selectedValues, value, _l, _len3, _len4, _len5, _m, _n, _ref;
             if (includeUnchangedParameters == null) {
                 includeUnchangedParameters = false;
             }
@@ -10019,6 +10051,17 @@
             }
             if (isGrided) {
                 parameters.hyper_parameters = hyperParameters;
+                searchCriteria = { strategy: _gridStrategy() };
+                switch (searchCriteria.strategy) {
+                case 'RandomDiscrete':
+                    if (!lodash.isNaN(maxModels = parseInt(_gridMaxModels(), 10))) {
+                        searchCriteria.max_models = maxModels;
+                    }
+                    if (!lodash.isNaN(maxRuntime = parseInt(_gridMaxRuntime(), 10))) {
+                        searchCriteria.max_runtime_secs = maxRuntime;
+                    }
+                }
+                parameters.search_criteria = searchCriteria;
             }
             return parameters;
         };
@@ -10115,6 +10158,12 @@
         });
         return {
             form: _form,
+            isGrided: _isGrided,
+            gridStrategy: _gridStrategy,
+            gridStrategies: _gridStrategies,
+            isGridRandomDiscrete: _isGridRandomDiscrete,
+            gridMaxModels: _gridMaxModels,
+            gridMaxRuntime: _gridMaxRuntime,
             exception: _exception,
             parameterTemplateOf: parameterTemplateOf,
             createModel: createModel,
