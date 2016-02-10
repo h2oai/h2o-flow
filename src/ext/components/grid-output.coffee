@@ -1,5 +1,4 @@
 H2O.GridOutput = (_, _go, _grid) ->
-
   _modelViews = signal []
   _hasModels = _grid.model_ids.length > 0
   _errorViews = signal []
@@ -8,6 +7,7 @@ H2O.GridOutput = (_, _go, _grid) ->
   _checkedModelCount = signal 0
   _canCompareModels = lift _checkedModelCount, (count) -> count > 1
   _hasSelectedModels = lift _checkedModelCount, (count) -> count > 0
+
 
   _isCheckingAll = no
   react _checkAllModels, (checkAll) ->
@@ -65,6 +65,10 @@ H2O.GridOutput = (_, _go, _grid) ->
       if accept
         _.insertAndExecuteCell 'cs', "deleteModels #{stringify collectSelectedKeys()}"
 
+  inspect = ->
+    summary = _.inspect 'summary', _grid
+    _.insertAndExecuteCell 'cs', "grid inspect 'summary', #{summary.metadata.origin}"
+
   inspectAll = ->
     allKeys = (view.key for view in _modelViews())
     #TODO use table origin
@@ -94,7 +98,8 @@ H2O.GridOutput = (_, _go, _grid) ->
   canCompareModels: _canCompareModels
   hasSelectedModels: _hasSelectedModels
   checkAllModels: _checkAllModels
-  inspect: inspectAll
+  inspect: inspect
+  inspectAll: inspectAll
   template: 'flow-grid-output'
 
 

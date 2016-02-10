@@ -2,6 +2,13 @@
   +subtitle('Grid Search', 'cubes')
 
   // ko if:hasModels
+  .flow-panel
+    //- +button('Compare selected&hellip;', 'area-chart', 'compareModels', 'canCompareModels')
+    //- +button('Predict using selected models&hellip;', 'bolt', 'predictUsingModels', 'canCompareModels')
+    +button('Inspect Grid Summary', 'list', 'inspect')
+    +button('Inspect Models', 'list', 'inspectAll')
+    +button('Delete selected', 'trash', 'deleteModels', 'hasSelectedModels')
+
   table.flow-form
     thead
       tr
@@ -24,12 +31,6 @@
           //- +button('Clone&hellip;', 'copy', 'clone')
           +button('Inspect', 'list', 'inspect')
       // /ko
-  .flow-panel
-    //- +button('Compare selected&hellip;', 'area-chart', 'compareModels', 'canCompareModels')
-    //- +button('Predict using selected models&hellip;', 'bolt', 'predictUsingModels', 'canCompareModels')
-    +button('Inspect', 'list', 'inspect')
-    +button('Delete selected', 'trash', 'deleteModels', 'hasSelectedModels')
-
 
   // /ko
 

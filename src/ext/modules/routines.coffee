@@ -634,6 +634,10 @@ H2O.Routines = (_) ->
     render_ model, H2O.ModelOutput, model
 
   extendGrid = (grid) ->
+    origin = "getGrid #{stringify grid.grid_id.name}"
+    inspections =
+      summary: inspectTwoDimTable_ origin, "summary", grid.summary_table
+    inspect_ grid, inspections
     render_ grid, H2O.GridOutput, grid
 
   extendGrids = (grids) ->
