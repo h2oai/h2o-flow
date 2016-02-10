@@ -1557,6 +1557,14 @@
             <h3 class="flow-hint"><i class="fa fa-cubes"></i>Grid Search
             </h3>
         <!-- ko if:hasModels-->
+        <div class="flow-panel">
+              <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect Grid Summary</span>
+              </button>
+              <button type="button" data-bind="click:inspectAll" class="flow-button"><i class="fa fa-list"></i><span>Inspect Models</span>
+              </button>
+              <button type="button" data-bind="click:deleteModels, enable:hasSelectedModels" class="flow-button"><i class="fa fa-trash"></i><span>Delete selected</span>
+              </button>
+        </div>
         <table class="flow-form">
           <thead>
             <tr>
@@ -1587,12 +1595,6 @@
             <!-- /ko-->
           </tbody>
         </table>
-        <div class="flow-panel">
-              <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
-              </button>
-              <button type="button" data-bind="click:deleteModels, enable:hasSelectedModels" class="flow-button"><i class="fa fa-trash"></i><span>Delete selected</span>
-              </button>
-        </div>
         <!-- /ko-->
         <!-- ko if:hasErrors-->
         <!-- ko foreach:errorViews-->
