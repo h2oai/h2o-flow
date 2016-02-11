@@ -70,7 +70,10 @@ H2O.JobOutput = (_, _go, _job) ->
       _messages messages
 
     else if job.exception
-      _exception Flow.Failure _, new Flow.Error 'Job failure.', new Error job.exception
+      cause = new Error job.exception
+      if job.stacktrace
+        cause.stack = job.stacktrace
+      _exception Flow.Failure _, new Flow.Error 'Job failure.', cause
 
     _canView not isJobRunning job
     _canCancel isJobRunning job
