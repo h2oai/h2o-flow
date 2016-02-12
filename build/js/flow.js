@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.17';
+    Flow.Version = '0.4.18';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -9217,8 +9217,19 @@
                 }
             });
         };
-        requestGrid = function (key, go) {
-            return doGet('/99/Grids/' + encodeURIComponent(key), go);
+        requestGrid = function (key, opts, go) {
+            var params;
+            params = void 0;
+            if (opts) {
+                params = {};
+                if (opts.sort_by) {
+                    params.sort_by = encodeURIComponent(opts.sort_by);
+                }
+                if (opts.decreasing === true || opts.decreasing === false) {
+                    params.decreasing = opts.decreasing;
+                }
+            }
+            return doGet(composePath('/99/Grids/' + encodeURIComponent(key), params), go);
         };
         requestModel = function (key, go) {
             return doGet('/3/Models/' + encodeURIComponent(key), function (error, result) {
@@ -10470,9 +10481,12 @@
             inspect_(model, inspections);
             return render_(model, H2O.ModelOutput, model);
         };
-        extendGrid = function (grid) {
+        extendGrid = function (grid, opts) {
             var inspections, origin;
             origin = 'getGrid ' + Flow.Prelude.stringify(grid.grid_id.name);
+            if (opts) {
+                origin += ', ' + Flow.Prelude.stringify(opts);
+            }
             inspections = { summary: inspectTwoDimTable_(origin, 'summary', grid.summary_table) };
             inspect_(grid, inspections);
             return render_(grid, H2O.GridOutput, grid);
@@ -11279,19 +11293,19 @@
                 return assist(getModel);
             }
         };
-        requestGrid = function (gridKey, go) {
-            return _.requestGrid(gridKey, function (error, grid) {
+        requestGrid = function (gridKey, opts, go) {
+            return _.requestGrid(gridKey, opts, function (error, grid) {
                 if (error) {
                     return go(error);
                 } else {
-                    return go(null, extendGrid(grid));
+                    return go(null, extendGrid(grid, opts));
                 }
             });
         };
-        getGrid = function (gridKey) {
+        getGrid = function (gridKey, opts) {
             switch (Flow.Prelude.typeOf(gridKey)) {
             case 'String':
-                return _fork(requestGrid, gridKey);
+                return _fork(requestGrid, gridKey, opts);
             default:
                 return assist(getGrid);
             }
