@@ -633,8 +633,9 @@ H2O.Routines = (_) ->
     inspect_ model, inspections
     render_ model, H2O.ModelOutput, model
 
-  extendGrid = (grid) ->
+  extendGrid = (grid, opts) ->
     origin = "getGrid #{stringify grid.grid_id.name}"
+    origin += ", #{stringify opts}" if opts
     inspections =
       summary: inspectTwoDimTable_ origin, "summary", grid.summary_table
     inspect_ grid, inspections
@@ -1204,14 +1205,14 @@ H2O.Routines = (_) ->
       else
         assist getModel
 
-  requestGrid = (gridKey, go) ->
-    _.requestGrid gridKey, (error, grid) ->
-      if error then go error else go null, extendGrid grid
+  requestGrid = (gridKey, opts, go) ->
+    _.requestGrid gridKey, opts, (error, grid) ->
+      if error then go error else go null, extendGrid grid, opts
 
-  getGrid = (gridKey) ->
+  getGrid = (gridKey, opts) ->
     switch typeOf gridKey
       when 'String'
-        _fork requestGrid, gridKey
+        _fork requestGrid, gridKey, opts
       else
         assist getGrid
 

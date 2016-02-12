@@ -281,8 +281,15 @@ H2O.Proxy = (_) ->
       else
         go error, result.models
 
-  requestGrid = (key, go) ->
-    doGet "/99/Grids/#{encodeURIComponent key}", go
+  requestGrid = (key, opts, go) ->
+    params = undefined
+    if opts
+      params = {}
+      if opts.sort_by
+        params.sort_by = encodeURIComponent opts.sort_by
+      if (opts.decreasing is yes) or (opts.decreasing is no)
+        params.decreasing = opts.decreasing
+    doGet (composePath "/99/Grids/#{encodeURIComponent key}", params), go
 
   requestModel = (key, go) ->
     doGet "/3/Models/#{encodeURIComponent key}", (error, result) ->
