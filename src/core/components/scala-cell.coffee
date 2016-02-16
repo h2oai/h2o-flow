@@ -80,10 +80,12 @@ Flow.ScalaCell = (_, _renderers, session_id, input='') ->
     _isBusy yes
 
     clear()
-    # escape new-lines
-    input_tmp = input.replace(/\n/g, '\\n')
-    # escape single quotes
+    # escape backslashes
+    input_tmp = input.replace(/\\/g,'\\\\')
+    # escape quotes
     input_tmp = input_tmp.replace(/'/g,'\\\'')
+    # escape new-lines
+    input_tmp = input_tmp.replace(/\n/g, '\\n')
     # pass the cell body as an argument, representing the scala code, to the appropriate function
     input_final = 'runScalaCode '+ _session_id+', \''+input_tmp+'\''
     render input_final,
