@@ -7,6 +7,7 @@ Flow.Renderers = (_, _sandbox) ->
   h6: -> Flow.Heading _, 'h6'
   md: -> Flow.Markdown _
   cs: (guid) -> Flow.Coffeescript _, guid, _sandbox
+  sca: (guid) -> Flow.Coffeescript _, guid, _sandbox
   raw: -> Flow.Raw _
 
 Flow.Notebook = (_, _renderers) ->
@@ -73,12 +74,9 @@ Flow.Notebook = (_, _renderers) ->
     return
 
   createCell = (type='cs', input='') ->
-    Flow.Cell _, _renderers, type, input
-
-
-  createScalaCell = (input='') ->
-    cell = Flow.ScalaCell _, _renderers, _intp_id, input
-    cell
+    switch type
+      when 'cs' then Flow.Cell _, _renderers, type, input
+      when 'sca' then Flow.ScalaCell _, _renderers, _intp_id, input
 
   checkConsistency = ->
     selectionCount = 0
@@ -181,10 +179,10 @@ Flow.Notebook = (_, _renderers) ->
     insertBelow createCell 'cs'
 
   insertNewScalaCellAbove = ->
-    insertAbove createScalaCell()
+    insertAbove createCell 'sca'
 
   insertNewScalaCellBelow = ->
-    insertBelow createScalaCell()
+    insertBelow createCell 'sca'
 
   insertCellAboveAndRun = (type, input) ->
     cell = insertAbove createCell type, input

@@ -1,6 +1,6 @@
 Flow.ScalaCell = (_, _renderers, session_id, input='') ->
   _guid = do uniqueId
-  _type = signal 'cs'
+  _type = signal 'sca'
   _visibleType = signal 'sca'
   _render = lift _type, (type) -> _renderers[type] _guid
   _isCode = lift _render, (render) -> render.isCode
