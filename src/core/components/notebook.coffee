@@ -7,6 +7,7 @@ Flow.Renderers = (_, _sandbox) ->
   h6: -> Flow.Heading _, 'h6'
   md: -> Flow.Markdown _
   cs: (guid) -> Flow.Coffeescript _, guid, _sandbox
+  sca: (guid) -> Flow.Coffeescript _, guid, _sandbox
   raw: -> Flow.Raw _
 
 Flow.Notebook = (_, _renderers) ->
@@ -36,6 +37,17 @@ Flow.Notebook = (_, _renderers) ->
   _sidebar = Flow.Sidebar _, _cells
   _about = Flow.About _
   _dialogs = Flow.Dialogs _
+  _intp_id = undefined
+
+  #initialize the interpreter when the notebook is creted
+  #one interpreter is shared by all scala cells
+  _initializeInterpreter = ->
+    _.requestScalaIntp (error,response) ->
+      if error
+        # Handle the error
+        _intp_id = undefined
+      else
+        _intp_id = response.session_id
 
   serialize = ->
     cells = for cell in _cells()
@@ -62,7 +74,9 @@ Flow.Notebook = (_, _renderers) ->
     return
 
   createCell = (type='cs', input='') ->
-    Flow.Cell _, _renderers, type, input
+    switch type
+      when 'cs' then Flow.Cell _, _renderers, type, input
+      when 'sca' then Flow.ScalaCell _, _renderers, _intp_id, input
 
   checkConsistency = ->
     selectionCount = 0
@@ -163,6 +177,12 @@ Flow.Notebook = (_, _renderers) ->
 
   insertNewCellBelow = ->
     insertBelow createCell 'cs'
+
+  insertNewScalaCellAbove = ->
+    insertAbove createCell 'sca'
+
+  insertNewScalaCellBelow = ->
+    insertBelow createCell 'sca'
 
   insertCellAboveAndRun = (type, input) ->
     cell = insertAbove createCell type, input
@@ -528,6 +548,39 @@ Flow.Notebook = (_, _renderers) ->
 
   _menus = signal null
 
+  menuCell = [
+        createMenuItem 'Run Cell', runCell, ['ctrl', 'enter']
+        menuDivider
+        createMenuItem 'Cut Cell', cutCell, ['x']
+        createMenuItem 'Copy Cell', copyCell, ['c']
+        createMenuItem 'Paste Cell Above', pasteCellAbove, ['shift', 'v']
+        createMenuItem 'Paste Cell Below', pasteCellBelow, ['v']
+        #TODO createMenuItem 'Paste Cell and Replace', pasteCellandReplace, yes
+        createMenuItem 'Delete Cell', deleteCell, ['d', 'd']
+        createMenuItem 'Undo Delete Cell', undoLastDelete, ['z']
+        menuDivider
+        createMenuItem 'Move Cell Up', moveCellUp, ['ctrl', 'k']
+        createMenuItem 'Move Cell Down', moveCellDown, ['ctrl', 'j']
+        menuDivider
+        createMenuItem 'Insert Cell Above', insertNewCellAbove, ['a']
+        createMenuItem 'Insert Cell Below', insertNewCellBelow, ['b']
+        #TODO createMenuItem 'Split Cell', splitCell
+        #TODO createMenuItem 'Merge Cell Above', mergeCellAbove, yes
+        #TODO createMenuItem 'Merge Cell Below', mergeCellBelow
+        menuDivider
+        createMenuItem 'Toggle Cell Input', toggleInput
+        createMenuItem 'Toggle Cell Output', toggleOutput, ['o']
+        createMenuItem 'Clear Cell Output', clearCell
+        ]
+
+  menuCellSW = [
+        menuDivider
+        createMenuItem 'Insert Scala Cell Above', insertNewScalaCellAbove
+        createMenuItem 'Insert Scala Cell Below', insertNewScalaCellBelow
+        ]
+  if _.onSparklingWater
+    menuCell = [menuCell..., menuCellSW...]
+
   initializeMenus = (builder) ->
     modelMenuItems = map(builder, (builder) ->
       createMenuItem "#{ builder.algo_full_name }...", executeCommand "buildModel #{stringify builder.algo}"
@@ -556,30 +609,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Download this Flow...', exportNotebook 
       ]
     ,
-      createMenu 'Cell', [
-        createMenuItem 'Run Cell', runCell, ['ctrl', 'enter']
-        menuDivider
-        createMenuItem 'Cut Cell', cutCell, ['x']
-        createMenuItem 'Copy Cell', copyCell, ['c']
-        createMenuItem 'Paste Cell Above', pasteCellAbove, ['shift', 'v']
-        createMenuItem 'Paste Cell Below', pasteCellBelow, ['v']
-        #TODO createMenuItem 'Paste Cell and Replace', pasteCellandReplace, yes
-        createMenuItem 'Delete Cell', deleteCell, ['d', 'd']
-        createMenuItem 'Undo Delete Cell', undoLastDelete, ['z']
-        menuDivider
-        createMenuItem 'Move Cell Up', moveCellUp, ['ctrl', 'k']
-        createMenuItem 'Move Cell Down', moveCellDown, ['ctrl', 'j']
-        menuDivider
-        createMenuItem 'Insert Cell Above', insertNewCellAbove, ['a']
-        createMenuItem 'Insert Cell Below', insertNewCellBelow, ['b']
-        #TODO createMenuItem 'Split Cell', splitCell
-        #TODO createMenuItem 'Merge Cell Above', mergeCellAbove, yes
-        #TODO createMenuItem 'Merge Cell Below', mergeCellBelow
-        menuDivider
-        createMenuItem 'Toggle Cell Input', toggleInput
-        createMenuItem 'Toggle Cell Output', toggleOutput, ['o']
-        createMenuItem 'Clear Cell Output', clearCell
-      ]
+      createMenu 'Cell', menuCell
     ,
       createMenu 'Data', [
         createMenuItem 'Import Files...', executeCommand 'importFiles'
@@ -806,6 +836,7 @@ Flow.Notebook = (_, _renderers) ->
     do (executeCommand 'assist')
 
     _.setDirty() #TODO setPristine() when autosave is implemented.
+    _initializeInterpreter()
 
   link _.ready, initialize
 
@@ -833,4 +864,3 @@ Flow.Notebook = (_, _renderers) ->
   about: _about
   dialogs: _dialogs
   templateOf: (view) -> view.template
-

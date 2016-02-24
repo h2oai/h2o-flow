@@ -184,4 +184,38 @@ ko.bindingHandlers.file =
       $file.change -> file @files[0]
     return
 
+ko.bindingHandlers.codemirror =
+    init:  (element, valueAccessor,  allBindings, viewModel, bindingContext) ->
+        # get the code mirror options
+        options = ko.unwrap(valueAccessor())
+        # get id of scala cell, the id is used to identify proper CodeMirror editor
+        parentScalaCellId=options.parentScalaCellId
+        delete options["parentScalaCellId"]
+        # created editor replaces the textarea on which it was created
+        editor = CodeMirror ((elt)-> element.parentNode.replaceChild(elt, element)), options
+        editor.on 'change', (cm) ->
+          allBindings().value(cm.getValue())
 
+        element.editor = editor
+        if(allBindings().value())
+          editor.setValue(allBindings().value())
+        editor.refresh()
+        wrapperElement = $(editor.getWrapperElement()) 
+        
+        ko.utils.domNodeDisposal.addDisposeCallback element, -> 
+            wrapperElement.remove()
+
+        mainEditorDiv = $('#'+parentScalaCellId).find('.CodeMirror.cm-s-flow')
+        internalTextArea = mainEditorDiv.find("div textarea")
+        internalTextArea.attr('rows','1')
+        internalTextArea.attr('spellcheck','false')
+        internalTextArea.attr('data-bind',"valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_actions, autoResize:_actions")
+        internalTextArea.removeAttr("wrap")
+        internalTextArea.removeAttr("style")
+        
+        editor.refresh()
+
+
+  update: (element, valueAccessor) ->
+            if element.editor
+                element.editor.refresh()

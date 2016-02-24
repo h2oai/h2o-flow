@@ -526,6 +526,34 @@ H2O.Proxy = (_) ->
   requestHelpContent = (name, go) ->
     download 'text', "/flow/help/#{name}.html", go
 
+  requestScalaIntp = (go) ->
+    doPost '/3/scalaint', {}, (error, result) ->
+      if error
+        go error
+      else
+        go null, result
+
+  requestScalaCode = (session_id, code, go) ->
+    doPost "/3/scalaint/#{session_id}", {code: code}, (error, result) ->
+      if error
+        go error
+      else
+        go null, result
+
+  asH2OFrameFromRDD = (rdd_id, go) ->
+    doPost "/3/RDDs/#{rdd_id}/h2oframe", {}, (error, result) ->
+      if error
+        go error
+      else
+        go null, result
+
+  asH2OFrameFromDF = (df_id, go) ->
+    doPost "/3/dataframes/#{df_id}/h2oframe", {}, (error, result) ->
+      if error
+        go error
+      else
+        go null, result
+
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
   link _.requestSplitFrame, requestSplitFrame
@@ -590,5 +618,7 @@ H2O.Proxy = (_) ->
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
   link _.requestExec, requestExec
+  link _.requestScalaIntp, requestScalaIntp
+  link _.requestScalaCode, requestScalaCode
 
 
