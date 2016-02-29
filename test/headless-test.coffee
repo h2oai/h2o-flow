@@ -3,6 +3,7 @@ webpage =  require 'webpage'
 timeout = null
 packs = null
 hostname = null
+excludeFlows = null
 perf = false
 date = null
 buildId = null
@@ -23,11 +24,13 @@ phantom.onError = (message, stacktrace) ->
 printUsageAndExit = (message) ->
   console.log "*** #{message} ***"
   console.log 'Usage: phantomjs headless-test.js [--host ip:port] [--timeout seconds] [--packs foo:bar:baz] \
-                                                 [--perf date buildId gitHash gitBranch ncpu os jobName outputDir]'
-  console.log '    ip:port  defaults to localhost:54321'
-  console.log '    timeout  defaults to 3600'
-  console.log '    packs    defaults to examples'
-  console.log '    perf     performance of individual tests will be recorded in perf.csv in the output directory'
+                                                 [--perf date buildId gitHash gitBranch ncpu os jobName outputDir] \
+                                                 [--excludeFlows flow1;flow2]'
+  console.log '    ip:port      defaults to localhost:54321'
+  console.log '    timeout      defaults to 3600'
+  console.log '    packs        defaults to examples'
+  console.log '    perf         performance of individual tests will be recorded in perf.csv in the output directory'
+  console.log '    excludeFlows do not run these flows'
   phantom.exit 1
 
 parseOpts = (args) ->
@@ -72,6 +75,10 @@ parseOpts = (args) ->
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
       outputDir = args[i]
+    else if args[i] == "--excludeFlows"
+      i = i + 1
+      if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
+      excludeFlows = args[i]
     else
       printUsageAndExit "Unknown argument: #{args[i]}"
     i = i + 1
@@ -88,6 +95,11 @@ packNames = if packs == null then ['examples'] else packs.split ':'
 console.log "PHANTOM: Using packs:"
 for packName in packNames
   console.log "PHANTOM: #{packName}"
+
+excludeFlowNames = if excludeFlows == null then [] else excludeFlows.split ';'
+console.log "PHANTOM: Excluding flows:"
+for excludeFlowName in excludeFlowNames
+  console.log "PHANTOM: #{excludeFlowName}"
 
 page = webpage.create()
 
@@ -126,7 +138,7 @@ page.open "http://#{hostname}/flow/index.html", (status) ->
   if status is 'success'
     test = ->
       page.evaluate(
-        (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf) ->
+        (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf, excludeFlowNames) ->
           window._date = date
           window._buildId = buildId
           window._gitHash = gitHash
@@ -136,6 +148,7 @@ page.open "http://#{hostname}/flow/index.html", (status) ->
           window._os = os
           window._jobName = jobName
           window._perf = perf
+          window._excludeFlowNames = excludeFlowNames
           context = window.flow.context
           if window._phantom_started_
             if window._phantom_exit_ then yes else no
@@ -159,51 +172,60 @@ page.open "http://#{hostname}/flow/index.html", (status) ->
                   (Flow.Async.iterate tasks) go
 
             runFlow = (packName, flowName, go) ->
-              flowTitle = "#{packName} - #{flowName}"
-              window._phantom_test_summary_[flowTitle] = 'FAILED'
-              console.log "Fetching flow document: #{packName} - #{flowName}..."
-              context.requestFlow packName, flowName, (error, flow) ->
-                if error
-                  console.log "*** ERROR *** Failed fetching flow #{flowTitle}"
-                  go new Error "Failed fetching flow #{flowTitle}", error
-                else
-                  console.log "Opening flow #{flowTitle}..."
+              doFlow = (flowName, excludeFlowNames) ->
+                for f in excludeFlowNames
+                  return false if flowName is f
+                true
 
-                  window._phantom_running_ = yes
+              if doFlow flowName, window._excludeFlowNames
+                flowTitle = "#{packName} - #{flowName}"
+                window._phantom_test_summary_[flowTitle] = 'FAILED'
+                console.log "Fetching flow document: #{packName} - #{flowName}..."
+                context.requestFlow packName, flowName, (error, flow) ->
+                  if error
+                    console.log "*** ERROR *** Failed fetching flow #{flowTitle}"
+                    go new Error "Failed fetching flow #{flowTitle}", error
+                  else
+                    console.log "Opening flow #{flowTitle}..."
 
-                  # open flow
-                  context.open flowTitle, flow
+                    window._phantom_running_ = yes
 
-                  waitForFlow = ->
-                    if window._phantom_running_
-                      console.log 'ACK'
-                      setTimeout waitForFlow, 2000
-                    else
-                      console.log 'Flow completed!'
-                      errors = window._phantom_errors_
-                      # delete all keys from the k/v store
-                      context.requestRemoveAll ->
-                        go if errors then errors else null
+                    # open flow
+                    context.open flowTitle, flow
 
-                  console.log 'Running flow...'
-                  window._startTime = new Date().getTime() / 1000
-                  context.executeAllCells yes, (status, errors) ->
-                    window._endTime = new Date().getTime() / 1000
-                    console.log "Flow finished with status: #{status}"
-                    if status is 'failed'
-                      window._pass = 0
-                      window._phantom_errors_ = errors
-                    else
-                      window._pass = 1
-                      window._phantom_test_summary_[flowTitle] = 'PASSED'
-                    if window._perf
-                      window.callPhantom "#{window._date}, #{window._buildId}, #{window._gitHash}, \
-                                          #{window._gitBranch}, #{window._hostname}, #{flowName}, \
-                                          #{window._startTime}, #{window._endTime}, #{window._pass}, \
-                                          #{window._ncpu}, #{window._os}, #{window._jobName}\n"
-                    window._phantom_running_ = no
+                    waitForFlow = ->
+                      if window._phantom_running_
+                        console.log 'ACK'
+                        setTimeout waitForFlow, 2000
+                      else
+                        console.log 'Flow completed!'
+                        errors = window._phantom_errors_
+                        # delete all keys from the k/v store
+                        context.requestRemoveAll ->
+                          go if errors then errors else null
+
+                    console.log 'Running flow...'
+                    window._startTime = new Date().getTime() / 1000
+                    context.executeAllCells yes, (status, errors) ->
+                      window._endTime = new Date().getTime() / 1000
+                      console.log "Flow finished with status: #{status}"
+                      if status is 'failed'
+                        window._pass = 0
+                        window._phantom_errors_ = errors
+                      else
+                        window._pass = 1
+                        window._phantom_test_summary_[flowTitle] = 'PASSED'
+                      if window._perf
+                        window.callPhantom "#{window._date}, #{window._buildId}, #{window._gitHash}, \
+                                            #{window._gitBranch}, #{window._hostname}, #{flowName}, \
+                                            #{window._startTime}, #{window._endTime}, #{window._pass}, \
+                                            #{window._ncpu}, #{window._os}, #{window._jobName}\n"
+                      window._phantom_running_ = no
 
                   setTimeout waitForFlow, 2000
+              else
+                console.log "Ignoring flow: #{flowName}"
+                go null
 
             console.log 'Starting tests...'
             window._phantom_errors_ = null
@@ -216,7 +238,7 @@ page.open "http://#{hostname}/flow/index.html", (status) ->
                 console.log 'Finished running all packs!'
               window._phantom_exit_ = yes
             no
-        packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf
+        packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf, excludeFlowNames
       )
 
     printErrors = (errors, prefix='') ->
