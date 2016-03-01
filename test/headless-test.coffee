@@ -1,18 +1,5 @@
 system = require 'system'
 webpage =  require 'webpage'
-timeout = null
-packs = null
-hostname = null
-excludeFlows = null
-perf = false
-date = null
-buildId = null
-gitHash = null
-gitBranch = null
-ncpu = null
-os = null
-jobName = null
-outputDir = null
 
 phantom.onError = (message, stacktrace) ->
   if stacktrace?.length
@@ -36,76 +23,86 @@ printUsageAndExit = (message) ->
 parseOpts = (args) ->
   console.log "Using args #{args.join ' '}"
   i = 0
+  opts = {}
   while i < args.length
     if args[i] == "--host"
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      hostname = args[i]
+      opts['hostname'] = args[i]
     else if args[i] == "--timeout"
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      timeout = args[i]
+      opts['timeout'] = args[i]
     else if args[i] == "--packs"
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      packs = args[i]
+      opts['packs'] = args[i]
     else if args[i] == "--perf"
-      perf = true
+      opts['perf'] = true
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      date = args[i]
+      opts['date'] = args[i]
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      buildId = args[i]
+      opts['buildId'] = args[i]
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      gitHash = args[i]
+      opts['gitHash'] = args[i]
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      gitBranch = args[i]
+      opts['gitBranch'] = args[i]
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      ncpu = args[i]
+      opts['ncpu'] = args[i]
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      os = args[i]
+      opts['os'] = args[i]
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      jobName = args[i]
+      opts['jobName'] = args[i]
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      outputDir = args[i]
+      opts['outputDir'] = args[i]
     else if args[i] == "--excludeFlows"
       i = i + 1
       if i > args.length then printUsageAndExit "Unknown argument: #{args[i]}"
-      excludeFlows = args[i]
+      opts['excludeFlows'] = args[i]
     else
       printUsageAndExit "Unknown argument: #{args[i]}"
     i = i + 1
+  opts
 
-parseOpts system.args[1..]
+opts = parseOpts system.args[1..]
 
-if hostname == null then hostname = 'localhost:54321'
+hostname = opts['hostname'] ? 'localhost:54321'
 console.log "PHANTOM: Using #{hostname}"
 
-timeout = if timeout == null then 3600000 else 1000 * parseInt timeout, 10
+timeout = if timeoutArg = opts['timeout']
+  1000 * parseInt timeoutArg, 10
+else
+  3600000
 console.log "PHANTOM: Using timeout #{timeout}ms"
 
-packNames = if packs == null then ['examples'] else packs.split ':'
-console.log "PHANTOM: Using packs:"
-for packName in packNames
-  console.log "PHANTOM: #{packName}"
+packsArg = opts['packs']
+packNames = if packsArg
+  packsArg.split ':'
+else
+  ['examples']
 
-excludeFlowNames = if excludeFlows == null then [] else excludeFlows.split ';'
-console.log "PHANTOM: Excluding flows:"
-for excludeFlowName in excludeFlowNames
-  console.log "PHANTOM: #{excludeFlowName}"
+excludeFlowsArg = opts['excludeFlows']
+excludeFlowsNames = if excludeFlowsArg
+  excludeFlowsArg.split ';'
+else
+  []
+for excludeFlowName in excludeFlowsNames
+  console.log "PHANTOM: Excluding flow: #{excludeFlowName}"
 
 page = webpage.create()
 
-if perf
-  console.log "PHANTOM: Performance of individual tests will be recorded in perf.csv in output directory: #{outputDir}."
-  page._outputDir = outputDir
+if opts['perf']
+  console.log "PHANTOM: Performance of individual tests will be recorded in perf.csv in output directory: \
+               #{opts['outputDir']}."
+  page._outputDir = opts['outputDir']
 
 page.onResourceError = ({ url, errorString }) ->
   console.log "BROWSER: *** RESOURCE ERROR *** #{url}: #{errorString}"
@@ -138,7 +135,7 @@ page.open "http://#{hostname}/flow/index.html", (status) ->
   if status is 'success'
     test = ->
       page.evaluate(
-        (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf, excludeFlowNames) ->
+        (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf, excludeFlowsNames) ->
           window._date = date
           window._buildId = buildId
           window._gitHash = gitHash
@@ -148,7 +145,7 @@ page.open "http://#{hostname}/flow/index.html", (status) ->
           window._os = os
           window._jobName = jobName
           window._perf = perf
-          window._excludeFlowNames = excludeFlowNames
+          window._excludeFlowsNames = excludeFlowsNames
           context = window.flow.context
           if window._phantom_started_
             if window._phantom_exit_ then yes else no
@@ -172,12 +169,12 @@ page.open "http://#{hostname}/flow/index.html", (status) ->
                   (Flow.Async.iterate tasks) go
 
             runFlow = (packName, flowName, go) ->
-              doFlow = (flowName, excludeFlowNames) ->
-                for f in excludeFlowNames
+              doFlow = (flowName, excludeFlowsNames) ->
+                for f in excludeFlowsNames
                   return false if flowName is f
                 true
 
-              if doFlow flowName, window._excludeFlowNames
+              if doFlow flowName, window._excludeFlowsNames
                 flowTitle = "#{packName} - #{flowName}"
                 window._phantom_test_summary_[flowTitle] = 'FAILED'
                 console.log "Fetching flow document: #{packName} - #{flowName}..."
@@ -238,7 +235,8 @@ page.open "http://#{hostname}/flow/index.html", (status) ->
                 console.log 'Finished running all packs!'
               window._phantom_exit_ = yes
             no
-        packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf, excludeFlowNames
+        packNames, opts['date'], opts['buildId'], opts['gitHash'], opts['gitBranch'], hostname, opts['ncpu'], \
+        opts['os'], opts['jobName'], opts['perf'], excludeFlowsNames
       )
 
     printErrors = (errors, prefix='') ->
