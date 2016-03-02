@@ -12,7 +12,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.20';
+    Flow.Version = '0.4.21';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -9857,7 +9857,7 @@
         }
     };
     H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
-        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _gridMaxModels, _gridMaxRuntime, _gridStrategies, _gridStrategy, _hasValidationFailures, _i, _isGridRandomDiscrete, _isGrided, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
+        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _gridMaxModels, _gridMaxRuntime, _gridStoppingMetric, _gridStoppingMetrics, _gridStoppingRounds, _gridStoppingTolerance, _gridStrategies, _gridStrategy, _hasValidationFailures, _i, _isGridRandomDiscrete, _isGrided, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
         _exception = Flow.Dataflow.signal(null);
         _validationFailureMessage = Flow.Dataflow.signal('');
         _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
@@ -9872,6 +9872,19 @@
         });
         _gridMaxModels = Flow.Dataflow.signal(1000);
         _gridMaxRuntime = Flow.Dataflow.signal(28800);
+        _gridStoppingRounds = Flow.Dataflow.signal(0);
+        _gridStoppingMetrics = [
+            'AUTO',
+            'deviance',
+            'logloss',
+            'MSE',
+            'AUC',
+            'lift_top_group',
+            'r2',
+            'misclassification'
+        ];
+        _gridStoppingMetric = Flow.Dataflow.signal(_gridStoppingMetrics[0]);
+        _gridStoppingTolerance = Flow.Dataflow.signal(0.001);
         _parametersByLevel = lodash.groupBy(_parameters, function (parameter) {
             return parameter.level;
         });
@@ -10016,7 +10029,7 @@
             }
         }());
         collectParameters = function (includeUnchangedParameters) {
-            var controls, entry, hyperParameters, isGrided, item, maxModels, maxRuntime, parameters, searchCriteria, selectedValues, value, _l, _len3, _len4, _len5, _m, _n, _ref;
+            var controls, entry, gridStoppingRounds, hyperParameters, isGrided, item, maxModels, maxRuntime, parameters, searchCriteria, selectedValues, stoppingTolerance, value, _l, _len3, _len4, _len5, _m, _n, _ref;
             if (includeUnchangedParameters == null) {
                 includeUnchangedParameters = false;
             }
@@ -10092,6 +10105,13 @@
                     if (!lodash.isNaN(maxRuntime = parseInt(_gridMaxRuntime(), 10))) {
                         searchCriteria.max_runtime_secs = maxRuntime;
                     }
+                    if (!lodash.isNaN(gridStoppingRounds = parseInt(_gridStoppingRounds(), 10))) {
+                        searchCriteria.stopping_rounds = gridStoppingRounds;
+                    }
+                    if (!lodash.isNaN(stoppingTolerance = parseFloat(_gridStoppingTolerance()))) {
+                        searchCriteria.stopping_tolerance = stoppingTolerance;
+                    }
+                    searchCriteria.stopping_metric = _gridStoppingMetric();
                 }
                 parameters.search_criteria = searchCriteria;
             }
@@ -10196,6 +10216,10 @@
             isGridRandomDiscrete: _isGridRandomDiscrete,
             gridMaxModels: _gridMaxModels,
             gridMaxRuntime: _gridMaxRuntime,
+            gridStoppingRounds: _gridStoppingRounds,
+            gridStoppingMetrics: _gridStoppingMetrics,
+            gridStoppingMetric: _gridStoppingMetric,
+            gridStoppingTolerance: _gridStoppingTolerance,
             exception: _exception,
             parameterTemplateOf: parameterTemplateOf,
             createModel: createModel,
