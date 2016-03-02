@@ -28,7 +28,7 @@
         select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
         // /ko
 
-    // ko if:hasAdditionalOptions
+    // ko if:hasReconError
     tr
       th
         label Compute Reconstruction Error:
@@ -44,8 +44,14 @@
         span Hidden Layer #:
         input.flow-textbox(type='textbox' style='width:50px' data-bind="value:deepFeaturesHiddenLayer, valueUpdate:'afterkeydown'")
         // /ko
-
     // /ko
+    // /ko
+    // ko if:hasLeafNodeAssignment
+    tr
+      th
+        label Compute Leaf Node Assignment:
+      td
+        input(type='checkbox' data-bind="checked:computeLeafNodeAssignment")
     // /ko
     tr
       th
