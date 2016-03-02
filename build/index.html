@@ -2193,7 +2193,7 @@
               <!-- /ko-->
             </td>
           </tr>
-          <!-- ko if:hasAdditionalOptions-->
+          <!-- ko if:hasReconError-->
           <tr>
             <th>
               <label>Compute Reconstruction Error:</label>
@@ -2215,6 +2215,16 @@
             </td>
           </tr>
           <!-- /ko-->
+          <!-- /ko-->
+          <!-- ko if:hasLeafNodeAssignment-->
+          <tr>
+            <th>
+              <label>Compute Leaf Node Assignment:</label>
+            </th>
+            <td>
+              <input type="checkbox" data-bind="checked:computeLeafNodeAssignment">
+            </td>
+          </tr>
           <!-- /ko-->
           <tr>
             <th>
