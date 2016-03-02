@@ -42,6 +42,22 @@
         td
           input.flow-textbox(type='text' data-bind="value:gridMaxRuntime")
         td Stop grid search after running for this amount of time.
+      tr
+        th Stopping Rounds
+        td
+          input.flow-textbox(type='text' data-bind="value:gridStoppingRounds")
+        td Early stopping based on convergence of stopping_metric. Stop if simple moving average of length k of the stopping_metric does not improve for k:=stopping_rounds scoring events (0 to disable).
+      tr
+        th Stopping Metric
+        td
+          select(data-bind="options:gridStoppingMetrics, value:gridStoppingMetric")
+        td Metric to use for early stopping (AUTO: logloss for classification, deviance for regression)
+      tr
+        th Stopping Tolerance
+        td
+          input.flow-textbox(type='text' data-bind="value:gridStoppingTolerance")
+        td Relative tolerance for metric-based stopping criterion (stop if relative improvement is not at least this much)
+
       // /ko
   // /ko
 

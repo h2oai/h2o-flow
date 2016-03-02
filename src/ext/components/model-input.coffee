@@ -251,6 +251,10 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   _isGridRandomDiscrete = lift _gridStrategy, (strategy) -> strategy isnt _gridStrategies[0]
   _gridMaxModels = signal 1000
   _gridMaxRuntime = signal 28800
+  _gridStoppingRounds = signal 0
+  _gridStoppingMetrics = [ 'AUTO', 'deviance', 'logloss', 'MSE', 'AUC', 'lift_top_group', 'r2', 'misclassification' ] 
+  _gridStoppingMetric = signal _gridStoppingMetrics[0]
+  _gridStoppingTolerance = signal 0.001
 
   _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
   _controlGroups = map [ 'critical', 'secondary', 'expert' ], (type) ->
@@ -380,6 +384,11 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
             searchCriteria.max_models = maxModels
           unless isNaN maxRuntime = parseInt _gridMaxRuntime(), 10
             searchCriteria.max_runtime_secs = maxRuntime
+          unless isNaN gridStoppingRounds = parseInt _gridStoppingRounds(), 10
+            searchCriteria.stopping_rounds = gridStoppingRounds
+          unless isNaN stoppingTolerance = parseFloat _gridStoppingTolerance()
+            searchCriteria.stopping_tolerance = stoppingTolerance
+          searchCriteria.stopping_metric = _gridStoppingMetric()
       parameters.search_criteria = searchCriteria
 
     parameters
@@ -472,6 +481,10 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   isGridRandomDiscrete: _isGridRandomDiscrete
   gridMaxModels: _gridMaxModels
   gridMaxRuntime: _gridMaxRuntime
+  gridStoppingRounds: _gridStoppingRounds
+  gridStoppingMetrics: _gridStoppingMetrics
+  gridStoppingMetric: _gridStoppingMetric
+  gridStoppingTolerance: _gridStoppingTolerance
   exception: _exception
   parameterTemplateOf: parameterTemplateOf
   createModel: createModel
