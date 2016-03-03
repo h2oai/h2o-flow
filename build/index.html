@@ -8,6 +8,8 @@
     <meta name="description" content="H2O Flow">
     <link rel="stylesheet" href="css/flow-lib.css" type="text/css">
     <link rel="stylesheet" href="css/flow.css" type="text/css">
+    <link rel="stylesheet" href="css/scala-editor.css" type="text/css">
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600" type="text/css">
     <link rel="stylesheet" href="custom/custom.css" type="text/css"><!--[if lt IE 9]>
     <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
     <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script><![endif]-->
@@ -540,7 +542,12 @@
               <tbody>
                 <tr>
                   <td>
+                    <!--ko ifnot:type()=='sca'-->
                     <textarea placeholder="Expression..." rows="1" spellcheck="false" data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_actions, autoResize:_actions"></textarea>
+                    <!-- /ko-->
+                    <!--ko if:type()=='sca'-->
+                    <textarea data-bind="value:input, cursorPosition:_actions, autoResize:_actions, valueUpdate: 'afterkeydown', hasFocus:isActive, codemirror: {readOnly: false, lineWrapping: true, lineNumbers: true, theme: 'flow', matchBrackets: true, mode: {name: 'text/x-scala'}}"></textarea>
+                    <!-- /ko-->
                   </td>
                   <td class="flow-cell-actions"><i title="Save to clipboard" data-bind="click:clip" class="fa fa-paperclip flow-pointer"></i></td>
                 </tr>
@@ -550,6 +557,7 @@
                 </tr>
               </tbody>
             </table>
+            <!-- /ko-->
           </div>
         </div>
         <div data-bind="css:{ 'flow-hide-output': isOutputHidden }" class="flow-cell-output">
@@ -1769,7 +1777,7 @@
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-table"></i>RDDs</h3>
         <!-- ko ifnot:hasRDDs-->
-        <blockquote>Your H<sub>2</sub>O cloud has no RDDs.</blockquote>
+        <blockquote>Your Spark cloud has no RDDs.</blockquote>
         <!-- /ko-->
         <!-- ko if:hasRDDs-->
         <table class="flow-form flow-form-ruled">
@@ -1790,6 +1798,65 @@
             <!-- /ko-->
           </tbody>
         </table>
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-dataframes-output">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-table"></i>Spark's Data Frames</h3>
+        <!-- ko ifnot:hasDataFrames-->
+        <blockquote>Your Spark Cloud has no data frames.</blockquote>
+        <!-- /ko-->
+        <!-- ko if:hasDataFrames-->
+        <table class="flow-form flow-form-ruled">
+          <thead>
+            <tr>
+              <th width="1">ID</th>
+              <th width="1">Partitions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ko foreach:dataFrameViews-->
+            <tr>
+              <td data-bind="text:dataframe_id" class="flow-right"></td>
+              <td data-bind="text:partitions"></td>
+            </tr>
+            <!-- /ko-->
+          </tbody>
+        </table>
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-dataframe-output">
+      <div class="flow-widget">
+        <!-- ko with:dataFrameView-->
+        <p>Transformation successful. ID of created Spark's data frame is&nbsp;<strong data-bind="text: dataframe_id"></strong></p>
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-h2oframe-output">
+      <div class="flow-widget">
+        <!-- ko with:h2oframeView-->
+        <p>Transformation successful. ID of created H2O frame is&nbsp;<strong data-bind="text: h2oframe_id"></strong></p>
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-scala-code-output">
+      <div class="flow-widget">
+        <!-- ko with:scalaCodeView-->
+        <h4 data-bind="text:&quot;Status: &quot;+status"></h4>
+        <h4>Console Output:</h4>
+        <p data-bind="text:output" style="white-space: pre-wrap"></p>
+        <h4>Scala Response:</h4>
+        <p data-bind="text: response, visible: scalaResponseVisible " style="white-space: pre-wrap"></p><a href="#" data-bind="click: toggleVisibility, text: scalaLinkText"></a>
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-scala-intp-output">
+      <div class="flow-widget">
+        <!-- ko with:scalaIntpView-->
+        <h4>Interpreter ID:</h4>
+        <p data-bind="text:session_id"></p>
         <!-- /ko-->
       </div>
     </script>

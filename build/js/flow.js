@@ -1,8 +1,33 @@
 "use strict";(function(){ var lodash = window._; window.Flow={}; window.H2O={};(function () {
+    var checkSparklingWater;
+    checkSparklingWater = function (context) {
+        context.onSparklingWater = false;
+        return $.ajax({
+            url: '/3/Metadata/endpoints',
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                var route, _i, _len, _ref, _results;
+                _ref = response.routes;
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    route = _ref[_i];
+                    if (route.url_pattern === '/3/scalaint') {
+                        _results.push(context.onSparklingWater = true);
+                    } else {
+                        _results.push(void 0);
+                    }
+                }
+                return _results;
+            },
+            async: false
+        });
+    };
     if ((typeof window !== 'undefined' && window !== null ? window.$ : void 0) != null) {
         $(function () {
             var context;
             context = {};
+            checkSparklingWater(context);
             window.flow = Flow.Application(context, H2O.Routines);
             H2O.Application(context);
             ko.applyBindings(window.flow);
@@ -12,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.21';
+    Flow.Version = '0.4.22';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -240,6 +265,12 @@
             render = _render();
             _isBusy(true);
             clear();
+            if (_type() === 'sca') {
+                input = input.replace(/\\/g, '\\\\');
+                input = input.replace(/'/g, '\\\'');
+                input = input.replace(/\n/g, '\\n');
+                input = 'runScalaCode ' + _.scalaIntpId() + ', \'' + input + '\'';
+            }
             render(input, {
                 data: function (result) {
                     return _outputs.push(result);
@@ -921,6 +952,7 @@
     };
 }.call(this));
 (function () {
+    var __slice = [].slice;
     Flow.Renderers = function (_, _sandbox) {
         return {
             h1: function () {
@@ -947,13 +979,16 @@
             cs: function (guid) {
                 return Flow.Coffeescript(_, guid, _sandbox);
             },
+            sca: function (guid) {
+                return Flow.Coffeescript(_, guid, _sandbox);
+            },
             raw: function () {
                 return Flow.Raw(_);
             }
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createShortcutHint, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, loadNotebook, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, convertCellToScala, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createShortcutHint, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, insertNewScalaCellAbove, insertNewScalaCellBelow, loadNotebook, menuCell, menuCellSW, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _initializeInterpreter, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
         _localName = Flow.Dataflow.signal('Untitled Flow');
         Flow.Dataflow.react(_localName, function (name) {
             return document.title = 'H2O' + (name && name.trim() ? '- ' + name : '');
@@ -982,6 +1017,15 @@
         _sidebar = Flow.Sidebar(_, _cells);
         _about = Flow.About(_);
         _dialogs = Flow.Dialogs(_);
+        _initializeInterpreter = function () {
+            return _.requestScalaIntp(function (error, response) {
+                if (error) {
+                    return _.scalaIntpId(-1);
+                } else {
+                    return _.scalaIntpId(response.session_id);
+                }
+            });
+        };
         serialize = function () {
             var cell, cells;
             cells = function () {
@@ -1104,6 +1148,9 @@
             _selectedCell.type('raw');
             return _selectedCell.execute();
         };
+        convertCellToScala = function () {
+            return _selectedCell.type('sca');
+        };
         copyCell = function () {
             return _clipboardCell = _selectedCell;
         };
@@ -1156,6 +1203,12 @@
         };
         insertNewCellBelow = function () {
             return insertBelow(createCell('cs'));
+        };
+        insertNewScalaCellAbove = function () {
+            return insertAbove(createCell('sca'));
+        };
+        insertNewScalaCellBelow = function () {
+            return insertBelow(createCell('sca'));
         };
         insertCellAboveAndRun = function (type, input) {
             var cell;
@@ -1601,6 +1654,49 @@
             action: null
         };
         _menus = Flow.Dataflow.signal(null);
+        menuCell = [
+            createMenuItem('Run Cell', runCell, [
+                'ctrl',
+                'enter'
+            ]),
+            menuDivider,
+            createMenuItem('Cut Cell', cutCell, ['x']),
+            createMenuItem('Copy Cell', copyCell, ['c']),
+            createMenuItem('Paste Cell Above', pasteCellAbove, [
+                'shift',
+                'v'
+            ]),
+            createMenuItem('Paste Cell Below', pasteCellBelow, ['v']),
+            createMenuItem('Delete Cell', deleteCell, [
+                'd',
+                'd'
+            ]),
+            createMenuItem('Undo Delete Cell', undoLastDelete, ['z']),
+            menuDivider,
+            createMenuItem('Move Cell Up', moveCellUp, [
+                'ctrl',
+                'k'
+            ]),
+            createMenuItem('Move Cell Down', moveCellDown, [
+                'ctrl',
+                'j'
+            ]),
+            menuDivider,
+            createMenuItem('Insert Cell Above', insertNewCellAbove, ['a']),
+            createMenuItem('Insert Cell Below', insertNewCellBelow, ['b']),
+            menuDivider,
+            createMenuItem('Toggle Cell Input', toggleInput),
+            createMenuItem('Toggle Cell Output', toggleOutput, ['o']),
+            createMenuItem('Clear Cell Output', clearCell)
+        ];
+        menuCellSW = [
+            menuDivider,
+            createMenuItem('Insert Scala Cell Above', insertNewScalaCellAbove),
+            createMenuItem('Insert Scala Cell Below', insertNewScalaCellBelow)
+        ];
+        if (_.onSparklingWater) {
+            menuCell = __slice.call(menuCell).concat(__slice.call(menuCellSW));
+        }
         initializeMenus = function (builder) {
             var modelMenuItems;
             modelMenuItems = lodash.map(builder, function (builder) {
@@ -1628,41 +1724,7 @@
                     menuDivider,
                     createMenuItem('Download this Flow...', exportNotebook)
                 ]),
-                createMenu('Cell', [
-                    createMenuItem('Run Cell', runCell, [
-                        'ctrl',
-                        'enter'
-                    ]),
-                    menuDivider,
-                    createMenuItem('Cut Cell', cutCell, ['x']),
-                    createMenuItem('Copy Cell', copyCell, ['c']),
-                    createMenuItem('Paste Cell Above', pasteCellAbove, [
-                        'shift',
-                        'v'
-                    ]),
-                    createMenuItem('Paste Cell Below', pasteCellBelow, ['v']),
-                    createMenuItem('Delete Cell', deleteCell, [
-                        'd',
-                        'd'
-                    ]),
-                    createMenuItem('Undo Delete Cell', undoLastDelete, ['z']),
-                    menuDivider,
-                    createMenuItem('Move Cell Up', moveCellUp, [
-                        'ctrl',
-                        'k'
-                    ]),
-                    createMenuItem('Move Cell Down', moveCellDown, [
-                        'ctrl',
-                        'j'
-                    ]),
-                    menuDivider,
-                    createMenuItem('Insert Cell Above', insertNewCellAbove, ['a']),
-                    createMenuItem('Insert Cell Below', insertNewCellBelow, ['b']),
-                    menuDivider,
-                    createMenuItem('Toggle Cell Input', toggleInput),
-                    createMenuItem('Toggle Cell Output', toggleOutput, ['o']),
-                    createMenuItem('Clear Cell Output', clearCell)
-                ]),
+                createMenu('Cell', menuCell),
                 createMenu('Data', [
                     createMenuItem('Import Files...', executeCommand('importFiles')),
                     createMenuItem('Upload File...', uploadFile),
@@ -1895,6 +1957,13 @@
                 displayKeyboardShortcuts
             ]
         ];
+        if (_.onSparklingWater) {
+            normalModeKeyboardShortcuts.push([
+                'q',
+                'to Scala',
+                convertCellToScala
+            ]);
+        }
         editModeKeyboardShortcuts = [
             [
                 'esc',
@@ -1976,7 +2045,8 @@
                 return _.growl('Notebook loaded.');
             });
             executeCommand('assist')();
-            return _.setDirty();
+            _.setDirty();
+            return _initializeInterpreter();
         };
         Flow.Dataflow.link(_.ready, initialize);
         return {
@@ -3890,6 +3960,30 @@
             }
         }
     };
+    ko.bindingHandlers.codemirror = {
+        init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+            var editor, internalTextArea, options;
+            options = ko.unwrap(valueAccessor());
+            editor = CodeMirror.fromTextArea(element, options);
+            editor.on('change', function (cm) {
+                return allBindings().value(cm.getValue());
+            });
+            element.editor = editor;
+            if (allBindings().value()) {
+                editor.setValue(allBindings().value());
+            }
+            internalTextArea = $(editor.getWrapperElement()).find('div textarea');
+            internalTextArea.attr('rows', '1');
+            internalTextArea.attr('spellcheck', 'false');
+            internalTextArea.removeAttr('wrap');
+            return editor.refresh();
+        },
+        update: function (element, valueAccessor) {
+            if (element.editor) {
+                return element.editor.refresh();
+            }
+        }
+    };
 }.call(this));
 (function () {
     var keyOf, list, purge, purgeAll, read, write, _ls;
@@ -4227,7 +4321,6 @@
         _.requestFrameSummaryWithoutData = Flow.Dataflow.slot();
         _.requestDeleteFrame = Flow.Dataflow.slot();
         _.requestExportFrame = Flow.Dataflow.slot();
-        _.requestRDDs = Flow.Dataflow.slot();
         _.requestColumnSummary = Flow.Dataflow.slot();
         _.requestModelBuilder = Flow.Dataflow.slot();
         _.requestModelBuilders = Flow.Dataflow.slot();
@@ -4278,7 +4371,15 @@
         _.inspect = Flow.Dataflow.slot();
         _.plot = Flow.Dataflow.slot();
         _.grid = Flow.Dataflow.slot();
-        return _.enumerate = Flow.Dataflow.slot();
+        _.enumerate = Flow.Dataflow.slot();
+        _.scalaIntpId = Flow.Dataflow.signal(-1);
+        _.requestRDDs = Flow.Dataflow.slot();
+        _.requestDataFrames = Flow.Dataflow.slot();
+        _.requestScalaIntp = Flow.Dataflow.slot();
+        _.requestScalaCode = Flow.Dataflow.slot();
+        _.requestAsH2OFrameFromRDD = Flow.Dataflow.slot();
+        _.requestAsH2OFrameFromDF = Flow.Dataflow.slot();
+        return _.requestAsDataFrame = Flow.Dataflow.slot();
     };
 }.call(this));
 (function () {
@@ -4289,7 +4390,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getGridModelBuilderEndpoint, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestGrid, requestGrids, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __gridModelBuilderEndpoints, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
+        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getGridModelBuilderEndpoint, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestGrid, requestGrids, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __gridModelBuilderEndpoints, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
         download = function (type, url, go) {
             return $.ajax({
                 dataType: type,
@@ -4537,15 +4638,6 @@
                 force: overwrite ? 'true' : 'false'
             };
             return doPost('/3/Frames/' + encodeURIComponent(key) + '/export', params, go);
-        };
-        requestRDDs = function (go) {
-            return doGet('/3/RDDs', function (error, result) {
-                if (error) {
-                    return go(error);
-                } else {
-                    return go(null, result.rdds);
-                }
-            });
         };
         requestColumnSummary = function (frameKey, column, go) {
             return doGet('/3/Frames/' + encodeURIComponent(frameKey) + '/columns/' + encodeURIComponent(column) + '/summary', unwrap(go, function (result) {
@@ -4986,6 +5078,39 @@
         requestHelpContent = function (name, go) {
             return download('text', '/flow/help/' + name + '.html', go);
         };
+        requestRDDs = function (go) {
+            return doGet('/3/RDDs', go);
+        };
+        requestDataFrames = function (go) {
+            return doGet('/3/dataframes', go);
+        };
+        requestScalaIntp = function (go) {
+            return doPost('/3/scalaint', {}, go);
+        };
+        requestScalaCode = function (session_id, code, go) {
+            return doPost('/3/scalaint/' + session_id, { code: code }, go);
+        };
+        requestAsH2OFrameFromRDD = function (rdd_id, name, go) {
+            if (name === void 0) {
+                return doPost('/3/RDDs/' + rdd_id + '/h2oframe', {}, go);
+            } else {
+                return doPost('/3/RDDs/' + rdd_id + '/h2oframe', { h2oframe_id: name }, go);
+            }
+        };
+        requestAsH2OFrameFromDF = function (df_id, name, go) {
+            if (name === void 0) {
+                return doPost('/3/dataframes/' + df_id + '/h2oframe', {}, go);
+            } else {
+                return doPost('/3/dataframes/' + df_id + '/h2oframe', { h2oframe_id: name }, go);
+            }
+        };
+        requestAsDataFrame = function (hf_id, name, go) {
+            if (name === void 0) {
+                return doPost('/3/h2oframes/' + hf_id + '/dataframe', {}, go);
+            } else {
+                return doPost('/3/h2oframes/' + hf_id + '/dataframe', { dataframe_id: name }, go);
+            }
+        };
         Flow.Dataflow.link(_.requestInspect, requestInspect);
         Flow.Dataflow.link(_.requestCreateFrame, requestCreateFrame);
         Flow.Dataflow.link(_.requestSplitFrame, requestSplitFrame);
@@ -4997,7 +5122,6 @@
         Flow.Dataflow.link(_.requestFrameSummarySlice, requestFrameSummarySlice);
         Flow.Dataflow.link(_.requestDeleteFrame, requestDeleteFrame);
         Flow.Dataflow.link(_.requestExportFrame, requestExportFrame);
-        Flow.Dataflow.link(_.requestRDDs, requestRDDs);
         Flow.Dataflow.link(_.requestColumnSummary, requestColumnSummary);
         Flow.Dataflow.link(_.requestJobs, requestJobs);
         Flow.Dataflow.link(_.requestJob, requestJob);
@@ -5049,7 +5173,14 @@
         Flow.Dataflow.link(_.requestFlow, requestFlow);
         Flow.Dataflow.link(_.requestHelpIndex, requestHelpIndex);
         Flow.Dataflow.link(_.requestHelpContent, requestHelpContent);
-        return Flow.Dataflow.link(_.requestExec, requestExec);
+        Flow.Dataflow.link(_.requestExec, requestExec);
+        Flow.Dataflow.link(_.requestRDDs, requestRDDs);
+        Flow.Dataflow.link(_.requestDataFrames, requestDataFrames);
+        Flow.Dataflow.link(_.requestScalaIntp, requestScalaIntp);
+        Flow.Dataflow.link(_.requestScalaCode, requestScalaCode);
+        Flow.Dataflow.link(_.requestAsH2OFrameFromDF, requestAsH2OFrameFromDF);
+        Flow.Dataflow.link(_.requestAsH2OFrameFromRDD, requestAsH2OFrameFromRDD);
+        return Flow.Dataflow.link(_.requestAsDataFrame, requestAsDataFrame);
     };
 }.call(this));
 (function () {
@@ -5358,7 +5489,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var assist, bindFrames, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestSplitFrame, requestStackTrace, requestTimeline, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var asDataFrame, asH2OFrameFromDF, asH2OFrameFromRDD, assist, bindFrames, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendAsDataFrame, extendAsH2OFrame, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDataFrames, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendScalaCode, extendScalaIntp, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getDataFrames, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getScalaIntp, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, initAssistanceSparklingWater, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSplitFrame, requestStackTrace, requestTimeline, runScalaCode, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -7339,16 +7470,117 @@
             return rdds;
         };
         requestRDDs = function (go) {
-            return _.requestRDDs(function (error, rdds) {
+            return _.requestRDDs(function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
-                    return go(null, extendRDDs(rdds));
+                    return go(null, extendRDDs(result.rdds));
                 }
             });
         };
         getRDDs = function () {
             return _fork(requestRDDs);
+        };
+        extendDataFrames = function (dataframes) {
+            render_(dataframes, H2O.DataFramesOutput, dataframes);
+            return dataframes;
+        };
+        requestDataFrames = function (go) {
+            return _.requestDataFrames(function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendDataFrames(result.dataframes));
+                }
+            });
+        };
+        getDataFrames = function () {
+            return _fork(requestDataFrames);
+        };
+        extendAsH2OFrame = function (result) {
+            render_(result, H2O.H2OFrameOutput, result);
+            return result;
+        };
+        requestAsH2OFrameFromRDD = function (rdd_id, name, go) {
+            return _.requestAsH2OFrameFromRDD(rdd_id, name, function (error, h2oframe_id) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendAsH2OFrame(h2oframe_id));
+                }
+            });
+        };
+        asH2OFrameFromRDD = function (rdd_id, name) {
+            if (name == null) {
+                name = void 0;
+            }
+            return _fork(requestAsH2OFrameFromRDD, rdd_id, name);
+        };
+        requestAsH2OFrameFromDF = function (df_id, name, go) {
+            return _.requestAsH2OFrameFromDF(df_id, name, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendAsH2OFrame(result));
+                }
+            });
+        };
+        asH2OFrameFromDF = function (df_id, name) {
+            if (name == null) {
+                name = void 0;
+            }
+            return _fork(requestAsH2OFrameFromDF, df_id, name);
+        };
+        extendAsDataFrame = function (result) {
+            render_(result, H2O.DataFrameOutput, result);
+            return result;
+        };
+        requestAsDataFrame = function (hf_id, name, go) {
+            return _.requestAsDataFrame(hf_id, name, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendAsDataFrame(result));
+                }
+            });
+        };
+        asDataFrame = function (hf_id, name) {
+            if (name == null) {
+                name = void 0;
+            }
+            return _fork(requestAsDataFrame, hf_id, name);
+        };
+        requestScalaCode = function (session_id, code, go) {
+            return _.requestScalaCode(session_id, code, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendScalaCode(result));
+                }
+            });
+        };
+        extendScalaCode = function (result) {
+            render_(result, H2O.ScalaCodeOutput, result);
+            return result;
+        };
+        runScalaCode = function (session_id, code) {
+            return _fork(requestScalaCode, session_id, code);
+        };
+        requestScalaIntp = function (go) {
+            return _.requestScalaIntp(function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendScalaIntp(result));
+                }
+            });
+        };
+        extendScalaIntp = function (result) {
+            render_(result, H2O.ScalaIntpOutput, result);
+            return result;
+        };
+        getScalaIntp = function () {
+            return _fork(requestScalaIntp);
         };
         requestProfile = function (depth, go) {
             return _.requestProfile(depth, function (error, profile) {
@@ -7440,26 +7672,20 @@
             Flow.Dataflow.link(_.requestFrameDataE, requestFrameData);
             return Flow.Dataflow.link(_.requestFrameSummarySliceE, requestFrameSummarySlice);
         });
+        initAssistanceSparklingWater = function () {
+            _assistance.getRDDs = {
+                description: 'Get a list of Spark\'s RDDs',
+                icon: 'table'
+            };
+            return _assistance.getDataFrames = {
+                description: 'Get a list of Spark\'s data frames',
+                icon: 'table'
+            };
+        };
         Flow.Dataflow.link(_.initialized, function () {
-            return _.requestEndpoints(function (error, response) {
-                var route, _i, _len, _ref1, _results;
-                if (!error) {
-                    _ref1 = response.routes;
-                    _results = [];
-                    for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-                        route = _ref1[_i];
-                        if (route.url_pattern === '/3/RDDs') {
-                            _results.push(_assistance.getRDDs = {
-                                description: 'Get a list of RDDs in H<sub>2</sub>O',
-                                icon: 'table'
-                            });
-                        } else {
-                            _results.push(void 0);
-                        }
-                    }
-                    return _results;
-                }
-            });
+            if (_.onSparklingWater) {
+                return initAssistanceSparklingWater();
+            }
         });
         return {
             fork: _fork,
@@ -7498,7 +7724,6 @@
             deleteFrames: deleteFrames,
             deleteFrame: deleteFrame,
             exportFrame: exportFrame,
-            getRDDs: getRDDs,
             getColumnSummary: getColumnSummary,
             changeColumnType: changeColumnType,
             imputeColumn: imputeColumn,
@@ -7520,7 +7745,14 @@
             getStackTrace: getStackTrace,
             getLogFile: getLogFile,
             testNetwork: testNetwork,
-            deleteAll: deleteAll
+            deleteAll: deleteAll,
+            getDataFrames: getDataFrames,
+            getRDDs: getRDDs,
+            getScalaIntp: getScalaIntp,
+            runScalaCode: runScalaCode,
+            asH2OFrameFromRDD: asH2OFrameFromRDD,
+            asH2OFrameFromDF: asH2OFrameFromDF,
+            asDataFrame: asDataFrame
         };
     };
 }.call(this));
@@ -8051,6 +8283,40 @@
             hasResponse: _hasResponse,
             createFrame: createFrame,
             template: 'flow-create-frame-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.DataFrameOutput = function (_, _go, _result) {
+        var createDataFrameView, _dataFrameView;
+        _dataFrameView = Flow.Dataflow.signal(null);
+        createDataFrameView = function (result) {
+            return { dataframe_id: result.dataframe_id };
+        };
+        _dataFrameView(createDataFrameView(_result));
+        lodash.defer(_go);
+        return {
+            dataFrameView: _dataFrameView,
+            template: 'flow-dataframe-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.DataFramesOutput = function (_, _go, _dataFrames) {
+        var createDataFrameView, _dataFramesViews;
+        _dataFramesViews = Flow.Dataflow.signal([]);
+        createDataFrameView = function (dataFrame) {
+            return {
+                dataframe_id: dataFrame.dataframe_id,
+                partitions: dataFrame.partitions
+            };
+        };
+        _dataFramesViews(lodash.map(_dataFrames, createDataFrameView));
+        lodash.defer(_go);
+        return {
+            dataFrameViews: _dataFramesViews,
+            hasDataFrames: _dataFrames.length > 0,
+            template: 'flow-dataframes-output'
         };
     };
 }.call(this));
@@ -8774,6 +9040,21 @@
             hasGrids: _grids.length > 0,
             buildModel: buildModel,
             template: 'flow-grids-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.H2OFrameOutput = function (_, _go, _result) {
+        var createH2oFrameView, _h2oframeView;
+        _h2oframeView = Flow.Dataflow.signal(null);
+        createH2oFrameView = function (result) {
+            return { h2oframe_id: result.h2oframe_id };
+        };
+        _h2oframeView(createH2oFrameView(_result));
+        lodash.defer(_go);
+        return {
+            h2oframeView: _h2oframeView,
+            template: 'flow-h2oframe-output'
         };
     };
 }.call(this));
@@ -11736,7 +12017,7 @@
         _rDDViews = Flow.Dataflow.signal([]);
         createRDDView = function (rDD) {
             return {
-                id: rDD.id,
+                id: rDD.rdd_id,
                 name: rDD.name,
                 partitions: rDD.partitions
             };
@@ -11747,6 +12028,52 @@
             rDDViews: _rDDViews,
             hasRDDs: _rDDs.length > 0,
             template: 'flow-rdds-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ScalaCodeOutput = function (_, _go, _result) {
+        var createScalaCodeView, _scalaCodeView, _scalaLinkText, _scalaResponseVisible;
+        _scalaCodeView = Flow.Dataflow.signal(null);
+        _scalaResponseVisible = Flow.Dataflow.signal(false);
+        _scalaLinkText = Flow.Dataflow.signal('Show Scala Response');
+        createScalaCodeView = function (result) {
+            return {
+                output: result.output,
+                response: result.response,
+                status: result.status,
+                scalaResponseVisible: _scalaResponseVisible,
+                scalaLinkText: _scalaLinkText,
+                toggleVisibility: function () {
+                    _scalaResponseVisible(!_scalaResponseVisible());
+                    if (_scalaResponseVisible()) {
+                        return _scalaLinkText('Hide Scala Response');
+                    } else {
+                        return _scalaLinkText('Show Scala Response');
+                    }
+                }
+            };
+        };
+        _scalaCodeView(createScalaCodeView(_result));
+        lodash.defer(_go);
+        return {
+            scalaCodeView: _scalaCodeView,
+            template: 'flow-scala-code-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.ScalaIntpOutput = function (_, _go, _result) {
+        var createScalaIntpView, _scalaIntpView;
+        _scalaIntpView = Flow.Dataflow.signal(null);
+        createScalaIntpView = function (result) {
+            return { session_id: result.session_id };
+        };
+        _scalaIntpView(createScalaIntpView(_result));
+        lodash.defer(_go);
+        return {
+            scalaIntpView: _scalaIntpView,
+            template: 'flow-scala-intp-output'
         };
     };
 }.call(this));

@@ -101,11 +101,12 @@
   color: #e6e1dc;
   background-color: #202020;
   width: 100%;
+  height: auto;
   max-height: 500px;
   border: none;
   border-left: 2px solid #f5871f;
-  padding: 5px 10px;
   resize: both;
+  padding: 5px 10px;
   margin: 0px 0px 2px;
 }
 .cm-s-flow .CodeMirror-gutters {
