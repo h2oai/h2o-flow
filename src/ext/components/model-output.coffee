@@ -367,8 +367,7 @@ H2O.ModelOutput = (_, _go, _model) ->
                 )
                 g.from table
               )
-
-        if table.schema['training_MSE']
+        else if table.schema['training_MSE']
           if table.schema['validation_MSE']
             renderPlot 'Scoring History - MSE', no, _.plot (g) ->
               g(
