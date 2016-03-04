@@ -840,7 +840,8 @@ Flow.Notebook = (_, _renderers) ->
     do (executeCommand 'assist')
 
     _.setDirty() #TODO setPristine() when autosave is implemented.
-    _initializeInterpreter()
+    if _.onSparklingWater
+      _initializeInterpreter()
 
   link _.ready, initialize
 

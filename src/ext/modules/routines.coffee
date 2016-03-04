@@ -1817,85 +1817,89 @@ H2O.Routines = (_) ->
     if _.onSparklingWater
             initAssistanceSparklingWater()
 
+  routines =
+    # fork/join
+    fork: _fork
+    join: _join
+    call: _call
+    apply: _apply
+    isFuture: _isFuture
+    #
+    # Dataflow
+    signal: signal
+    signals: signals
+    isSignal: isSignal
+    act: act
+    react: react
+    lift: lift
+    merge: merge
+    #
+    # Generic
+    dump: dump
+    inspect: inspect
+    plot: plot
+    grid: grid
+    get: _get
+    #
+    # Meta
+    assist: assist
+    #
+    # GUI
+    gui: gui
+    #
+    # Util
+    loadScript: loadScript
+    #
+    # H2O
+    getJobs: getJobs
+    getJob: getJob
+    cancelJob: cancelJob
+    importFiles: importFiles
+    setupParse: setupParse
+    parseFiles: parseFiles
+    createFrame: createFrame
+    splitFrame: splitFrame
+    getFrames: getFrames
+    getFrame: getFrame
+    bindFrames: bindFrames
+    getFrameSummary: getFrameSummary
+    getFrameData: getFrameData
+    deleteFrames: deleteFrames
+    deleteFrame: deleteFrame
+    exportFrame: exportFrame
+    getColumnSummary: getColumnSummary
+    changeColumnType: changeColumnType
+    imputeColumn: imputeColumn
+    buildModel: buildModel
+    getGrids: getGrids
+    getModels: getModels
+    getModel: getModel
+    getGrid: getGrid
+    deleteModels: deleteModels
+    deleteModel: deleteModel
+    importModel: importModel
+    exportModel: exportModel
+    predict: predict
+    getPrediction: getPrediction
+    getPredictions: getPredictions
+    getCloud: getCloud
+    getTimeline: getTimeline
+    getProfile: getProfile
+    getStackTrace: getStackTrace
+    getLogFile: getLogFile
+    testNetwork: testNetwork
+    deleteAll: deleteAll
 
-  # fork/join 
-  fork: _fork
-  join: _join
-  call: _call
-  apply: _apply
-  isFuture: _isFuture
-  #
-  # Dataflow
-  signal: signal
-  signals: signals
-  isSignal: isSignal
-  act: act
-  react: react
-  lift: lift
-  merge: merge
-  #
-  # Generic
-  dump: dump
-  inspect: inspect
-  plot: plot
-  grid: grid
-  get: _get
-  #
-  # Meta
-  assist: assist
-  #
-  # GUI
-  gui: gui
-  #
-  # Util
-  loadScript: loadScript
-  #
-  # H2O
-  getJobs: getJobs
-  getJob: getJob
-  cancelJob: cancelJob
-  importFiles: importFiles
-  setupParse: setupParse
-  parseFiles: parseFiles
-  createFrame: createFrame
-  splitFrame: splitFrame
-  getFrames: getFrames
-  getFrame: getFrame
-  bindFrames: bindFrames
-  getFrameSummary: getFrameSummary
-  getFrameData: getFrameData
-  deleteFrames: deleteFrames
-  deleteFrame: deleteFrame
-  exportFrame: exportFrame
-  getColumnSummary: getColumnSummary
-  changeColumnType: changeColumnType
-  imputeColumn: imputeColumn
-  buildModel: buildModel
-  getGrids: getGrids
-  getModels: getModels
-  getModel: getModel
-  getGrid: getGrid
-  deleteModels: deleteModels
-  deleteModel: deleteModel
-  importModel: importModel
-  exportModel: exportModel
-  predict: predict
-  getPrediction: getPrediction
-  getPredictions: getPredictions
-  getCloud: getCloud
-  getTimeline: getTimeline
-  getProfile: getProfile
-  getStackTrace: getStackTrace
-  getLogFile: getLogFile
-  testNetwork: testNetwork
-  deleteAll: deleteAll
-  #
-  # Sparkling-Water
-  getDataFrames: getDataFrames
-  getRDDs: getRDDs
-  getScalaIntp: getScalaIntp
-  runScalaCode: runScalaCode
-  asH2OFrameFromRDD: asH2OFrameFromRDD
-  asH2OFrameFromDF: asH2OFrameFromDF
-  asDataFrame: asDataFrame
+  if _.onSparklingWater
+    routinesOnSw =
+      getDataFrames: getDataFrames
+      getRDDs: getRDDs
+      getScalaIntp: getScalaIntp
+      runScalaCode: runScalaCode
+      asH2OFrameFromRDD: asH2OFrameFromRDD
+      asH2OFrameFromDF: asH2OFrameFromDF
+      asDataFrame: asDataFrame
+    for attrname of routinesOnSw
+      routines[attrname] = routinesOnSw[attrname]
+  routines
 
