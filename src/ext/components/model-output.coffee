@@ -367,6 +367,43 @@ H2O.ModelOutput = (_, _go, _model) ->
                 )
                 g.from table
               )
+
+        if table.schema['training_MSE']
+          if table.schema['validation_MSE']
+            renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+              g(
+                g.path(
+                  g.position 'epochs', 'training_MSE'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.path(
+                  g.position 'epochs', 'validation_MSE'
+                  g.strokeColor g.value '#ff7f0e'
+                )
+                g.point(
+                  g.position 'epochs', 'training_MSE'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.point(
+                  g.position 'epochs', 'validation_MSE'
+                  g.strokeColor g.value '#ff7f0e'
+                )
+                g.from table
+              )
+          else
+            renderPlot 'Scoring History - MSE', no, _.plot (g) ->
+              g(
+                g.path(
+                  g.position 'epochs', 'training_MSE'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.point(
+                  g.position 'epochs', 'training_MSE'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.from table
+              )
+
       if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
         plotter = _.plot (g) ->
           g(
