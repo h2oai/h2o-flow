@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.28';
+    Flow.Version = '0.4.29';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4757,11 +4757,12 @@
 }.call(this));
 (function () {
     H2O.CreateFrameInput = function (_, _go) {
-        var createFrame, _binaryFraction, _binaryOnesFraction, _categoricalFraction, _columns, _factors, _hasResponse, _integerFraction, _integerRange, _key, _missingFraction, _randomize, _realRange, _responseFactors, _rows, _seed, _stringFraction, _timeFraction, _value;
+        var createFrame, _binaryFraction, _binaryOnesFraction, _categoricalFraction, _columns, _factors, _hasResponse, _integerFraction, _integerRange, _key, _missingFraction, _randomize, _realRange, _responseFactors, _rows, _seed, _seed_for_column_types, _stringFraction, _timeFraction, _value;
         _key = Flow.Dataflow.signal('');
         _rows = Flow.Dataflow.signal(10000);
         _columns = Flow.Dataflow.signal(100);
         _seed = Flow.Dataflow.signal(7595850248774472000);
+        _seed_for_column_types = Flow.Dataflow.signal(-1);
         _randomize = Flow.Dataflow.signal(true);
         _value = Flow.Dataflow.signal(0);
         _realRange = Flow.Dataflow.signal(100);
@@ -4783,6 +4784,7 @@
                 rows: _rows(),
                 cols: _columns(),
                 seed: _seed(),
+                seed_for_column_types: _seed_for_column_types(),
                 randomize: _randomize(),
                 value: _value(),
                 real_range: _realRange(),
@@ -4806,6 +4808,7 @@
             rows: _rows,
             columns: _columns,
             seed: _seed,
+            seed_for_column_types: _seed_for_column_types,
             randomize: _randomize,
             value: _value,
             realRange: _realRange,
