@@ -80,6 +80,20 @@
         td
           input.flow-textbox(type='text' data-bind="value:binaryOnesFraction")
         td Fraction of 1's in binary columns
+
+      tr
+        th
+          label Time Fraction
+        td
+          input.flow-textbox(type='text' data-bind="value:timeFraction")
+        td Fraction of date/time columns (for randomize=true)
+
+      tr
+        th
+          label String Fraction
+        td
+          input.flow-textbox(type='text' data-bind="value:stringFraction")
+        td Fraction of string columns (for randomize=true)
           
       tr
         th
