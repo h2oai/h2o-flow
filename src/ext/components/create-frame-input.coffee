@@ -3,6 +3,7 @@ H2O.CreateFrameInput = (_, _go) ->
   _rows = signal 10000
   _columns = signal 100
   _seed = signal 7595850248774471522
+  _seed_for_column_types = signal -1
   _randomize = signal yes
   _value = signal 0
   _realRange = signal 100
@@ -24,6 +25,7 @@ H2O.CreateFrameInput = (_, _go) ->
       rows: _rows()
       cols: _columns()
       seed: _seed()
+      seed_for_column_types: _seed_for_column_types()
       randomize: _randomize()
       value: _value()
       real_range: _realRange()
@@ -47,6 +49,7 @@ H2O.CreateFrameInput = (_, _go) ->
   rows: _rows
   columns: _columns
   seed: _seed
+  seed_for_column_types: _seed_for_column_types
   randomize: _randomize
   value: _value
   realRange: _realRange
