@@ -3,6 +3,8 @@
     i.fa.fa-cube
     | Model
 
+  // ko with:output
+
   .flow-margin-after
     table.flow-form
       tbody
@@ -15,6 +17,16 @@
         tr 
           th(width='1') Actions:
           td
+            button.flow-button(type='button' data-bind="click:$parent.toggleRefresh, css:{ 'flow-button-toggle':$parent.isLive }")
+              // ko if:$parent.isLive
+              i.fa.fa-refresh.fa-spin
+              | Stop
+              // /ko
+              // ko ifnot:$parent.isLive
+              i.fa.fa-refresh
+              | Refresh
+              // /ko
+
             +button('Predict&hellip;', 'bolt', 'predict')
             //- +button('Clone this model&hellip;', 'copy', 'cloneModel')
             +button('Download POJO', 'download', 'downloadPojo')
@@ -86,3 +98,4 @@
     div(data-bind='html:pojoPreview')
     // /ko
 
+  // /ko

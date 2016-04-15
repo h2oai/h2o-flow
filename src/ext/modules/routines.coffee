@@ -618,20 +618,30 @@ H2O.Routines = (_) ->
     return
 
   extendModel = (model) ->
-    inspections = {}
-    inspections.parameters = inspectModelParameters model
-    origin = "getModel #{stringify model.model_id.name}"
-    inspectObject inspections, 'output', origin, model.output
 
-    # Obviously, an array of 2d tables calls for a megahack.
-    if model.__meta.schema_type is 'NaiveBayesModel'
-      if isArray model.output.pcond
-        for table in model.output.pcond
-          tableName = "output - pcond - #{table.name}"
-          inspections[tableName] = inspectTwoDimTable_ origin, tableName, table
+    extend = (model) ->
+      inspections = {}
+      inspections.parameters = inspectModelParameters model
+      origin = "getModel #{stringify model.model_id.name}"
+      inspectObject inspections, 'output', origin, model.output
 
-    inspect_ model, inspections
-    render_ model, H2O.ModelOutput, model
+      # Obviously, an array of 2d tables calls for a megahack.
+      if model.__meta.schema_type is 'NaiveBayesModel'
+        if isArray model.output.pcond
+          for table in model.output.pcond
+            tableName = "output - pcond - #{table.name}"
+            inspections[tableName] = inspectTwoDimTable_ origin, tableName, table
+
+      inspect_ model, inspections
+      model
+
+    refresh = (go) ->
+      _.requestModel model.model_id.name, (error, model) ->
+        if error then go error else go null, extend model
+
+    extend model
+
+    render_ model, H2O.ModelOutput, model, refresh
 
   extendGrid = (grid, opts) ->
     origin = "getGrid #{stringify grid.grid_id.name}"
