@@ -57,6 +57,13 @@ H2O.JobOutput = (_, _go, _job) ->
     WARN: 'fa-warning orange'
     INFO: 'fa-info-circle'
 
+  canView = (job) ->
+    switch _destinationType
+      when 'Model', 'Grid'
+        job.ready_for_view
+      else
+        not isJobRunning job
+
   updateJob = (job) ->
     _runTime Flow.Util.formatMilliseconds job.msec
     _progress getJobProgressPercent job.progress
@@ -75,7 +82,7 @@ H2O.JobOutput = (_, _go, _job) ->
         cause.stack = job.stacktrace
       _exception Flow.Failure _, new Flow.Error 'Job failure.', cause
 
-    _canView not isJobRunning job
+    _canView canView job
     _canCancel isJobRunning job
 
   refresh = ->
