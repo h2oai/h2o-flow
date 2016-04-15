@@ -1149,6 +1149,7 @@
     <script type="text/html" id="flow-model-output">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-cube"></i>Model</h3>
+        <!-- ko with:output-->
         <div class="flow-margin-after">
           <table class="flow-form">
             <tbody>
@@ -1163,6 +1164,12 @@
               <tr>
                 <th width="1">Actions:</th>
                 <td>
+                  <button type="button" data-bind="click:$parent.toggleRefresh, css:{ 'flow-button-toggle':$parent.isLive }" class="flow-button">
+                    <!-- ko if:$parent.isLive--><i class="fa fa-refresh fa-spin"></i>Stop
+                    <!-- /ko-->
+                    <!-- ko ifnot:$parent.isLive--><i class="fa fa-refresh"></i>Refresh
+                    <!-- /ko-->
+                  </button>
                       <button type="button" data-bind="click:predict" class="flow-button"><i class="fa fa-bolt"></i><span>Predict&hellip;</span>
                       </button>
                       <button type="button" data-bind="click:downloadPojo" class="flow-button"><i class="fa fa-download"></i><span>Download POJO</span>
@@ -1263,6 +1270,7 @@
           <div data-bind="html:pojoPreview"></div>
           <!-- /ko-->
         </div>
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-import-files-output">
