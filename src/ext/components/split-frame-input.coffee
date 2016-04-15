@@ -6,6 +6,7 @@ H2O.SplitFrameInput = (_, _go, _frameKey) ->
   _lastSplitRatioText = lift _lastSplitRatio, (ratio) -> if isNaN ratio then ratio else format4f ratio
   _lastSplitKey = signal ''
   _splits = signals []
+  _seed = signal (Math.random() * 1000000) | 0
   react _splits, -> updateSplitRatiosAndNames()
   _validationMessage = signal ''
 
@@ -88,7 +89,7 @@ H2O.SplitFrameInput = (_, _go, _frameKey) ->
         _validationMessage error
       else
         _validationMessage ''
-        _.insertAndExecuteCell 'cs', "splitFrame #{stringify _frame()}, #{stringify splitRatios}, #{stringify splitKeys}"
+        _.insertAndExecuteCell 'cs', "splitFrame #{stringify _frame()}, #{stringify splitRatios}, #{stringify splitKeys}, #{_seed()}"
 
   initialize = ->
     _.requestFrames (error, frames) ->
@@ -110,6 +111,7 @@ H2O.SplitFrameInput = (_, _go, _frameKey) ->
   lastSplitRatioText: _lastSplitRatioText
   lastSplitKey: _lastSplitKey
   splits: _splits
+  seed: _seed
   addSplit: addSplit
   splitFrame: splitFrame
   validationMessage: _validationMessage

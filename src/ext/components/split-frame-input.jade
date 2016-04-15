@@ -37,7 +37,12 @@
                     +fa('remove')
               // /ko
           div
-            a.flow-pointer(data-bind='click:addSplit') Add a split
+            a.flow-pointer(data-bind='click:addSplit') Add a new split
+      tr
+        th
+          label Seed:
+        td
+          input.flow-textbox(type='text' style='width:100px' data-bind="value:seed")
 
   .flow-panel
     +button('Create', 'scissors', 'splitFrame')

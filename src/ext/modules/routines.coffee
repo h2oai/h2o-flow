@@ -1038,7 +1038,7 @@ H2O.Routines = (_) ->
       else
         go null, extendBindFrames key, result
 
-  requestSplitFrame = (frameKey, splitRatios, splitKeys, go) ->
+  requestSplitFrame = (frameKey, splitRatios, splitKeys, seed, go) ->
     if splitRatios.length is splitKeys.length - 1
       splits = computeSplits splitRatios, splitKeys
 
@@ -1046,7 +1046,7 @@ H2O.Routines = (_) ->
 
       statements = []
 
-      push statements, "(tmp= #{randomVecKey} (h2o.runif #{frameKey} -1))"
+      push statements, "(tmp= #{randomVecKey} (h2o.runif #{frameKey} #{seed}))"
 
       for part, i in splits
         g = if i isnt 0 then "(>= #{randomVecKey} #{part.min})" else null
@@ -1081,9 +1081,9 @@ H2O.Routines = (_) ->
     else
       assist createFrame
 
-  splitFrame = (frameKey, splitRatios, splitKeys) ->
+  splitFrame = (frameKey, splitRatios, splitKeys, seed=-1) ->
     if frameKey and splitRatios and splitKeys
-      _fork requestSplitFrame, frameKey, splitRatios, splitKeys
+      _fork requestSplitFrame, frameKey, splitRatios, splitKeys, seed
     else
       assist splitFrame
 
