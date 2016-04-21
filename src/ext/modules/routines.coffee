@@ -677,7 +677,7 @@ H2O.Routines = (_) ->
 
   extendPrediction = (result) ->
     modelKey = result.model.name
-    frameKey = result.frame.name
+    frameKey = result.frame?.name
     prediction = head result.model_metrics
     predictionFrame = result.predictions_frame
 
@@ -1521,7 +1521,7 @@ H2O.Routines = (_) ->
         go null, extendPredictions opts, predictions
 
   predict = (opts={}) ->
-    { predictions_frame, model, models, frame, frames, reconstruction_error, deep_features_hidden_layer, leaf_node_assignment } = opts 
+    { predictions_frame, model, models, frame, frames, reconstruction_error, deep_features_hidden_layer, leaf_node_assignment, exemplar_index } = opts 
     if models or frames
       unless models
         if model
@@ -1545,6 +1545,9 @@ H2O.Routines = (_) ->
           reconstruction_error: reconstruction_error
           deep_features_hidden_layer: deep_features_hidden_layer
           leaf_node_assignment: leaf_node_assignment
+      else if model and exemplar_index isnt undefined
+        _fork requestPredict, predictions_frame, model, null,
+          exemplar_index: exemplar_index
       else 
         assist predict, predictions_frame: predictions_frame, model: model, frame: frame
 

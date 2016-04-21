@@ -17,6 +17,7 @@
         // ko ifnot:hasModels
         select(data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'")
         // /ko
+    // ko ifnot:hasExemplarIndex
     tr
       th
         label Frame:
@@ -27,6 +28,7 @@
         // ko ifnot:hasFrames
         select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
         // /ko
+    // /ko
 
     // ko if:hasReconError
     tr
@@ -53,6 +55,15 @@
       td
         input(type='checkbox' data-bind="checked:computeLeafNodeAssignment")
     // /ko
+
+    // ko if:hasExemplarIndex
+    tr
+      th
+        label Compute Exemplar Index:
+      td
+        span Exemplar Index #:
+        input.flow-textbox(type='textbox' style='width:50px' data-bind="value:exemplarIndex, valueUpdate:'afterkeydown'")
+    // /ko
     tr
       th
         label Actions:
@@ -60,4 +71,6 @@
         button.flow-button(type='button' data-bind='click:predict, enable:canPredict')
           i.fa.fa-bolt
           span Predict
+
+    // /ko
 
