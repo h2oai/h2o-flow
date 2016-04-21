@@ -60,4 +60,14 @@
         button.flow-button(type='button' data-bind='click:predict, enable:canPredict')
           i.fa.fa-bolt
           span Predict
+    // ko if:hasExemplarIndex
+    tr
+      th
+        label Compute Exemplar Index:
+      td
+        input(type='checkbox' data-bind="checked:computeExemplarIndex")
+        // ko if:computeExemplarIndex
+        span Exemplar Index #:
+        input.flow-textbox(type='textbox' style='width:50px' data-bind="value:exemplarIndex, valueUpdate:'afterkeydown'")
+        // /ko
 

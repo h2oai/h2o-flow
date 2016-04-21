@@ -1521,7 +1521,7 @@ H2O.Routines = (_) ->
         go null, extendPredictions opts, predictions
 
   predict = (opts={}) ->
-    { predictions_frame, model, models, frame, frames, reconstruction_error, deep_features_hidden_layer, leaf_node_assignment } = opts 
+    { predictions_frame, model, models, frame, frames, reconstruction_error, deep_features_hidden_layer, leaf_node_assignment, exemplar_index } = opts 
     if models or frames
       unless models
         if model
@@ -1545,6 +1545,7 @@ H2O.Routines = (_) ->
           reconstruction_error: reconstruction_error
           deep_features_hidden_layer: deep_features_hidden_layer
           leaf_node_assignment: leaf_node_assignment
+          exemplar_index: exemplar_index
       else 
         assist predict, predictions_frame: predictions_frame, model: model, frame: frame
 

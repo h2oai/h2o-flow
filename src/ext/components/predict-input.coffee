@@ -42,12 +42,22 @@ H2O.PredictInput = (_, _go, opt) ->
         else
           no
 
+  _hasExemplarIndex = lift _selectedModel, (model) ->
+    if model
+      switch model.algo
+        when 'aggregator'
+          yes
+        else
+          no
+
   _computeReconstructionError = signal no
   _computeDeepFeaturesHiddenLayer = signal no
   _computeLeafNodeAssignment = signal no
   _deepFeaturesHiddenLayer = signal 0
   _deepFeaturesHiddenLayerValue = lift _deepFeaturesHiddenLayer, (text) -> parseInt text, 10
-  _canPredict = lift _selectedFrame, _selectedModel, _hasReconError, _hasLeafNodeAssignment, _computeReconstructionError, _computeDeepFeaturesHiddenLayer, _computeLeafNodeAssignment, _deepFeaturesHiddenLayerValue, (frame, model, hasReconError, computeReconstructionError, computeDeepFeaturesHiddenLayer, deepFeaturesHiddenLayerValue) ->
+  _exemplarIndex = signal 0
+  _exemplarIndexValue = lift _exemplarIndex, (text) -> parseInt text, 10
+  _canPredict = lift _selectedFrame, _selectedModel, _hasReconError, _hasLeafNodeAssignment, _computeReconstructionError, _computeDeepFeaturesHiddenLayer, _computeLeafNodeAssignment, _deepFeaturesHiddenLayerValue, _exemplarIndexValue (frame, model, hasReconError, computeReconstructionError, computeDeepFeaturesHiddenLayer, deepFeaturesHiddenLayerValue, _exemplarIndexValue) ->
     hasFrameAndModel = frame and model or _hasFrames and model or _hasModels and frame
     hasValidOptions = if hasReconError
       if computeReconstructionError
@@ -107,6 +117,10 @@ H2O.PredictInput = (_, _go, opt) ->
       if _computeLeafNodeAssignment()
         cs += ', leaf_node_assignment: true'
 
+    if _hasExemplarIndex()
+      if _computeExemplarIndex()
+        cs += ', exemplar_index: #{_exemplarIndexValue()}
+
     _.insertAndExecuteCell 'cs', cs
 
   defer _go
@@ -125,9 +139,11 @@ H2O.PredictInput = (_, _go, opt) ->
   predict: predict
   hasReconError: _hasReconError
   hasLeafNodeAssignment: _hasLeafNodeAssignment
+  hasExemplarIndex: _hasExemplarIndex
   computeReconstructionError: _computeReconstructionError
   computeDeepFeaturesHiddenLayer: _computeDeepFeaturesHiddenLayer
   computeLeafNodeAssignment: _computeLeafNodeAssignment
   deepFeaturesHiddenLayer: _deepFeaturesHiddenLayer
+  exemplarIndex: _exemplarIndex
   template: 'flow-predict-input'
 

@@ -373,6 +373,8 @@ H2O.Proxy = (_) ->
       opts.deep_features_hidden_layer = opt
     unless undefined is (opt = options.leaf_node_assignment)
       opts.leaf_node_assignment = opt
+    unless undefined is (opt = options.exemplar_index)
+      opts.exemplar_index = opt
 
     doPost "/3/Predictions/models/#{encodeURIComponent modelKey}/frames/#{encodeURIComponent frameKey}", opts, (error, result) ->
       if error
