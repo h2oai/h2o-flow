@@ -2312,6 +2312,7 @@
               <!-- /ko-->
             </td>
           </tr>
+          <!-- ko ifnot:hasExemplarIndex-->
           <tr>
             <th>
               <label>Frame:</label>
@@ -2324,6 +2325,7 @@
               <!-- /ko-->
             </td>
           </tr>
+          <!-- /ko-->
           <!-- ko if:hasReconError-->
           <tr>
             <th>
@@ -2357,6 +2359,16 @@
             </td>
           </tr>
           <!-- /ko-->
+          <!-- ko if:hasExemplarIndex-->
+          <tr>
+            <th>
+              <label>Compute Exemplar Index:</label>
+            </th>
+            <td><span>Exemplar Index #:</span>
+              <input type="textbox" style="width:50px" data-bind="value:exemplarIndex, valueUpdate:'afterkeydown'" class="flow-textbox">
+            </td>
+          </tr>
+          <!-- /ko-->
           <tr>
             <th>
               <label>Actions:</label>
@@ -2365,6 +2377,7 @@
               <button type="button" data-bind="click:predict, enable:canPredict" class="flow-button"><i class="fa fa-bolt"></i><span>Predict</span></button>
             </td>
           </tr>
+          <!-- /ko-->
         </table>
       </div>
     </script>
