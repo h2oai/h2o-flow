@@ -1,6 +1,6 @@
-MaxItemsPerPage = 15 
+MaxItemsPerPage = 15
 
-parseTypes = map [ 'AUTO', 'ARFF', 'XLS', 'XLSX', 'CSV', 'SVMLight', 'ORC' ], (type) -> type: type, caption: type
+parseTypes = map [ 'AUTO', 'ARFF', 'XLS', 'XLSX', 'CSV', 'SVMLight', 'ORC', 'AVRO' ], (type) -> type: type, caption: type
 
 parseDelimiters = do ->
   whitespaceSeparators = [
@@ -68,7 +68,7 @@ H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
   _sourceKeys = map _result.source_frames, (src) -> src.name
   _parseType =  signal find parseTypes, (parseType) -> parseType.type is _result.parse_type
   _canReconfigure = lift _parseType, (parseType) -> parseType.type isnt 'SVMLight'
-  _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.separator 
+  _delimiter = signal find parseDelimiters, (delimiter) -> delimiter.charCode is _result.separator
   _useSingleQuotes = signal _result.single_quotes
   _destinationKey = signal _result.destination_frame
   _headerOptions = auto: 0, header: 1, data: -1
