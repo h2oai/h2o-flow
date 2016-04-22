@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.34';
+    Flow.Version = '0.4.35';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
