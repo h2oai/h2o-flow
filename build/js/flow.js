@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.35';
+    Flow.Version = '0.4.36';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -11383,7 +11383,8 @@
         'XLSX',
         'CSV',
         'SVMLight',
-        'ORC'
+        'ORC',
+        'AVRO'
     ], function (type) {
         return {
             type: type,
