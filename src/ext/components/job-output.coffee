@@ -40,6 +40,7 @@ H2O.JobOutput = (_, _go, _job) ->
         'Unknown'
 
   _runTime = signal null
+  _remainingTime = signal null
   _progress = signal null
   _progressMessage = signal null
   _status = signal null
@@ -67,6 +68,7 @@ H2O.JobOutput = (_, _go, _job) ->
   updateJob = (job) ->
     _runTime Flow.Util.formatMilliseconds job.msec
     _progress getJobProgressPercent job.progress
+    _remainingTime if job.progress then (Flow.Util.formatMilliseconds (1 - job.progress) * job.msec / job.progress) else 'Estimating...'
     _progressMessage job.progress_msg
     _status job.status
     _statusColor getJobOutputStatusColor job.status
@@ -137,6 +139,7 @@ H2O.JobOutput = (_, _go, _job) ->
   destinationKey: _destinationKey
   destinationType: _destinationType
   runTime: _runTime
+  remainingTime: _remainingTime
   progress: _progress
   progressMessage: _progressMessage
   status: _status
