@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.36';
+    Flow.Version = '0.4.37';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -6076,7 +6076,10 @@
             if (opts) {
                 origin += ', ' + Flow.Prelude.stringify(opts);
             }
-            inspections = { summary: inspectTwoDimTable_(origin, 'summary', grid.summary_table) };
+            inspections = {
+                summary: inspectTwoDimTable_(origin, 'summary', grid.summary_table),
+                scoring_history: inspectTwoDimTable_(origin, 'scoring_history', grid.scoring_history)
+            };
             inspect_(grid, inspections);
             return render_(grid, H2O.GridOutput, grid);
         };
@@ -8895,7 +8898,7 @@
 }.call(this));
 (function () {
     H2O.GridOutput = function (_, _go, _grid) {
-        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspect, inspectAll, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _errorViews, _hasErrors, _hasModels, _hasSelectedModels, _isCheckingAll, _modelViews;
+        var buildModel, collectSelectedKeys, compareModels, createModelView, deleteModels, initialize, inspect, inspectAll, inspectHistory, predictUsingModels, _canCompareModels, _checkAllModels, _checkedModelCount, _errorViews, _hasErrors, _hasModels, _hasSelectedModels, _isCheckingAll, _modelViews;
         _modelViews = Flow.Dataflow.signal([]);
         _hasModels = _grid.model_ids.length > 0;
         _errorViews = Flow.Dataflow.signal([]);
@@ -9000,6 +9003,11 @@
             summary = _.inspect('summary', _grid);
             return _.insertAndExecuteCell('cs', 'grid inspect \'summary\', ' + summary.metadata.origin);
         };
+        inspectHistory = function () {
+            var history;
+            history = _.inspect('scoring_history', _grid);
+            return _.insertAndExecuteCell('cs', 'grid inspect \'scoring_history\', ' + history.metadata.origin);
+        };
         inspectAll = function () {
             var allKeys, view;
             allKeys = function () {
@@ -9048,6 +9056,7 @@
             hasSelectedModels: _hasSelectedModels,
             checkAllModels: _checkAllModels,
             inspect: inspect,
+            inspectHistory: inspectHistory,
             inspectAll: inspectAll,
             template: 'flow-grid-output'
         };
@@ -9552,7 +9561,7 @@
         return '' + Math.ceil(100 * progress) + '%';
     };
     H2O.JobOutput = function (_, _go, _job) {
-        var canView, cancel, initialize, isJobRunning, messageIcons, refresh, updateJob, view, _canCancel, _canView, _description, _destinationKey, _destinationType, _exception, _isBusy, _isLive, _key, _messages, _progress, _progressMessage, _runTime, _status, _statusColor;
+        var canView, cancel, initialize, isJobRunning, messageIcons, refresh, updateJob, view, _canCancel, _canView, _description, _destinationKey, _destinationType, _exception, _isBusy, _isLive, _key, _messages, _progress, _progressMessage, _remainingTime, _runTime, _status, _statusColor;
         _isBusy = Flow.Dataflow.signal(false);
         _isLive = Flow.Dataflow.signal(false);
         _key = _job.key.name;
@@ -9573,6 +9582,7 @@
             }
         }();
         _runTime = Flow.Dataflow.signal(null);
+        _remainingTime = Flow.Dataflow.signal(null);
         _progress = Flow.Dataflow.signal(null);
         _progressMessage = Flow.Dataflow.signal(null);
         _status = Flow.Dataflow.signal(null);
@@ -9602,6 +9612,7 @@
             var cause, message, messages;
             _runTime(Flow.Util.formatMilliseconds(job.msec));
             _progress(getJobProgressPercent(job.progress));
+            _remainingTime(job.progress ? Flow.Util.formatMilliseconds((1 - job.progress) * job.msec / job.progress) : 'Estimating...');
             _progressMessage(job.progress_msg);
             _status(job.status);
             _statusColor(getJobOutputStatusColor(job.status));
@@ -9700,6 +9711,7 @@
             destinationKey: _destinationKey,
             destinationType: _destinationType,
             runTime: _runTime,
+            remainingTime: _remainingTime,
             progress: _progress,
             progressMessage: _progressMessage,
             status: _status,

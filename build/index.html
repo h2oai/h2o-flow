@@ -1611,6 +1611,8 @@
         <div class="flow-panel">
               <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect Grid Summary</span>
               </button>
+              <button type="button" data-bind="click:inspectHistory" class="flow-button"><i class="fa fa-list"></i><span>Inspect Scoring History</span>
+              </button>
               <button type="button" data-bind="click:inspectAll" class="flow-button"><i class="fa fa-list"></i><span>Inspect Models</span>
               </button>
               <button type="button" data-bind="click:deleteModels, enable:hasSelectedModels" class="flow-button"><i class="fa fa-trash"></i><span>Delete selected</span>
@@ -2215,6 +2217,10 @@
             <tr>
               <th class="flow-narrow">Run Time</th>
               <td data-bind="text:runTime" style="font-size:120%" class="flow-wide"></td>
+            </tr>
+            <tr>
+              <th class="flow-narrow">Remaining Time</th>
+              <td data-bind="text:remainingTime" style="font-size:120%" class="flow-wide"></td>
             </tr>
             <tr>
               <th class="flow-narrow">Type</th>
