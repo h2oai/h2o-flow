@@ -69,6 +69,10 @@ H2O.GridOutput = (_, _go, _grid) ->
     summary = _.inspect 'summary', _grid
     _.insertAndExecuteCell 'cs', "grid inspect 'summary', #{summary.metadata.origin}"
 
+  inspectHistory = ->
+    history = _.inspect 'scoring_history', _grid
+    _.insertAndExecuteCell 'cs', "grid inspect 'scoring_history', #{history.metadata.origin}"
+
   inspectAll = ->
     allKeys = (view.key for view in _modelViews())
     #TODO use table origin
@@ -99,6 +103,7 @@ H2O.GridOutput = (_, _go, _grid) ->
   hasSelectedModels: _hasSelectedModels
   checkAllModels: _checkAllModels
   inspect: inspect
+  inspectHistory: inspectHistory
   inspectAll: inspectAll
   template: 'flow-grid-output'
 

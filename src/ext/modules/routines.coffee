@@ -648,6 +648,7 @@ H2O.Routines = (_) ->
     origin += ", #{stringify opts}" if opts
     inspections =
       summary: inspectTwoDimTable_ origin, "summary", grid.summary_table
+      scoring_history: inspectTwoDimTable_ origin, "scoring_history", grid.scoring_history
     inspect_ grid, inspections
     render_ grid, H2O.GridOutput, grid
 
