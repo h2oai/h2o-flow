@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.37';
+    Flow.Version = '0.4.38';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -9612,7 +9612,7 @@
             var cause, message, messages;
             _runTime(Flow.Util.formatMilliseconds(job.msec));
             _progress(getJobProgressPercent(job.progress));
-            _remainingTime(job.progress ? Flow.Util.formatMilliseconds((1 - job.progress) * job.msec / job.progress) : 'Estimating...');
+            _remainingTime(job.progress ? Flow.Util.formatMilliseconds(Math.round((1 - job.progress) * job.msec / job.progress)) : 'Estimating...');
             _progressMessage(job.progress_msg);
             _status(job.status);
             _statusColor(getJobOutputStatusColor(job.status));
