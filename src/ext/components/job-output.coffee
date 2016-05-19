@@ -68,7 +68,7 @@ H2O.JobOutput = (_, _go, _job) ->
   updateJob = (job) ->
     _runTime Flow.Util.formatMilliseconds job.msec
     _progress getJobProgressPercent job.progress
-    _remainingTime if job.progress then (Flow.Util.formatMilliseconds (1 - job.progress) * job.msec / job.progress) else 'Estimating...'
+    _remainingTime if job.progress then (Flow.Util.formatMilliseconds Math.round((1 - job.progress) * job.msec / job.progress)) else 'Estimating...'
     _progressMessage job.progress_msg
     _status job.status
     _statusColor getJobOutputStatusColor job.status
