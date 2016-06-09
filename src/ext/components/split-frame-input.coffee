@@ -100,7 +100,7 @@ H2O.SplitFrameInput = (_, _go, _frameKey) ->
         sort frameKeys
         _frames frameKeys
         _frame _frameKey
-    addSplitRatio 0.25
+    addSplitRatio 0.75
     defer _go
 
   initialize()

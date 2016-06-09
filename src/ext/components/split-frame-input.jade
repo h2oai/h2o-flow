@@ -20,12 +20,6 @@
                 th(style='text-align:left') Ratio
                 th Key
             tbody
-              tr
-                td(data-bind="text:lastSplitRatioText")
-                td
-                  input.flow-textbox(type='text' style='width:300px' data-bind="value:lastSplitKey")
-                td &nbsp; 
-                  
               // ko foreach:splits
               tr
                 td
@@ -36,6 +30,11 @@
                   span.flow-pointer(title='Delete this split' data-bind='click:remove')
                     +fa('remove')
               // /ko
+              tr
+                td(data-bind="text:lastSplitRatioText")
+                td
+                  input.flow-textbox(type='text' style='width:300px' data-bind="value:lastSplitKey")
+                td &nbsp; 
           div
             a.flow-pointer(data-bind='click:addSplit') Add a new split
       tr
