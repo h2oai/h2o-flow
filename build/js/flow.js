@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.38';
+    Flow.Version = '0.4.39';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -10200,7 +10200,7 @@
         }
     };
     H2O.ModelBuilderForm = function (_, _algorithm, _parameters) {
-        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _gridMaxModels, _gridMaxRuntime, _gridStoppingMetric, _gridStoppingMetrics, _gridStoppingRounds, _gridStoppingTolerance, _gridStrategies, _gridStrategy, _hasValidationFailures, _i, _isGridRandomDiscrete, _isGrided, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
+        var collectParameters, control, createModel, criticalControls, expertControls, findControl, findFormField, parameterTemplateOf, performValidations, revalidate, secondaryControls, _controlGroups, _exception, _form, _gridId, _gridMaxModels, _gridMaxRuntime, _gridStoppingMetric, _gridStoppingMetrics, _gridStoppingRounds, _gridStoppingTolerance, _gridStrategies, _gridStrategy, _hasValidationFailures, _i, _isGridRandomDiscrete, _isGrided, _j, _k, _len, _len1, _len2, _parametersByLevel, _revalidate, _validationFailureMessage;
         _exception = Flow.Dataflow.signal(null);
         _validationFailureMessage = Flow.Dataflow.signal('');
         _hasValidationFailures = Flow.Dataflow.lift(_validationFailureMessage, Flow.Prelude.isTruthy);
@@ -10209,6 +10209,7 @@
             'RandomDiscrete'
         ];
         _isGrided = Flow.Dataflow.signal(false);
+        _gridId = Flow.Dataflow.signal('grid-' + Flow.Util.uuid());
         _gridStrategy = Flow.Dataflow.signal('Cartesian');
         _isGridRandomDiscrete = Flow.Dataflow.lift(_gridStrategy, function (strategy) {
             return strategy !== _gridStrategies[0];
@@ -10438,6 +10439,7 @@
                 }
             }
             if (isGrided) {
+                parameters.grid_id = _gridId();
                 parameters.hyper_parameters = hyperParameters;
                 searchCriteria = { strategy: _gridStrategy() };
                 switch (searchCriteria.strategy) {
@@ -10554,6 +10556,7 @@
         return {
             form: _form,
             isGrided: _isGrided,
+            gridId: _gridId,
             gridStrategy: _gridStrategy,
             gridStrategies: _gridStrategies,
             isGridRandomDiscrete: _isGridRandomDiscrete,
@@ -12354,7 +12357,7 @@
                     return _frame(_frameKey);
                 }
             });
-            addSplitRatio(0.25);
+            addSplitRatio(0.75);
             return lodash.defer(_go);
         };
         initialize();

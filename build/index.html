@@ -971,13 +971,6 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td data-bind="text:lastSplitRatioText"></td>
-                      <td>
-                        <input type="text" style="width:300px" data-bind="value:lastSplitKey" class="flow-textbox">
-                      </td>
-                      <td>&nbsp; </td>
-                    </tr>
                     <!-- ko foreach:splits-->
                     <tr>
                       <td>
@@ -989,6 +982,13 @@
                       <td><span title="Delete this split" data-bind="click:remove" class="flow-pointer"><i class="fa fa-remove"></i></span></td>
                     </tr>
                     <!-- /ko-->
+                    <tr>
+                      <td data-bind="text:lastSplitRatioText"></td>
+                      <td>
+                        <input type="text" style="width:300px" data-bind="value:lastSplitKey" class="flow-textbox">
+                      </td>
+                      <td>&nbsp; </td>
+                    </tr>
                   </tbody>
                 </table>
                 <div><a data-bind="click:addSplit" class="flow-pointer">Add a new split</a></div>
@@ -1926,6 +1926,13 @@
               <td colspan="3">
                 <h4 style="margin-top:20px; border-bottom:1px dotted #ccc">Grid Settings:</h4>
               </td>
+            </tr>
+            <tr>
+              <th style="width:140px">Grid ID</th>
+              <td>
+                <input type="text" data-bind="value:gridId" class="flow-textbox">
+              </td>
+              <td>Destination id for this grid; auto-generated if not specified</td>
             </tr>
             <tr>
               <th style="width:140px">Strategy</th>
