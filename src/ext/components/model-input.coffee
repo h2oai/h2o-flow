@@ -247,6 +247,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
   _gridStrategies = [ 'Cartesian', 'RandomDiscrete' ]
   _isGrided = signal false
+  _gridId = signal "grid-#{Flow.Util.uuid()}"
   _gridStrategy = signal 'Cartesian'
   _isGridRandomDiscrete = lift _gridStrategy, (strategy) -> strategy isnt _gridStrategies[0]
   _gridMaxModels = signal 1000
@@ -372,6 +373,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
               else
                 parameters[control.name] = value
     if isGrided
+      parameters.grid_id = _gridId()
       parameters.hyper_parameters = hyperParameters
 
       # { 'strategy': "RandomDiscrete/Cartesian", 'max_models': 3, 'max_runtime_secs': 20 }
@@ -476,6 +478,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
   form: _form
   isGrided: _isGrided
+  gridId: _gridId
   gridStrategy: _gridStrategy
   gridStrategies: _gridStrategies
   isGridRandomDiscrete: _isGridRandomDiscrete

@@ -27,6 +27,11 @@
         td(colspan='3')
           h4(style="margin-top:20px; border-bottom:1px dotted #ccc") Grid Settings:
       tr
+        th(style='width:140px') Grid ID
+        td
+          input.flow-textbox(type='text' data-bind="value:gridId")
+        td Destination id for this grid; auto-generated if not specified
+      tr
         th(style='width:140px') Strategy
         td
           select(data-bind="options:gridStrategies, value:gridStrategy")
