@@ -1032,7 +1032,7 @@ H2O.Routines = (_) ->
 
     splits = []
     sum = 0
-    for part in (sortBy parts, (part) -> part.ratio)
+    for part in parts
       splits.push
         min: sum
         max: sum + part.ratio
@@ -1060,9 +1060,9 @@ H2O.Routines = (_) ->
       push statements, "(tmp= #{randomVecKey} (h2o.runif #{frameKey} #{seed}))"
 
       for part, i in splits
-        g = if i isnt 0 then "(>= #{randomVecKey} #{part.min})" else null
+        g = if i isnt 0 then "(> #{randomVecKey} #{part.min})" else null
 
-        l = if i isnt splits.length - 1 then "(< #{randomVecKey} #{part.max})" else null
+        l = if i isnt splits.length - 1 then "(<= #{randomVecKey} #{part.max})" else null
 
         sliceExpr = if g and l
           "(& #{g} #{l})"
