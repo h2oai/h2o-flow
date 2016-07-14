@@ -644,7 +644,7 @@ Flow.Notebook = (_, _renderers) ->
         menuDivider
         createMenuHeader 'Inspect Log'
         createMenuItem 'View Log', executeCommand 'getLogFile'
-        createMenuItem 'Download Logs', goToUrl '/Logs/download'
+        createMenuItem 'Download Logs', goToUrl '/3/Logs/download'
         menuDivider
         createMenuHeader 'Advanced'
         createMenuItem 'Create Synthetic Frame...', executeCommand 'createFrame'
