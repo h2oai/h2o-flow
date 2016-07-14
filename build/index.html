@@ -2348,7 +2348,8 @@
               <input type="checkbox" data-bind="checked:computeReconstructionError">
             </td>
           </tr>
-          <!-- ko ifnot:computeReconstructionError-->
+          <!-- /ko-->
+          <!-- ko if:isDeepLearning-->
           <tr>
             <th>
               <label>Compute Deep Features Hidden Layer:</label>
@@ -2360,7 +2361,6 @@
               <!-- /ko-->
             </td>
           </tr>
-          <!-- /ko-->
           <!-- /ko-->
           <!-- ko if:hasLeafNodeAssignment-->
           <tr>
