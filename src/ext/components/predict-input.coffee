@@ -27,6 +27,7 @@ H2O.PredictInput = (_, _go, opt) ->
 
   _frames = signals []
   _models = signals []
+  _isDeepLearning = lift _selectedModel, (model) -> model and model.algo is 'deeplearning'
   _hasReconError = lift _selectedModel, (model) ->
     if model
       if model.algo is 'deeplearning'
@@ -136,6 +137,7 @@ H2O.PredictInput = (_, _go, opt) ->
   frames: _frames
   models: _models
   predict: predict
+  isDeepLearning: _isDeepLearning
   hasReconError: _hasReconError
   hasLeafNodeAssignment: _hasLeafNodeAssignment
   hasExemplarIndex: _hasExemplarIndex

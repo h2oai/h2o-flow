@@ -36,7 +36,8 @@
         label Compute Reconstruction Error:
       td
         input(type='checkbox' data-bind="checked:computeReconstructionError")
-    // ko ifnot:computeReconstructionError
+    // /ko
+    // ko if:isDeepLearning
     tr
       th
         label Compute Deep Features Hidden Layer:
@@ -46,7 +47,6 @@
         span Hidden Layer #:
         input.flow-textbox(type='textbox' style='width:50px' data-bind="value:deepFeaturesHiddenLayer, valueUpdate:'afterkeydown'")
         // /ko
-    // /ko
     // /ko
     // ko if:hasLeafNodeAssignment
     tr
