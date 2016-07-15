@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.41';
+    Flow.Version = '0.4.42';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -11839,9 +11839,10 @@
             if (_hasReconError()) {
                 if (_computeReconstructionError()) {
                     cs += ', reconstruction_error: true';
-                } else if (_computeDeepFeaturesHiddenLayer()) {
-                    cs += ', deep_features_hidden_layer: ' + _deepFeaturesHiddenLayerValue();
                 }
+            }
+            if (_computeDeepFeaturesHiddenLayer()) {
+                cs += ', deep_features_hidden_layer: ' + _deepFeaturesHiddenLayerValue();
             }
             if (_hasLeafNodeAssignment()) {
                 if (_computeLeafNodeAssignment()) {
