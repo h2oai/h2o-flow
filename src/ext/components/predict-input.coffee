@@ -111,8 +111,9 @@ H2O.PredictInput = (_, _go, opt) ->
     if _hasReconError()
       if _computeReconstructionError()
         cs += ', reconstruction_error: true'
-      else if _computeDeepFeaturesHiddenLayer()
-        cs += ", deep_features_hidden_layer: #{_deepFeaturesHiddenLayerValue()}"
+
+    if _computeDeepFeaturesHiddenLayer()
+      cs += ", deep_features_hidden_layer: #{_deepFeaturesHiddenLayerValue()}"
 
     if _hasLeafNodeAssignment()
       if _computeLeafNodeAssignment()
