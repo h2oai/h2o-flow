@@ -1,7 +1,7 @@
 createOptions = (options) ->
   for option in options
     caption: option
-    value: option.toUpperCase()
+    value: option.toLowerCase()
 
 _allMethods = createOptions [
    'Mean'
@@ -30,13 +30,13 @@ H2O.ImputeInput = (_, _go, opts={}) ->
 
   _method = signal _allMethods[0]
 
-  _canUseCombineMethod = lift _method, (method) -> method.value is 'MEDIAN'
+  _canUseCombineMethod = lift _method, (method) -> method.value is 'median'
 
   _combineMethods = _allCombineMethods 
 
   _combineMethod = signal _allCombineMethods[0]
 
-  _canGroupByColumns = lift _method, (method) -> method.value isnt 'MEDIAN'
+  _canGroupByColumns = lift _method, (method) -> method.value isnt 'median'
 
   _groupByColumns = signals []
 
@@ -49,7 +49,7 @@ H2O.ImputeInput = (_, _go, opts={}) ->
       column: _column()
       method: method.value
 
-    if method.value is 'MEDIAN'
+    if method.value is 'median'
       if combineMethod = _combineMethod()
         arg.combineMethod = combineMethod.value
     else

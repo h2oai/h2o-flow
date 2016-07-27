@@ -1240,7 +1240,7 @@ H2O.Routines = (_) ->
 
   requestImputeColumn = (opts, go) ->
     { frame, column, method, combineMethod, groupByColumns } = opts 
-    combineMethod = combineMethod ? 'INTERPOLATE'
+    combineMethod = combineMethod ? 'interpolate'
     _.requestFrameSummaryWithoutData frame, (error, result) ->
       if error
         go error
@@ -1263,7 +1263,7 @@ H2O.Routines = (_) ->
         else
           "[]"
 
-        _.requestExec "(assign #{frame} (h2o.impute #{frame} #{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg}))", (error, result) ->
+        _.requestExec "(h2o.impute #{frame} #{columnIndex} #{JSON.stringify method} #{JSON.stringify combineMethod} #{groupByArg} _ _)", (error, result) ->
           if error
             go error
           else
