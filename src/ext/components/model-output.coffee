@@ -298,7 +298,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
               renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
-      when 'deeplearning'
+      when 'deeplearning', 'deepwater'
         if table = _.inspect 'output - Scoring History', _model
           if table.schema['validation_logloss'] and table.schema['training_logloss']
             renderPlot 'Scoring History - logloss', no, _.plot (g) ->
