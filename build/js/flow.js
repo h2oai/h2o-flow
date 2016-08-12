@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.44';
+    Flow.Version = '0.4.45';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -9276,12 +9276,12 @@
 }.call(this));
 (function () {
     H2O.ImportFilesOutput = function (_, _go, _importResults) {
-        var createImportView, parse, _allPaths, _canParse, _importViews, _title;
-        _allPaths = lodash.flatten(lodash.compact(lodash.map(_importResults, function (result) {
-            return result.files;
+        var createImportView, parse, _allFrames, _canParse, _importViews, _title;
+        _allFrames = lodash.flatten(lodash.compact(lodash.map(_importResults, function (result) {
+            return result.destination_frames;
         })));
-        _canParse = _allPaths.length > 0;
-        _title = '' + _allPaths.length + ' / ' + _importResults.length + ' files imported.';
+        _canParse = _allFrames.length > 0;
+        _title = '' + _allFrames.length + ' / ' + _importResults.length + ' files imported.';
         createImportView = function (result) {
             return {
                 files: result.files,
@@ -9291,8 +9291,8 @@
         _importViews = lodash.map(_importResults, createImportView);
         parse = function () {
             var paths;
-            paths = lodash.map(_allPaths, Flow.Prelude.stringify);
-            return _.insertAndExecuteCell('cs', 'setupParse paths: [ ' + paths.join(',') + ' ]');
+            paths = lodash.map(_allFrames, Flow.Prelude.stringify);
+            return _.insertAndExecuteCell('cs', 'setupParse source_frames: [ ' + paths.join(',') + ' ]');
         };
         lodash.defer(_go);
         return {
