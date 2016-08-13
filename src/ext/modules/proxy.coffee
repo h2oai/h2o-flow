@@ -294,6 +294,14 @@ H2O.Proxy = (_) ->
   requestPojoPreview = (key, go) ->
     download 'text', "/3/Models.java/#{encodeURIComponent key}/preview", go
 
+  requestTreeViz = (key, go) ->
+    doGet "/3/TreeViz?modelKey=#{encodeURIComponent key}", (error, result) ->
+      if error
+        go error, result
+      else
+        go error, result.trees
+
+
   requestDeleteModel = (key, go) ->
     doDelete "/3/Models/#{encodeURIComponent key}", go
 
@@ -617,6 +625,7 @@ H2O.Proxy = (_) ->
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
   link _.requestExec, requestExec
+  link _.requestTreeViz, requestTreeViz
   #
   # Sparkling-Water
   link _.requestRDDs, requestRDDs
