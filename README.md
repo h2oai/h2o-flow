@@ -10,8 +10,8 @@ It is recommended that you clone h2o-3 and h2o-flow under the same parent direct
 
 1. First, clean up all built files:  `cd h2o-3 && ./gradlew clean`
 2. Open up h2o-3 in IDEA, build and launch `H2OApp`.
-3. Run `cd h2o-flow && npm install && make`. You can now access and debug Flow at http://localhost:54321/.
-4. After each change to h2o-flow sources, run the same command `cd h2o-flow && make` to push your changes to the running instance of h2o-3.
+3. Run `cd h2o-flow && make install`. You can now access and debug Flow at http://localhost:54321/.
+4. After each change to h2o-flow sources, run the command `cd h2o-flow && make` to push your changes to the running instance of h2o-3.
 
 ### Phantom JS installation notes
 
