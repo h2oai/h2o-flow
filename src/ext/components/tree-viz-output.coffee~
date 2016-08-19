@@ -1,0 +1,180 @@
+H2O.TreeVizOutput = (_, _go, _trees) ->
+
+  defer _go
+
+  renderTree = (root) ->
+    # ************** Generate the tree diagram	 *****************
+    margin = 
+      top: 20
+      right: 20
+      bottom: 20
+      left: 20
+    width = 150 - (margin.right) - (margin.left)
+    height = 90 - (margin.top) - (margin.bottom)
+    svg = d3.select('div.flow-form').append('svg').attr('width', width + margin.right + margin.left).attr('height', height + margin.top + margin.bottom).append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')').attr('style', 'border-width: 1px')
+    i = 0
+    console.log "Received ", _trees.length, " trees"
+
+    prepareTree = (node) ->
+      if !node.parent
+        node.width = width / 25
+      node.height = height / 27
+      node.leaf = !node.children
+      node.children and node.children.map((child, index) ->
+        child.parent = node.name
+        if index == 0
+          node.left =
+            percent: 20
+            type: if child.value < 0 then 'lightgray' else 'lightgreen'
+        else
+          node.right =
+            percent: 80
+            type: if child.value < 0 then 'lightgray' else 'lightgreen'
+        prepareTree child
+        return
+      )
+      return
+
+    lineData = (d) ->
+      points = [
+        {
+          lx: d.source.x
+          ly: d.source.y + d.source.height
+        }
+        {
+          lx: d.target.x
+          ly: d.target.y + d.target.height
+        }
+      ]
+      diagonal points
+  
+    update = (source) ->
+      # Compute the new tree layout.
+      nodes = tree.nodes(root)
+      # Normalize for fixed-depth.
+      nodes.forEach (d) ->
+        d.y = d.depth * width / 15
+        d.width = d.width or d.parent.width * (if d.parent.x < d.x then d.parent.left.percent else d.parent.right.percent) / 100
+        if d.parent and d.x > d.parent.x and d.x < d.parent.x + d.parent.width
+          d.x = d.parent.x + d.parent.width
+        return
+      nodes = nodes.reverse()
+      links = tree.links(nodes)
+      # Declare the nodes…
+      node = svg.selectAll('g.node').data(nodes, (d) ->
+        d.id or (d.id = ++i)
+      )
+      # Enter the nodes.
+      nodeEnter = node.enter().append('g').attr('class', 'node').attr('transform', (d) ->
+        'translate(' + d.x + ',' + d.y + ')'
+      )
+      # enter left rects
+      nodeEnter.append('rect').attr('width', (d) ->
+        if d.leaf or d.fill then d.width else d.children[0].width
+      ).attr('height', (d) ->
+        d.height
+      ).style('stroke', 'black').style 'fill', (d) ->
+        d.leaf or d.fill or d.left.type
+      # enter right rects
+      nodeEnter.append('rect').attr('x', (d) ->
+        if d.leaf or d.fill then 0 else d.children[0].width
+      ).attr('width', (d) ->
+        if d.leaf or d.fill then d.width else d.children[1].width
+      ).attr('height', (d) ->
+        d.height
+      ).style('stroke', 'black').style 'fill', (d) ->
+        d.leaf or d.fill or d.right.type
+
+  
+    
+
+      # Declare the links…
+      link = svg.selectAll('path.link').data(links, (d) ->
+        d.target.id
+      )
+
+      ###
+      // Enter the links.
+      link.enter().insert("path", "g")
+      .attr("class", "link")
+      		.style("stroke", function(d) { return d.target.level; })
+      .attr("d", lineData);
+      ###
+
+      # Enter the polygon links.
+      link.enter().insert('polygon', 'g').attr('points', (d) ->
+        if d.target.x > d.source.x
+          # right child
+          [
+            [
+              d.source.x + d.source.width - (d.target.width)
+              d.source.y + d.source.height
+            ].join(',')
+            [
+              d.source.x + d.source.width
+              d.source.y + d.source.height
+            ].join(',')
+            [
+              d.target.x + d.target.width
+              d.target.y
+            ].join(',')
+            [
+              d.target.x
+              d.target.y
+            ].join(',')
+          ].join ' '
+        else
+          [
+            [
+              d.source.x
+              d.source.y + d.source.height
+            ].join(',')
+            [
+              d.source.x + d.target.width
+              d.source.y + d.source.height
+            ].join(',')
+            [
+              d.target.x + d.target.width
+              d.target.y
+            ].join(',')
+            [
+              d.target.x
+              d.target.y
+            ].join(',')
+          ].join ' '
+      ).attr('fill', 'black').attr('stroke-width', 1)
+          .style("fill", "#5555ff")
+      return
+  
+    prepareTree root
+    console.log 'Prepared ', root
+    tree = d3.layout.tree().size([
+      height
+      width
+    ])
+    diagonal = d3.svg.line().x((point) ->
+      point.lx
+    ).y((point) ->
+      point.ly
+    )
+    update root
+    return
+
+  renderTrees = ->
+    _trees.map (tree) ->
+      renderTree tree
+      return
+    $('div.flow-form svg', ).on 'click', (e) ->
+      $svg = $(this).clone()
+      $svg.attr 'width', '560'
+      $svg.attr 'height', '470'
+      $svg.attr 'viewBox', '0,0,800,800'
+      $('rect,polygon', $svg).attr 'stroke-width', '.1'
+      $.featherlight $svg
+      return
+    return
+
+  setTimeout renderTrees, 0
+
+  trees: _trees
+  template: 'flow-tree-viz-output'
