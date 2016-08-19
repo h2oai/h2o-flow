@@ -1,10 +1,14 @@
 .DS_Store
 .DS_Store?
 node_modules
+.gitignore
 lib
 *.swp
 *.log
 *.tmp
 .gradle
 .idea/
+build
+build/*
+
 
