@@ -19,6 +19,9 @@ _assistance =
   splitFrame:
     description: 'Split a frame into two or more frames'
     icon: 'scissors'
+  mergeFrames:
+    description: 'Merge two frames into one'
+    icon: 'link'
   getModels:
     description: 'Get a list of models in H<sub>2</sub>O'
     icon: 'cubes'
@@ -419,6 +422,10 @@ H2O.Routines = (_) ->
 
   extendSplitFrameResult = (result) ->
     render_ result, H2O.SplitFrameOutput, result
+    result
+
+  extendMergeFramesResult = (result) ->
+    render_ result, H2O.MergeFramesOutput, result
     result
 
 #   inspectOutputsAcrossModels = (modelCategory, models) -> ->
@@ -1086,6 +1093,17 @@ H2O.Routines = (_) ->
     else
       go new Flow.Error 'The number of split ratios should be one less than the number of split keys'
 
+  requestMergeFrames = (destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows, go) ->
+    lr = if includeAllLeftRows then 'TRUE' else 'FALSE'
+    rr = if includeAllRightRows then 'TRUE' else 'FALSE'
+    statement = "(assign #{destinationKey} (merge #{leftFrameKey} #{rightFrameKey} #{lr} #{rr} #{leftColumnIndex} #{rightColumnIndex} \"radix\"))"
+    _.requestExec statement, (error, result) ->
+      if error
+        go error
+      else
+        go null, extendMergeFramesResult
+          key: destinationKey
+
   createFrame = (opts) ->
     if opts
       _fork requestCreateFrame, opts
@@ -1097,6 +1115,12 @@ H2O.Routines = (_) ->
       _fork requestSplitFrame, frameKey, splitRatios, splitKeys, seed
     else
       assist splitFrame
+
+  mergeFrames = (destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows) ->
+    if destinationKey and leftFrameKey and rightFrameKey
+      _fork requestMergeFrames, destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows
+    else
+      assist mergeFrames
 
   getFrames = ->
     _fork requestFrames  
@@ -1791,6 +1815,8 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.CreateFrameInput, args
         when splitFrame
           _fork proceed, H2O.SplitFrameInput, args
+        when mergeFrames
+          _fork proceed, H2O.MergeFramesInput, args
         when exportFrame
           _fork proceed, H2O.ExportFrameInput, args
         when imputeColumn
@@ -1873,6 +1899,7 @@ H2O.Routines = (_) ->
     parseFiles: parseFiles
     createFrame: createFrame
     splitFrame: splitFrame
+    mergeFrames: mergeFrames
     getFrames: getFrames
     getFrame: getFrame
     bindFrames: bindFrames

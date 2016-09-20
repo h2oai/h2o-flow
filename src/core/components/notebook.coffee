@@ -615,6 +615,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Import Files...', executeCommand 'importFiles'
         createMenuItem 'Upload File...', uploadFile
         createMenuItem 'Split Frame...', executeCommand 'splitFrame'
+        createMenuItem 'Merge Frames...', executeCommand 'mergeFrames'
         menuDivider
         createMenuItem 'List All Frames', executeCommand 'getFrames'
         menuDivider

@@ -1,0 +1,15 @@
+.flow-widget
+  +subtitle('Merged Frame', 'table')
+
+  table.flow-form
+    thead
+      tr
+        th(width='1') Type
+        th Key
+    tbody
+      tr
+        td
+          i.fa.fa-table
+        td
+          a(href='#' data-bind='text:frameKey, click:viewFrame')
+

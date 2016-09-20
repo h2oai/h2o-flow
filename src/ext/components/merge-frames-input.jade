@@ -1,0 +1,50 @@
+.flow-widget
+  +subtitle('Merge Frames', 'link')
+
+  table.flow-form
+    tbody
+      tr
+        th(width='150')
+          label Save merged frame as:
+        td
+          input(data-bind="value:destinationKey" style='width:250px')
+      tr
+        th
+          label Left frame:
+        td
+          select(data-bind="options:frames, value:selectedLeftFrame, optionsCaption:'(Select)'")
+      tr
+        th
+          label Left column:
+        td
+          select(data-bind="options:leftColumns, optionsText:'label', value:selectedLeftColumn, optionsCaption:'(Select)'")
+      tr
+        th
+          label Include all left rows
+        td
+          input(type='checkbox' data-bind="checked:includeAllLeftRows")
+      tr
+        th
+          label Right frame:
+        td
+          select(data-bind="options:frames, value:selectedRightFrame, optionsCaption:'(Select)'")
+      tr
+        th
+          label Right column:
+        td
+          select(data-bind="options:rightColumns, optionsText:'label', value:selectedRightColumn, optionsCaption:'(Select)'")
+      tr
+        th
+          label Include all right rows
+        td
+          input(type='checkbox' data-bind="checked:includeAllRightRows")
+      tr
+        th
+          label Actions:
+        td
+          button.flow-button(type='button' data-bind='click:merge, enable:canMerge')
+            i.fa.fa-link
+            span Merge
+
+
+
