@@ -37,7 +37,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.45';
+    Flow.Version = '0.4.48';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1729,6 +1729,7 @@
                     createMenuItem('Import Files...', executeCommand('importFiles')),
                     createMenuItem('Upload File...', uploadFile),
                     createMenuItem('Split Frame...', executeCommand('splitFrame')),
+                    createMenuItem('Merge Frames...', executeCommand('mergeFrames')),
                     menuDivider,
                     createMenuItem('List All Frames', executeCommand('getFrames')),
                     menuDivider,
@@ -5215,6 +5216,10 @@
             description: 'Split a frame into two or more frames',
             icon: 'scissors'
         },
+        mergeFrames: {
+            description: 'Merge two frames into one',
+            icon: 'link'
+        },
         getModels: {
             description: 'Get a list of models in H<sub>2</sub>O',
             icon: 'cubes'
@@ -5494,7 +5499,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var asDataFrame, asH2OFrameFromDF, asH2OFrameFromRDD, assist, attrname, bindFrames, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendAsDataFrame, extendAsH2OFrame, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDataFrames, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendScalaCode, extendScalaIntp, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getDataFrames, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getScalaIntp, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, initAssistanceSparklingWater, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, name, parseFiles, plot, predict, proceed, read, render_, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSplitFrame, requestStackTrace, requestTimeline, routines, routinesOnSw, runScalaCode, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var asDataFrame, asH2OFrameFromDF, asH2OFrameFromRDD, assist, attrname, bindFrames, blacklistedAttributesBySchema, buildModel, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendAsDataFrame, extendAsH2OFrame, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDataFrames, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLogFile, extendMergeFramesResult, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendScalaCode, extendScalaIntp, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getDataFrames, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLogFile, getModel, getModelParameterValue, getModels, getPrediction, getPredictions, getProfile, getRDDs, getScalaIntp, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, initAssistanceSparklingWater, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, mergeFrames, name, parseFiles, plot, predict, proceed, read, render_, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLogFile, requestMergeFrames, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSplitFrame, requestStackTrace, requestTimeline, routines, routinesOnSw, runScalaCode, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -5745,6 +5750,10 @@
         };
         extendSplitFrameResult = function (result) {
             render_(result, H2O.SplitFrameOutput, result);
+            return result;
+        };
+        extendMergeFramesResult = function (result) {
+            render_(result, H2O.MergeFramesOutput, result);
             return result;
         };
         getModelParameterValue = function (type, value) {
@@ -6703,6 +6712,19 @@
                 return go(new Flow.Error('The number of split ratios should be one less than the number of split keys'));
             }
         };
+        requestMergeFrames = function (destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows, go) {
+            var lr, rr, statement;
+            lr = includeAllLeftRows ? 'TRUE' : 'FALSE';
+            rr = includeAllRightRows ? 'TRUE' : 'FALSE';
+            statement = '(assign ' + destinationKey + ' (merge ' + leftFrameKey + ' ' + rightFrameKey + ' ' + lr + ' ' + rr + ' ' + leftColumnIndex + ' ' + rightColumnIndex + ' "radix"))';
+            return _.requestExec(statement, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendMergeFramesResult({ key: destinationKey }));
+                }
+            });
+        };
         createFrame = function (opts) {
             if (opts) {
                 return _fork(requestCreateFrame, opts);
@@ -6718,6 +6740,13 @@
                 return _fork(requestSplitFrame, frameKey, splitRatios, splitKeys, seed);
             } else {
                 return assist(splitFrame);
+            }
+        };
+        mergeFrames = function (destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows) {
+            if (destinationKey && leftFrameKey && rightFrameKey) {
+                return _fork(requestMergeFrames, destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows);
+            } else {
+                return assist(mergeFrames);
             }
         };
         getFrames = function () {
@@ -7668,6 +7697,8 @@
                     return _fork(proceed, H2O.CreateFrameInput, args);
                 case splitFrame:
                     return _fork(proceed, H2O.SplitFrameInput, args);
+                case mergeFrames:
+                    return _fork(proceed, H2O.MergeFramesInput, args);
                 case exportFrame:
                     return _fork(proceed, H2O.ExportFrameInput, args);
                 case imputeColumn:
@@ -7740,6 +7771,7 @@
             parseFiles: parseFiles,
             createFrame: createFrame,
             splitFrame: splitFrame,
+            mergeFrames: mergeFrames,
             getFrames: getFrames,
             getFrame: getFrame,
             bindFrames: bindFrames,
@@ -9874,6 +9906,112 @@
             contents: _contents,
             refresh: refresh,
             template: 'flow-log-file-output'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.MergeFramesInput = function (_, _go) {
+        var _canMerge, _destinationKey, _exception, _frames, _includeAllLeftRows, _includeAllRightRows, _leftColumns, _merge, _rightColumns, _selectedLeftColumn, _selectedLeftFrame, _selectedRightColumn, _selectedRightFrame;
+        _exception = Flow.Dataflow.signal(null);
+        _destinationKey = Flow.Dataflow.signal('merged-' + Flow.Util.uuid());
+        _frames = Flow.Dataflow.signals([]);
+        _selectedLeftFrame = Flow.Dataflow.signal(null);
+        _leftColumns = Flow.Dataflow.signals([]);
+        _selectedLeftColumn = Flow.Dataflow.signal(null);
+        _includeAllLeftRows = Flow.Dataflow.signal(false);
+        _selectedRightFrame = Flow.Dataflow.signal(null);
+        _rightColumns = Flow.Dataflow.signals([]);
+        _selectedRightColumn = Flow.Dataflow.signal(null);
+        _includeAllRightRows = Flow.Dataflow.signal(false);
+        _canMerge = Flow.Dataflow.lift(_selectedLeftFrame, _selectedLeftColumn, _selectedRightFrame, _selectedRightColumn, function (lf, lc, rf, rc) {
+            return lf && lc && rf && rc;
+        });
+        Flow.Dataflow.react(_selectedLeftFrame, function (frameKey) {
+            if (frameKey) {
+                return _.requestFrameSummaryWithoutData(frameKey, function (error, frame) {
+                    return _leftColumns(lodash.map(frame.columns, function (column, i) {
+                        return {
+                            label: column.label,
+                            index: i
+                        };
+                    }));
+                });
+            } else {
+                _selectedLeftColumn(null);
+                return _leftColumns([]);
+            }
+        });
+        Flow.Dataflow.react(_selectedRightFrame, function (frameKey) {
+            if (frameKey) {
+                return _.requestFrameSummaryWithoutData(frameKey, function (error, frame) {
+                    return _rightColumns(lodash.map(frame.columns, function (column, i) {
+                        return {
+                            label: column.label,
+                            index: i
+                        };
+                    }));
+                });
+            } else {
+                _selectedRightColumn(null);
+                return _rightColumns([]);
+            }
+        });
+        _merge = function () {
+            var cs;
+            if (!_canMerge()) {
+                return;
+            }
+            cs = 'mergeFrames ' + Flow.Prelude.stringify(_destinationKey()) + ', ' + Flow.Prelude.stringify(_selectedLeftFrame()) + ', ' + _selectedLeftColumn().index + ', ' + _includeAllLeftRows() + ', ' + Flow.Prelude.stringify(_selectedRightFrame()) + ', ' + _selectedRightColumn().index + ', ' + _includeAllRightRows();
+            return _.insertAndExecuteCell('cs', cs);
+        };
+        _.requestFrames(function (error, frames) {
+            var frame;
+            if (error) {
+                return _exception(new Flow.Error('Error fetching frame list.', error));
+            } else {
+                return _frames(function () {
+                    var _i, _len, _results;
+                    _results = [];
+                    for (_i = 0, _len = frames.length; _i < _len; _i++) {
+                        frame = frames[_i];
+                        if (!frame.is_text) {
+                            _results.push(frame.frame_id.name);
+                        }
+                    }
+                    return _results;
+                }());
+            }
+        });
+        lodash.defer(_go);
+        return {
+            destinationKey: _destinationKey,
+            frames: _frames,
+            selectedLeftFrame: _selectedLeftFrame,
+            leftColumns: _leftColumns,
+            selectedLeftColumn: _selectedLeftColumn,
+            includeAllLeftRows: _includeAllLeftRows,
+            selectedRightFrame: _selectedRightFrame,
+            rightColumns: _rightColumns,
+            selectedRightColumn: _selectedRightColumn,
+            includeAllRightRows: _includeAllRightRows,
+            merge: _merge,
+            canMerge: _canMerge,
+            template: 'flow-merge-frames-input'
+        };
+    };
+}.call(this));
+(function () {
+    H2O.MergeFramesOutput = function (_, _go, _mergeFramesResult) {
+        var _frameKey, _viewFrame;
+        _frameKey = _mergeFramesResult.key;
+        _viewFrame = function () {
+            return _.insertAndExecuteCell('cs', 'getFrameSummary ' + Flow.Prelude.stringify(_frameKey));
+        };
+        lodash.defer(_go);
+        return {
+            frameKey: _frameKey,
+            viewFrame: _viewFrame,
+            template: 'flow-merge-frames-output'
         };
     };
 }.call(this));

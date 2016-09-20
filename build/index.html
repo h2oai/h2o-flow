@@ -1035,6 +1035,100 @@
         </table>
       </div>
     </script>
+    <script type="text/html" id="flow-merge-frames-input">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-link"></i>Merge Frames
+            </h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th width="150">
+                <label>Save merged frame as:</label>
+              </th>
+              <td>
+                <input data-bind="value:destinationKey" style="width:250px">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Left frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:frames, value:selectedLeftFrame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Left column:</label>
+              </th>
+              <td>
+                <select data-bind="options:leftColumns, optionsText:'label', value:selectedLeftColumn, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Include all left rows</label>
+              </th>
+              <td>
+                <input type="checkbox" data-bind="checked:includeAllLeftRows">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Right frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:frames, value:selectedRightFrame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Right column:</label>
+              </th>
+              <td>
+                <select data-bind="options:rightColumns, optionsText:'label', value:selectedRightColumn, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Include all right rows</label>
+              </th>
+              <td>
+                <input type="checkbox" data-bind="checked:includeAllRightRows">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Actions:</label>
+              </th>
+              <td>
+                <button type="button" data-bind="click:merge, enable:canMerge" class="flow-button"><i class="fa fa-link"></i><span>Merge</span></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </script>
+    <script type="text/html" id="flow-merge-frames-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-table"></i>Merged Frame
+            </h3>
+        <table class="flow-form">
+          <thead>
+            <tr>
+              <th width="1">Type</th>
+              <th>Key</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><i class="fa fa-table"></i></td>
+              <td><a href="#" data-bind="text:frameKey, click:viewFrame"></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </script>
     <script type="text/html" id="flow-parse-raw-input">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-cog"></i>Setup Parse</h3>
