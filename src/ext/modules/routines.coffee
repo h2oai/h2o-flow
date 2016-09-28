@@ -428,6 +428,10 @@ H2O.Routines = (_) ->
     render_ result, H2O.MergeFramesOutput, result
     result
 
+  extendPartialDependence = (result) ->
+    render_ result, H2O.partialDependenceOutput, result
+    result
+
 #   inspectOutputsAcrossModels = (modelCategory, models) -> ->
 #     switch modelCategory
 #       when 'Binomial'
@@ -1104,6 +1108,16 @@ H2O.Routines = (_) ->
         go null, extendMergeFramesResult
           key: destinationKey
 
+  requestPartialDependence = (destinationKey, modelKey, frameKey, nbins, go) ->
+
+    statement = "(assign #{destinationKey} (merge #{leftFrameKey} #{rightFrameKey} #{lr} #{rr} #{leftColumnIndex} #{rightColumnIndex} \"radix\"))"
+    _.requestExec statement, (error, result) ->
+      if error
+        go error
+      else
+        go null, extendPartialDependence
+          key: destinationKey
+
   createFrame = (opts) ->
     if opts
       _fork requestCreateFrame, opts
@@ -1121,6 +1135,12 @@ H2O.Routines = (_) ->
       _fork requestMergeFrames, destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows
     else
       assist mergeFrames
+
+  partialDependence = (destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows) ->
+    if destinationKey and leftFrameKey and rightFrameKey
+      _fork requestPartialDependence, destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows
+    else
+      assist partialDependence
 
   getFrames = ->
     _fork requestFrames  
@@ -1260,7 +1280,6 @@ H2O.Routines = (_) ->
     for columnLabel in columnLabels
       findColumnIndexByColumnLabel frame, columnLabel
 
-  
 
   requestImputeColumn = (opts, go) ->
     { frame, column, method, combineMethod, groupByColumns } = opts 
@@ -1817,6 +1836,8 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.SplitFrameInput, args
         when mergeFrames
           _fork proceed, H2O.MergeFramesInput, args
+        when partialDependence
+          _fork proceed, H2O.PartialDependenceInput, args
         when exportFrame
           _fork proceed, H2O.ExportFrameInput, args
         when imputeColumn
@@ -1900,6 +1921,7 @@ H2O.Routines = (_) ->
     createFrame: createFrame
     splitFrame: splitFrame
     mergeFrames: mergeFrames
+    partialDependence: partialDependence
     getFrames: getFrames
     getFrame: getFrame
     bindFrames: bindFrames

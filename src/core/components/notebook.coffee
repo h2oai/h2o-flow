@@ -628,6 +628,7 @@ Flow.Notebook = (_, _renderers) ->
     ,
       createMenu 'Score', [
         createMenuItem 'Predict...', executeCommand 'predict'
+        createMenuItem 'Partial Dependence Plots...', executeCommand 'partialDependence'
         menuDivider
         createMenuItem 'List All Predictions', executeCommand 'getPredictions'
         #TODO Confusion Matrix
@@ -650,7 +651,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuHeader 'Advanced'
         createMenuItem 'Create Synthetic Frame...', executeCommand 'createFrame'
         createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
-        createMenuItem 'Network Test', executeCommand 'testNetwork'
+        createMenuItem 'Network Test', executeCommand 'testNetswork'
         #TODO Cluster I/O
         createMenuItem 'Profiler', executeCommand 'getProfile depth: 10'
         createMenuItem 'Timeline', executeCommand 'getTimeline'

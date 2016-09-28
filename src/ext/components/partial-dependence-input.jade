@@ -1,0 +1,35 @@
+.flow-widget
+  +subtitle('Partial Dependence', 'link')
+
+  table.flow-form
+    tbody
+      tr
+        th(width='150')
+          label Save PDP frame as:
+        td
+          input(data-bind="value:destinationKey" style='width:250px')
+      tr
+        th
+          label Model:
+        td
+          select(data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'")
+      tr
+        th
+          label Frame:
+        td
+          select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
+      tr
+        th nbins
+        td
+          input.flow-textbox(type='text' data-bind="value:nbins")
+        td How many levels should PDP comput. More levels will make it slower.
+      tr
+        th
+          label Actions:
+        td
+          button.flow-button(type='button' data-bind='click:compute, enable:canCompute')
+            i.fa.fa-link
+            span Compute
+
+
+
