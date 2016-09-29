@@ -260,6 +260,15 @@ H2O.Proxy = (_) ->
       chunk_size: chunkSize
     doPost '/3/Parse', opts, go
 
+  requestPartialDependence = (opts, go) ->
+    doPost '/3/PartialDependence/', opts, go
+
+  # requestPartialDependenceData = (key, go) ->
+  #   doGet "/3/PartialDependence/#{encodeURIComponent key}", (error, result) ->
+  #     if error 
+  #       go error, result
+  #     else go error, result.data
+
   requestGrids = (go, opts) ->
     doGet "/99/Grids", (error, result) ->
       if error
@@ -575,6 +584,8 @@ H2O.Proxy = (_) ->
   link _.requestParseSetup, requestParseSetup
   link _.requestParseSetupPreview, requestParseSetupPreview
   link _.requestParseFiles, requestParseFiles
+  link _.requestPartialDependence, requestPartialDependence
+  # link _.requestPartialDependenceData, requestPartialDependenceData
   link _.requestGrids, requestGrids
   link _.requestModels, requestModels
   link _.requestGrid, requestGrid

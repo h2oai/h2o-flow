@@ -1,13 +1,13 @@
-H2O.PartialDependenceOutput = (_, _go, _mergeFramesResult) ->
+H2O.PartialDependenceOutput = (_, _go, _partialDependenceResult) ->
 
-  _frameKey = _mergeFramesResult.key
+  _destinationKey = _partialDependenceResult.dest.name
 
   _viewFrame = ->
-    _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify _frameKey}"
+    _.insertAndExecuteCell 'cs', "requestPartialDependenceData #{stringify _destinationKey}"
 
   defer _go
 
-  frameKey: _frameKey
+  _destinationKey: _destinationKey
   viewFrame: _viewFrame
   template: 'flow-partial-dependence-output'
 
