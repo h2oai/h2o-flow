@@ -184,11 +184,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
           renderPlot 'Scoring History', no, _.plot (g) ->
             g(
               g.path(
-                g.position 'number_of_iterations', 'average_within_cluster_sum_of_squares'
+                g.position 'iteration', 'within_cluster_sum_of_squares'
                 g.strokeColor g.value '#1f77b4'
               )
               g.point(
-                g.position 'number_of_iterations', 'average_within_cluster_sum_of_squares'
+                g.position 'iteration', 'within_cluster_sum_of_squares'
                 g.strokeColor g.value '#1f77b4'
               )
               g.from table
