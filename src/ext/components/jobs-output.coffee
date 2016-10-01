@@ -16,6 +16,8 @@ H2O.JobsOutput = (_, _go, jobs) ->
         'Model'
       when 'Key<Grid>'
         'Grid'
+      when 'Key<PartialDependence>'
+        'PartialDependence'
       else
         'Unknown'
 

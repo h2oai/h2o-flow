@@ -34,6 +34,8 @@ H2O.JobOutput = (_, _go, _job) ->
         'Model'
       when 'Key<Grid>'
         'Grid'
+      when 'Key<PartialDependence>'
+        'PartialDependence'
       when 'Key<KeyedVoid>'
         'Void'
       else
@@ -114,7 +116,8 @@ H2O.JobOutput = (_, _go, _job) ->
         _.insertAndExecuteCell 'cs', "getModel #{stringify _destinationKey}"
       when 'Grid'
         _.insertAndExecuteCell 'cs', "getGrid #{stringify _destinationKey}"
-
+      when 'PartialDependence'
+        _.insertAndExecuteCell 'cs', "getPartialDependence #{stringify _destinationKey}"
       when 'Void'
         alert "This frame was exported to\n#{_job.dest.name}"
 

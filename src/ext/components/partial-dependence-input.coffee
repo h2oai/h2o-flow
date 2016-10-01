@@ -49,7 +49,7 @@ H2O.PartialDependenceInput = (_, _go) ->
       frame_id: _selectedFrame()
       nbins: _nbins()
 
-    cs = "getPartialDependence #{stringify opts}"
+    cs = "buildPartialDependence #{stringify opts}"
 
     _.insertAndExecuteCell 'cs', cs
 

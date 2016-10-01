@@ -428,7 +428,7 @@ H2O.Routines = (_) ->
     render_ result, H2O.MergeFramesOutput, result
     result
 
-  extendPartialDependence = (result) ->
+  extendPartialDependence= (result) ->
     render_ result, H2O.PartialDependenceOutput, result
     result
 
@@ -1038,6 +1038,13 @@ H2O.Routines = (_) ->
           else
             go null, extendJob job
 
+  requestPartialDependenceData = (key, go) ->
+    _.requestPartialDependenceData key, (error, result) ->
+      if error
+        go error
+      else
+        go null, extendPartialDependence result
+
   computeSplits = (ratios, keys) ->
     parts = []
     sum = 0
@@ -1137,10 +1144,16 @@ H2O.Routines = (_) ->
     else
       assist mergeFrames
 
-  getPartialDependence = (opts) ->
+  buildPartialDependence = (opts) ->
     if opts
       _fork requestPartialDependence, opts
     else
+      assist buildPartialDependence
+
+  getPartialDependence = (destinationKey) ->
+    if destinationKey
+      _fork requestPartialDependenceData, destinationKey
+    else 
       assist getPartialDependence
 
   getFrames = ->
@@ -1837,7 +1850,7 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.SplitFrameInput, args
         when mergeFrames
           _fork proceed, H2O.MergeFramesInput, args
-        when getPartialDependence
+        when buildPartialDependence
           _fork proceed, H2O.PartialDependenceInput, args
         when exportFrame
           _fork proceed, H2O.ExportFrameInput, args
@@ -1922,6 +1935,7 @@ H2O.Routines = (_) ->
     createFrame: createFrame
     splitFrame: splitFrame
     mergeFrames: mergeFrames
+    buildPartialDependence: buildPartialDependence
     getPartialDependence: getPartialDependence
     getFrames: getFrames
     getFrame: getFrame

@@ -27,6 +27,7 @@ H2O.ApplicationContext = (_) ->
   _.requestPrediction = do slot
   _.requestPredictions = do slot
   _.requestPartialDependence = do slot
+  _.requestPartialDependenceData = do slot
   _.requestGrids = do slot
   _.requestModels = do slot
   _.requestGrid = do slot
