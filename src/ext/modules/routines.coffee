@@ -429,6 +429,11 @@ H2O.Routines = (_) ->
     result
 
   extendPartialDependence= (result) ->
+    inspections = {}
+    for data, i in result.partial_dependence_data
+      origin = "getPartialDependence #{stringify result.destination_key}"
+      inspections["plot#{i+1}"] = inspectTwoDimTable_ origin, "plot#{i+1}", data
+    inspect_ result, inspections
     render_ result, H2O.PartialDependenceOutput, result
     result
 
