@@ -1129,6 +1129,86 @@
         </table>
       </div>
     </script>
+    <script type="text/html" id="flow-partial-dependence-input">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-link"></i>Partial Dependence
+            </h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th width="150">
+                <label>Save Destination PDP as:</label>
+              </th>
+              <td>
+                <input data-bind="value:destinationKey" style="width:250px">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Model:</label>
+              </th>
+              <td>
+                <select data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>nbins</th>
+              <td>
+                <input type="text" data-bind="value:nbins" class="flow-textbox">
+              </td>
+              <td>How many levels should PDP comput. More levels will make it slower.</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Actions:</label>
+              </th>
+              <td>
+                <button type="button" data-bind="click:compute, enable:canCompute" class="flow-button"><i class="fa fa-link"></i><span>Compute</span></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </script>
+    <script type="text/html" id="flow-partial-dependence-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-table"></i>Partial Dependence Summary
+            </h3>
+        <div class="flow-margin-after">
+          <table class="flow-form">
+            <tbody>
+              <tr>
+                <th class="flow-narrow">ID:</th>
+                <td data-bind="text:destinationKey" class="flow-wide"></td>
+              </tr>
+              <tr>
+                <th class="flow-narrow">Model ID:</th>
+                <td data-bind="text:modelId" class="flow-wide"></td>
+              </tr>
+              <tr>
+                <th class="flow-narrow">Frame ID:</th>
+                <td data-bind="text:frameId" class="flow-wide"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- ko foreach:plots-->
+        <h4 data-bind="text:title, collapse:true"></h4>
+        <div>
+          <div data-bind="raw:plot" class="flow-plot"></div>
+          <div data-bind="raw:frame" class="flow-plot"></div>
+        </div>
+        <!-- /ko-->
+      </div>
+    </script>
     <script type="text/html" id="flow-parse-raw-input">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-cog"></i>Setup Parse</h3>
