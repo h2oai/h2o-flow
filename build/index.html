@@ -2163,6 +2163,46 @@
         </div>
       </div>
     </script>
+    <script type="text/html" id="flow-automodel-input">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-cube"></i>Auto Model
+            </h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th width="1">
+                <label>Frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:frames, value:frame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <!-- ko if:hasFrame-->
+            <tr>
+              <th>
+                <label>Response Column:</label>
+              </th>
+              <td>
+                <select data-bind="options:columns, value:column, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <!-- /ko-->
+            <tr>
+              <th>
+                <label>Max Run Time (sec):</label>
+              </th>
+              <td>
+                <input data-bind="value:maxRunTime">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="flow-panel">
+              <button type="button" data-bind="click:buildModel, enable:canBuildModel" class="flow-button"><i class="fa fa-cube"></i><span>Build Model</span>
+              </button>
+        </div>
+      </div>
+    </script>
     <script type="text/html" id="flow-jobs-output">
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-tasks"></i>Jobs
