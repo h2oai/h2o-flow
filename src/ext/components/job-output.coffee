@@ -36,6 +36,8 @@ H2O.JobOutput = (_, _go, _job) ->
         'Grid'
       when 'Key<PartialDependence>'
         'PartialDependence'
+      when 'Key<AutoML>'
+        'Auto Model'
       when 'Key<KeyedVoid>'
         'Void'
       else
@@ -118,6 +120,11 @@ H2O.JobOutput = (_, _go, _job) ->
         _.insertAndExecuteCell 'cs', "getGrid #{stringify _destinationKey}"
       when 'PartialDependence'
         _.insertAndExecuteCell 'cs', "getPartialDependence #{stringify _destinationKey}"
+
+      when 'Auto Model'
+        # FIXME getGrid() for AutoML is hosed; resort to getGrids() for now.
+        _.insertAndExecuteCell 'cs', "getGrids"
+
       when 'Void'
         alert "This frame was exported to\n#{_job.dest.name}"
 
