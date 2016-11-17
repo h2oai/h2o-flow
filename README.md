@@ -5,6 +5,8 @@
 ## Development Instructions
 
 It is recommended that you clone h2o-3 and h2o-flow under the same parent directory. The following steps will enable you to develop on Flow without having to restart H2O. 
+
+If you have not already, follow these instructions to  [set up your preferred IDE environment](https://github.com/h2oai/h2o-3#47-setting-up-your-preferred-ide-environment) for h2o-3 development.  
     
 ### Within IDEA/Eclipse
 
