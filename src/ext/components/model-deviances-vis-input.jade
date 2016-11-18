@@ -1,0 +1,20 @@
+.flow-widget
+  +subtitle('Model Deviances Visualization', 'link')
+
+  table.flow-form
+    tbody
+      tr
+        th(width='150')
+          label Validation Frame:
+        td
+          select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
+      tr
+        th
+          label Actions:
+        td
+          button.flow-button(type='button' data-bind='click:compute, enable:canCompute')
+            i.fa.fa-link
+            span Compute
+
+
+

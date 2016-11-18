@@ -1,0 +1,24 @@
+.flow-widget
+  +subtitle('Model Deviances Visualization Summary', 'table')
+
+  .flow-margin-after
+    table.flow-form
+      tbody
+        tr
+          th.flow-narrow ID:
+          td.flow-wide(data-bind='text:destinationKey')
+        tr
+          th.flow-narrow Model ID:
+          td.flow-wide(data-bind='text:modelId')
+        tr
+          th.flow-narrow Frame ID:
+          td.flow-wide(data-bind='text:frameId')
+  
+  // ko foreach:plots
+  h4(data-bind='text:title, collapse:true')
+  div
+    .flow-plot(data-bind='raw:plot')
+    .flow-plot(data-bind='raw:frame')
+
+  // /ko
+

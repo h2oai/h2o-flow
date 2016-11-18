@@ -629,6 +629,7 @@ Flow.Notebook = (_, _renderers) ->
       createMenu 'Score', [
         createMenuItem 'Predict...', executeCommand 'predict'
         createMenuItem 'Partial Dependence Plots...', executeCommand 'buildPartialDependence'
+        createMenuItem 'Model Deviances Visualization...', executeCommand 'buildModelDeviancesVis'
         menuDivider
         createMenuItem 'List All Predictions', executeCommand 'getPredictions'
         #TODO Confusion Matrix

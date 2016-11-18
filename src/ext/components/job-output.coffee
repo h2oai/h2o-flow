@@ -120,6 +120,8 @@ H2O.JobOutput = (_, _go, _job) ->
         _.insertAndExecuteCell 'cs', "getGrid #{stringify _destinationKey}"
       when 'PartialDependence'
         _.insertAndExecuteCell 'cs', "getPartialDependence #{stringify _destinationKey}"
+      when 'ModelDeviancesVis'
+        _.insertAndExecuteCell 'cs', "getModelDeviancesVis #{stringify _destinationKey}"
 
       when 'Auto Model'
         # FIXME getGrid() for AutoML is hosed; resort to getGrids() for now.
