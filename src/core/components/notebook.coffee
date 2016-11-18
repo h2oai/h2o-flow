@@ -450,6 +450,9 @@ Flow.Notebook = (_, _renderers) ->
     else
       _.alert "Please save this notebook before exporting."
 
+  goToH2OUrl = (url) -> ->
+    window.open window.Flow.ContextPath + url, '_blank'
+
   goToUrl = (url) -> ->
     window.open url, '_blank'
 
@@ -642,11 +645,11 @@ Flow.Notebook = (_, _renderers) ->
       createMenu 'Admin', [
         createMenuItem 'Jobs', executeCommand 'getJobs'
         createMenuItem 'Cluster Status', executeCommand 'getCloud'
-        createMenuItem 'Water Meter (CPU meter)', goToUrl '/perfbar.html'
+        createMenuItem 'Water Meter (CPU meter)', goToH2OUrl 'perfbar.html'
         menuDivider
         createMenuHeader 'Inspect Log'
         createMenuItem 'View Log', executeCommand 'getLogFile'
-        createMenuItem 'Download Logs', goToUrl '/3/Logs/download'
+        createMenuItem 'Download Logs', goToH2OUrl '3/Logs/download'
         menuDivider
         createMenuHeader 'Advanced'
         createMenuItem 'Create Synthetic Frame...', executeCommand 'createFrame'

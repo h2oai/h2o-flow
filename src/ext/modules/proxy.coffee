@@ -1,6 +1,8 @@
 H2O.Proxy = (_) ->
 
   download = (type, url, go) ->
+    if url.substring(0,1) == "/"
+        url = window.Flow.ContextPath + url.substring(1)
     $.ajax
       dataType: type
       url: url
@@ -18,6 +20,9 @@ H2O.Proxy = (_) ->
       ''
   
   http = (method, path, opts, go) ->
+    if path.substring(0,1) == "/"
+      path = window.Flow.ContextPath + path.substring(1)
+
     _.status 'server', 'request', path
 
     trackPath path
@@ -529,19 +534,19 @@ H2O.Proxy = (_) ->
     filter (split data, '\n'), (line) -> if line.trim() then yes else no
 
   requestPacks = (go) ->
-    download 'text', '/flow/packs/index.list', unwrap go, getLines
+    download 'text', window.Flow.ContextPath + '/flow/packs/index.list', unwrap go, getLines
 
   requestPack = (packName, go) ->
-    download 'text', "/flow/packs/#{encodeURIComponent packName}/index.list", unwrap go, getLines
+    download 'text', window.Flow.ContextPath + "/flow/packs/#{encodeURIComponent packName}/index.list", unwrap go, getLines
 
   requestFlow = (packName, flowName, go) ->
-    download 'json', "/flow/packs/#{encodeURIComponent packName}/#{encodeURIComponent flowName}", go
+    download 'json', window.Flow.ContextPath + "/flow/packs/#{encodeURIComponent packName}/#{encodeURIComponent flowName}", go
 
   requestHelpIndex = (go) ->
-    download 'json', '/flow/help/catalog.json', go
+    download 'json', window.Flow.ContextPath + '/flow/help/catalog.json', go
 
   requestHelpContent = (name, go) ->
-    download 'text', "/flow/help/#{name}.html", go
+    download 'text', window.Flow.ContextPath + "/flow/help/#{name}.html", go
 
   requestRDDs = (go) ->
     doGet '/3/RDDs', go

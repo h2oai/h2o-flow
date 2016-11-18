@@ -9,10 +9,19 @@
 # arrow keys cause page to scroll - disable those behaviors
 # scrollTo() behavior
 
+getContextPath = () ->
+    window.Flow.ContextPath = "/"
+    $.ajax
+        url: window.referrer
+        type: 'GET'
+        success: (data, status, xhr) ->
+            window.Flow.ContextPath = xhr.getResponseHeader('X-h2o-context-path')
+        async: false
+
 checkSparklingWater = (context) ->
     context.onSparklingWater = false
     $.ajax
-        url: "/3/Metadata/endpoints"
+        url: window.Flow.ContextPath + "3/Metadata/endpoints"
         type: 'GET'
         dataType: 'json'
         success: (response) ->
@@ -24,6 +33,7 @@ checkSparklingWater = (context) ->
 if window?.$?
   $ ->
     context = {}
+    getContextPath()
     checkSparklingWater context
     window.flow = Flow.Application context, H2O.Routines
     H2O.Application context
