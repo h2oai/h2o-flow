@@ -8,13 +8,18 @@
           label Validation Frame:
         td
           select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
+      // ko if:selectedFrame
       tr
         th
-          label Actions:
+          label Selected Frame:
         td
-          button.flow-button(type='button' data-bind='click:compute, enable:canCompute')
-            i.fa.fa-link
-            span Compute
+          span(data-bind='text:selectedFrame')
+      // /ko
+      
+  div.flow-panel
+    button.flow-button(type='button' data-bind='click:compute, enable:canCompute')
+      i.fa.fa-link
+      span Compute
 
 
 
