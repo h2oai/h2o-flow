@@ -437,15 +437,6 @@ H2O.Routines = (_) ->
     render_ result, H2O.PartialDependenceOutput, result
     result
 
-  extendModelDeviancesVis= (result) ->
-    inspections = {}
-    for data, i in result.model_deviances_data
-      origin = "getModelDeviancesVis #{stringify result.destination_key}"
-      inspections["plot#{i+1}"] = inspectTwoDimTable_ origin, "plot#{i+1}", data
-    inspect_ result, inspections
-    render_ result, H2O.ModelDeviancesVisOutput, result
-    result
-
 #   inspectOutputsAcrossModels = (modelCategory, models) -> ->
 #     switch modelCategory
 #       when 'Binomial'
@@ -1166,15 +1157,21 @@ H2O.Routines = (_) ->
 
   buildModelDeviancesVis = (opts) ->
     if opts
-      _fork requestPartialDependence, opts
+      _fork requestModelDeviancesVis, opts
     else
-      assist buildPartialDependence
+      assist buildModelDeviancesVis
 
   getPartialDependence = (destinationKey) ->
     if destinationKey
       _fork requestPartialDependenceData, destinationKey
     else 
       assist getPartialDependence
+
+  getModelDeviancesVis = (destinationKey) ->
+    if destinationKey
+      _fork requestModelDeviancesVisData, destinationKey
+    else 
+      assist getModelDeviancesVis
 
   getFrames = ->
     _fork requestFrames  
@@ -1897,7 +1894,7 @@ H2O.Routines = (_) ->
         when buildPartialDependence
           _fork proceed, H2O.PartialDependenceInput, args
         when buildModelDeviancesVis
-          _fork proceed, H2O.PartialDependenceInput, args
+          _fork proceed, H2O.ModelDeviancesVisInput, args
         when exportFrame
           _fork proceed, H2O.ExportFrameInput, args
         when imputeColumn

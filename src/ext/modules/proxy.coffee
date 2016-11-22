@@ -277,6 +277,15 @@ H2O.Proxy = (_) ->
         go error, result
       else go error, result
 
+  requestModelDeviancesVis = (opts, go) ->
+    doPost '/3/PartialDependence/', opts, go
+
+  requestModelDeviancesVisData = (key, go) ->
+    doGet "/3/PartialDependence/#{encodeURIComponent key}", (error, result) ->
+      if error 
+        go error, result
+      else go error, result
+
   requestGrids = (go, opts) ->
     doGet "/99/Grids", (error, result) ->
       if error
