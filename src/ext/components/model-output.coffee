@@ -691,6 +691,9 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
     downloadPojo = ->
       window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}", '_blank'
 
+    downloadMojo = ->
+      window.open "/3/Models/#{encodeURIComponent _model.model_id.name}/mojo", '_blank'
+
     exportModel = ->
       _.insertAndExecuteCell 'cs', "exportModel #{stringify _model.model_id.name}"
 
@@ -711,6 +714,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
     inspect: inspect
     previewPojo: previewPojo
     downloadPojo: downloadPojo
+    downloadMojo: downloadMojo
     pojoPreview: _pojoPreview
     isPojoLoaded: _isPojoLoaded
     exportModel: exportModel

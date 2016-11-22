@@ -429,6 +429,11 @@ H2O.Routines = (_) ->
     result
 
   extendPartialDependence= (result) ->
+    inspections = {}
+    for data, i in result.partial_dependence_data
+      origin = "getPartialDependence #{stringify result.destination_key}"
+      inspections["plot#{i+1}"] = inspectTwoDimTable_ origin, "plot#{i+1}", data
+    inspect_ result, inspections
     render_ result, H2O.PartialDependenceOutput, result
     result
 
@@ -1551,6 +1556,28 @@ H2O.Routines = (_) ->
           go null, extendJob result.job
 
 
+  requestAutoModelBuild = (opts, go) ->
+
+    params =
+      input_spec:
+        training_frame: opts.frame
+        response_column: opts.column
+      build_control:
+        stopping_criteria:
+          max_runtime_secs: opts.maxRunTime
+
+    _.requestAutoModelBuild params, (error, result) ->
+      if error
+        go error
+      else
+        go null, extendJob result.job
+
+  buildAutoModel = (opts) ->
+    if opts and keys(opts).length > 1
+      _fork requestAutoModelBuild, opts
+    else
+      assist buildAutoModel, opts
+
   buildModel = (algo, opts) ->
     if algo and opts and keys(opts).length > 1
       _fork requestModelBuild, algo, opts
@@ -1842,6 +1869,8 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.ImportFilesInput, []
         when buildModel
           _fork proceed, H2O.ModelInput, args
+        when buildAutoModel
+          _fork proceed, H2O.AutoModelInput, args
         when predict, getPrediction
           _fork proceed, H2O.PredictInput, args
         when createFrame
@@ -1949,6 +1978,7 @@ H2O.Routines = (_) ->
     changeColumnType: changeColumnType
     imputeColumn: imputeColumn
     buildModel: buildModel
+    buildAutoModel: buildAutoModel
     getGrids: getGrids
     getModels: getModels
     getModel: getModel

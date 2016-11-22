@@ -1,0 +1,25 @@
+.flow-widget
+  +subtitle('Auto Model', 'cube')
+
+  table.flow-form
+    tbody
+      tr
+        th(width='1')
+          label Frame:
+        td
+          select(data-bind="options:frames, value:frame, optionsCaption:'(Select)'")
+      // ko if:hasFrame
+      tr
+        th
+          label Response Column:
+        td
+          select(data-bind="options:columns, value:column, optionsCaption:'(Select)'")
+      // /ko
+      tr
+        th
+          label Max Run Time (sec):
+        td
+          input(data-bind="value:maxRunTime")
+
+  .flow-panel
+    +button('Build Model', 'cube', 'buildModel', 'canBuildModel')

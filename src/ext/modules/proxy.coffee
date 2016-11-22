@@ -27,6 +27,13 @@ H2O.Proxy = (_) ->
         $.getJSON path
       when 'POST'
         $.post path, opts
+      when 'POSTJSON'
+        $.ajax
+          url: path
+          type: 'POST'
+          contentType: 'application/json'
+          cache: no
+          data: JSON.stringify opts
       when 'PUT'
         $.ajax url: path, type: method, data: opts
       when 'DELETE'
@@ -70,6 +77,7 @@ H2O.Proxy = (_) ->
 
   doGet = (path, go) -> http 'GET', path, null, go
   doPost = (path, opts, go) -> http 'POST', path, opts, go
+  doPostJSON = (path, opts, go) -> http 'POSTJSON', path, opts, go
   doPut = (path, opts, go) -> http 'PUT', path, opts, go
   doUpload = (path, formData, go) -> http 'UPLOAD', path, formData, go
   doDelete = (path, go) -> http 'DELETE', path, null, go
@@ -373,6 +381,9 @@ H2O.Proxy = (_) ->
     else
       doPost getModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
 
+  requestAutoModelBuild = (parameters, go) ->
+    doPostJSON "/3/AutoMLBuilder", parameters, go
+
   requestPredict = (destinationKey, modelKey, frameKey, options, go) ->
     opts = {}
     opts.predictions_frame = destinationKey if destinationKey
@@ -598,6 +609,7 @@ H2O.Proxy = (_) ->
   link _.requestModelBuilders, requestModelBuilders
   link _.requestModelBuild, requestModelBuild
   link _.requestModelInputValidation, requestModelInputValidation
+  link _.requestAutoModelBuild, requestAutoModelBuild
   link _.requestPredict, requestPredict
   link _.requestPrediction, requestPrediction
   link _.requestPredictions, requestPredictions
