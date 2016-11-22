@@ -17,6 +17,9 @@ H2O.PartialDependenceInput = (_, _go) ->
   # _selectedRightColumn = signal null
   # _includeAllRightRows = signal false
 
+  # a conditional check that makes sure that 
+  # all fields in the form are filled in
+  # before the button is shown as active
   _canCompute = lift _destinationKey, _selectedFrame, _selectedModel, _nbins, (dk, sf, sm, nb) ->
     dk and sf and sm and nb
 
@@ -43,14 +46,22 @@ H2O.PartialDependenceInput = (_, _go) ->
   _compute = ->
     return unless _canCompute()
 
+    # parameters are selections from Flow UI
+    # form dropdown menus, text boxes, etc
     opts =
       destination_key: _destinationKey()
       model_id: _selectedModel()
       frame_id: _selectedFrame()
       nbins: _nbins()
 
+    # assemble a string for the h2o Rapids AST
+    # this contains the function to call
+    # along with the options to pass in
     cs = "buildPartialDependence #{stringify opts}"
 
+    # insert a cell with the expression `cs` 
+    # into the current Flow notebook
+    # and run the cell
     _.insertAndExecuteCell 'cs', cs
 
   _.requestFrames (error, frames) ->
