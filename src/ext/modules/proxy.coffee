@@ -534,19 +534,19 @@ H2O.Proxy = (_) ->
     filter (split data, '\n'), (line) -> if line.trim() then yes else no
 
   requestPacks = (go) ->
-    download 'text', window.Flow.ContextPath + '/flow/packs/index.list', unwrap go, getLines
+    download 'text', '/flow/packs/index.list', unwrap go, getLines
 
   requestPack = (packName, go) ->
-    download 'text', window.Flow.ContextPath + "/flow/packs/#{encodeURIComponent packName}/index.list", unwrap go, getLines
+    download 'text', "/flow/packs/#{encodeURIComponent packName}/index.list", unwrap go, getLines
 
   requestFlow = (packName, flowName, go) ->
-    download 'json', window.Flow.ContextPath + "/flow/packs/#{encodeURIComponent packName}/#{encodeURIComponent flowName}", go
+    download 'json', "/flow/packs/#{encodeURIComponent packName}/#{encodeURIComponent flowName}", go
 
   requestHelpIndex = (go) ->
-    download 'json', window.Flow.ContextPath + '/flow/help/catalog.json', go
+    download 'json', '/flow/help/catalog.json', go
 
   requestHelpContent = (name, go) ->
-    download 'text', window.Flow.ContextPath + "/flow/help/#{name}.html", go
+    download 'text', "/flow/help/#{name}.html", go
 
   requestRDDs = (go) ->
     doGet '/3/RDDs', go

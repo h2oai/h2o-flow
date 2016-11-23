@@ -15,7 +15,8 @@ getContextPath = () ->
         url: window.referrer
         type: 'GET'
         success: (data, status, xhr) ->
-            window.Flow.ContextPath = xhr.getResponseHeader('X-h2o-context-path')
+            if xhr.getAllResponseHeaders().indexOf("X-h2o-context-path") != -1
+                window.Flow.ContextPath = xhr.getResponseHeader('X-h2o-context-path')
         async: false
 
 checkSparklingWater = (context) ->
