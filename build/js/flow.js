@@ -1,9 +1,22 @@
 "use strict";(function(){ var lodash = window._; window.Flow={}; window.H2O={};(function () {
-    var checkSparklingWater;
+    var checkSparklingWater, getContextPath;
+    getContextPath = function () {
+        window.Flow.ContextPath = '/';
+        return $.ajax({
+            url: window.referrer,
+            type: 'GET',
+            success: function (data, status, xhr) {
+                if (xhr.getAllResponseHeaders().indexOf('X-h2o-context-path') !== -1) {
+                    return window.Flow.ContextPath = xhr.getResponseHeader('X-h2o-context-path');
+                }
+            },
+            async: false
+        });
+    };
     checkSparklingWater = function (context) {
         context.onSparklingWater = false;
         return $.ajax({
-            url: '/3/Metadata/endpoints',
+            url: window.Flow.ContextPath + '3/Metadata/endpoints',
             type: 'GET',
             dataType: 'json',
             success: function (response) {
@@ -27,6 +40,7 @@
         $(function () {
             var context;
             context = {};
+            getContextPath();
             checkSparklingWater(context);
             window.flow = Flow.Application(context, H2O.Routines);
             H2O.Application(context);
@@ -37,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.53';
+    Flow.Version = '0.4.54';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -988,7 +1002,7 @@
         };
     };
     Flow.Notebook = function (_, _renderers) {
-        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, convertCellToScala, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createShortcutHint, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, insertNewScalaCellAbove, insertNewScalaCellBelow, loadNotebook, menuCell, menuCellSW, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _initializeInterpreter, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
+        var appendCell, appendCellAndRun, checkConsistency, checkIfNameIsInUse, clearAllCells, clearCell, cloneCell, continueRunningAllCells, convertCellToCode, convertCellToHeading, convertCellToMarkdown, convertCellToRaw, convertCellToScala, copyCell, createCell, createMenu, createMenuHeader, createMenuItem, createNotebook, createShortcutHint, createTool, cutCell, deleteCell, deserialize, displayAbout, displayDocumentation, displayFAQ, displayKeyboardShortcuts, duplicateNotebook, editModeKeyboardShortcuts, editModeKeyboardShortcutsHelp, editName, executeAllCells, executeCommand, exportNotebook, findBuildProperty, getBuildProperties, goToH2OUrl, goToUrl, initialize, initializeMenus, insertAbove, insertBelow, insertCell, insertCellAbove, insertCellAboveAndRun, insertCellBelow, insertCellBelowAndRun, insertNewCellAbove, insertNewCellBelow, insertNewScalaCellAbove, insertNewScalaCellBelow, loadNotebook, menuCell, menuCellSW, menuDivider, mergeCellAbove, mergeCellBelow, moveCellDown, moveCellUp, normalModeKeyboardShortcuts, normalModeKeyboardShortcutsHelp, notImplemented, openNotebook, pasteCellAbove, pasteCellBelow, pasteCellandReplace, promptForNotebook, removeCell, runAllCells, runCell, runCellAndInsertBelow, runCellAndSelectBelow, saveName, saveNotebook, selectCell, selectNextCell, selectPreviousCell, serialize, setupKeyboardHandling, setupMenus, showBrowser, showClipboard, showHelp, showOutline, shutdown, splitCell, startTour, stopRunningAll, storeNotebook, switchToCommandMode, switchToEditMode, toKeyboardHelp, toggleAllInputs, toggleAllOutputs, toggleInput, toggleOutput, toggleSidebar, undoLastDelete, uploadFile, _about, _areInputsHidden, _areOutputsHidden, _cells, _clipboardCell, _dialogs, _initializeInterpreter, _isEditingName, _isRunningAll, _isSidebarHidden, _lastDeletedCell, _localName, _menus, _remoteName, _runningCaption, _runningCellInput, _runningPercent, _selectedCell, _selectedCellIndex, _sidebar, _status, _toolbar;
         _localName = Flow.Dataflow.signal('Untitled Flow');
         Flow.Dataflow.react(_localName, function (name) {
             return document.title = 'H2O' + (name && name.trim() ? '- ' + name : '');
@@ -1543,6 +1557,11 @@
                 return _.alert('Please save this notebook before exporting.');
             }
         };
+        goToH2OUrl = function (url) {
+            return function () {
+                return window.open(window.Flow.ContextPath + url, '_blank');
+            };
+        };
         goToUrl = function (url) {
             return function () {
                 return window.open(url, '_blank');
@@ -1745,11 +1764,11 @@
                 createMenu('Admin', [
                     createMenuItem('Jobs', executeCommand('getJobs')),
                     createMenuItem('Cluster Status', executeCommand('getCloud')),
-                    createMenuItem('Water Meter (CPU meter)', goToUrl('/perfbar.html')),
+                    createMenuItem('Water Meter (CPU meter)', goToH2OUrl('perfbar.html')),
                     menuDivider,
                     createMenuHeader('Inspect Log'),
                     createMenuItem('View Log', executeCommand('getLogFile')),
-                    createMenuItem('Download Logs', goToUrl('/3/Logs/download')),
+                    createMenuItem('Download Logs', goToH2OUrl('3/Logs/download')),
                     menuDivider,
                     createMenuHeader('Advanced'),
                     createMenuItem('Create Synthetic Frame...', executeCommand('createFrame')),
@@ -4399,6 +4418,9 @@
     H2O.Proxy = function (_) {
         var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPostJSON, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getGridModelBuilderEndpoint, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestAutoModelBuild, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestGrid, requestGrids, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPartialDependence, requestPartialDependenceData, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __gridModelBuilderEndpoints, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
         download = function (type, url, go) {
+            if (url.substring(0, 1) === '/') {
+                url = window.Flow.ContextPath + url.substring(1);
+            }
             return $.ajax({
                 dataType: type,
                 url: url,
@@ -4425,6 +4447,9 @@
         };
         http = function (method, path, opts, go) {
             var req;
+            if (path.substring(0, 1) === '/') {
+                path = window.Flow.ContextPath + path.substring(1);
+            }
             _.status('server', 'request', path);
             trackPath(path);
             req = function () {
@@ -8935,7 +8960,7 @@
             return _.insertAndExecuteCell('cs', 'predict frame: ' + Flow.Prelude.stringify(_frame.frame_id.name));
         };
         download = function () {
-            return window.open('/3/DownloadDataset?frame_id=' + encodeURIComponent(_frame.frame_id.name), '_blank');
+            return window.open(window.Flow.ContextPath + ('3/DownloadDataset?frame_id=' + encodeURIComponent(_frame.frame_id.name)), '_blank');
         };
         exportFrame = function () {
             return _.insertAndExecuteCell('cs', 'exportFrame ' + Flow.Prelude.stringify(_frame.frame_id.name));
