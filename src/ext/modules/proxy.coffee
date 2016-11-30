@@ -1,6 +1,8 @@
 H2O.Proxy = (_) ->
 
   download = (type, url, go) ->
+    if url.substring(0,1) == "/"
+        url = window.Flow.ContextPath + url.substring(1)
     $.ajax
       dataType: type
       url: url
@@ -18,6 +20,9 @@ H2O.Proxy = (_) ->
       ''
   
   http = (method, path, opts, go) ->
+    if path.substring(0,1) == "/"
+      path = window.Flow.ContextPath + path.substring(1)
+
     _.status 'server', 'request', path
 
     trackPath path
