@@ -25,6 +25,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
       value: value
       help: help
       isModified: default_value is actual_value
+      base_models: []
 
     #TODO copied over from routines.coffee. replace post h2o.js integration.
     format4f = (number) ->

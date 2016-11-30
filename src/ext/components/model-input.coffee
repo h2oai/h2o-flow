@@ -22,6 +22,7 @@ createControl = (kind, parameter) ->
   isGridable: parameter.gridable
   isGrided: _isGrided
   isNotGrided: _isNotGrided
+  base_models: []
 
 createTextboxControl = (parameter, type) ->
   isArrayValued = isInt = isReal = no
@@ -37,6 +38,10 @@ createTextboxControl = (parameter, type) ->
       isInt = yes
     when 'float', 'double'
       isReal = yes
+    when 'Key<Model>[]'
+      isArrayValued = yes
+      isModelKey = yes
+
   
   _text = signal if isArrayValued then join (parameter.actual_value ? []), ', ' else (parameter.actual_value ? '')
 
@@ -230,11 +235,11 @@ createControlFromParameter = (parameter) ->
   switch parameter.type
     when 'enum', 'Key<Frame>', 'VecSpecifier'
       createDropdownControl parameter
-    when 'string[]'
+    when 'string[]', 'Key<Model>[]'
       createListControl parameter
     when 'boolean'
       createCheckboxControl parameter
-    when 'Key<Model>', 'string', 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+    when 'Key<Model>', 'Key<Model>[]', 'string', 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
       createTextboxControl parameter, parameter.type
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
