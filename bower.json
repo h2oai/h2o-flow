@@ -20,6 +20,7 @@
     "Makefile",
     "coffeelint.json",
     "gulpfile.coffee",
+    "gulpfile.js"
     "package.json",
     "shorthand.yml",
     "lib",
