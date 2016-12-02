@@ -41,7 +41,7 @@
     "esprima": "~1.2.2",
     "faucet": "0.0.1",
     "groc": "~0.6.3",
-    "gulp": "~3.8.2",
+    "gulp": "~3.9.1",
     "gulp-clean": "~0.3.1",
     "gulp-coffee": "~2.0.1",
     "gulp-concat": "~2.2.0",
