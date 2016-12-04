@@ -7,41 +7,13 @@ H2O.PartialDependenceInput = (_, _go) ->
   _selectedModel = signals null
   _selectedFrame = signal null
   _nbins = signal 20
-
-  # _leftColumns = signals []
-  # _selectedLeftColumn = signal null
-  # _includeAllLeftRows = signal false
-
-  # _selectedRightFrame = signal null
-  # _rightColumns = signals []
-  # _selectedRightColumn = signal null
-  # _includeAllRightRows = signal false
+  
 
   # a conditional check that makes sure that 
   # all fields in the form are filled in
   # before the button is shown as active
   _canCompute = lift _destinationKey, _selectedFrame, _selectedModel, _nbins, (dk, sf, sm, nb) ->
     dk and sf and sm and nb
-
-  # react _selectedFrame, (frameKey) ->
-  #   if frameKey
-  #     _.requestFrameSummaryWithoutData frameKey, (error, frame) ->
-  #       _leftColumns map frame.columns, (column, i) -> 
-  #         label: column.label
-  #         index: i
-  #   else
-  #     _selectedLeftColumn null
-  #     _leftColumns []
-
-  # react _selectedRightFrame, (frameKey) ->
-  #   if frameKey
-  #     _.requestFrameSummaryWithoutData frameKey, (error, frame) ->
-  #       _rightColumns map frame.columns, (column, i) -> 
-  #         label: column.label
-  #         index: i
-  #   else
-  #     _selectedRightColumn null
-  #     _rightColumns []
 
   _compute = ->
     return unless _canCompute()
@@ -85,13 +57,6 @@ H2O.PartialDependenceInput = (_, _go) ->
   selectedModel: _selectedModel
   selectedFrame: _selectedFrame
   nbins: _nbins
-  # leftColumns: _leftColumns
-  # selectedLeftColumn: _selectedLeftColumn
-  # includeAllLeftRows: _includeAllLeftRows
-  # selectedRightFrame: _selectedRightFrame
-  # rightColumns: _rightColumns
-  # selectedRightColumn: _selectedRightColumn
-  # includeAllRightRows: _includeAllRightRows
   compute: _compute
   canCompute: _canCompute
 
