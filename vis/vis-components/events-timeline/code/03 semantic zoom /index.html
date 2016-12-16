@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+
+        <style>
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            margin: 0;
+        }
+
+        #checks{
+          float: left;
+          padding: 50px 20px;
+          background: rgba(0,0,0, 0.8);
+        }
+
+        #checks input{
+          margin: 0.5em;
+          vertical-align: middle;
+        }
+
+        #checks input[type="checkbox"]:checked+label{ 
+          color: rgba(255,255,255, 0.9);
+        } 
+
+        #checks label{
+          margin-left: 0.5em;
+          color: rgba(255,255,255, 0.4);
+          letter-spacing: 1px;
+          font-size: 0.8em;
+        }
+
+        #checks label a.colorLegend{
+          float: right;
+          margin: 0.2em 0.5em ;
+        }
+
+        .graph{
+          float: left;
+        }
+
+        .graph .axis {
+            stroke-width: 1;
+        }
+
+        .graph .axis .tick line {
+            stroke: rgba(0,0,0,0.7);
+        }
+
+        .graph .axis .tick text {
+            fill: rgba(0,0,0,0.7);
+            font-size: 0.7em;
+        }
+
+        .graph .axis .domain {
+            fill: none;
+            stroke: rgba(0,0,0,0.7);
+        }
+
+        .points {
+/*          fill: white; */
+          stroke: rgba(255,255,255,0.5);
+          cursor: pointer;
+          z-index: 1000;
+        }
+
+        .biggerpoints , .biggerText{
+          cursor: pointer;
+          z-index: 1000;
+        }
+
+        .baseline line {
+          stroke: rgba(0,0,0,0.2);
+        }
+        .baseline text {
+          fill: rgba(0,0,0,0.2);
+        }
+
+        .slaline line{
+          stroke: #de2d26;
+          stroke-width: 1;
+        }
+
+        .slaline text{
+          fill: #de2d26;
+        }
+
+        div.tooltip { 
+            position: absolute;     
+            text-align: left;     
+            width: 200px;          
+            height: auto;   
+            padding: 2px;       
+            font: 12px sans-serif;   
+            color: white; 
+            background: rgba(0, 0, 0, 0.78); 
+            border: 0px;    
+            border-radius: 5px;    
+            display: none;  
+            z-index: 1200;
+        }
+
+        div.tooltip a{
+          color: white;
+          cursor: pointer;
+        }
+
+        div.tooltip .valuetable{
+          display: table;
+          padding: 1em;
+        }
+
+        div.tooltip .kvpair{
+          display: table-row;
+        }
+
+        div.tooltip .t-key, div.tooltip .t-value{
+          display: table-cell;
+          padding: 0.2em;
+        }
+
+        div.tooltip .t-key{
+          color: rgba(255,255,255,0.4);
+        }
+
+        div.tooltip .t-value{
+          padding-left: 0.8em;
+        }
+
+        svg{
+          margin: 20px;
+        }
+
+        .biggerText{
+          z-index: 100;
+        }
+        .points {
+          z-index: 50;
+        }
+        .biggerpoints{
+          z-index: 70;
+        }
+        </style>
+    </head>
+    <body>
+        <div id="checks">
+            <input type="checkbox" name="CRITICAL" value="CRITICAL" checked><label for="CRITICAL">CRITICAL</label><br>
+            <input type="checkbox" name="HIGH" value="HIGH" checked ><label for="HIGH">HIGH</label><br>
+            <input type="checkbox" name="MEDIUM" value="MEDIUM"><label for="MEDIUM">MEDIUM</label><br>
+            <input type="checkbox" name="LOW" value="LOW" checked=""><label for="LOW">LOW</label><br>
+            <input type="checkbox" name="INFO" value="INFO"><label for="INFO">INFO</label><br>
+        </div>
+        <div class="graph"></div>
+
+        <div id="single_tooltip" class="tooltip">
+          <div class="valuetable">
+            <div class="kvpair">
+                <a span class="t-key">Priority</a>
+                <a span id="priority" class="t-value"></a>
+            </div>
+            <div class="kvpair">
+                <a span class="t-key">Status</a>
+                <a span id="status" class="t-value"></a>
+            </div>
+            <div class="kvpair">
+                <a span class="t-key">Timestamp</a>
+                <a span id="timestamp" class="t-value"></a>
+            </div>
+            <div class="kvpair">
+                <a span class="t-key">Alert Source</a>
+                <a span id="alert_source" class="t-value"></a>
+            </div>
+            <div class="kvpair">
+                <a span class="t-key">Owner</a>
+                <a span id="owner" class="t-value"></a>
+            </div>
+          </div>
+        </div>
+
+        <div id="multi_tooltip" class="tooltip">
+          <div class="valuetable">
+            <div class="kvpair">
+                <a span class="t-key">Alert list indices</a>
+                <a span id="status" class="t-value"></a>
+            </div>
+          </div>
+        </div>
+
+        <script type="text/javascript" src="d3.min.js"></script>
+        <script type="text/javascript" src="moment.js"></script>
+        <script type="text/javascript" src="SLA_TIMES.js"></script>
+
+        <script>
+
+        var limit = 60 * 10 ,
+            duration = 750,
+            now = new Date(Date.now() - duration)
+
+        var width = 800,
+            height = 200
+
+        var GROUP_CIRCLE_RADIUS = 10,
+            SINGLE_CIRCLE_RADIUS = 5,
+            GAP = 3
+
+
+        var addTodayToTime = function(time){
+          return moment(time, "h:mm");
+        }
+
+
+
+        var priorityColor = d3.scale.ordinal()
+                              .domain(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"])
+                              //.range(["#000", "#333", "#888", "#ccc", "#fff"].reverse());
+                              //.range(["#F44336", "#FFAB40", "#FFD740", "#FFF59D", "#ddd"]) // red-yellow
+                              //.range(["#f03b20", "#feb24c", "#7fcdbb", "#2c7fb8", "#ddd"]) //default palette
+                              .range(["#F88379", "#F7C193", "#7fcdbb", "#ADD9FE", "#ddd"]) //pastel
+                              
+                              //.range(["#F95738", "#EE964B", "#F4D35E", "#083D77", "#EBEBD3"])
+
+        d3.selectAll('input[type=checkbox]')
+            .each(function(){
+                d3.select('input[name="'+this.value +'"]+label').append('a')
+                      .attr('class', 'colorLegend')
+                      .html('&#9679')
+                      .style('color', priorityColor(this.value))
+
+                console.log(priorityColor(this.value))
+                console.log(d3.select('input[name="'+this.value +'"]+label'))
+            })
+            .on('change', function(){
+              //console.log(this.value + "checked?" + this.checked)
+             // console.log(d3.select(this.nextSibling).classed('checked', this.checked))
+
+            tick()()
+        })
+
+                              
+
+        var priorityopa = d3.scale.ordinal()
+                              .domain(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"])
+                              .range([0.8, 0.6, 0.4, 0.2, 0]);
+
+        var SLAcolor = d3.scale.ordinal()
+                              .domain(["PAST", "CLOSE", "NEEDS_ATTN", "FAR", "NONE"])
+                              .range(["#f03b20", "#feb24c", "#7fcdbb", "#2c7fb8", "#ddd"])
+
+                              //.range(["red", "orange", "yellow", "steelblue", "grey"])
+
+        var SLAopa = d3.scale.ordinal()
+                              .domain(["PAST", "CLOSE", "NEEDS_ATTN", "FAR", "NONE"])
+                              .range([1, 0.8, 0.6, 0.4, 0])
+
+
+        var tickData = d3.range(-2,10).map(function(t){
+          return {
+            label: t + "h",
+            seconds: t * 60 * 60
+          }
+        })
+
+        //console.log(tickData)
+
+
+
+        var x = d3.scale.linear()
+                .domain( [ tickData[0].seconds, tickData[tickData.length - 1].seconds] )
+                .range([0, width])
+
+        var y = d3.scale.linear()
+            .domain([0, 100])
+            .range([height, 0])
+
+        var getLineY = function(status){
+          return height / (STATUS.length+2) * (STATUS.indexOf(status) +2);
+        }
+
+        var getSLAdiff = function(d){
+            // console.log(d);
+            var time_sla = d.timestamp.clone().add( sla_times[d.priority][d.status] )
+
+            var time_diff = time_sla.clone().diff(moment(), 's');
+
+            //console.log("time_sla: " + time_sla + " timestamp: " +  d.timestamp + " timediff: " + time_diff);
+
+            return time_diff;
+        }
+
+        var getSLAStatus = function(d){
+          //console.log(sla_times[d.priority][d.status]);
+
+            var time_diff = getSLAdiff(d)
+
+            if (time_diff > 5 * 60 * 60){
+              sla_status = "FAR";
+            } else if (time_diff>  2 * 60 * 60  ){
+              sla_status = "NEEDS_ATTN";
+            } else if (time_diff >  0 ){
+              sla_status = "CLOSE";
+            } else {
+              sla_status = "PAST";
+            }
+
+            if(d.status === STATUS[STATUS.length-1] ){id="priority"
+              sla_status = "NONE";
+            }
+
+            return sla_status;
+
+        }
+
+        // Calculates the mid x for a group of smaller circles to draw the bigger circle at
+        var getMidX = function( circles ) {
+            return d3.mean(circles, function(d){ return d.getAttribute('cx') })
+        }
+
+        var getMidTime = function (circles){
+          return d3.mean( circles, function(d){ 
+            // console.log("getMidTime>>>>>>>")
+            // console.log(d3.select(d).datum())
+            // console.log( getSLAdiff(d3.select(d).datum()) )
+            return getSLAdiff( d3.select(d).datum() ) 
+          })
+        }
+
+        var getMaxPriority = function(circles){
+
+          var highestP = d3.min( circles.map( function(d){
+              return PRIORITY.indexOf( d3.select(d).datum().priority )
+          }) )
+
+
+          return PRIORITY[highestP]
+                                //     var this_p = PRIORITY.indexOf(d3.select(curr_section[0][j]).datum()priority),
+                                // last_p = PRIORITY.indexOf(d3.select(curr_section[0][j-1]).datum().priority),
+                                // max_pi = d3.max([this_p, last_p])
+        }
+
+
+        // Given two circles a & b's radius (r) & x-coord (x), return a boolean on whether the two circles overlap or not
+        var overlapped = function (ax, ar, bx, br){
+//            console.log('calculates overlap: ', ax, ar, bx, br)
+            return ( d3.max( [ax-ar, bx-br] ) <= d3.min( [ax+ar, bx+br ]) );
+        }
+
+        // Given two circles DOMs, return a boolean
+        var circlesOverlapped = function (a, b ){
+          //  console.log('circlesOverlapped >>>>>>>>>>')
+          // console.log(a)
+          // console.log(b)
+
+            return overlapped( Number( d3.select(a).attr('cx') ),
+                             Number( d3.select(a).attr('r') ),
+                             Number( d3.select(b).attr('cx') ),
+                             Number( d3.select(b).attr('r') )
+                            )
+        }
+
+        var allClosed = function(circles){
+            var status_arr = d3.map(circles, function(d){return d3.select(d).datum().status})
+            console.log(status_arr)
+
+            var notAllClosed = status_arr.some(function(a){ return a!= "Closed" })
+
+            return !notAllClosed
+        }
+
+        var combineBiggerCircles = function (o_data){
+
+            //console.log('need to combine circles?')
+
+            for (var o_i; o_i < o_data.length-1; o_i++){
+
+              bigger_circles_data = o_data[o_i].groupedCircles
+
+              for (var i=0; i<bigger_circles_data.length-1; i++){
+                    for (var j=0; j<bigger_circles_data.length-1; j++){
+
+
+                        //console.log(bigger_circles_data)
+                        var o = overlapped ( 
+                                              x(bigger_circles_data[i].timediff), 
+                                              GROUP_CIRCLE_RADIUS,
+                                              x(bigger_circles_data[j].timediff),
+                                              GROUP_CIRCLE_RADIUS
+                                            )
+                        // merge two circles, remove one, shift x to mid point
+
+                        //console.log(i, j, i!=j, o)
+
+                        if ( o) {
+                          
+                          console.log(o)
+
+                          console.log(bigger_circles_data[i].circles)
+                          console.log(bigger_circles_data[j].circles)
+                          console.log(bigger_circles_data[i].circles.concat(bigger_circles_data[j].circles) )
+
+                           var combined_arr = bigger_circles_data[i].circles.concat(bigger_circles_data[j].circles)
+
+                          //console.log(combined_arr)
+
+                          bigger_circles_data[i].circles = combined_arr
+
+                          bigger_circles_data.splice(j, 1)
+                        }
+
+                    }
+                }
+            }
+        }
+
+        // Check if circle is overlapped with any of the bigger circles
+        var overlappedWithGroups = function (circle, bigger_circles_data){
+          
+          // bigger_circles_data.sort( function(a,b){
+          //    return a.x - b.x;
+          // });
+
+          // console.log('overlappedWithGroups>>>> -----------')
+          // console.log(circle)
+          // console.log(bigger_circles_data)
+
+          // console.log('length: ' + bigger_circles_data.length)
+
+          var overlapped_i = -1
+
+
+          for (var i=0; i <= bigger_circles_data.length-1; i++){
+
+
+            var o = overlapped( Number(d3.select(circle).attr('cx')),
+                                Number(d3.select(circle).attr('r')),
+                                x(bigger_circles_data[i].timediff),
+                                GROUP_CIRCLE_RADIUS
+                              ) 
+
+            // console.log('i: ' + i + " overlapped_i: " + overlapped_i + " overlapped? " + o, 'circle_x: ' + Number(d3.select(circle).attr('cx')))
+
+            // console.log(bigger_circles_data[i])
+
+            if (o){
+              overlapped_i = i
+            }
+                  
+
+            // if ( ) {
+            //     overlapped_i = i
+            //     console.log('i: ' + i + " overlapped_i: " + overlapped_i)
+            //   }
+          }
+
+
+          // var filtered = bigger_circles_data.filter( function(d,i){
+
+          //     console.log(d)
+              
+          //     var o = overlapped(  Number(d3.select(circle).attr('cx')),
+          //                       Number(d3.select(circle).attr('r')),
+          //                       d.x,
+          //                       GROUP_CIRCLE_RADIUS
+          //                     )  // && y is the same
+
+          //     //console.log( 'is overlapping with bigger circle' + Number(o) )
+
+          //     if (o == true){
+          //       return 1
+          //     } else {
+          //       return -1
+          //     }
+
+          // })
+
+          // console.log("------------------>")
+
+          // console.log(bigger_circles_data.indexOf(filtered[0]))
+
+
+          return overlapped_i
+          
+
+        }
+        // var tabs = d3.select('body').append('div')
+        //     .attr('class', 'tabordion')
+            
+        // var keys = d3.nest().key(function(d) { return d.priority; })
+        //                     .sortKeys(function(a,b) { return PRIORITY.indexOf(a) - PRIORITY.indexOf(b) })
+        //                     .entries(generatedData);
+
+        // var sections = tabs.selectAll('section')
+        //                 .data(keys);
+            
+        //     sections.enter()
+        //       .append('section')
+        //       .attr('id', function(d){ return 'section_'+d.key });
+
+        // var inputs = sections.append('input')
+        //                 .attr('type', 'radio')
+        //                 .attr('name', 'sections')
+        //                 .attr('id', function(d) { return 'opt_' + d.key})
+        //                 .attr('checked', function(d,i){ if (i==0){ return "checked"}});
+
+        // var labels = sections.append('label')
+        //                 .attr('for', function(d) { return 'opt_' + d.key} )
+        //                 .text(function(d){ return d.key + "  (" + d.values.length + ")"});
+
+        var svgs = d3.select('body').append('svg')
+                        .attr('class', 'graph')
+                        .attr('width', width)
+                        .attr('height', height)
+
+        var tickValues = tickData.map(function(td){return td.seconds});
+
+        var zoom = d3.behavior.zoom()
+                    .x(x)
+                    .scaleExtent([0.1, 10])
+                    .on("zoom", zoomed)
+
+        svgs.call(zoom)
+
+        // svgs.on("dblclick", function(){
+        //               var curr_zoom = zoom.scale()
+
+        //               console.log('curr_zoom: ' + curr_zoom)
+
+        //               zoom.scale(curr_zoom * 10)
+
+        //               console.log('updated_zoomed: ' + zoom.scale())
+
+        //               zoomed()
+        //         });
+
+        var scaleMax = d3.extent([-24, 24])
+
+        var xAxis = d3.svg.axis().scale(x).orient('top')
+                    // .tickValues( function(d,i){
+                    //    if (zoom.scale() > 1 ){
+                    //      return d3.range(scaleMax[0]*2, scaleMax[1]*2).map(function(t) { return t * 60 * 30}) 
+                    //    } else {
+                    //      return d3.range(scaleMax[0], scaleMax[1]).map(function(t) { return t * 60 * 60})
+                    //    }
+                    // })
+                    .tickFormat(function(d, i){
+                     // console.log('zoom: '+ zoom.scale())
+
+                      var hour = Math.floor(d/60/60)
+                      var minute = Math.floor( (d - hour * 60 * 60 ) / 60 )
+                      var seconds = d - hour * 60 * 60 - minute * 60
+
+                      return hour +":"+ d3.format("02d")(minute)
+
+                      // if (zoom.scale() > 1){
+                        
+                      //   if (minute == 0 && seconds == 0)
+                      //     return hour + " h "
+
+                      //   else return hour + "h " + minute + " m"
+
+                      // } else {
+                      //   return hour + "h";           
+                      // }
+
+                    })
+
+        
+        var axis = svgs.append('g')
+            .attr('class', 'x axis')
+            .attr('transform', 'translate(0,' + 30 + ')')
+            .call(xAxis)
+
+
+        var baselines =  svgs.selectAll(".baseline")
+                          .data(STATUS)
+                          .enter();
+
+        var bl = baselines.append('g')
+                          .attr('class', 'baseline');
+
+            bl.append('line')
+                .attr('x1', 0)
+                .attr('y1', function(d,i){ return getLineY(d) })
+                .attr('x2', width) 
+                .attr('y2', function(d,i){ return getLineY(d) });
+
+            bl.append('text')
+                .attr('x', width)
+                .attr('y', function(d,i){ return getLineY(d) })
+                .style("font-size", '0.8em')
+                .attr("text-anchor", 'end')
+                .attr('dy', '-0.5em')
+                .text( function(d){ return d });
+
+
+        var vert_line = svgs.append('g')
+                          .attr('class', 'slaline');
+
+            vert_line.append('line')
+                          .attr('x1', x( 0 ) )
+                          .attr('y1', 0)
+                          .attr('x2', x( 0 ) )
+                          .attr('y2', height)
+
+            vert_line.append('text')
+                          .text('SLA')
+                          .attr("font-size", '0.5em')
+                          .attr("x", x( 0 ) + 5)
+                          .attr("y", height-10)
+
+        // Define the div for the tooltip
+        // var div = d3.select("body").append("div") 
+        //     .attr("class", "tooltip")       
+        //     .style("display", 'none');
+
+        var div = d3.select('#single_tooltip');
+        var multi_tooltip = d3.select('#multi_tooltip');
+
+
+        var overlappedData = []
+
+        var tick = function () {
+
+          return function(){
+
+             // console.log('ticked');
+
+              overlappedData = [];
+
+              selected_checkboxes =[];
+
+              d3.selectAll('input[type=checkbox]')
+                    .each(function(){
+                        //console.log(this.checked)
+                        if (this.checked) {
+                          selected_checkboxes.push(this.value)
+                        }
+                        //return this.checked
+                    })
+              //     .forEach(function(d,i){
+              //         //console.log(i)
+              //         console.log(d[i])
+              //         if(d[i].checked) {
+              //           console.log('checkbox ' + i + " : " + d[i].getAttribute('value'))
+              //           selected_checkboxes.push(d[i].getAttribute('value'))
+              //       }
+              //         // filter by priority
+              // })
+
+              // console.log("selected_checkboxes--------->>>")
+              // // console.log(d3.selectAll('input[type=checkbox]'))
+              // console.log(selected_checkboxes)
+
+              //if (Math.random() > 0.9) { data_gen() };
+
+              keys = d3.nest().key(function(d) { return d.status; })
+                                .sortKeys(function(a,b) { return STATUS.indexOf(a) - STATUS.indexOf(b) })
+                                // .sortKeys(function(a,b) { return PRIORITY.indexOf(a) - PRIORITY.indexOf(b) })
+                                //.sortValues(function(a, b){ return a.timestamp - b.timestamp })
+                                // .rollup(function(d){
+                                //   //console.log('rollup')
+
+                                //   var filtered = d.filter(function(a){ 
+                                //     //console.log(selected_checkboxes.indexOf(a.priority))
+                                //     return selected_checkboxes.indexOf(a.priority) > -1;
+                                //   }) 
+
+                                //   // console.log(selected_checkboxes)
+                                //   // console.log(filtered)
+
+                                //   return filtered;
+                                // })
+                                .sortValues(function(a,b){ return getSLAdiff(a) - getSLAdiff(b)})
+                                .entries(generatedData);
+
+              keys.forEach(function(d,i){
+                  d.values = d.values.filter(function(a){
+                    return selected_checkboxes.indexOf(a.priority) > -1;
+                  })
+              })
+
+              var sections = svgs.selectAll('g.section')
+                            .data(keys);
+
+              sections.enter().append('g')
+                          .attr('class', 'section')
+
+
+              var now = new Date();
+
+              var circles = sections.selectAll('.points')
+                                .data(function(d){return d.values});
+
+                circles.enter().append("circle")
+                    .attr("class", "points")
+                    .attr("r", SINGLE_CIRCLE_RADIUS);
+
+
+                circles.attr("cx", function(d,i){ return   x( getSLAdiff(d) ) })
+                    .attr("cy", function(d){  return getLineY (d.status ) })
+                    .style("fill", function(d){ 
+                          if ( d.status == 'Closed') return SLAcolor(getSLAStatus(d))
+
+                          return priorityColor(d.priority) 
+                          //return SLAcolor( getSLAStatus (d)) 
+                    })
+                    // .style("stroke", function(d) { 
+                    //   return priorityColor(d.priority)
+                    //   //return SLAcolor( getSLAStatus (d) ) 
+                    // })
+                    //  .style("stroke-opacity", 0.4)//function(d){return priorityopa(d.priority) })
+                    //  .style("stroke-width", function(d){
+
+                    //   return SLAopa( getSLAStatus(d) ) * 10
+
+                    //   //return priorityopa(d.priority) * 10 
+                    // })
+                     .on("mouseover", function(d) {     
+                        //console.log("mouseovered")               
+                        div.style('display', 'block');
+
+                        div.select('#status').text(d.status)
+                              .style("color", SLAcolor( getSLAStatus (d)) );
+
+                        div.select('#priority').text(d.priority)
+                              // .style("color", priorityColor(d.priority) );
+
+                        div.select('#alert_source').text(d.alert_source);
+                        div.select('#owner').text(d.owner);
+                        div.select('#timestamp').text( d.timestamp.format('DD MMM h:mm A') );
+
+
+                        div.style("left", (d3.event.pageX) + "px")   
+                            .style("top", (d3.event.pageY - 28) + "px") ;
+                        // div.html(d.priority+ "<br/>"  + 
+                        //     "<a href='#''>" + d.status + "</a> <br/> " +
+                        //     d.timestamp.format('h:mm A') + "<br/>" +
+                        //     d.alert_source + "<br/>" +
+                        //     d.owner + "<br/>"
+                        //     )  
+                        //     .style("left", (d3.event.pageX) + "px")   
+                        //     .style("top", (d3.event.pageY - 28) + "px") 
+                      })
+                      .on("mouseout", function(d){
+                        //console.log("mouseout")
+                        div.style('display', 'none')
+                      })
+                      .on("click", function(d){
+                        window.alert('you can implement your call for details here');
+                      });
+
+
+
+                // check for overlaps
+                sections.each( function(d,i){
+                    
+                    // console.log('section: ' + i )
+                    // console.log(overlappedData)
+                    overlappedData[i] = { key: d.key, groupedCircles: [] }
+
+                    // console.log(i + " section : " + d.key)
+
+                    var curr_section = d3.select(this).selectAll('.points');
+
+                    // console.log(curr_section[0])
+
+                    curr_section.each( function(v, j){
+                      //  console.log('===============')
+                      // console.log(v.eventid)
+                      // console.log(i,j)
+
+                      if (j-1 >= 0 ){
+                        // console.log('last one---------------')
+                        // console.log( d3.select(curr_section[0][j-1]).datum().eventid )
+
+
+                        var overlappedGroup = overlappedWithGroups( curr_section[0][j], overlappedData[i].groupedCircles )
+
+
+                        var overlappedWithLast = circlesOverlapped( curr_section[0][j], curr_section[0][j-1] )
+
+                        // console.log(v.eventid + " & " + d3.select(curr_section[0][j-1]).datum().eventid  + " overlapped? " + overlappedWithLast)
+
+                       // console.log('section: ' + i  + 'j: ' + j + '; overedwith group ' + overlappedGroup + 'overed with last ' + overlappedWithLast)
+
+                        if ( overlappedGroup > -1){
+
+                          overlappedData[i].groupedCircles[overlappedGroup].circles.push(j)
+
+                          
+//                          console.log(overlappedData)
+
+                          var circle_xs = overlappedData[i].groupedCircles[overlappedGroup].circles.map(function(c){ return curr_section[0][c] })
+
+                          // console.log("circles list")
+                          // console.log(circle_xs)
+
+
+                          overlappedData[i].groupedCircles[overlappedGroup].timediff = getMidTime(circle_xs)
+                          overlappedData[i].groupedCircles[overlappedGroup].priority = getMaxPriority(circle_xs)
+
+                          overlappedData[i].groupedCircles[overlappedGroup].status = allClosed ? "Closed"  : "Not Closed"
+                          // console.log('after timediff')
+                          // console.log(overlappedData)
+
+                          //overlappedData[i].groupedCircles[overlappedGroup].x = getMidX()
+
+                          
+                          //console.log( 'circle ' + j + ' overlapped with group: ' + overlappedGroup + ' in overlappedData['+i +']')
+
+                        } else if ( overlappedWithLast ) {
+                            //console.log( '>>>> status index ' + getLineY(STATUS.indexOf(v.status)) )
+
+                            var max_p = getMaxPriority([ curr_section[0][j], curr_section[0][j-1]  ])
+
+                            //console.log(max_p)
+                                                
+                            var status = allClosed ? "Closed"  : "Not Closed"
+
+                            //console.log(status)
+
+                            var biggerCircle = {
+                                timediff: getMidTime ([ curr_section[0][j], curr_section[0][j-1]  ]),
+                                //x: getMidX([ curr_section[0][j], curr_section[0][j-1] ]),
+                                y: getLineY( v.status),
+                                circles: [j-1, j],
+                                status: status,
+                                //status: v.status,
+                                priority: max_p,
+                                timestamp: v.timestamp
+                            }
+
+                          overlappedData[i].groupedCircles.push(biggerCircle)
+
+                          //console.log(overlappedData)
+
+                        }
+
+                      }
+                      
+                      // console.log(i + ' contains ')
+                      //console.log(i + ' -- ' + d3.select(d) )
+                      //console.log(j + ' -- ' + v.eventid )
+                    })
+                })
+
+
+
+                function fadeOutCircles(section_i, circle_i_arr){
+                    // console.log('fadeOutCircles>>>------>>-----')
+                    // console.log(section_i)
+                    // console.log(circle_i_arr)
+                    // console.log(  d3.select(sections[0][section_i]).selectAll('.points') )
+
+                    d3.select(sections[0][section_i]).selectAll('.points')
+                        .each(function(d,i){
+                            //console.log(i + 'included' + circle_i_arr.includes(i))
+                            if (circle_i_arr.includes(i) ) {
+                              //console.log(this)
+                              d3.select(this).attr("class", "points remove")
+                            }
+                        })
+
+
+                    d3.selectAll('.points.remove').remove()
+                    //console.log(filter)
+
+                }
+
+
+                combineBiggerCircles( overlappedData )
+
+                var oCircles = d3.merge(overlappedData.map(function(t){ 
+                                            t.groupedCircles.forEach(function(gc){
+                                              gc.status = t.key
+                                            })
+
+                                            return t.groupedCircles }));
+
+
+                var gcircles = svgs.selectAll('.biggerpoints')
+                                .data( oCircles ) 
+
+                gcircles.enter().append("circle")
+                    .attr("class", "biggerpoints")
+                    .attr("r", GROUP_CIRCLE_RADIUS)
+
+
+                gcircles.attr("cx", function(d,i){ return x(d.timediff) })
+                    .attr("cy", function(d){  return d.y })
+                    .style("fill", function(d){ 
+                          if ( d.status == 'Closed') return SLAcolor(getSLAStatus(d))
+
+                          return priorityColor(d.priority) 
+                          //return SLAcolor( getSLAStatus (d)) 
+                    })
+                    .each(function(d){
+                        //console.log( sections[0][STATUS.indexOf(d.status)].
+
+                        fadeOutCircles( STATUS.indexOf(d.status), d.circles )
+
+                        //combineBiggerCircles( overlappedData )
+                    })
+                    .on("mouseover", function(d) {     
+                        //console.log("mouseovered")               
+                        multi_tooltip.style('display', 'block');
+
+                        //console.log(d)
+                        multi_tooltip.select('#status').text(d.circles)
+
+                        // div.select('#status').text(d.status)
+                        //       .style("color", SLAcolor( getSLAStatus (d)) );
+
+                        // div.select('#priority').text(d.priority)
+                        //       // .style("color", priorityColor(d.priority) );
+
+                        // div.select('#alert_source').text(d.alert_source);
+                        // div.select('#owner').text(d.owner);
+                        // div.select('#timestamp').text( d.timestamp.format('DD MMM h:mm A') );
+
+
+                        multi_tooltip.style("left", (d3.event.pageX) + "px")   
+                            .style("top", (d3.event.pageY - 28) + "px") ;
+                        // div.html(d.priority+ "<br/>"  + 
+                        //     "<a href='#''>" + d.status + "</a> <br/> " +
+                        //     d.timestamp.format('h:mm A') + "<br/>" +
+                        //     d.alert_source + "<br/>" +
+                        //     d.owner + "<br/>"
+                        //     )  
+                        //     .style("left", (d3.event.pageX) + "px")   
+                        //     .style("top", (d3.event.pageY - 28) + "px") 
+                      })
+                      .on("mouseout", function(d){
+                        //console.log("mouseout")
+                        multi_tooltip.style('display', 'none')
+                      })
+                
+                var gText = svgs.selectAll('.biggerText')
+                                .data( oCircles ) 
+
+                  gText.enter().append('text')
+                          .attr('class', 'biggerText')
+                  
+                  gText.attr("x", function(d,i){ return x(d.timediff) })
+                          .attr("y", function(d){  return d.y })
+                          .attr("dx", -GROUP_CIRCLE_RADIUS/3)
+                          .attr("dy", GROUP_CIRCLE_RADIUS/3)
+                          .attr("font-size", GROUP_CIRCLE_RADIUS)
+                          .attr("fill", "#fff")
+                          .text(function(d){ return d.circles.length })
+
+                // var pulses = svgs.selectAll('.pulses')
+                //                   .data( generatedData.filter(function(v){
+                //                     return getSLAStatus(v) == "PAST" } ))
+
+
+                // pulses.enter().append("circle")
+                //     .attr("class", "pulses")
+                //     .attr("stroke", function(d){ 
+                //       return priorityColor(d.priority)
+                //       //return SLAcolor( getSLAStatus(d) )
+                //     })
+                //     .attr("stroke-width", 4)
+                //     .attr("fill", "none")
+
+                // pulseLoop()
+
+                // function pulseLoop(){
+                //     pulses.attr("cx", function(d){ return  x( getSLAdiff(d) )  })
+                //       .attr("cy", function(d){  return getLineY (d.status ) })
+                //     // .transition()
+                //     //   .duration(200)
+                //       .attr("r", 4)
+                //       .attr("stroke-opacity", 0.8)
+                //     .transition()
+                //       .duration(800)
+                //       .ease('cubic-out')
+                //       .attr("r", 15)
+                //       .attr("stroke-opacity", 0)
+                //       .attr("stroke-width", 1)
+                //       .each('end', pulseLoop)
+
+                // }
+
+
+                // circles.filter( function(d){ return getSLAStatus(d) === "PAST" })
+                //     .transition()
+                //       .duration(200)
+                //       .ease('cubic-in')
+                //       //.style('fill-opacity', 0.7)
+                //       .attr('r', 6)
+                //     .transition()
+                //       .duration(200)
+                //       .ease('cubic-out')
+                //       .attr('r', 5)
+                //       //.attr('fill-opacity', 1)
+
+
+//                         console.log( x(getSLAStatus (d)) )
+
+
+                
+
+
+                circles.exit().remove()
+                gcircles.exit().remove()
+                gText.exit().remove()
+
+
+                // d3.timer( tick(), 2000)
+                // return true;
+
+          }
+
+
+        }
+
+      function zoomed() {
+        svgs.select("g.x.axis").call(xAxis);
+
+        vert_line.select('line')
+                  .attr('x1', x(0))
+                  .attr('x2', x(0))
+
+        vert_line.select('text')
+                  .attr('x', x(0) + 5)
+
+        tick()();
+
+      }
+
+      tick()();
+
+       //d3.timer( tick(), 2000)
+        
+
+        </script>
+    </body>
+</html>

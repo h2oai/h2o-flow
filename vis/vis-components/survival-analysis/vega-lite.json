@@ -1,0 +1,42 @@
+{
+  "description": "A error bar plot showing mean, min, and max in the US population distribution of age groups in 2000.",
+  "width": 300,
+  "height": 300,
+  "data": {"url": "data/population.json"},
+  "transform": {"filter": "datum.year == 2000"},
+  "layers": [
+    {
+      "mark": "area",
+      "encoding": {
+        "x": {"field": "age","type": "ordinal"},
+        "y": {
+          "aggregate": "min",
+          "field": "people",
+          "type": "quantitative",
+          "axis": {"title": "population"} 
+        },
+        "y2": {
+          "aggregate": "max",
+          "field": "people",
+          "type": "quantitative"
+        },
+        "color": {"value": "#4A90E2"}
+      },
+      "config": {"mark": {"fillOpacity": 0.2}}
+    },
+    {
+      "mark": "line",
+      "encoding": {
+        "x": {"field": "age","type": "ordinal"},
+        "y": {
+          "aggregate": "mean",
+          "field": "people",
+          "type": "quantitative",
+          "axis": {"title": "population" }
+        },
+        "color": {"value": "#4A90E2"}
+      },
+      "config": {"mark": {"opacity": 0.7,"strokeWidth": 1}}
+    }
+  ]
+}
