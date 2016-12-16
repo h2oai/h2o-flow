@@ -1,4 +1,4 @@
-Flow.Coffeescript = (_, guid, sandbox) ->
+Flow.PythonCell = (_, guid, sandbox) ->
   _kernel = Flow.CoffeescriptKernel
 
   print = (arg) ->
@@ -58,4 +58,5 @@ Flow.Coffeescript = (_, guid, sandbox) ->
 
   render.isCode = yes
   render
+
 

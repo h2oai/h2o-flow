@@ -1836,6 +1836,51 @@ H2O.Routines = (_) ->
   getScalaIntp = ->
     _fork requestScalaIntp
 
+  # Python Bindings
+  # requestPythonCode = (session_id, code, go) ->
+  #   _.requestPythonCode session_id, code,  (error, result) ->
+  #     if error
+  #       go error
+  #     else
+  #       go null, extendPythonCode result
+
+  # extendPythonCode = (result) ->
+  #   render_ result, H2O.PythonCodeOutput, result
+  #   result
+
+  runPythonCode = (session_id, code) ->
+    _fork requestPythonCode, session_id, code
+
+  requestPythonCode = (session_id, code, go) ->
+    future = _.python_session.kernel.requestExecute({ code: code })
+    future.onIOPub = (msg) ->
+      console.log(msg.content)
+      console.log(msg)
+
+      if msg.msg_type == "execute_result"
+        result = { output: msg.content.data['text/plain'] }
+        render_ result, H2O.PythonCodeOutput, result
+        go null, result
+      #TODO: go error handling
+
+    future.onDone = -> 
+      console.log(arguments)
+
+  # requestPythonIntp = (go) ->
+  #   _.requestPythonIntp (error, result) ->
+  #     if error
+  #       go error
+  #     else
+  #       go null, extendPythonIntp result
+
+  # extendPythonIntp = (result) ->
+  #   render_ result, H2O.PythonIntpOutput, result
+  #   result
+
+  # getPythonIntp = ->
+  #   _fork requestPythonIntp
+
+
   requestProfile = (depth, go) ->
     _.requestProfile depth, (error, profile) ->
       if error
@@ -2014,5 +2059,10 @@ H2O.Routines = (_) ->
       asDataFrame: asDataFrame
     for attrname of routinesOnSw
       routines[attrname] = routinesOnSw[attrname]
+
+  # Python 
+  if _.hasPythonBackend
+      routines.runPythonCode = runPythonCode
+
   routines
 

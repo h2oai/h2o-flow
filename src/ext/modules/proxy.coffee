@@ -593,6 +593,8 @@ H2O.Proxy = (_) ->
     else
       doPost "/3/h2oframes/#{hf_id}/dataframe", {dataframe_id: name}, go
 
+  requestPythonCode = (session_id, code, go) ->
+    doPost "/3/scalaint/#{session_id}", {code: code}, go
 
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame

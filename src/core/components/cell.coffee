@@ -43,7 +43,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
   # tied to mouse-clicks in the outline view
   navigate = ->
     _.selectCell self
-    return yes # Explicity return true, otherwise KO will prevent the mouseclick event from bubbling up
+    return yes # Explicitly return true, otherwise KO will prevent the mouseclick event from bubbling up
 
 
   # tied to mouse-double-clicks on html content
@@ -87,6 +87,16 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
       input = input.replace(/\n/g, '\\n')
       # pass the cell body as an argument, representing the scala code, to the appropriate function
       input = 'runScalaCode ' + _.scalaIntpId() + ', \'' + input + '\''
+
+    if _type() == 'py'
+      # escape backslashes
+      input = input.replace(/\\/g,'\\\\')
+      # escape quotes
+      input = input.replace(/'/g,'\\\'')
+      # escape new-lines
+      input = input.replace(/\n/g, '\\n')
+      # pass the cell body as an argument, representing the scala code, to the appropriate function
+      input = 'runPythonCode ' + _.pythonInterpreterHandle + ', \'' + input + '\''
 
     render input,
       data: (result) ->

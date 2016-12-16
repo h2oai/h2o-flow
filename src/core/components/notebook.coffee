@@ -8,6 +8,7 @@ Flow.Renderers = (_, _sandbox) ->
   md: -> Flow.Markdown _
   cs: (guid) -> Flow.Coffeescript _, guid, _sandbox
   sca: (guid) -> Flow.Coffeescript _, guid, _sandbox
+  py: (guid) -> Flow.Coffeescript _, guid, _sandbox
   raw: -> Flow.Raw _
 
 Flow.Notebook = (_, _renderers) ->
@@ -38,7 +39,7 @@ Flow.Notebook = (_, _renderers) ->
   _about = Flow.About _
   _dialogs = Flow.Dialogs _
 
-  # initialize the interpreter when the notebook is created
+  # initialize the interpreters when the notebook is created
   # one interpreter is shared by all scala cells
   _initializeInterpreter = ->
     _.requestScalaIntp (error,response) ->
@@ -47,6 +48,15 @@ Flow.Notebook = (_, _renderers) ->
         _.scalaIntpId -1
       else
         _.scalaIntpId response.session_id
+
+  # initialize the interpreters when the notebook is created
+  # one interpreter is shared by all python cells
+  _initializePythonInterpreter = ->
+    _.requestPythonInterpreter (error, response) ->
+      if error
+        _.pythonInterpreterHandle -1
+      else
+        _.pythonInterpreterHandle response.session_id
 
   serialize = ->
     cells = for cell in _cells()
@@ -127,6 +137,9 @@ Flow.Notebook = (_, _renderers) ->
   convertCellToScala = ->
     _selectedCell.type 'sca'
 
+  convertCellToPython = ->
+    _selectedCell.type 'py'
+
   copyCell = ->
     _clipboardCell = _selectedCell
 
@@ -151,7 +164,7 @@ Flow.Notebook = (_, _renderers) ->
         selectCell cells[_selectedCellIndex]
       _.saveClip 'trash', removedCell.type(), removedCell.input() if removedCell
     return
-    
+
   insertCell = (index, cell) ->
     splice _cells, index, 0, cell
     selectCell cell
@@ -183,6 +196,12 @@ Flow.Notebook = (_, _renderers) ->
 
   insertNewScalaCellBelow = ->
     insertBelow createCell 'sca'
+
+  insertNewPythonCellAbove = ->
+    insertAbove createCell 'py'
+
+  insertNewPythonCellBelow = ->
+    insertBelow createCell 'py'
 
   insertCellAboveAndRun = (type, input) ->
     cell = insertAbove createCell type, input
@@ -234,6 +253,7 @@ Flow.Notebook = (_, _renderers) ->
           left = substr input, 0, cursorPosition
           right = substr input, cursorPosition
           _selectedCell.input left
+          # FIXME: split the cell should keep the cell type
           insertCell _selectedCellIndex + 1, createCell 'cs', right
           _selectedCell.isActive yes
     return
@@ -581,8 +601,18 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Insert Scala Cell Above', insertNewScalaCellAbove
         createMenuItem 'Insert Scala Cell Below', insertNewScalaCellBelow
         ]
+
+  menuCellPython = [
+        menuDivider
+        createMenuItem 'Insert Python Cell Above', insertNewPythonCellAbove
+        createMenuItem 'Insert Python Cell Below', insertNewPythonCellBelow
+        ]
+
   if _.onSparklingWater
     menuCell = [menuCell..., menuCellSW...]
+
+  if _.onIPython
+    menuCell = [menuCell..., menuCellIPython...]
 
   initializeMenus = (builder) ->
     modelMenuItems = map(builder, (builder) ->
@@ -771,6 +801,8 @@ Flow.Notebook = (_, _renderers) ->
   if _.onSparklingWater
     normalModeKeyboardShortcuts.push [ 'q', 'to Scala', convertCellToScala ]
 
+  if _.hasPythonBackend
+    normalModeKeyboardShortcuts.push [ 'q', 'to Python', convertCellToPython ]
 
 
   # 
@@ -845,8 +877,12 @@ Flow.Notebook = (_, _renderers) ->
     do (executeCommand 'assist')
 
     _.setDirty() #TODO setPristine() when autosave is implemented.
+
     if _.onSparklingWater
       _initializeInterpreter()
+
+    if _.onIPython
+      _initializePythonInterpreter()
 
   link _.ready, initialize
 

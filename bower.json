@@ -27,7 +27,9 @@
     "src",
     "tools"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "services": "jupyterlab/services#^0.34.2"
+  },
   "devDependencies": {
     "jquery": "~2.1.0",
     "d3": "~3.5.2",

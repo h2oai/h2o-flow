@@ -82,3 +82,4 @@ H2O.ApplicationContext = (_) ->
   _.requestAsH2OFrameFromRDD = do slot
   _.requestAsH2OFrameFromDF = do slot
   _.requestAsDataFrame = do slot
+

@@ -1,7 +1,7 @@
-H2O.PythonIntpOutput = (_, _go, _result) ->
-  _pythonIntpView = signal null
+H2O.ScalaIntpOutput = (_, _go, _result) ->
+  _scalaIntpView = signal null
 
-  createPythonIntpView = (result) ->
+  createScalaIntpView = (result) ->
     session_id: result.session_id
 
   _scalaIntpView (createScalaIntpView _result)

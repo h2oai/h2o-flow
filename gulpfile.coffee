@@ -67,7 +67,7 @@ config =
       'lib/codemirror/lib/codemirror.js'
       'lib/codemirror/mode/clike/clike.js'
       'lib/codemirror/addon/edit/matchbrackets.js'
-
+      'vendor/jupyter-services.js'
     ]
     css: [
       'fonts/lato/fonts.css'

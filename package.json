@@ -69,5 +69,7 @@
     "uglify-js": "~2.4.13",
     "watchy": "~0.4.3"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@jupyterlab/services": "^0.34.2"
+  }
 }
