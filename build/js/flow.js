@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.54';
+    Flow.Version = '0.4.55';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -12477,6 +12477,7 @@
         if (prediction) {
             switch ((_ref = prediction.__meta) != null ? _ref.schema_type : void 0) {
             case 'ModelMetricsBinomial':
+            case 'ModelMetricsBinomialGLM':
                 if (table = _.inspect('Prediction - Metrics for Thresholds', prediction)) {
                     renderPlot('ROC Curve', prediction, _.plot(function (g) {
                         return g(g.path(g.position('fpr', 'tpr')), g.line(g.position(g.value(1), g.value(0)), g.strokeColor(g.value('red'))), g.from(table), g.domainX_HACK(0, 1), g.domainY_HACK(0, 1));
