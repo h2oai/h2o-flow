@@ -17,7 +17,22 @@
         th
           label Frame:
         td
-          select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
+          select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}")
+      tr 
+        th 
+          label Columns:
+        td
+          table
+            tbody
+              // ko foreach:columns
+              tr
+                td
+                  label
+                    input(type='checkbox' data-bind='checked:isSelected')
+                    span(data-bind='text:value')
+                td.flow-narrow.flow-aside(data-bind='text:type')
+                td.flow-narrow.flow-aside(data-bind='text:missingLabel')
+              // /ko
       tr
         th nbins
         td
