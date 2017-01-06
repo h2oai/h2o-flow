@@ -32,7 +32,7 @@ Phantom JS refuses to run on OSX Yosemite, and requires [this fix](https://githu
 ### Testing a new Flow Feature with Sparkling Water  
 
 Flow can also be used with [Sparkling Water](https://github.com/h2oai/sparkling-water)  
-Follow this guide develop and test new Sparkling Water features in Flow.
+Follow this guide develop and test new Sparkling Water features in Flow.  
 adapted from the comments on this PR https://github.com/h2oai/h2o-flow/pull/13  
 
 ##### copy built js files from one place to another  
