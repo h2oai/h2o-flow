@@ -53,8 +53,8 @@ in `sparkling-water` directory run:
 
 in the sparkling water shell  
 at the `scala>` prompt run:  
-`import org.apache.spark.h2o._` 
-`H2OContext.getOrCreate(sc)`
+`import org.apache.spark.h2o._`  
+`H2OContext.getOrCreate(sc)`  
 
 now open Flow at the IP address specified  
 in the sparkling water shell  
