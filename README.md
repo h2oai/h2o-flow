@@ -28,3 +28,35 @@ Phantom JS refuses to run on OSX Yosemite, and requires [this fix](https://githu
 
     brew install upx
     upx -d bin/phantomjs
+
+### Testing a new Flow Feature with Sparkling Water  
+
+Flow can also be used with [Sparkling Water](https://github.com/h2oai/sparkling-water)
+Follow this guide develop and test new Sparkling Water features in Flow.
+adapted from the comments on this PR https://github.com/h2oai/h2o-flow/pull/13  
+
+##### copy built js files from one place to another  
+in the `h2o-3` directory run:  
+`cp h2o-web/src/main/resources/www/flow/js/* h2o-web/lib/h2o-flow/build/js/`  
+
+##### build h2o-3  
+in the `h2o-3` directory run:  
+`./gradlew publishToMavenLocal -x test`  
+
+##### build sparkling water  
+in `sparkling-water` directory run:  
+`./gradlew clean build -x test -x integTest`  
+
+##### open the Sparkling Water Shell  
+in `sparkling-water` directory run:  
+`bin/sparkling-shell`  
+
+in the sparkling water shell  
+at the `scala>` prompt run:  
+`import org.apache.spark.h2o._` 
+`H2OContext.getOrCreate(sc)`
+
+now open Flow at the IP address specified  
+in the sparkling water shell  
+
+now test your changes in Flow  
