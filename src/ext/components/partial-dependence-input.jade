@@ -21,18 +21,19 @@
       tr 
         th 
           label Columns:
-        td
-          table
-            tbody
-              // ko foreach:columns
-              tr
-                td
-                  label
-                    input(type='checkbox' data-bind='checked:isSelected')
-                    span(data-bind='text:value')
-                td.flow-narrow.flow-aside(data-bind='text:type')
-                td.flow-narrow.flow-aside(data-bind='text:missingLabel')
-              // /ko
+        td(colspan='2')
+          div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
+            table
+              tbody
+                // ko foreach:columns
+                tr
+                  td
+                    label
+                      input(type='checkbox' data-bind='checked:isSelected')
+                      span(data-bind='text:value')
+                  td.flow-narrow.flow-aside(data-bind='text:type')
+                  td.flow-narrow.flow-aside(data-bind='text:missingLabel')
+                // /ko
       tr
         th nbins
         td
