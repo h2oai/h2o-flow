@@ -18,9 +18,20 @@
           label Frame:
         td
           select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}")
-      tr 
+      tr
+        th nbins
+        td
+          input.flow-textbox(type='text' data-bind="value:nbins")
+        td How many levels should PDP compute. More levels will make it slower.
+      tr
+        th
+          label Custom columns?
+        td 
+          input(type='checkbox' data-bind='checked:useCustomColumns')
+        td When not selected - PDP uses the top 10 variables by default.
+      tr(data-bind='visible:useCustomColumns')
         th 
-          label Columns:
+          label Select columns:
         td(colspan='2')
           div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
             table
@@ -34,11 +45,7 @@
                   td.flow-narrow.flow-aside(data-bind='text:type')
                   td.flow-narrow.flow-aside(data-bind='text:missingLabel')
                 // /ko
-      tr
-        th nbins
-        td
-          input.flow-textbox(type='text' data-bind="value:nbins")
-        td How many levels should PDP compute. More levels will make it slower.
+      
       tr
         th
           label Actions:

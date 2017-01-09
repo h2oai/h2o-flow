@@ -6,6 +6,7 @@ H2O.PartialDependenceInput = (_, _go) ->
   _models = signals []
   _selectedModel = signals null
   _selectedFrame = signal null
+  _useCustomColumns = signal no
   _columns = signal []
   _nbins = signal 20
   
@@ -81,6 +82,7 @@ H2O.PartialDependenceInput = (_, _go) ->
   selectedModel: _selectedModel
   selectedFrame: _selectedFrame
   columns: _columns
+  useCustomColumns: _useCustomColumns
   nbins: _nbins
   compute: _compute
   updateColumns: _updateColumns
