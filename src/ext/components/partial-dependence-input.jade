@@ -11,12 +11,12 @@
       tr
         th
           label Model:
-        td
+        td(colspan='2')
           select(data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'")
       tr
         th
           label Frame:
-        td
+        td(colspan='2')
           select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}")
       tr
         th nbins
@@ -28,7 +28,7 @@
           label Custom columns?
         td 
           input(type='checkbox' data-bind='checked:useCustomColumns')
-        td When not selected - PDP uses the top 10 variables by default.
+        td When not selected - PDP uses the top 10 features sorted by variable importance.
       tr(data-bind='visible:useCustomColumns')
         th 
           label Select columns:
@@ -45,7 +45,16 @@
                   td.flow-narrow.flow-aside(data-bind='text:type')
                   td.flow-narrow.flow-aside(data-bind='text:missingLabel')
                 // /ko
-      
+
+          table(style='margin-bottom:10px;width:100%')
+            tbody
+              tr
+                td
+                  +button('All', 'check-square-o', 'selectFiltered', 'hasFilteredItems')
+                  +button('None', 'square-o', 'deselectFiltered', 'hasFilteredItems')
+                //- td(style='text-align:right')
+                //-   +button('Previous 100', 'arrow-left', 'goToPreviousPage', 'canGoToPreviousPage')
+                //-   +button('Next 100', 'arrow-right', 'goToNextPage', 'canGoToNextPage')
       tr
         th
           label Actions:

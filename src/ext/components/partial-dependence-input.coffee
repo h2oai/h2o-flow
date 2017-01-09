@@ -9,7 +9,39 @@ H2O.PartialDependenceInput = (_, _go) ->
   _useCustomColumns = signal no
   _columns = signal []
   _nbins = signal 20
-  
+
+
+  # search & filter functionalities
+  _selectionCount = signal 0
+
+  _isUpdatingSelectionCount = no
+
+  blockSelectionUpdates = (f) ->
+    _isUpdatingSelectionCount = yes
+    f()
+    _isUpdatingSelectionCount = no
+
+  incrementSelectionCount = (amount) ->
+    _selectionCount _selectionCount() + amount
+
+  _hasFilteredItems = lift _columns, (entries) -> entries.length > 0
+
+  changeSelection = (source, value) ->
+    for entry in source
+      entry.isSelected value
+    return
+
+  selectFiltered = ->
+    entries = _columns()
+    blockSelectionUpdates -> changeSelection entries, yes
+    _selectionCount entries.length
+
+  deselectFiltered = ->
+    blockSelectionUpdates -> changeSelection _columns(), no
+    _selectionCount 0
+
+
+  #end of search & filter functionalities  
 
   # a conditional check that makes sure that 
   # all fields in the form are filled in
@@ -22,11 +54,11 @@ H2O.PartialDependenceInput = (_, _go) ->
 
     # parameters are selections from Flow UI
     # form dropdown menus, text boxes, etc
-
-    console.log(_columns().length)
+    console.log("computing....columns")
+    console.log(_columns())
     cols = ""
 
-    for col in _columns() when col.isSelected
+    for col in _columns() when col.isSelected()
       cols = cols + "\"" + col.value + "\","
 
     if cols != ""
@@ -53,7 +85,16 @@ H2O.PartialDependenceInput = (_, _go) ->
             columnValues = map frame.columns, (column) -> column.label
             columnLabels = map frame.columns, (column) -> 
               missingPercent = 100 * column.missing_count / frame.rows
-              isSelected: false
+              isSelected = signal no
+              react isSelected, (isSelected) -> 
+                unless _isUpdatingSelectionCount
+                  if isSelected
+                    incrementSelectionCount 1
+                  else
+                    incrementSelectionCount -1
+                return
+
+              isSelected: isSelected
               type: if column.type is 'enum' then "enum(#{column.domain_cardinality})" else column.type
               value: column.label
               missingPercent: missingPercent
@@ -92,6 +133,11 @@ H2O.PartialDependenceInput = (_, _go) ->
   compute: _compute
   updateColumns: _updateColumns
   canCompute: _canCompute
+
+  #search & filter functionalities of column selector
+  hasFilteredItems: _hasFilteredItems
+  selectFiltered: selectFiltered
+  deselectFiltered: deselectFiltered
 
   template: 'flow-partial-dependence-input'
 
