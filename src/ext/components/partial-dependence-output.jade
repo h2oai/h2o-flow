@@ -4,21 +4,26 @@
   .flow-margin-after
     table.flow-form
       tbody
-        tr
-          th.flow-narrow ID:
-          td.flow-wide(data-bind='text:destinationKey')
+        //- #temp taken out until REST API bug fixed to return destination key
+        //- tr
+        //-   th.flow-narrow ID:
+        //-   td.flow-wide(data-bind='text:destinationKey')
         tr
           th.flow-narrow Model ID:
           td.flow-wide(data-bind='text:modelId')
         tr
           th.flow-narrow Frame ID:
           td.flow-wide(data-bind='text:frameId')
+        tr
+          th.flow-narrow Show PDP Data?
+          td
+            input(type='checkbox', data-bind='checked:isFrameShown')
   
   // ko foreach:plots
-  h4(data-bind='text:title, collapse:true')
+  h4(data-bind='text:title, collapse:false')
   div
     .flow-plot(data-bind='raw:plot')
-    .flow-plot(data-bind='raw:frame')
+    .flow-plot(data-bind='raw:frame, visible:isFrameShown')
 
   // /ko
 

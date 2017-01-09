@@ -23,10 +23,15 @@ H2O.PartialDependenceInput = (_, _go) ->
     # parameters are selections from Flow UI
     # form dropdown menus, text boxes, etc
 
-    cols = "["
+    console.log(_columns().length)
+    cols = ""
+
     for col in _columns() when col.isSelected
       cols = cols + "\"" + col.value + "\","
-    cols = cols + "]"
+
+    if cols != ""
+      cols ="[" + cols + "]"
+
     console.log(cols)
 
     opts =

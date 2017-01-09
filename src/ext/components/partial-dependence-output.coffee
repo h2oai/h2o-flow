@@ -3,6 +3,7 @@ H2O.PartialDependenceOutput = (_, _go, _result) ->
   _destinationKey = _result.destination_key
   _modelId = _result.model_id.name
   _frameId = _result.frame_id.name
+  _isFrameShown = signal no
 
   renderPlot = (target, render) ->
     render (error, vis) ->
@@ -21,6 +22,7 @@ H2O.PartialDependenceOutput = (_, _go, _result) ->
         title: "#{x} vs #{y}"
         plot: signal null
         frame: signal null
+        isFrameShown: signal no
 
       renderPlot section.plot, _.plot (g) ->
         g(
@@ -40,6 +42,8 @@ H2O.PartialDependenceOutput = (_, _go, _result) ->
           g.from table
         )
 
+      section.isFrameShown = lift _isFrameShown, (value)-> value
+
   # _partialDependencePlots = map _result.partial_dependence_data, (item) ->
   # 	description: item.columns[0].description
   # 	plot: item.data
@@ -56,6 +60,7 @@ H2O.PartialDependenceOutput = (_, _go, _result) ->
   modelId: _modelId
   frameId: _frameId
   plots: _plots
+  isFrameShown: _isFrameShown
   viewFrame: _viewFrame
   template: 'flow-partial-dependence-output'
 
