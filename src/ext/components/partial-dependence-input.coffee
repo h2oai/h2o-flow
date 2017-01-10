@@ -12,6 +12,16 @@ H2O.PartialDependenceInput = (_, _go) ->
 
 
   # search & filter functionalities
+
+  _visibleItems = signal []
+
+  MaxItemsPerPage = 100
+
+  _currentPage = signal 0
+  _maxPages = lift _columns, (entries) -> Math.ceil entries.length / MaxItemsPerPage
+  _canGoToPreviousPage = lift _currentPage, (index) -> index > 0
+  _canGoToNextPage = lift _maxPages, _currentPage, (maxPages, index) -> index < maxPages - 1
+
   _selectionCount = signal 0
 
   _isUpdatingSelectionCount = no
@@ -25,6 +35,12 @@ H2O.PartialDependenceInput = (_, _go) ->
     _selectionCount _selectionCount() + amount
 
   _hasFilteredItems = lift _columns, (entries) -> entries.length > 0
+
+
+  filterItems = ->
+    start = _currentPage() * MaxItemsPerPage
+    _visibleItems _columns().slice start, start + MaxItemsPerPage
+
 
   changeSelection = (source, value) ->
     for entry in source
@@ -40,7 +56,17 @@ H2O.PartialDependenceInput = (_, _go) ->
     blockSelectionUpdates -> changeSelection _columns(), no
     _selectionCount 0
 
-
+  goToPreviousPage = ->
+    if _canGoToPreviousPage()
+      _currentPage _currentPage() - 1
+      filterItems()
+    return
+  
+  goToNextPage = ->
+    if _canGoToNextPage()
+      _currentPage _currentPage() + 1
+      filterItems()
+    return
   #end of search & filter functionalities  
 
   # a conditional check that makes sure that 
@@ -106,6 +132,10 @@ H2O.PartialDependenceInput = (_, _go) ->
 
             _columns columnLabels
 
+            # reset page to first page
+            _currentPage = signal 0
+            filterItems()
+
   _.requestFrames (error, frames) ->
     if error
       _exception new Flow.Error 'Error fetching frame list.', error
@@ -128,6 +158,7 @@ H2O.PartialDependenceInput = (_, _go) ->
   selectedModel: _selectedModel
   selectedFrame: _selectedFrame
   columns: _columns
+  visibleItems: _visibleItems
   useCustomColumns: _useCustomColumns
   nbins: _nbins
   compute: _compute
@@ -138,6 +169,11 @@ H2O.PartialDependenceInput = (_, _go) ->
   hasFilteredItems: _hasFilteredItems
   selectFiltered: selectFiltered
   deselectFiltered: deselectFiltered
+  goToPreviousPage: goToPreviousPage
+  goToNextPage: goToNextPage
+  canGoToPreviousPage: _canGoToPreviousPage
+  canGoToNextPage: _canGoToNextPage
+
 
   template: 'flow-partial-dependence-input'
 

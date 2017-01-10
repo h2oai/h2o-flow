@@ -36,7 +36,7 @@
           div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
             table
               tbody
-                // ko foreach:columns
+                // ko foreach:visibleItems
                 tr
                   td
                     label
@@ -52,9 +52,9 @@
                 td
                   +button('All', 'check-square-o', 'selectFiltered', 'hasFilteredItems')
                   +button('None', 'square-o', 'deselectFiltered', 'hasFilteredItems')
-                //- td(style='text-align:right')
-                //-   +button('Previous 100', 'arrow-left', 'goToPreviousPage', 'canGoToPreviousPage')
-                //-   +button('Next 100', 'arrow-right', 'goToNextPage', 'canGoToNextPage')
+                td(style='text-align:right')
+                  +button('Previous 100', 'arrow-left', 'goToPreviousPage', 'canGoToPreviousPage')
+                  +button('Next 100', 'arrow-right', 'goToNextPage', 'canGoToNextPage')
       tr
         th
           label Actions:
