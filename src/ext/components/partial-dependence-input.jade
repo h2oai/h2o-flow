@@ -33,6 +33,9 @@
         th 
           label Select columns:
         td(colspan='2')
+          div(style='height:25px')
+            input.flow-textbox(type='text' placeholder='Search...' data-bind="value:searchTerm, valueUpdate:'afterkeydown'")
+          div(style='font-size:80%' data-bind='text:searchCaption')
           div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
             table
               tbody

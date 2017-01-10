@@ -14,6 +14,7 @@ H2O.PartialDependenceInput = (_, _go) ->
   # search & filter functionalities
 
   _visibleItems = signal []
+  _filteredItems = signal []
 
   MaxItemsPerPage = 100
 
@@ -25,6 +26,15 @@ H2O.PartialDependenceInput = (_, _go) ->
   _selectionCount = signal 0
 
   _isUpdatingSelectionCount = no
+
+  _searchTerm = signal ''
+  _searchCaption = lift _columns, _filteredItems, _selectionCount, _currentPage, _maxPages, (entries, filteredItems, selectionCount, currentPage, maxPages) ->
+    caption = if maxPages is 0 then '' else "Showing page #{currentPage + 1} of #{maxPages}."
+    if filteredItems.length isnt entries.length
+      caption += " Filtered #{filteredItems.length} of #{entries.length}."
+    if selectionCount isnt 0
+      caption += " #{selectionCount} selected for PDP calculations."
+    caption
 
   blockSelectionUpdates = (f) ->
     _isUpdatingSelectionCount = yes
@@ -173,6 +183,8 @@ H2O.PartialDependenceInput = (_, _go) ->
   goToNextPage: goToNextPage
   canGoToPreviousPage: _canGoToPreviousPage
   canGoToNextPage: _canGoToNextPage
+  searchTerm: _searchTerm
+  searchCaption: _searchCaption
 
 
   template: 'flow-partial-dependence-input'
