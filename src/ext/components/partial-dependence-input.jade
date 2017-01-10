@@ -1,6 +1,10 @@
 .flow-widget
   +subtitle('Partial Dependence', 'link')
 
+  // ko if:exception
+  div(data-bind="template: { name:'flow-failure', data:exception }")
+  // /ko
+
   table.flow-form
     tbody
       tr

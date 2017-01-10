@@ -1,5 +1,5 @@
 H2O.PartialDependenceInput = (_, _go) ->
-  _exception = signal null #TODO display in .jade
+  _exception = signal null 
   _destinationKey = signal "ppd-#{Flow.Util.uuid()}"
 
   _frames = signals []
@@ -12,7 +12,6 @@ H2O.PartialDependenceInput = (_, _go) ->
 
 
   # search & filter functionalities
-
   _visibleItems = signal []
   _filteredItems = signal []
 
@@ -48,7 +47,6 @@ H2O.PartialDependenceInput = (_, _go) ->
 
 
   filterItems = ->
-    console.log("filtering items called")
     searchTerm = _searchTerm().trim()
 
     filteredItems = []
@@ -61,12 +59,12 @@ H2O.PartialDependenceInput = (_, _go) ->
       unless hide
         filteredItems.push entry
 
-    console.log(filteredItems)
     _filteredItems filteredItems
 
     start = _currentPage() * MaxItemsPerPage
     _visibleItems _filteredItems().slice start, start + MaxItemsPerPage
 
+  # when searchterm changes, filterItems is called
   react _searchTerm, throttle filterItems, 500
   
   changeSelection = (source, value) ->
@@ -74,22 +72,22 @@ H2O.PartialDependenceInput = (_, _go) ->
       entry.isSelected value
     return
 
-  selectFiltered = ->
+  _selectFiltered = ->
     entries = _filteredItems()
     blockSelectionUpdates -> changeSelection entries, yes
     _selectionCount entries.length
 
-  deselectFiltered = ->
+  _deselectFiltered = ->
     blockSelectionUpdates -> changeSelection _columns(), no
     _selectionCount 0
 
-  goToPreviousPage = ->
+  _goToPreviousPage = ->
     if _canGoToPreviousPage()
       _currentPage _currentPage() - 1
       filterItems()
     return
   
-  goToNextPage = ->
+  _goToNextPage = ->
     if _canGoToNextPage()
       _currentPage _currentPage() + 1
       filterItems()
@@ -107,8 +105,6 @@ H2O.PartialDependenceInput = (_, _go) ->
 
     # parameters are selections from Flow UI
     # form dropdown menus, text boxes, etc
-    console.log("computing....columns")
-    console.log(_columns())
     cols = ""
 
     for col in _columns() when col.isSelected()
@@ -116,8 +112,6 @@ H2O.PartialDependenceInput = (_, _go) ->
 
     if cols != ""
       cols ="[" + cols + "]"
-
-    console.log(cols)
 
     opts =
       destination_key: _destinationKey()
@@ -153,14 +147,11 @@ H2O.PartialDependenceInput = (_, _go) ->
               missingPercent: missingPercent
               missingLabel: if missingPercent is 0 then '' else "#{round missingPercent}% NA"
 
-            console.log("frame updated:" + _selectedFrame() )
-            console.log(columnValues)
-            console.log(columnLabels)
-
             _columns columnLabels
 
-            # reset page to first page
-            _currentPage = signal 0
+            #reset filtered views
+            _currentPage 0
+            _searchTerm ''
             filterItems()
 
   _.requestFrames (error, frames) ->
@@ -179,6 +170,7 @@ H2O.PartialDependenceInput = (_, _go) ->
 
   defer _go
 
+  exception:_exception
   destinationKey: _destinationKey
   frames: _frames
   models: _models
@@ -194,10 +186,10 @@ H2O.PartialDependenceInput = (_, _go) ->
 
   #search & filter functionalities of column selector
   hasFilteredItems: _hasFilteredItems
-  selectFiltered: selectFiltered
-  deselectFiltered: deselectFiltered
-  goToPreviousPage: goToPreviousPage
-  goToNextPage: goToNextPage
+  selectFiltered: _selectFiltered
+  deselectFiltered: _deselectFiltered
+  goToPreviousPage: _goToPreviousPage
+  goToNextPage: _goToNextPage
   canGoToPreviousPage: _canGoToPreviousPage
   canGoToNextPage: _canGoToNextPage
   searchTerm: _searchTerm
