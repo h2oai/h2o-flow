@@ -19,7 +19,7 @@ H2O.PartialDependenceInput = (_, _go) ->
   MaxItemsPerPage = 100
 
   _currentPage = signal 0
-  _maxPages = lift _columns, (entries) -> Math.ceil entries.length / MaxItemsPerPage
+  _maxPages = lift _filteredItems, (entries) -> Math.ceil entries.length / MaxItemsPerPage
   _canGoToPreviousPage = lift _currentPage, (index) -> index > 0
   _canGoToNextPage = lift _maxPages, _currentPage, (maxPages, index) -> index < maxPages - 1
 
@@ -48,17 +48,34 @@ H2O.PartialDependenceInput = (_, _go) ->
 
 
   filterItems = ->
+    console.log("filtering items called")
+    searchTerm = _searchTerm().trim()
+
+    filteredItems = []
+
+    for entry, i in _columns()
+      hide = no
+      if (searchTerm isnt '') and -1 is entry.value.toLowerCase().indexOf searchTerm.toLowerCase()
+        hide = yes
+
+      unless hide
+        filteredItems.push entry
+
+    console.log(filteredItems)
+    _filteredItems filteredItems
+
     start = _currentPage() * MaxItemsPerPage
-    _visibleItems _columns().slice start, start + MaxItemsPerPage
+    _visibleItems _filteredItems().slice start, start + MaxItemsPerPage
 
-
+  react _searchTerm, throttle filterItems, 500
+  
   changeSelection = (source, value) ->
     for entry in source
       entry.isSelected value
     return
 
   selectFiltered = ->
-    entries = _columns()
+    entries = _filteredItems()
     blockSelectionUpdates -> changeSelection entries, yes
     _selectionCount entries.length
 
