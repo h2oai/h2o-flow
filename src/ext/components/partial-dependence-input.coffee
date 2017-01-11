@@ -120,8 +120,14 @@ H2O.PartialDependenceInput = (_, _go) ->
       cols: cols
       nbins: _nbins()
 
+    # assemble a string for the h2o Rapids AST
+    # this contains the function to call
+    # along with the options to pass in
     cs = "buildPartialDependence #{stringify opts}"
 
+    # insert a cell with the expression `cs` 
+    # into the current Flow notebook
+    # and run the cell
     _.insertAndExecuteCell 'cs', cs
 
   _updateColumns = ->
