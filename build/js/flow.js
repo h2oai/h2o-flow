@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.4.55';
+    Flow.Version = '0.5.0';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -12078,30 +12078,174 @@
 }.call(this));
 (function () {
     H2O.PartialDependenceInput = function (_, _go) {
-        var _canCompute, _compute, _destinationKey, _exception, _frames, _models, _nbins, _selectedFrame, _selectedModel;
+        var MaxItemsPerPage, blockSelectionUpdates, changeSelection, filterItems, incrementSelectionCount, _canCompute, _canGoToNextPage, _canGoToPreviousPage, _columns, _compute, _currentPage, _deselectFiltered, _destinationKey, _exception, _filteredItems, _frames, _goToNextPage, _goToPreviousPage, _hasFilteredItems, _isUpdatingSelectionCount, _maxPages, _models, _nbins, _searchCaption, _searchTerm, _selectFiltered, _selectedFrame, _selectedModel, _selectionCount, _updateColumns, _useCustomColumns, _visibleItems;
         _exception = Flow.Dataflow.signal(null);
         _destinationKey = Flow.Dataflow.signal('ppd-' + Flow.Util.uuid());
         _frames = Flow.Dataflow.signals([]);
         _models = Flow.Dataflow.signals([]);
         _selectedModel = Flow.Dataflow.signals(null);
         _selectedFrame = Flow.Dataflow.signal(null);
+        _useCustomColumns = Flow.Dataflow.signal(false);
+        _columns = Flow.Dataflow.signal([]);
         _nbins = Flow.Dataflow.signal(20);
+        _visibleItems = Flow.Dataflow.signal([]);
+        _filteredItems = Flow.Dataflow.signal([]);
+        MaxItemsPerPage = 100;
+        _currentPage = Flow.Dataflow.signal(0);
+        _maxPages = Flow.Dataflow.lift(_filteredItems, function (entries) {
+            return Math.ceil(entries.length / MaxItemsPerPage);
+        });
+        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
+            return index > 0;
+        });
+        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
+            return index < maxPages - 1;
+        });
+        _selectionCount = Flow.Dataflow.signal(0);
+        _isUpdatingSelectionCount = false;
+        _searchTerm = Flow.Dataflow.signal('');
+        _searchCaption = Flow.Dataflow.lift(_columns, _filteredItems, _selectionCount, _currentPage, _maxPages, function (entries, filteredItems, selectionCount, currentPage, maxPages) {
+            var caption;
+            caption = maxPages === 0 ? '' : 'Showing page ' + (currentPage + 1) + ' of ' + maxPages + '.';
+            if (filteredItems.length !== entries.length) {
+                caption += ' Filtered ' + filteredItems.length + ' of ' + entries.length + '.';
+            }
+            if (selectionCount !== 0) {
+                caption += ' ' + selectionCount + ' selected for PDP calculations.';
+            }
+            return caption;
+        });
+        blockSelectionUpdates = function (f) {
+            _isUpdatingSelectionCount = true;
+            f();
+            return _isUpdatingSelectionCount = false;
+        };
+        incrementSelectionCount = function (amount) {
+            return _selectionCount(_selectionCount() + amount);
+        };
+        _hasFilteredItems = Flow.Dataflow.lift(_columns, function (entries) {
+            return entries.length > 0;
+        });
+        filterItems = function () {
+            var entry, filteredItems, hide, i, searchTerm, start, _i, _len, _ref;
+            searchTerm = _searchTerm().trim();
+            filteredItems = [];
+            _ref = _columns();
+            for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                entry = _ref[i];
+                hide = false;
+                if (searchTerm !== '' && -1 === entry.value.toLowerCase().indexOf(searchTerm.toLowerCase())) {
+                    hide = true;
+                }
+                if (!hide) {
+                    filteredItems.push(entry);
+                }
+            }
+            _filteredItems(filteredItems);
+            start = _currentPage() * MaxItemsPerPage;
+            return _visibleItems(_filteredItems().slice(start, start + MaxItemsPerPage));
+        };
+        Flow.Dataflow.react(_searchTerm, lodash.throttle(filterItems, 500));
+        changeSelection = function (source, value) {
+            var entry, _i, _len;
+            for (_i = 0, _len = source.length; _i < _len; _i++) {
+                entry = source[_i];
+                entry.isSelected(value);
+            }
+        };
+        _selectFiltered = function () {
+            var entries;
+            entries = _filteredItems();
+            blockSelectionUpdates(function () {
+                return changeSelection(entries, true);
+            });
+            return _selectionCount(entries.length);
+        };
+        _deselectFiltered = function () {
+            blockSelectionUpdates(function () {
+                return changeSelection(_columns(), false);
+            });
+            return _selectionCount(0);
+        };
+        _goToPreviousPage = function () {
+            if (_canGoToPreviousPage()) {
+                _currentPage(_currentPage() - 1);
+                filterItems();
+            }
+        };
+        _goToNextPage = function () {
+            if (_canGoToNextPage()) {
+                _currentPage(_currentPage() + 1);
+                filterItems();
+            }
+        };
         _canCompute = Flow.Dataflow.lift(_destinationKey, _selectedFrame, _selectedModel, _nbins, function (dk, sf, sm, nb) {
             return dk && sf && sm && nb;
         });
         _compute = function () {
-            var cs, opts;
+            var col, cols, cs, opts, _i, _len, _ref;
             if (!_canCompute()) {
                 return;
+            }
+            cols = '';
+            _ref = _columns();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                col = _ref[_i];
+                if (col.isSelected()) {
+                    cols = cols + '"' + col.value + '",';
+                }
+            }
+            if (cols !== '') {
+                cols = '[' + cols + ']';
             }
             opts = {
                 destination_key: _destinationKey(),
                 model_id: _selectedModel(),
                 frame_id: _selectedFrame(),
+                cols: cols,
                 nbins: _nbins()
             };
             cs = 'buildPartialDependence ' + Flow.Prelude.stringify(opts);
             return _.insertAndExecuteCell('cs', cs);
+        };
+        _updateColumns = function () {
+            var frameKey;
+            frameKey = _selectedFrame();
+            if (frameKey) {
+                return _.requestFrameSummaryWithoutData(frameKey, function (error, frame) {
+                    var columnLabels, columnValues;
+                    if (!error) {
+                        columnValues = lodash.map(frame.columns, function (column) {
+                            return column.label;
+                        });
+                        columnLabels = lodash.map(frame.columns, function (column) {
+                            var isSelected, missingPercent;
+                            missingPercent = 100 * column.missing_count / frame.rows;
+                            isSelected = Flow.Dataflow.signal(false);
+                            Flow.Dataflow.react(isSelected, function (isSelected) {
+                                if (!_isUpdatingSelectionCount) {
+                                    if (isSelected) {
+                                        incrementSelectionCount(1);
+                                    } else {
+                                        incrementSelectionCount(-1);
+                                    }
+                                }
+                            });
+                            return {
+                                isSelected: isSelected,
+                                type: column.type === 'enum' ? 'enum(' + column.domain_cardinality + ')' : column.type,
+                                value: column.label,
+                                missingPercent: missingPercent,
+                                missingLabel: missingPercent === 0 ? '' : '' + Math.round(missingPercent) + '% NA'
+                            };
+                        });
+                        _columns(columnLabels);
+                        _currentPage(0);
+                        _searchTerm('');
+                        return filterItems();
+                    }
+                });
+            }
         };
         _.requestFrames(function (error, frames) {
             var frame;
@@ -12139,24 +12283,39 @@
         });
         lodash.defer(_go);
         return {
+            exception: _exception,
             destinationKey: _destinationKey,
             frames: _frames,
             models: _models,
             selectedModel: _selectedModel,
             selectedFrame: _selectedFrame,
+            columns: _columns,
+            visibleItems: _visibleItems,
+            useCustomColumns: _useCustomColumns,
             nbins: _nbins,
             compute: _compute,
+            updateColumns: _updateColumns,
             canCompute: _canCompute,
+            hasFilteredItems: _hasFilteredItems,
+            selectFiltered: _selectFiltered,
+            deselectFiltered: _deselectFiltered,
+            goToPreviousPage: _goToPreviousPage,
+            goToNextPage: _goToNextPage,
+            canGoToPreviousPage: _canGoToPreviousPage,
+            canGoToNextPage: _canGoToNextPage,
+            searchTerm: _searchTerm,
+            searchCaption: _searchCaption,
             template: 'flow-partial-dependence-input'
         };
     };
 }.call(this));
 (function () {
     H2O.PartialDependenceOutput = function (_, _go, _result) {
-        var data, i, renderPlot, section, table, x, y, _destinationKey, _frameId, _i, _len, _modelId, _plots, _ref, _viewFrame;
+        var data, i, renderPlot, section, table, x, y, _destinationKey, _frameId, _i, _isFrameShown, _len, _modelId, _plots, _ref, _viewFrame;
         _destinationKey = _result.destination_key;
         _modelId = _result.model_id.name;
         _frameId = _result.frame_id.name;
+        _isFrameShown = Flow.Dataflow.signal(false);
         renderPlot = function (target, render) {
             return render(function (error, vis) {
                 if (error) {
@@ -12176,7 +12335,8 @@
                 _plots.push(section = {
                     title: '' + x + ' vs ' + y,
                     plot: Flow.Dataflow.signal(null),
-                    frame: Flow.Dataflow.signal(null)
+                    frame: Flow.Dataflow.signal(null),
+                    isFrameShown: Flow.Dataflow.signal(false)
                 });
                 renderPlot(section.plot, _.plot(function (g) {
                     return g(g.path(g.position(x, y), g.strokeColor(g.value('#1f77b4'))), g.point(g.position(x, y), g.strokeColor(g.value('#1f77b4'))), g.from(table));
@@ -12184,6 +12344,9 @@
                 renderPlot(section.frame, _.plot(function (g) {
                     return g(g.select(), g.from(table));
                 }));
+                section.isFrameShown = Flow.Dataflow.lift(_isFrameShown, function (value) {
+                    return value;
+                });
             }
         }
         _viewFrame = function () {
@@ -12195,6 +12358,7 @@
             modelId: _modelId,
             frameId: _frameId,
             plots: _plots,
+            isFrameShown: _isFrameShown,
             viewFrame: _viewFrame,
             template: 'flow-partial-dependence-output'
         };
