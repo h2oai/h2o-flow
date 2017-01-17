@@ -4,6 +4,10 @@
 
 *H2O Flow* is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media to build machine learning workflows.
 
+## Docs
+
+there is a nice [user guide](https://github.com/h2oai/h2o-3/blob/8858aac90dce771f9025b16948b675f92b542715/h2o-docs/src/product/flow/README.md) for *H2O Flow* housed over in the [h2o-3](https://github.com/h2oai/h2o-3) repo
+
 ## Development Instructions
 
 It is recommended that you clone [h2o-3](https://github.com/h2oai/h2o-3) and h2o-flow in the same parent directory. 
