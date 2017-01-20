@@ -71,6 +71,13 @@
         td
           input(type='checkbox' style='width:159px' data-bind='checked:createModelDeviancePlot')
         td Compute row-wise deviances for a comparison frame.
+      tr(data-bind='visible:createModelDeviancePlot')
+        th Available Comparison Frames:
+      tr(data-bind='visible:createModelDeviancePlot')
+        th
+          label Frame:
+        td(colspan='2')
+          select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}")
 
   // /ko
 
