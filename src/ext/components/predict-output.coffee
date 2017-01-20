@@ -35,7 +35,7 @@ H2O.PredictOutput = (_, _go, prediction) ->
 
   if prediction
     switch prediction.__meta?.schema_type
-      when 'ModelMetricsBinomial'
+      when 'ModelMetricsBinomial', 'ModelMetricsBinomialGLM'
         if table = _.inspect 'Prediction - Metrics for Thresholds', prediction
           renderPlot 'ROC Curve', prediction, _.plot (g) ->
             g(

@@ -1,6 +1,8 @@
 H2O.Proxy = (_) ->
 
   download = (type, url, go) ->
+    if url.substring(0,1) == "/"
+        url = window.Flow.ContextPath + url.substring(1)
     $.ajax
       dataType: type
       url: url
@@ -18,6 +20,9 @@ H2O.Proxy = (_) ->
       ''
   
   http = (method, path, opts, go) ->
+    if path.substring(0,1) == "/"
+      path = window.Flow.ContextPath + path.substring(1)
+
     _.status 'server', 'request', path
 
     trackPath path
@@ -268,9 +273,24 @@ H2O.Proxy = (_) ->
       chunk_size: chunkSize
     doPost '/3/Parse', opts, go
 
+  # Create data for partial dependence plot(s) 
+  # for the specified model and frame.
+  #
+  # make a post request to h2o-3 to do request
+  # the data about the specified model and frame
+  # subject to the other options `opts`
+  #
+  # returns a job
   requestPartialDependence = (opts, go) ->
     doPost '/3/PartialDependence/', opts, go
 
+
+  # make a post request to h2o-3 to do request
+  # the data about the specified model and frame
+  # subject to the other options `opts`
+  #
+  # returns a json response that contains
+  # 
   requestPartialDependenceData = (key, go) ->
     doGet "/3/PartialDependence/#{encodeURIComponent key}", (error, result) ->
       if error 

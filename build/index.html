@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="css/flow-lib.css" type="text/css">
     <link rel="stylesheet" href="css/flow.css" type="text/css">
     <link rel="stylesheet" href="css/scala-editor.css" type="text/css">
-    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600" type="text/css">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600" type="text/css">
     <link rel="stylesheet" href="custom/custom.css" type="text/css"><!--[if lt IE 9]>
     <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
     <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script><![endif]-->
@@ -1133,6 +1133,9 @@
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-link"></i>Partial Dependence
             </h3>
+        <!-- ko if:exception-->
+        <div data-bind="template: { name:'flow-failure', data:exception }"></div>
+        <!-- /ko-->
         <table class="flow-form">
           <tbody>
             <tr>
@@ -1147,7 +1150,7 @@
               <th>
                 <label>Model:</label>
               </th>
-              <td>
+              <td colspan="2">
                 <select data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'"></select>
               </td>
             </tr>
@@ -1155,8 +1158,8 @@
               <th>
                 <label>Frame:</label>
               </th>
-              <td>
-                <select data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'"></select>
+              <td colspan="2">
+                <select data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}"></select>
               </td>
             </tr>
             <tr>
@@ -1164,7 +1167,62 @@
               <td>
                 <input type="text" data-bind="value:nbins" class="flow-textbox">
               </td>
-              <td>How many levels should PDP comput. More levels will make it slower.</td>
+              <td>How many levels should PDP compute. More levels will make it slower.</td>
+            </tr>
+            <tr>
+              <th>
+                <label>Select columns?</label>
+              </th>
+              <td>
+                <input type="checkbox" data-bind="checked:useCustomColumns">
+              </td>
+              <td>Checking this will allow you to select custom columns for PDP. By default, the top 10 features are used. Those features are sorted by variable importance.</td>
+            </tr>
+            <tr data-bind="visible:useCustomColumns">
+              <th>
+                <label>Available columns:</label>
+              </th>
+              <td colspan="2">
+                <div style="height:25px">
+                  <input type="text" placeholder="Search..." data-bind="value:searchTerm, valueUpdate:'afterkeydown'" class="flow-textbox">
+                </div>
+                <div style="font-size:80%" data-bind="text:searchCaption"></div>
+                <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
+                  <table>
+                    <tbody>
+                      <!-- ko foreach:visibleItems-->
+                      <tr>
+                        <td>
+                          <label>
+                            <input type="checkbox" data-bind="checked:isSelected"><span data-bind="text:value"></span>
+                          </label>
+                        </td>
+                        <td data-bind="text:type" class="flow-narrow flow-aside"></td>
+                        <td data-bind="text:missingLabel" class="flow-narrow flow-aside"></td>
+                      </tr>
+                      <!-- /ko-->
+                    </tbody>
+                  </table>
+                </div>
+                <table style="margin-bottom:10px;width:100%">
+                  <tbody>
+                    <tr>
+                      <td>
+                            <button type="button" data-bind="click:selectFiltered, enable:hasFilteredItems" class="flow-button"><i class="fa fa-check-square-o"></i><span>All</span>
+                            </button>
+                            <button type="button" data-bind="click:deselectFiltered, enable:hasFilteredItems" class="flow-button"><i class="fa fa-square-o"></i><span>None</span>
+                            </button>
+                      </td>
+                      <td style="text-align:right">
+                            <button type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage" class="flow-button"><i class="fa fa-arrow-left"></i><span>Previous 100</span>
+                            </button>
+                            <button type="button" data-bind="click:goToNextPage, enable:canGoToNextPage" class="flow-button"><i class="fa fa-arrow-right"></i><span>Next 100</span>
+                            </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
             </tr>
             <tr>
               <th>
@@ -1186,10 +1244,6 @@
           <table class="flow-form">
             <tbody>
               <tr>
-                <th class="flow-narrow">ID:</th>
-                <td data-bind="text:destinationKey" class="flow-wide"></td>
-              </tr>
-              <tr>
                 <th class="flow-narrow">Model ID:</th>
                 <td data-bind="text:modelId" class="flow-wide"></td>
               </tr>
@@ -1197,14 +1251,20 @@
                 <th class="flow-narrow">Frame ID:</th>
                 <td data-bind="text:frameId" class="flow-wide"></td>
               </tr>
+              <tr>
+                <th class="flow-narrow">Show PDP Data Table?</th>
+                <td>
+                  <input type="checkbox" data-bind="checked:isFrameShown">
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
         <!-- ko foreach:plots-->
-        <h4 data-bind="text:title, collapse:true"></h4>
+        <h4 data-bind="text:title, collapse:false"></h4>
         <div>
           <div data-bind="raw:plot" class="flow-plot"></div>
-          <div data-bind="raw:frame" class="flow-plot"></div>
+          <div data-bind="raw:frame, visible:isFrameShown" class="flow-plot"></div>
         </div>
         <!-- /ko-->
       </div>

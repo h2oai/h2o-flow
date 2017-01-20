@@ -1149,10 +1149,15 @@ H2O.Routines = (_) ->
     else
       assist mergeFrames
 
+  # define the function that is called when 
+  # the Partial Dependence plot input form
+  # is submitted
   buildPartialDependence = (opts) ->
     if opts
       _fork requestPartialDependence, opts
     else
+      # specify function to call if user
+      # provides malformed input
       assist buildPartialDependence
 
   buildModelDeviancesVis = (opts) ->
