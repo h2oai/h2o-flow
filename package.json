@@ -9,6 +9,7 @@
   "scripts": {
     "start": "npm install && bower install && gulp",
     "build": "gulp",
+    "build-templates": "gulp build-templates",
     "clean": "gulp clean",
     "watch": "gulp && gulp watch",
     "headless": "gulp && phantomjs build/js/headless-test.js --packs examples",
