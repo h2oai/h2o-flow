@@ -62,9 +62,15 @@
         td
           input.flow-textbox(type='text' data-bind="value:gridStoppingTolerance")
         td Relative tolerance for metric-based stopping criterion (stop if relative improvement is not at least this much)
-
       // /ko
   // /ko
+  table.flow-form
+    tbody
+      tr
+        th(style='width:225px') Create Model Deviances Plot
+        td
+          input(type='checkbox' style='width:159px' data-bind='checked:createModelDeviancePlot')
+        td Compute row-wise deviances for a comparison frame.
 
   // /ko
 

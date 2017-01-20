@@ -1131,6 +1131,94 @@
     </script>
     <script type="text/html" id="flow-partial-dependence-input">
       <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-link"></i>Model Deviances Visualization
+            </h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th width="150">
+                <label>Validation Frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- ko if:selectedFrame-->
+            <h3 class="flow-hint"><i class="fa fa-cubes"></i>Models
+            </h3>
+        <table class="flow-form">
+          <thead>
+            <tr>
+              <th width="1" style="font-size:inherit">
+                <input type="checkbox" title="Select or deselect all" data-bind="checked:checkAllModels">
+              </th>
+              <th width="1">&nbsp;</th>
+              <th>Key</th>
+              <th>Algorithm</th>
+              <th class="flow-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ko foreach:modelViews-->
+            <tr>
+              <td>
+                <input type="checkbox" data-bind="checked:isChecked">
+              </td>
+              <td><i class="fa fa-cube"></i></td>
+              <td><a href="#" data-bind="text:key, click:view"></a>
+              </td>
+              <td data-bind="text:algo"></td>
+              <td class="flow-right">
+                    <button type="button" data-bind="click:predict" class="flow-button"><i class="fa fa-bolt"></i><span>Predict&hellip;</span>
+                    </button>
+                    <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
+                    </button>
+              </td>
+            </tr>
+            <!-- /ko-->
+          </tbody>
+        </table>
+        <!-- /ko-->
+        <div class="flow-panel">
+          <button type="button" data-bind="click:compute, enable:canCompute" class="flow-button"><i class="fa fa-link"></i><span>Compute</span></button>
+        </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-partial-dependence-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-table"></i>Model Deviances Visualization Summary
+            </h3>
+        <div class="flow-margin-after">
+          <table class="flow-form">
+            <tbody>
+              <tr>
+                <th class="flow-narrow">ID:</th>
+                <td data-bind="text:destinationKey" class="flow-wide"></td>
+              </tr>
+              <tr>
+                <th class="flow-narrow">Model ID:</th>
+                <td data-bind="text:modelId" class="flow-wide"></td>
+              </tr>
+              <tr>
+                <th class="flow-narrow">Frame ID:</th>
+                <td data-bind="text:frameId" class="flow-wide"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- ko foreach:plots-->
+        <h4 data-bind="text:title, collapse:true"></h4>
+        <div>
+          <div data-bind="raw:plot" class="flow-plot"></div>
+          <div data-bind="raw:frame" class="flow-plot"></div>
+        </div>
+        <!-- /ko-->
+      </div>
+    </script>
+    <script type="text/html" id="flow-model-deviances-vis-input">
+      <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-link"></i>Partial Dependence
             </h3>
         <!-- ko if:exception-->
@@ -1236,7 +1324,7 @@
         </table>
       </div>
     </script>
-    <script type="text/html" id="flow-partial-dependence-output">
+    <script type="text/html" id="flow-model-deviances-vis-output">
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-table"></i>Partial Dependence Summary
             </h3>
@@ -1413,6 +1501,8 @@
                       <button type="button" data-bind="click:exportModel" class="flow-button"><i class="fa fa-save"></i><span>Export</span>
                       </button>
                       <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
+                      </button>
+                      <button type="button" data-bind="click:exportModel" class="flow-button"><i class="fa fa-bolt"></i><span>Show Model Deviance Plot</span>
                       </button>
                       <button type="button" data-bind="click:deleteModel" class="flow-button"><i class="fa fa-trash-o"></i><span>Delete</span>
                       </button>
@@ -1797,6 +1887,9 @@
               </button>
         </div>
         <!-- /ko-->
+        <div>
+        </div>
+        <div></div>
         <!-- ko if:hasModels-->
         <table class="flow-form">
           <thead>
@@ -2218,6 +2311,16 @@
         </table>
         <!-- /ko-->
         <!-- /ko-->
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th>Create Model Deviance Plot</th>
+              <td>
+                <input type="checkbox" data-bind="checked:createModelDeviancePlot">
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <div class="flow-panel">
           <button type="button" data-bind="click:createModel, enable:canCreateModel" class="flow-button"><i class="fa fa-tasks"></i>Build Model</button>
           <!-- ko with:modelForm--><span style="margin-left:10px; color:red" data-bind="visible:hasValidationFailures, text:validationFailureMessage"></span>
