@@ -15,7 +15,7 @@ getContextPath = () ->
         url: window.referrer
         type: 'GET'
         success: (data, status, xhr) ->
-            if xhr.getAllResponseHeaders().indexOf("X-h2o-context-path") != -1
+            if xhr.getAllResponseHeaders().search(/x-h2o-context-path/i) != -1
                 window.Flow.ContextPath = xhr.getResponseHeader('X-h2o-context-path')
         async: false
 
