@@ -91,13 +91,17 @@
           // /ko
   // /ko
 
-  h4(data-bind='collapse:false') Preview POJO
+  h4(data-bind='collapse:false') Buttons
   div
     // ko ifnot:isPojoLoaded
     +button('Preview POJO', 'code', 'previewPojo')
     // /ko
     // ko if:isPojoLoaded
     div(data-bind='html:pojoPreview')
+    // /ko
+  div
+    // ko if:createModelDeviancesPlot
+    +button('Show Model Deviances Plot', 'code', 'showModelDeviancesPlot')
     // /ko
 
   // /ko
