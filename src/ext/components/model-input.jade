@@ -64,22 +64,20 @@
         td Relative tolerance for metric-based stopping criterion (stop if relative improvement is not at least this much)
       // /ko
   // /ko
+  // /ko
+
   table.flow-form
     tbody
       tr
         th(style='width:225px') Create Model Deviances Plot
         td
-          input(type='checkbox' style='width:159px' data-bind='checked:createModelDeviancePlot')
+          input(type='checkbox' style='width:159px' data-bind='checked:createModelDeviancesPlot')
         td Compute row-wise deviances for a comparison frame.
-      tr(data-bind='visible:createModelDeviancePlot')
-        th Available Comparison Frames:
-      tr(data-bind='visible:createModelDeviancePlot')
+      tr(data-bind='visible:createModelDeviancesPlot')
         th
-          label Frame:
+          label Available Comparison Frames:
         td(colspan='2')
-          select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}")
-
-  // /ko
+          select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
 
   .flow-panel
     button.flow-button(type='button' data-bind="click:createModel, enable:canCreateModel")
