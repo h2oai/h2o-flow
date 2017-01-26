@@ -470,7 +470,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
               renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
-      when 'gbm', 'drf', 'svm'
+      when 'gbm', 'drf', 'svm', 'xgboost'
         if table = _.inspect 'output - Scoring History', _model
           if table.schema['validation_logloss'] and table.schema['training_logloss']
             renderPlot 'Scoring History - logloss', no, _.plot (g) ->
@@ -609,7 +609,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
               renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
               renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
-    # end of when 'gbm', 'drf', 'svm'
+    # end of when 'gbm', 'drf', 'svm', 'xgboost'
 
       when 'stackedensemble'
         if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
