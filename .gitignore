@@ -7,4 +7,6 @@ lib
 *.tmp
 .gradle
 .idea/
+*.sublime-project
+*.sublime-workspace
 
