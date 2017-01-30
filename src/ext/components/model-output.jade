@@ -81,8 +81,6 @@
                     td
                       select(data-bind="options:criteria, optionsText:'value', value:criterion, optionsCaption: 'Choose...'")
             // /ko
-            .flow-panel
-              +button('Download SVG', 'download', 'downloadSVG')
 
           // ko if:frame
           td(style='vertical-align:top; padding-left:20px')
@@ -91,6 +89,10 @@
             .flow-plot(data-bind='raw:frame')
           // /ko
   // /ko
+
+  .flow-panel
+    button.flow-button(type='button' value='Download SVG' data-bind="click:$parent.downloadSVG")
+    // +button('Download SVG', 'download', 'downloadSVG')
 
   h4(data-bind='collapse:false') Preview POJO
   div
