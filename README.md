@@ -4,6 +4,8 @@
 
 *H2O Flow* is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media to build machine learning workflows.
 
+Think of Flow as a hybrid [GUI](https://en.wikipedia.org/wiki/Graphical_user_interface) + [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) + storytelling environment for exploratory data analysis and machine learning, with async, re-scriptable record/replay capabilities. Flow sandboxes and evals user-Javascript in the browser via static analysis and tree-rewriting. Flow is written in non-standard Javascript (with compile-time unqualified imports), with a veritable heap of little embedded [DSL](https://en.wikipedia.org/wiki/Domain-specific_language)s for reactive [dataflow programming](https://en.wikipedia.org/wiki/Dataflow_programming), markup generation, lazy evaluation and multicast signals/slots.
+
 ## Docs
 
 there is a nice [user guide](https://github.com/h2oai/h2o-3/blob/8858aac90dce771f9025b16948b675f92b542715/h2o-docs/src/product/flow/README.md) for *H2O Flow* housed over in the [h2o-3](https://github.com/h2oai/h2o-3) repo
