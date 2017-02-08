@@ -1,0 +1,41 @@
+.flow-widget
+  +subtitle('Roomscale Scatterplot', 'link')
+
+  // ko if:exception
+  div(data-bind="template: { name:'flow-failure', data:exception }")
+  // /ko
+
+  table.flow-form
+    tbody
+      tr
+        th
+          label Frame:
+        td(colspan='2')
+          select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}")
+      tr
+        th
+          label X-Variable:
+        td(colspan='2')
+          select(data-bind="options:columns, value:selectedXVariable, optionsCaption:'(Select)'")
+      tr
+        th
+          label Y-Variable:
+        td(colspan='2')
+          select(data-bind="options:columns, value:selectedYVariable, optionsCaption:'(Select)'")
+      tr
+        th
+          label Z-Variable:
+        td(colspan='2')
+          select(data-bind="options:columns, value:selectedZVariable, optionsCaption:'(Select)'")
+      tr
+        th
+          label Color-Variable:
+        td(colspan='2')
+          select(data-bind="options:columns, value:selectedColorVariable, optionsCaption:'(Select)'")
+      tr
+        th
+          label Actions:
+        td
+          button.flow-button(type='button' data-bind='click:compute, enable:canCompute')
+            i.fa.fa-link
+            span Compute
