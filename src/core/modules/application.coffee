@@ -3,7 +3,7 @@ Flow.Application = (_, routines) ->
   _sandbox = Flow.Sandbox _, routines _
   #TODO support external renderers
   _renderers = Flow.Renderers _, _sandbox
-  Flow.Analytics _
+  # Flow.Analytics _
   Flow.Growl _
   Flow.Autosave _
   _notebook = Flow.Notebook _, _renderers
