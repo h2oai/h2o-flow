@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.5.2';
+    Flow.Version = '999.999.999';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -2402,7 +2402,6 @@
         Flow.ApplicationContext(_);
         _sandbox = Flow.Sandbox(_, routines(_));
         _renderers = Flow.Renderers(_, _sandbox);
-        Flow.Analytics(_);
         Flow.Growl(_);
         Flow.Autosave(_);
         _notebook = Flow.Notebook(_, _renderers);
