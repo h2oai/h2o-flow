@@ -6,6 +6,7 @@ import parseOpts from './parseOpts';
 import onErrorFunction from './onErrorFunction';
 import onResourceErrorFunction from './onResourceErrorFunction';
 import onConsoleMessageFunction from './onConsoleMessageFunction';
+import onCallbackFunction from './onCallbackFunction';
 import waitFor from './waitFor';
 
 
@@ -46,10 +47,7 @@ page.onResourceError = onResourceErrorFunction;
 
 page.onConsoleMessage = onConsoleMessageFunction;
 
-page.onCallback = perfLine => {
-  const fs = require('fs');
-  return fs.write(`${page._outputDir}/perf.csv`, perfLine, 'a');
-};
+page.onCallback = onCallbackFunction.bind(this, page);
 
 page.open(`http://${hostname}/flow/index.html`, status => {
   let printErrors;
