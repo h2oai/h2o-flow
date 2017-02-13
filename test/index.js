@@ -27,10 +27,10 @@ phantom.onError = onErrorFunction.bind(this, phantom);
 opts = parseOpts(phantom, system.args.slice(1));
 hostname = (_ref = opts['hostname']) != null ? _ref : 'localhost:54321';
 
-console.log("PHANTOM: Using " + hostname);
+console.log(`PHANTOM: Using ${hostname}`);
 timeout = (timeoutArg = opts['timeout']) ? 1000 * parseInt(timeoutArg, 10) : 300000;
 
-console.log("PHANTOM: Using timeout " + timeout + "ms");
+console.log(`PHANTOM: Using timeout ${timeout}ms`);
 packsArg = opts['packs'];
 packNames = packsArg ? packsArg.split(':') : ['examples'];
 excludeFlowsArg = opts['excludeFlows'];
@@ -38,13 +38,13 @@ excludeFlowsNames = excludeFlowsArg ? excludeFlowsArg.split(';') : [];
 
 for (_i = 0, _len = excludeFlowsNames.length; _i < _len; _i++) {
   excludeFlowName = excludeFlowsNames[_i];
-  console.log("PHANTOM: Excluding flow: " + excludeFlowName);
+  console.log(`PHANTOM: Excluding flow: ${excludeFlowName}`);
 }
 
 page = webpage.create();
 
 if (opts['perf']) {
-  console.log("PHANTOM: Performance of individual tests will be recorded in perf.csv in output directory: " + opts['outputDir'] + ".");
+  console.log(`PHANTOM: Performance of individual tests will be recorded in perf.csv in output directory: ${opts['outputDir']}.`);
   page._outputDir = opts['outputDir'];
 }
 
@@ -52,15 +52,15 @@ page.onResourceError = _arg => {
   let errorString;
   let url;
   url = _arg.url, errorString = _arg.errorString;
-  return console.log("BROWSER: *** RESOURCE ERROR *** " + url + ": " + errorString);
+  return console.log(`BROWSER: *** RESOURCE ERROR *** ${url}: ${errorString}`);
 };
 
-page.onConsoleMessage = message => console.log("BROWSER: " + message);
+page.onConsoleMessage = message => console.log(`BROWSER: ${message}`);
 
 page.onCallback = perfLine => {
   let fs;
   fs = require('fs');
-  return fs.write(page._outputDir + '/perf.csv', perfLine, 'a');
+  return fs.write(`${page._outputDir}/perf.csv`, perfLine, 'a');
 };
 
 waitFor = (test, onReady) => {
@@ -87,7 +87,7 @@ waitFor = (test, onReady) => {
   return interval = setInterval(retest, 2000);
 };
 
-page.open("http://" + hostname + "/flow/index.html", status => {
+page.open(`http://${hostname}/flow/index.html`, status => {
   let printErrors;
   let test;
   console.log('status from page.open', status);
@@ -174,16 +174,16 @@ page.open("http://" + hostname + "/flow/index.html", status => {
               return true;
             };
             if (doFlow(flowName, window._excludeFlowsNames)) {
-              flowTitle = "" + packName + " - " + flowName;
+              flowTitle = `${packName} - ${flowName}`;
               window._phantom_test_summary_[flowTitle] = 'FAILED';
-              console.log("Fetching flow document: " + packName + " - " + flowName + "...");
+              console.log(`Fetching flow document: ${packName} - ${flowName}...`);
               return context.requestFlow(packName, flowName, (error, flow) => {
                 let waitForFlow;
                 if (error) {
-                  console.log("*** ERROR *** Failed fetching flow " + flowTitle);
-                  go(new Error("Failed fetching flow " + flowTitle, error));
+                  console.log(`*** ERROR *** Failed fetching flow ${flowTitle}`);
+                  go(new Error(`Failed fetching flow ${flowTitle}`, error));
                 } else {
-                  console.log("Opening flow " + flowTitle + "...");
+                  console.log(`Opening flow ${flowTitle}...`);
                   window._phantom_running_ = true;
                   context.open(flowTitle, flow);
                   waitForFlow = () => {
@@ -201,7 +201,7 @@ page.open("http://" + hostname + "/flow/index.html", status => {
                   window._startTime = new Date().getTime() / 1000;
                   context.executeAllCells(true, (status, errors) => {
                     window._endTime = new Date().getTime() / 1000;
-                    console.log("Flow finished with status: " + status);
+                    console.log(`Flow finished with status: ${status}`);
                     if (status === 'failed') {
                       window._pass = 0;
                       window._phantom_errors_ = errors;
@@ -210,7 +210,7 @@ page.open("http://" + hostname + "/flow/index.html", status => {
                       window._phantom_test_summary_[flowTitle] = 'PASSED';
                     }
                     if (window._perf) {
-                      window.callPhantom("" + window._date + ", " + window._buildId + ", " + window._gitHash + ", " + window._gitBranch + ", " + window._hostname + ", " + flowName + ", " + window._startTime + ", " + window._endTime + ", " + window._pass + ", " + window._ncpu + ", " + window._os + ", " + window._jobName + "\n");
+                      window.callPhantom(`${window._date}, ${window._buildId}, ${window._gitHash}, ${window._gitBranch}, ${window._hostname}, ${flowName}, ${window._startTime}, ${window._endTime}, ${window._pass}, ${window._ncpu}, ${window._os}, ${window._jobName}\n`);
                     }
                     return window._phantom_running_ = false;
                   });
@@ -218,7 +218,7 @@ page.open("http://" + hostname + "/flow/index.html", status => {
                 return setTimeout(waitForFlow, 2000);
               });
             } else {
-              console.log("Ignoring flow: " + flowName);
+              console.log(`Ignoring flow: ${flowName}`);
               return go(null);
             }
           };
@@ -253,13 +253,13 @@ page.open("http://" + hostname + "/flow/index.html", status => {
             _results = [];
             for (_j = 0, _len1 = errors.length; _j < _len1; _j++) {
               error = errors[_j];
-              _results.push(printErrors(error, prefix + '  '));
+              _results.push(printErrors(error, `${prefix}  `));
             }
             return _results;
           }))()).join('\n');
         } else if (errors.message) {
           if (errors.cause) {
-            return errors.message + '\n' + printErrors(errors.cause, prefix + '  ');
+            return `${errors.message}\n${printErrors(errors.cause, prefix + '  ')}`;
           } else {
             return errors.message;
           }
@@ -288,10 +288,10 @@ page.open("http://" + hostname + "/flow/index.html", status => {
         testCount = 0;
         for (flowTitle in summary) {
           testStatus = summary[flowTitle];
-          console.log("" + testStatus + ": " + flowTitle);
+          console.log(`${testStatus}: ${flowTitle}`);
           testCount++;
         }
-        console.log("(" + testCount + " tests executed.)");
+        console.log(`(${testCount} tests executed.)`);
         console.log('---------------------------------------------');
         return phantom.exit(0);
       }
