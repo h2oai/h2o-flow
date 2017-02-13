@@ -5,6 +5,7 @@ import printUsageAndExit from './printUsageAndExit';
 import parseOpts from './parseOpts';
 import onErrorFunction from './onErrorFunction';
 import onResourceErrorFunction from './onResourceErrorFunction';
+import onConsoleMessageFunction from './onConsoleMessageFunction';
 import waitFor from './waitFor';
 
 
@@ -43,7 +44,7 @@ if (opts.perf) {
 
 page.onResourceError = onResourceErrorFunction;
 
-page.onConsoleMessage = message => console.log(`BROWSER: ${message}`);
+page.onConsoleMessage = onConsoleMessageFunction;
 
 page.onCallback = perfLine => {
   const fs = require('fs');
