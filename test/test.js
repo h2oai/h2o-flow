@@ -1,3 +1,5 @@
+import waitForFlow from './waitForFlow';
+
 export default function test(
   page,
   packNames,
@@ -39,34 +41,34 @@ export default function test(
       }
       return false;
     }
-      // runPacks = function(go) {
-      //   var tasks;
-      //   window._phantom_test_summary_ = {};
-      //   tasks = packNames.map(function(packName) {
-      //     return function(go) {
-      //       return runPack(packName, go);
-      //     };
-      //   });
-      //   return (Flow.Async.iterate(tasks))(go);
-      // };
-      // runPack = function(packName, go) {
-      //   console.log("Fetching pack: " + packName + "...");
-      //   return context.requestPack(packName, function(error, flowNames) {
-      //     var tasks;
-      //     if (error) {
-      //       console.log("*** ERROR *** Failed fetching pack " + packName);
-      //       return go(new Error("Failed fetching pack " + packName, error));
-      //     } else {
-      //       console.log('Processing pack...');
-      //       tasks = flowNames.map(function(flowName) {
-      //         return function(go) {
-      //           return runFlow(packName, flowName, go);
-      //         };
-      //       });
-      //       return (Flow.Async.iterate(tasks))(go);
-      //     }
-      //   });
-      // };
+    // runPacks = function(go) {
+    //   var tasks;
+    //   window._phantom_test_summary_ = {};
+    //   tasks = packNames.map(function(packName) {
+    //     return function(go) {
+    //       return runPack(packName, go);
+    //     };
+    //   });
+    //   return (Flow.Async.iterate(tasks))(go);
+    // };
+    // runPack = function(packName, go) {
+    //   console.log("Fetching pack: " + packName + "...");
+    //   return context.requestPack(packName, function(error, flowNames) {
+    //     var tasks;
+    //     if (error) {
+    //       console.log("*** ERROR *** Failed fetching pack " + packName);
+    //       return go(new Error("Failed fetching pack " + packName, error));
+    //     } else {
+    //       console.log('Processing pack...');
+    //       tasks = flowNames.map(function(flowName) {
+    //         return function(go) {
+    //           return runFlow(packName, flowName, go);
+    //         };
+    //       });
+    //       return (Flow.Async.iterate(tasks))(go);
+    //     }
+    //   });
+    // };
     const runFlow = (packName, flowName, go) => {
       console.log('runFlow was called');
       let flowTitle;
@@ -87,7 +89,6 @@ export default function test(
         window._phantom_test_summary_[flowTitle] = 'FAILED';
         console.log(`Fetching flow document: ${packName} - ${flowName}...`);
         return context.requestFlow(packName, flowName, (error, flow) => {
-          let waitForFlow;
           if (error) {
             console.log(`*** ERROR *** Failed fetching flow ${flowTitle}`);
             go(new Error(`Failed fetching flow ${flowTitle}`, error));
@@ -95,15 +96,6 @@ export default function test(
             console.log(`Opening flow ${flowTitle}...`);
             window._phantom_running_ = true;
             context.open(flowTitle, flow);
-            waitForFlow = () => {
-              if (window._phantom_running_) {
-                console.log('ACK');
-                return setTimeout(waitForFlow, 2000);
-              }
-              console.log('Flow completed!');
-              const errors = window._phantom_errors_;
-              return context.requestRemoveAll(() => go(errors));
-            };
             console.log('Running flow...');
             window._startTime = new Date().getTime() / 1000;
             context.executeAllCells(true, (status, errors) => {
@@ -123,7 +115,10 @@ export default function test(
               return window._phantom_running_;
             });
           }
-          return setTimeout(waitForFlow, 2000);
+          return setTimeout(
+            waitForFlow.bind(this, go, context),
+            2000
+          );
         });
       }
       console.log(`Ignoring flow: ${flowName}`);

@@ -48,7 +48,6 @@ if (opts.perf) {
 page.onResourceError = onResourceErrorFunction;
 page.onConsoleMessage = onConsoleMessageFunction;
 page.onCallback = onCallbackFunction.bind(this, page);
-
 page.open(
   `http://${hostname}/flow/index.html`,
   statusFunction.bind(
