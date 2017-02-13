@@ -1,3 +1,5 @@
+import printUsageAndExit from './printUsageAndExit';
+
 var excludeFlowName, excludeFlowsArg, excludeFlowsNames, hostname, opts, packNames, packsArg, page, parseOpts, printUsageAndExit, system, timeout, timeoutArg, waitFor, webpage, _i, _len, _ref;
 
 system = require('system');
@@ -22,17 +24,6 @@ phantom.onError = function(message, stacktrace) {
   }
 };
 
-printUsageAndExit = function(message) {
-  console.log("*** " + message + " ***");
-  console.log('Usage: phantomjs headless-test.js [--host ip:port] [--timeout seconds] [--packs foo:bar:baz] [--perf date buildId gitHash gitBranch ncpu os jobName outputDir] [--excludeFlows flow1;flow2]');
-  console.log('    ip:port      defaults to localhost:54321');
-  console.log('    timeout      defaults to 3600');
-  console.log('    packs        defaults to examples');
-  console.log('    perf         performance of individual tests will be recorded in perf.csv in the output directory');
-  console.log('    excludeFlows do not run these flows');
-  return phantom.exit(1);
-};
-
 parseOpts = function(args) {
   console.log('parseOpts was called');
   var i, opts;
@@ -43,71 +34,71 @@ parseOpts = function(args) {
     if (args[i] === "--host") {
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['hostname'] = args[i];
     } else if (args[i] === "--timeout") {
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['timeout'] = args[i];
     } else if (args[i] === "--packs") {
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['packs'] = args[i];
     } else if (args[i] === "--perf") {
       opts['perf'] = true;
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['date'] = args[i];
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['buildId'] = args[i];
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['gitHash'] = args[i];
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['gitBranch'] = args[i];
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['ncpu'] = args[i];
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['os'] = args[i];
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['jobName'] = args[i];
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['outputDir'] = args[i];
     } else if (args[i] === "--excludeFlows") {
       i = i + 1;
       if (i > args.length) {
-        printUsageAndExit("Unknown argument: " + args[i]);
+        printUsageAndExit(phantom, "Unknown argument: " + args[i]);
       }
       opts['excludeFlows'] = args[i];
     } else {
-      printUsageAndExit("Unknown argument: " + args[i]);
+      printUsageAndExit(phantom, "Unknown argument: " + args[i]);
     }
     i = i + 1;
   }
