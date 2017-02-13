@@ -2,24 +2,24 @@ import printUsageAndExit from './printUsageAndExit';
 import parseOpts from './parseOpts';
 import onErrorFunction from './onErrorFunction';
 
-var excludeFlowName;
-var excludeFlowsArg;
-var excludeFlowsNames;
-var hostname;
-var opts;
-var packNames;
-var packsArg;
-var page;
+let excludeFlowName;
+let excludeFlowsArg;
+let excludeFlowsNames;
+let hostname;
+let opts;
+let packNames;
+let packsArg;
+let page;
 var parseOpts;
 var printUsageAndExit;
-var system;
-var timeout;
-var timeoutArg;
-var waitFor;
-var webpage;
-var _i;
-var _len;
-var _ref;
+let system;
+let timeout;
+let timeoutArg;
+let waitFor;
+let webpage;
+let _i;
+let _len;
+let _ref;
 
 system = require('system');
 webpage = require('webpage');
@@ -49,8 +49,8 @@ if (opts['perf']) {
 }
 
 page.onResourceError = _arg => {
-  var errorString;
-  var url;
+  let errorString;
+  let url;
   url = _arg.url, errorString = _arg.errorString;
   return console.log("BROWSER: *** RESOURCE ERROR *** " + url + ": " + errorString);
 };
@@ -58,16 +58,16 @@ page.onResourceError = _arg => {
 page.onConsoleMessage = message => console.log("BROWSER: " + message);
 
 page.onCallback = perfLine => {
-  var fs;
+  let fs;
   fs = require('fs');
   return fs.write(page._outputDir + '/perf.csv', perfLine, 'a');
 };
 
 waitFor = (test, onReady) => {
-  var interval;
-  var isComplete;
-  var retest;
-  var startTime;
+  let interval;
+  let isComplete;
+  let retest;
+  let startTime;
   startTime = new Date().getTime();
   isComplete = false;
   retest = () => {
@@ -88,8 +88,8 @@ waitFor = (test, onReady) => {
 };
 
 page.open("http://" + hostname + "/flow/index.html", status => {
-  var printErrors;
-  var test;
+  let printErrors;
+  let test;
   console.log('status from page.open', status);
   if (status === 'success') {
     test = () => {
@@ -107,8 +107,8 @@ page.open("http://" + hostname + "/flow/index.html", status => {
         perf,
         excludeFlowsNames
       ) => {
-        var context;
-        var runFlow;
+        let context;
+        let runFlow;
         // var runPack;
         // var runPacks;
         window._date = date;
@@ -159,12 +159,12 @@ page.open("http://" + hostname + "/flow/index.html", status => {
           // };
           runFlow = (packName, flowName, go) => {
             console.log('runFlow was called');
-            var doFlow;
-            var flowTitle;
+            let doFlow;
+            let flowTitle;
             doFlow = (flowName, excludeFlowsNames) => {
-              var f;
-              var _j;
-              var _len1;
+              let f;
+              let _j;
+              let _len1;
               for (_j = 0, _len1 = excludeFlowsNames.length; _j < _len1; _j++) {
                 f = excludeFlowsNames[_j];
                 if (flowName === f) {
@@ -178,7 +178,7 @@ page.open("http://" + hostname + "/flow/index.html", status => {
               window._phantom_test_summary_[flowTitle] = 'FAILED';
               console.log("Fetching flow document: " + packName + " - " + flowName + "...");
               return context.requestFlow(packName, flowName, (error, flow) => {
-                var waitForFlow;
+                let waitForFlow;
                 if (error) {
                   console.log("*** ERROR *** Failed fetching flow " + flowTitle);
                   go(new Error("Failed fetching flow " + flowTitle, error));
@@ -187,7 +187,7 @@ page.open("http://" + hostname + "/flow/index.html", status => {
                   window._phantom_running_ = true;
                   context.open(flowTitle, flow);
                   waitForFlow = () => {
-                    var errors;
+                    let errors;
                     if (window._phantom_running_) {
                       console.log('ACK');
                       return setTimeout(waitForFlow, 2000);
@@ -240,16 +240,16 @@ page.open("http://" + hostname + "/flow/index.html", status => {
       }, packNames, opts['date'], opts['buildId'], opts['gitHash'], opts['gitBranch'], hostname, opts['ncpu'], opts['os'], opts['jobName'], opts['perf'], excludeFlowsNames);
     };
     printErrors = (errors, prefix) => {
-      var error;
+      let error;
       if (prefix == null) {
         prefix = '';
       }
       if (errors) {
         if (Array.isArray(errors)) {
           return (((() => {
-            var _j;
-            var _len1;
-            var _results;
+            let _j;
+            let _len1;
+            let _results;
             _results = [];
             for (_j = 0, _len1 = errors.length; _j < _len1; _j++) {
               error = errors[_j];
@@ -271,11 +271,11 @@ page.open("http://" + hostname + "/flow/index.html", status => {
       }
     };
     return waitFor(test, () => {
-      var errors;
-      var flowTitle;
-      var summary;
-      var testCount;
-      var testStatus;
+      let errors;
+      let flowTitle;
+      let summary;
+      let testCount;
+      let testStatus;
       errors = page.evaluate(() => window._phantom_errors_);
       if (errors) {
         console.log('------------------ FAILED -------------------');
