@@ -1,6 +1,7 @@
 import waitForFlow from './waitForFlow';
 import doFlow from './doFlow';
 import runPacks from './runPacks';
+import goFunction from './goFunction';
 
 export default function test(
   page,
@@ -44,20 +45,11 @@ export default function test(
     console.log('Starting tests...');
     window._phantom_errors_ = null;
     window._phantom_started_ = true;
-    // runPacks(
-    //   packNames,
-    //   function (error) {
-    //     var _ref1;
-    //     if (error) {
-    //       console.log('*** ERROR *** Error running packs');
-    //       window._phantom_errors_ = (_ref1 = error.message) != null ? _ref1 : error;
-    //     } else {
-    //       console.log('Finished running all packs!');
-    //     }
-    //     return window._phantom_exit_ = true;
-    //   },
-    //   context
-    // );
+    runPacks(
+      packNames,
+      goFunction,
+      context
+    );
     return false;
   },
       packNames,
