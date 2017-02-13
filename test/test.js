@@ -1,4 +1,5 @@
 import waitForFlow from './waitForFlow';
+import doFlow from './doFlow';
 
 export default function test(
   page,
@@ -72,18 +73,6 @@ export default function test(
     const runFlow = (packName, flowName, go) => {
       console.log('runFlow was called');
       let flowTitle;
-      const doFlow = (flowName, excludeFlowsNames) => {
-        let f;
-        let _j;
-        let _len1;
-        for (_j = 0, _len1 = excludeFlowsNames.length; _j < _len1; _j++) {
-          f = excludeFlowsNames[_j];
-          if (flowName === f) {
-            return false;
-          }
-        }
-        return true;
-      };
       if (doFlow(flowName, window._excludeFlowsNames)) {
         flowTitle = `${packName} - ${flowName}`;
         window._phantom_test_summary_[flowTitle] = 'FAILED';
