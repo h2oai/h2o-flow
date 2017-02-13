@@ -1,0 +1,20 @@
+export default function onErrorFunction(phantom, message, stacktrace) {
+  console.log('phantom.onError was called');
+  var stack;
+  var t;
+  if (stacktrace != null ? stacktrace.length : void 0) {
+    stack = ((() => {
+      var _i;
+      var _len;
+      var _results;
+      _results = [];
+      for (_i = 0, _len = stacktrace.length; _i < _len; _i++) {
+        t = stacktrace[_i];
+        _results.push(' -> ' + (t.file || t.sourceURL) + ': ' + t.line + (t["function"] ? ' (in function ' + t["function"] + ')' : ''));
+      }
+      return _results;
+    }))();
+    console.log(("PHANTOM: *** ERROR *** " + message + "\n") + stack.join('\n'));
+    return phantom.exit(1);
+  }
+}

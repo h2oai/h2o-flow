@@ -2,7 +2,8 @@ import printUsageAndExit from './printUsageAndExit';
 
 export default function parseOpts(phantom, args) {
   console.log('parseOpts was called');
-  var i, opts;
+  var i;
+  var opts;
   console.log("Using args " + (args.join(' ')));
   i = 0;
   opts = {};
