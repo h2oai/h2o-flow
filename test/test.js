@@ -1,5 +1,6 @@
 import waitForFlow from './waitForFlow';
 import doFlow from './doFlow';
+import runPacks from './runPacks';
 
 export default function test(
   page,
@@ -23,8 +24,6 @@ export default function test(
         excludeFlowsNames
       ) => {
     let context;
-        // var runPack;
-        // var runPacks;
     window._date = date;
     window._buildId = buildId;
     window._gitHash = gitHash;
@@ -42,47 +41,23 @@ export default function test(
       }
       return false;
     }
-    // runPacks = function(go) {
-    //   var tasks;
-    //   window._phantom_test_summary_ = {};
-    //   tasks = packNames.map(function(packName) {
-    //     return function(go) {
-    //       return runPack(packName, go);
-    //     };
-    //   });
-    //   return (Flow.Async.iterate(tasks))(go);
-    // };
-    // runPack = function(packName, go) {
-    //   console.log("Fetching pack: " + packName + "...");
-    //   return context.requestPack(packName, function(error, flowNames) {
-    //     var tasks;
-    //     if (error) {
-    //       console.log("*** ERROR *** Failed fetching pack " + packName);
-    //       return go(new Error("Failed fetching pack " + packName, error));
-    //     } else {
-    //       console.log('Processing pack...');
-    //       tasks = flowNames.map(function(flowName) {
-    //         return function(go) {
-    //           return runFlow(packName, flowName, go);
-    //         };
-    //       });
-    //       return (Flow.Async.iterate(tasks))(go);
-    //     }
-    //   });
-    // };
     console.log('Starting tests...');
     window._phantom_errors_ = null;
     window._phantom_started_ = true;
-      // runPacks(function(error) {
-      //   var _ref1;
-      //   if (error) {
-      //     console.log('*** ERROR *** Error running packs');
-      //     window._phantom_errors_ = (_ref1 = error.message) != null ? _ref1 : error;
-      //   } else {
-      //     console.log('Finished running all packs!');
-      //   }
-      //   return window._phantom_exit_ = true;
-      // });
+    // runPacks(
+    //   packNames,
+    //   function (error) {
+    //     var _ref1;
+    //     if (error) {
+    //       console.log('*** ERROR *** Error running packs');
+    //       window._phantom_errors_ = (_ref1 = error.message) != null ? _ref1 : error;
+    //     } else {
+    //       console.log('Finished running all packs!');
+    //     }
+    //     return window._phantom_exit_ = true;
+    //   },
+    //   context
+    // );
     return false;
   },
       packNames,
