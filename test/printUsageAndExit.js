@@ -7,4 +7,4 @@ export default function printUsageAndExit(phantom, message) {
   console.log('    perf         performance of individual tests will be recorded in perf.csv in the output directory');
   console.log('    excludeFlows do not run these flows');
   return phantom.exit(1);
-};
+}

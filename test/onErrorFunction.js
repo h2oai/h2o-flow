@@ -6,11 +6,10 @@ export default function onErrorFunction(phantom, message, stacktrace) {
     stack = ((() => {
       let _i;
       let _len;
-      let _results;
-      _results = [];
+      const _results = [];
       for (_i = 0, _len = stacktrace.length; _i < _len; _i++) {
         t = stacktrace[_i];
-        _results.push(` -> ${t.file || t.sourceURL}: ${t.line}${t["function"] ? ' (in function ' + t["function"] + ')' : ''}`);
+        _results.push(` -> ${t.file || t.sourceURL}: ${t.line}${t['function'] ? ' (in function ' + t['function'] + ')' : ''}`); // eslint-disable-line
       }
       return _results;
     }))();
