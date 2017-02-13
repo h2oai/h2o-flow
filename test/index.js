@@ -4,7 +4,9 @@
 import printUsageAndExit from './printUsageAndExit';
 import parseOpts from './parseOpts';
 import onErrorFunction from './onErrorFunction';
+import onResourceErrorFunction from './onResourceErrorFunction';
 import waitFor from './waitFor';
+
 
 let excludeFlowName;
 let _i;
@@ -39,11 +41,7 @@ if (opts.perf) {
   page._outputDir = opts.outputDir;
 }
 
-page.onResourceError = _arg => {
-  const url = _arg.url;
-  const errorString = _arg.errorString;
-  return console.log(`BROWSER: *** RESOURCE ERROR *** ${url}: ${errorString}`);
-};
+page.onResourceError = onResourceErrorFunction;
 
 page.onConsoleMessage = message => console.log(`BROWSER: ${message}`);
 
