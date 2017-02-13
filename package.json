@@ -11,6 +11,7 @@
     "build": "gulp",
     "clean": "gulp clean",
     "watch": "gulp && gulp watch",
+    "lint": "eslint test --fix",
     "headless": "gulp && phantomjs build/js/headless-test.js --packs examples",
     "headless-static": "phantomjs build/js/headless-test.js",
     "test-raw": "gulp build-tests && node build/js/flow-tests.js -s",
@@ -68,7 +69,12 @@
     "tape": "~2.12.3",
     "through2": "~0.6.1",
     "uglify-js": "~2.4.13",
-    "watchy": "~0.4.3"
+    "watchy": "~0.4.3",
+    "eslint": "^2.9.0",
+    "eslint-config-airbnb": "^9.0.1",
+    "eslint-plugin-import": "^1.10.2",
+    "eslint-plugin-jsx-a11y": "^1.5.5",
+    "eslint-plugin-react": "^5.2.2"
   },
   "dependencies": {}
 }
