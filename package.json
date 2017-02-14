@@ -15,9 +15,6 @@
     "lint": "eslint test --fix",
     "headless": "gulp && phantomjs build/js/headless-test.js --packs examples",
     "headless-static": "phantomjs build/js/headless-test.js",
-    "test-raw": "gulp build-tests && node build/js/flow-tests.js -s",
-    "test": "gulp build-tests && node build/js/flow-tests.js -s | faucet",
-    "coverage": "mkdir -p build/js/coverage && gulp build-tests && istanbul cover --dir build/js/coverage -x \"**/lib/**\" build/js/flow-tests.js && istanbul report --dir build/js/coverage cobertura"
   },
   "repository": {
     "type": "git",
