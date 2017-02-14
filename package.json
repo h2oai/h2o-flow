@@ -9,12 +9,11 @@
   "scripts": {
     "start": "npm install && bower install && gulp",
     "build": "gulp",
+    "build-tests": "rollup -c  -- test/index.js",
     "clean": "gulp clean",
     "watch": "gulp && gulp watch",
-    "headless": "gulp && phantomjs build/js/headless-test.js --packs examples",
-    "test-raw": "gulp build-tests && node build/js/flow-tests.js -s",
-    "test": "gulp build-tests && node build/js/flow-tests.js -s | faucet",
-    "coverage": "mkdir -p build/js/coverage && gulp build-tests && istanbul cover --dir build/js/coverage -x \"**/lib/**\" build/js/flow-tests.js && istanbul report --dir build/js/coverage cobertura"
+    "lint": "eslint test --fix",
+    "headless": "phantomjs build/js/headless-test.js"
   },
   "repository": {
     "type": "git",
@@ -38,6 +37,11 @@
     "coffeelint": "~1.1.0",
     "desugar": "0.0.3",
     "escodegen": "~1.4.1",
+    "eslint": "^2.9.0",
+    "eslint-config-airbnb": "^9.0.1",
+    "eslint-plugin-import": "^1.10.2",
+    "eslint-plugin-jsx-a11y": "^1.5.5",
+    "eslint-plugin-react": "^5.2.2",
     "esprima": "~1.2.2",
     "faucet": "0.0.1",
     "groc": "~0.6.3",
@@ -63,11 +67,17 @@
     "minimist": "~1.1.0",
     "nib": "~1.0.2",
     "request": "~2.34.0",
+    "rollup": "^0.33.2",
+    "rollup-plugin-babel": "^2.6.1",
+    "rollup-plugin-commonjs": "^5.0.5",
+    "rollup-plugin-json": "^2.0.1",
+    "rollup-plugin-node-resolve": "^2.0.0",
     "stylus": "~0.43.0",
     "tape": "~2.12.3",
     "through2": "~0.6.1",
     "uglify-js": "~2.4.13",
-    "watchy": "~0.4.3"
+    "watchy": "~0.4.3",
+    "webpage": "0.3.0"
   },
   "dependencies": {}
 }
