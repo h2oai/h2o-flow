@@ -12,14 +12,17 @@ import test from './test';
 import printErrors from './printErrors';
 import statusFunction from './statusFunction';
 
+// external dependency
+import webpage from 'webpage';
+
 let excludeFlowName;
 let _i;
 let _len;
 
-const system = require('system'); // eslint-disable-line import/no-unresolved
-const webpage = require('webpage'); // eslint-disable-line import/no-unresolved
 phantom.onError = onErrorFunction.bind(this, phantom);
-const opts = parseOpts(phantom, system.args.slice(1));
+const opts = parseOpts(phantom, process.argv.slice(2));
+console.log('process.argv', process.argv);
+console.log('opts', opts);
 const _ref = opts.hostname;
 const hostname = (_ref) != null ? _ref : 'localhost:54321';
 

@@ -13,8 +13,7 @@
     "clean": "gulp clean",
     "watch": "gulp && gulp watch",
     "lint": "eslint test --fix",
-    "headless": "gulp && phantomjs build/js/headless-test.js --packs examples",
-    "headless-static": "phantomjs build/js/headless-test.js",
+    "headless": "phantomjs build/js/headless-test.js"
   },
   "repository": {
     "type": "git",
@@ -77,7 +76,8 @@
     "tape": "~2.12.3",
     "through2": "~0.6.1",
     "uglify-js": "~2.4.13",
-    "watchy": "~0.4.3"
+    "watchy": "~0.4.3",
+    "webpage": "0.3.0"
   },
   "dependencies": {}
 }

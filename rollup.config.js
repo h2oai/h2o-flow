@@ -7,7 +7,7 @@ export default {
   entry: 'test/index.js',
   format: 'umd',
   globals: {},
-  moduleName: 'headless-test',
+  moduleName: 'headless-test-legacy',
   plugins: [
     nodeResolve({ jsnext: true, main: true }),
     json(),
@@ -15,7 +15,7 @@ export default {
     commonjs()
   ],
   external: [],
-  dest: 'build/headless-test.js',
+  dest: 'build/js/headless-test-legacy.js',
   acorn: {
     allowReserved: true
   }//,
