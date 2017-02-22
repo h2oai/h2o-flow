@@ -1,0 +1,36 @@
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/paper-button/paper-button.html">
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/paper-card/paper-card.html">
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/paper-dialog/paper-dialog.html">
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/neon-animation/animations/slide-from-bottom-animation.html">
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/neon-animation/animations/slide-down-animation.html">
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/iron-icons/iron-icons.html">
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/paper-collapse-item/paper-collapse-item.html">
+
+<paper-dialog id="achievementContainer" entry-animation="slide-from-bottom-animation" exit-animation="slide-down-animation">
+    <paper-dialog-scrollable>
+        <h1>Acheivements</h1>
+        <p>&nbsp;</p>
+        <paper-collapse-item item="star" class="star-complete" header="Import Data Successfully">
+            Detailed tutorial information would go here
+        </paper-collapse-item>
+
+        <p><iron-icon icon="star" class="star-complete"></iron-icon> &nbsp; Importing data successfully</p>
+        <p><iron-icon icon="star-border"></iron-icon> &nbsp; Split data into a training set and a testing set</p>
+        <p><iron-icon icon="star-border"></iron-icon> &nbsp; Build a model</p>
+        <p><iron-icon icon="star-border"></iron-icon> &nbsp; Set different data weights</p>
+        <p><iron-icon icon="star-border"></iron-icon> &nbsp; Make a prediction</p>
+    </paper-dialog-scrollable>
+    <div class="buttons">
+        <paper-button dialog-confirm autofocus>OK</paper-button>
+    </div>
+</paper-dialog>
+
+<script>
+    let dataQuestContainer = document.querySelector("#dataQuestContainer");
+    let dataChallengesContainer = document.querySelector("#dataChallengesContainer");
+    let achievementContainer = document.querySelector("#achievementContainer");
+
+    dataQuestContainer.addEventListener("click", () => achievementContainer.open());
+    dataChallengesContainer.addEventListener("click", () => achievementContainer.open());
+</script>

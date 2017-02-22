@@ -806,7 +806,7 @@ table.flow-form-ruled tr:first-child {
   font-size: 80%;
 }
 .flow-status-bar table {
-  width: 100%;
+  width: 25%;
 }
 .flow-status-bar td {
   padding: 0 5px;

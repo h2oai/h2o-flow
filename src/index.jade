@@ -15,8 +15,9 @@ html(lang='en')
     link(rel='stylesheet', href='css/scala-editor.css', type='text/css')
     link(rel='stylesheet', href='//fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600', type='text/css')
     link(rel='stylesheet', href='custom/custom.css', type='text/css')
+    <!--link(rel='import', href="http://polygit.org/components/polymer/polymer.html")-->
 
-    //- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries
+  //- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries
     //- WARNING: Respond.js doesn't work if you view the page via file://
     <!--[if lt IE 9]>
     script(src='https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js')
@@ -32,9 +33,11 @@ html(lang='en')
 
     include core/components/mixins.jade
 
-    include core/components/notebook.jade    
+    include core/components/notebook.jade
 
-    include ext/components/h2o.jade    
+    include ext/components/h2o.jade
+
+    include ext/components/acheivements.html
 
     //- 
     //- Scripts

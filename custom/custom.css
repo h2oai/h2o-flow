@@ -9,3 +9,25 @@
   /* Max width 145px, max height 50px */
   /* background-image: url('logo.png'); */
 }
+#achivementDisplay {
+    display: flex;
+}
+#dataQuestContainer {
+    display: flex;
+    cursor: pointer;
+}
+#dataChallengesContainer {
+    display: flex;
+    cursor: pointer;
+}
+#achievementContainer {
+    /*position: absolute;
+    padding: 8px;
+    bottom: 10px;
+    left: 10px;*/
+}
+.star-complete {
+    color: #faf185;
+    background-color: black;
+    border-radius: 45px;
+}
