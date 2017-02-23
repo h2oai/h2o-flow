@@ -67,7 +67,6 @@ config =
       'lib/codemirror/lib/codemirror.js'
       'lib/codemirror/mode/clike/clike.js'
       'lib/codemirror/addon/edit/matchbrackets.js'
-
     ]
     css: [
       'fonts/lato/fonts.css'
@@ -97,6 +96,123 @@ config =
     ]
     custom: [
       'custom/*.*'
+    ]
+    polymer: [
+      'lib/polymer/*.*'
+    ]
+    "paper-button": [
+      'lib/paper-button/*.*'
+    ]
+    "paper-card": [
+      'lib/paper-card/*.*'
+    ]
+    "paper-dialog": [
+      'lib/paper-dialog/*.*'
+    ]
+    "paper-dialog-scrollable": [
+      'lib/paper-dialog-scrollable/*.*'
+    ]
+    "neon-animation": [
+      'lib/neon-animation/*.*'
+    ]
+    "neon-animation/animations": [
+      'lib/neon-animation/animations/*.*'
+    ]
+    "iron-icon" : [
+      'lib/iron-icon/*.*'
+    ]
+    "iron-icons" : [
+      'lib/iron-icons/*.*'
+    ]
+    "iron-iconset-svg" : [
+      'lib/iron-iconset-svg/*.*'
+    ]
+    "paper-collapse-item" : [
+      'lib/paper-collapse-item/*.*'
+    ]
+    "paper-behaviors" : [
+      'lib/paper-behaviors/*.*'
+    ]
+    "iron-flex-layout" : [
+      'lib/iron-flex-layout/*.*'
+    ]
+    "paper-dialog-behavior" : [
+      'lib/paper-dialog-behavior/*.*'
+    ]
+    "paper-material-shared-styles" : [
+      'lib/paper-material-shared-styles/*.*'
+    ]
+    "neon-animation-runner-behavior" : [
+      'lib/paper-animation-runner-behavior/*.*'
+    ]
+    "iron-collapse" : [
+      'lib/iron-collapse/*.*'
+    ]
+    "paper-styles" : [
+      'lib/paper-styles/*.*'
+    ]
+    "paper-item-body" : [
+      'lib/paper-item-body/*.*'
+    ]
+    "paper-icon-button" : [
+      'lib/paper-icon-button/*.*'
+    ]
+    "icon-image" : [
+      'lib/icon-image/*.*'
+    ]
+    "paper-material" : [
+      'lib/paper-material/*.*'
+    ]
+    "paper-item" : [
+      'lib/paper-item/*.*'
+    ]
+    "iron-image" : [
+      'lib/iron-image/*.*'
+    ]
+    "iron-behaviors" : [
+      'lib/iron-behaviors/*.*'
+    ]
+    "paper-ripple" : [
+      'lib/paper-ripple/*.*'
+    ]
+    "iron-a11y-keys-behavior" : [
+      'lib/iron-a11y-keys-behavior/*.*'
+    ]
+    "iron-flex-layout" : [
+      'lib/iron-flex-layout/*.*'
+    ]
+    "iron-overlay-behavior" : [
+      'lib/iron-overlay-behavior/*.*'
+    ]
+    "iron-resizable-behavior" : [
+      'lib/iron-resizable-behavior/*.*'
+    ]
+    "iron-fit-behavior.html" : [
+      'lib/iron-fit-behavior.html/*.*'
+    ]
+    "iron-meta.html" : [
+      'lib/iron-meta.html/*.*'
+    ]
+    "web-animations-js" : [
+      'lib/web-animations-js/*.*'
+    ]
+    "iron-flex-layout" : [
+      'lib/iron-flex-layout/*.*'
+    ]
+    "iron-flex-layout/classes" : [
+      'lib/iron-flex-layout/classes/*.*'
+    ]
+    "iron-fit-behavior" : [
+      'lib/iron-fit-behavior/*.*'
+    ]
+    "iron-meta" : [
+      'lib/iron-meta/*.*'
+    ]
+    "web-animations-js" : [
+      'lib/web-animations-js/*.*'
+    ]
+    "iron-fit-behavior" : [
+      'lib/iron-fit-behavior/*.*'
     ]
 
 gulp.task 'build-scripts', ->
@@ -148,6 +264,114 @@ gulp.task 'build-libs', ->
 
   gulp.src config.lib.custom
     .pipe gulp.dest config.dir.deploy + '/custom/'
+
+  gulp.src config.lib.polymer
+    .pipe gulp.dest config.dir.deploy + '/polymer'
+
+  gulp.src config.lib["paper-button"]
+    .pipe gulp.dest config.dir.deploy + '/paper-button'
+
+  gulp.src config.lib["paper-card"]
+    .pipe gulp.dest config.dir.deploy + '/paper-card'
+
+  gulp.src config.lib["paper-dialog"]
+    .pipe gulp.dest config.dir.deploy + '/paper-dialog'
+
+  gulp.src config.lib["paper-dialog-scrollable"]
+    .pipe gulp.dest config.dir.deploy + '/paper-dialog-scrollable'
+
+  gulp.src config.lib["iron-icons"]
+    .pipe gulp.dest config.dir.deploy + '/iron-icons'
+
+  gulp.src config.lib["iron-iconset-svg"]
+    .pipe gulp.dest config.dir.deploy + '/iron-iconset-svg'
+
+  gulp.src config.lib["iron-icon"]
+    .pipe gulp.dest config.dir.deploy + '/iron-icon'
+
+  gulp.src config.lib["paper-collapse-item"]
+    .pipe gulp.dest config.dir.deploy + '/paper-collapse-item'
+
+  gulp.src config.lib["paper-behaviors"]
+    .pipe gulp.dest config.dir.deploy + '/paper-behaviors'
+
+  gulp.src config.lib["iron-flex-layout"]
+    .pipe gulp.dest config.dir.deploy + '/iron-flex-layout'
+
+  gulp.src config.lib["iron-flex-layout/classes"]
+    .pipe gulp.dest config.dir.deploy + '/iron-flex-layout/classes'
+
+  gulp.src config.lib["paper-dialog-behavior"]
+    .pipe gulp.dest config.dir.deploy + '/paper-dialog-behavior'
+
+  gulp.src config.lib["paper-material-shared-styles"]
+    .pipe gulp.dest config.dir.deploy + '/paper-material-shared-styles'
+
+  gulp.src config.lib["neon-animation-runner-behavior"]
+    .pipe gulp.dest config.dir.deploy + '/paper-animation-runner-behavior'
+
+  gulp.src config.lib["neon-animation"]
+    .pipe gulp.dest config.dir.deploy + '/neon-animation'
+
+  gulp.src config.lib["neon-animation/animations"]
+    .pipe gulp.dest config.dir.deploy + '/neon-animation/animations'
+
+  gulp.src config.lib["iron-collapse"]
+    .pipe gulp.dest config.dir.deploy + '/iron-collapse'
+
+  gulp.src config.lib["paper-styles"]
+    .pipe gulp.dest config.dir.deploy + '/paper-styles'
+
+  gulp.src config.lib["paper-item-body"]
+    .pipe gulp.dest config.dir.deploy + '/paper-item-body'
+
+  gulp.src config.lib["paper-icon-button"]
+    .pipe gulp.dest config.dir.deploy + '/paper-icon-button'
+
+  gulp.src config.lib["icon-image"]
+    .pipe gulp.dest config.dir.deploy + '/icon-image'
+
+  gulp.src config.lib["paper-material"]
+    .pipe gulp.dest config.dir.deploy + '/paper-material'
+
+  gulp.src config.lib["paper-item"]
+    .pipe gulp.dest config.dir.deploy + '/paper-item'
+
+  gulp.src config.lib["iron-image"]
+    .pipe gulp.dest config.dir.deploy + '/iron-image'
+
+  gulp.src config.lib["iron-behaviors"]
+    .pipe gulp.dest config.dir.deploy + '/iron-behaviors'
+
+  gulp.src config.lib["paper-ripple"]
+    .pipe gulp.dest config.dir.deploy + '/paper-ripple'
+
+  gulp.src config.lib["iron-a11y-keys-behavior"]
+    .pipe gulp.dest config.dir.deploy + '/iron-a11y-keys-behavior'
+
+  gulp.src config.lib["iron-flex-layout"]
+    .pipe gulp.dest config.dir.deploy + '/iron-flex-layout'
+
+  gulp.src config.lib["iron-overlay-behavior"]
+    .pipe gulp.dest config.dir.deploy + '/iron-overlay-behavior'
+
+  gulp.src config.lib["iron-resizable-behavior"]
+    .pipe gulp.dest config.dir.deploy + '/iron-resizable-behavior'
+
+  gulp.src config.lib["iron-flex-layout/classes"]
+    .pipe gulp.dest config.dir.deploy + '/iron-flex-layout/classes'
+
+  gulp.src config.lib["iron-fit-behavior"]
+    .pipe gulp.dest config.dir.deploy + '/iron-fit-behavior'
+
+  gulp.src config.lib["iron-meta"]
+    .pipe gulp.dest config.dir.deploy + '/iron-meta'
+
+  gulp.src config.lib["web-animations-js"]
+    .pipe gulp.dest config.dir.deploy + '/web-animations-js'
+
+  gulp.src config.lib["iron-fit-behavior"]
+    .pipe gulp.dest config.dir.deploy + '/iron-fit-behavior'
 
 gulp.task 'watch', ->
   gulp.watch 'src/**/*.coffee', [ 'build-scripts' ]

@@ -27,7 +27,13 @@
     "src",
     "tools"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "iron-elements": "^1.0.10",
+    "paper-elements": "^1.0.7",
+    "paper-collapse-item": "^1.1.4",
+    "polymer": "^1.8.0",
+    "neon-animation": "^1.2.4"
+  },
   "devDependencies": {
     "jquery": "~2.1.0",
     "d3": "~3.5.2",
