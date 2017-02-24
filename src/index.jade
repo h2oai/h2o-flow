@@ -16,6 +16,8 @@ html(lang='en')
     link(rel='stylesheet', href='//fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic|Source+Code+Pro:400,600', type='text/css')
     link(rel='stylesheet', href='custom/custom.css', type='text/css')
     link(rel='import', href="polymer/polymer.html")
+    link(rel='import', href="elements/achievements.html")
+    link(rel='import', href="elements/achievements-data.html")
 
   //- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries
     //- WARNING: Respond.js doesn't work if you view the page via file://
@@ -37,7 +39,8 @@ html(lang='en')
 
     include ext/components/h2o.jade
 
-    include ext/components/acheivements.html
+    achievements-data()
+    achievement-display()
 
     //- 
     //- Scripts

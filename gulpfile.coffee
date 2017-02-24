@@ -214,6 +214,18 @@ config =
     "iron-fit-behavior" : [
       'lib/iron-fit-behavior/*.*'
     ]
+    "iron-menu-behavior" : [
+      'lib/iron-menu-behavior/*.*'
+    ]
+    "iron-selector" : [
+      'lib/iron-selector/*.*'
+    ]
+    "paper-tabs" : [
+      'lib/paper-tabs/*.*'
+    ]
+    elements : [
+      'src/elements/*.*'
+    ]
 
 gulp.task 'build-scripts', ->
   gulp.src [ 'src/**/*.coffee' ]
@@ -372,6 +384,18 @@ gulp.task 'build-libs', ->
 
   gulp.src config.lib["iron-fit-behavior"]
     .pipe gulp.dest config.dir.deploy + '/iron-fit-behavior'
+
+  gulp.src config.lib["paper-tabs"]
+    .pipe gulp.dest config.dir.deploy + '/paper-tabs'
+
+  gulp.src config.lib["iron-menu-behavior"]
+    .pipe gulp.dest config.dir.deploy + '/iron-menu-behavior'
+
+  gulp.src config.lib["iron-selector"]
+    .pipe gulp.dest config.dir.deploy + '/iron-selector'
+
+  gulp.src config.lib.elements
+    .pipe gulp.dest config.dir.deploy + '/elements'
 
 gulp.task 'watch', ->
   gulp.watch 'src/**/*.coffee', [ 'build-scripts' ]

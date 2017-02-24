@@ -1,0 +1,104 @@
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-card/paper-card.html">
+<link rel="import" href="../paper-dialog/paper-dialog.html">
+<link rel="import" href="../paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="../neon-animation/animations/slide-from-bottom-animation.html">
+<link rel="import" href="../neon-animation/animations/slide-down-animation.html">
+<link rel="import" href="../paper-collapse-item/paper-collapse-item.html">
+<link rel="import" href="../paper-tabs/paper-tab.html">
+<link rel="import" href="../paper-tabs/paper-tabs.html">
+
+<dom-module id="achievement-display">
+    <template>
+        <style>
+            #githubLogo {
+                width: 18px;
+                height: 18px;
+            }
+            .acheivement-card {
+                padding: 6px;
+                margin-right: 10px;
+                margin-top: 4px;
+                margin-bottom: 4px;
+                min-width: 600px;
+            }
+            .achievement-footer {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-around;
+                align-items: baseline;
+            }
+        </style>
+
+        <paper-dialog id="achievementContainer" entry-animation="slide-from-bottom-animation" exit-animation="slide-down-animation">
+            <paper-tabs selected="0">
+                <paper-tab>Apprentice</paper-tab>
+                <paper-tab>Novice</paper-tab>
+                <paper-tab>Master</paper-tab>
+            </paper-tabs>
+            <paper-dialog-scrollable>
+                <h3>Level 1 Quests</h3>
+                <paper-card class="acheivement-card">
+                    <paper-collapse-item icon="icons:star" class="star-complete" header="Import Data Successfully">
+                        <p>Detailed tutorial information would go here</p>
+                    </paper-collapse-item>
+                </paper-card>
+                <paper-card class="acheivement-card">
+                    <paper-collapse-item icon="icons:star-border" class="star-complete" header="Split data into a training set and a testing set">
+                        <p>Detailed tutorial information would go here</p>
+                    </paper-collapse-item>
+                </paper-card>
+                <paper-card class="acheivement-card">
+                    <paper-collapse-item icon="icons:star-border" class="star-complete" header="Build a model">
+                        <p>Detailed tutorial information would go here</p>
+                    </paper-collapse-item>
+                </paper-card>
+                <paper-card class="acheivement-card">
+                    <paper-collapse-item icon="icons:star-border" class="star-complete" header="Set different data weights">
+                        <p>Detailed tutorial information would go here</p>
+                    </paper-collapse-item>
+                </paper-card>
+                <paper-card class="acheivement-card">
+                    <paper-collapse-item icon="icons:star-border" class="star-complete" header="Make a prediction">
+                        <p>Detailed tutorial information would go here</p>
+                    </paper-collapse-item>
+                </paper-card>
+                <h3>Level 1 Challenges</h3>
+                <paper-card class="acheivement-card">
+                    <paper-collapse-item icon="icons:star-border" class="star-complete" header="Save a forest">
+                        <p>Detailed tutorial information would go here</p>
+                        <p>
+                            <paper-button raised>Begin Challenge</paper-button>
+                        </p>
+                    </paper-collapse-item>
+                </paper-card>
+                <p>&nbsp;</p>
+            </paper-dialog-scrollable>
+            <div class="buttons achievement-footer">
+                <div id="githubContainer">
+                    <img id="githubLogo" src="https://image.flaticon.com/icons/png/128/37/37318.png">
+                    &nbsp;
+                    <a href="#">Connect with your GitHub account to save progress</a>
+                </div>
+                <paper-button dialog-confirm autofocus>Back</paper-button>
+            </div>
+        </paper-dialog>
+    </template>
+
+    <script>
+        Polymer({
+            is: "achievement-display",
+            properties: {
+            },
+            attached: function() {
+                console.log(this.localName + '#' + this.id + ' was attached');
+                let dataQuestContainer = document.querySelector("#dataQuestContainer");
+                let dataChallengesContainer = document.querySelector("#dataChallengesContainer");
+                let achievementContainer = document.querySelector("#achievementContainer");
+
+                dataQuestContainer.addEventListener("click", () => achievementContainer.open());
+                dataChallengesContainer.addEventListener("click", () => achievementContainer.open());
+            }
+        });
+    </script>
+</dom-module>
