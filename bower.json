@@ -25,7 +25,9 @@
     "lib",
     "node_modules",
     "src",
-    "tools"
+    "tools",
+    "*.sublime-project",
+    "*.sublime-workspace"
   ],
   "dependencies": {},
   "devDependencies": {
