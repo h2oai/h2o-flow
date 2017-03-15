@@ -4624,7 +4624,7 @@
     }
 
     function postAutoModelBuildRequest(_, parameters, go) {
-      return doPostJSON(_, '/3/AutoMLBuilder', parameters, go);
+      return doPostJSON(_, '/99/AutoMLBuilder', parameters, go);
     }
 
     function requestAutoModelBuild(_, opts, go) {
