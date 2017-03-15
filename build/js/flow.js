@@ -4937,7 +4937,7 @@
             }
         };
         requestAutoModelBuild = function (parameters, go) {
-            return doPostJSON('/3/AutoMLBuilder', parameters, go);
+            return doPostJSON('/99/AutoMLBuilder', parameters, go);
         };
         requestPredict = function (destinationKey, modelKey, frameKey, options, go) {
             var opt, opts;

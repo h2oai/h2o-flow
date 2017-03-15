@@ -402,7 +402,7 @@ H2O.Proxy = (_) ->
       doPost getModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
 
   requestAutoModelBuild = (parameters, go) ->
-    doPostJSON "/3/AutoMLBuilder", parameters, go
+    doPostJSON "/99/AutoMLBuilder", parameters, go
 
   requestPredict = (destinationKey, modelKey, frameKey, options, go) ->
     opts = {}
