@@ -3,7 +3,18 @@
   "version": "0.5.3",
   "homepage": "https://github.com/h2oai/h2o-flow",
   "authors": [
-    "Prithvi Prabhu <prithvi@h2o.ai>"
+    "Prithvi Prabhu <prithvi@h2o.ai>",
+    "Arno Candel <arno@h2o.ai>",
+    "Ray Peck <rpeck@h2o.ai>",
+    "Michal Malohlava <michal@h2o.ai>",
+    "Tom Kraljevic <tomk@h2o.ai>",
+    "Tomas Nykodym <tomas@h2o.ai>",
+    "Micah Stubbs <micah@h2o.ai>",
+    "Ivy Wang <ivy@h2o.ai>",
+    "Michal Kurka <michalk@h2o.ai>",
+    "Mateusz Dymczyk <mateusz@h2o.ai>",
+    "Jakub Hava <jakub@h2o.ai>",
+    "Justin Loyola <justin@h2o.ai>"
   ],
   "description": "Interactive computational environment for H2O",
   "main": "build/index.html",
@@ -25,7 +36,9 @@
     "lib",
     "node_modules",
     "src",
-    "tools"
+    "tools",
+    "*.sublime-project",
+    "*.sublime-workspace"
   ],
   "dependencies": {},
   "devDependencies": {

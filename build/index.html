@@ -1269,6 +1269,75 @@
         <!-- /ko-->
       </div>
     </script>
+    <script type="text/html" id="flow-roomscale-scatterplot-input">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-link"></i>Roomscale Scatterplot
+            </h3>
+        <!-- ko if:exception-->
+        <div data-bind="template: { name:'flow-failure', data:exception }"></div>
+        <!-- /ko-->
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th>
+                <label>Frame:</label>
+              </th>
+              <td colspan="2">
+                <select data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>X-Variable:</label>
+              </th>
+              <td colspan="2">
+                <select data-bind="options:columns, value:selectedXVariable, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Y-Variable:</label>
+              </th>
+              <td colspan="2">
+                <select data-bind="options:columns, value:selectedYVariable, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Z-Variable:</label>
+              </th>
+              <td colspan="2">
+                <select data-bind="options:columns, value:selectedZVariable, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Color-Variable:</label>
+              </th>
+              <td colspan="2">
+                <select data-bind="options:columns, value:selectedColorVariable, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Actions:</label>
+              </th>
+              <td>
+                <button type="button" data-bind="click:compute, enable:canCompute" class="flow-button"><i class="fa fa-link"></i><span>Compute</span></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </script>
+    <script type="text/html" id="flow-roomscale-scatterplot-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-table"></i>Roomscale Scatterplot
+            </h3>
+        <div class="flow-margin-after"></div>
+        <div><a data-bind="href:plotUrl">plotUrl</a></div>
+      </div>
+    </script>
     <script type="text/html" id="flow-parse-raw-input">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-cog"></i>Setup Parse</h3>

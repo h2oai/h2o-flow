@@ -118,12 +118,6 @@ gulp.task 'build-tests', ->
     .pipe footer '}).call(this);'
     .pipe gulp.dest './build/js/'
 
-gulp.task 'build-headless-test', ->
-  gulp.src [ 'test/**/*.coffee' ]
-    .pipe coffee bare: yes
-    .pipe concat 'headless-test.js'
-    .pipe gulp.dest './build/js/'
-
 gulp.task 'build-templates', ->
   gulp.src 'src/index.jade'
     .pipe jade pretty: yes
@@ -169,7 +163,6 @@ gulp.task 'build', [
   'build-scripts'
   'build-templates'
   'build-styles'
-  'build-headless-test'
 ]
 
 gulp.task 'default', [ 'build' ]

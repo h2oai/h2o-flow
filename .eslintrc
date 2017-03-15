@@ -1,0 +1,20 @@
+{
+  "extends": "airbnb",
+  "rules": {
+    "max-len": "off",
+    "prefer-rest-params": "off",
+    "no-restricted-syntax": "off",
+    "func-names": "off",
+    "consistent-return": "off",
+    "no-loop-func": "off",
+    "no-console": "off",
+    "no-underscore-dangle": "off",
+    "no-shadow": "off", 
+    "no-use-before-define": "off",
+    "no-param-reassign": "off",
+    "no-alert": "off",
+    "no-nested-ternary": "off",
+    "no-return-assign": ["error", "always"],
+    "no-unused-vars": "off"
+  }
+}
