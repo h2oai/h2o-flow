@@ -99,16 +99,6 @@ config =
       'custom/*.*'
     ]
 
-gulp.task 'build-scripts', ->
-  gulp.src [ 'src/**/*.coffee' ]
-    .pipe ignore.exclude /tests.coffee$/
-    .pipe coffee bare: no
-    .pipe concat 'flow.js'
-    .pipe expand 'desugar.yml'
-    .pipe header '"use strict";(function(){ var lodash = window._; window.Flow={}; window.H2O={};'
-    .pipe footer '}).call(this);'
-    .pipe gulp.dest config.dir.deploy + '/js/'
-
 gulp.task 'build-tests', ->
   gulp.src [ 'src/**/*.coffee' ]
     .pipe coffee bare: no
@@ -150,7 +140,6 @@ gulp.task 'build-libs', ->
     .pipe gulp.dest config.dir.deploy + '/custom/'
 
 gulp.task 'watch', ->
-  gulp.watch 'src/**/*.coffee', [ 'build-scripts' ]
   gulp.watch 'src/**/*.jade', [ 'build-templates' ]
   gulp.watch 'src/**/*.styl', [ 'build-styles' ]
 
@@ -160,7 +149,6 @@ gulp.task 'clean', ->
 
 gulp.task 'build', [ 
   'build-libs'
-  'build-scripts'
   'build-templates'
   'build-styles'
 ]
