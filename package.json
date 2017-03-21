@@ -9,11 +9,11 @@
   "scripts": {
     "start": "npm install && bower install && gulp",
     "build-templates": "gulp",
-    "build-js": "rm build/js/flow.js && rollup -c  -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/flow.js && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/flow.js",
-    "build": "gulp && rm build/js/flow.js && rollup -c -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/flow.js && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/flow.js",
+    "build-js": "rollup -c  -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/flow.js && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/flow.js",
+    "build": "gulp && rollup -c -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/flow.js && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/flow.js",
     "build-tests": "rollup -c tests.rollup.js -- test/index.js",
     "lint": "eslint test --fix",
-    "headless": "phantomjs build/js/headless-test.js",
+    "headless": "phantomjs build/js/headless-test.js"
   },
   "repository": {
     "type": "git",
@@ -90,6 +90,7 @@
     "rollup-plugin-commonjs": "^5.0.5",
     "rollup-plugin-json": "^2.0.1",
     "rollup-plugin-node-resolve": "^2.0.0",
+    "rollup-plugin-strip": "^1.1.1",
     "stylus": "~0.43.0",
     "tape": "~2.12.3",
     "through2": "~0.6.1",
