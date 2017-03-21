@@ -8,12 +8,12 @@
   },
   "scripts": {
     "start": "npm install && bower install && gulp",
-    "build": "gulp",
-    "build-tests": "rollup -c  -- test/index.js",
-    "clean": "gulp clean",
-    "watch": "gulp && gulp watch",
+    "build-templates": "gulp",
+    "build-js": "rm build/js/flow.js && rollup -c  -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/flow.js && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/flow.js",
+    "build": "gulp && rm build/js/flow.js && rollup -c -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/flow.js && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/flow.js",
+    "build-tests": "rollup -c tests.rollup.js -- test/index.js",
     "lint": "eslint test --fix",
-    "headless": "phantomjs build/js/headless-test.js"
+    "headless": "phantomjs build/js/headless-test.js",
   },
   "repository": {
     "type": "git",
@@ -40,13 +40,16 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/h2oai/h2o/issues"
+    "url": "https://github.com/h2oai/h2o-flow/issues"
   },
   "homepage": "https://github.com/h2oai/h2o-flow",
   "devDependencies": {
     "async": "~0.9.0",
+    "babel-preset-es2015-rollup": "^1.1.1",
+    "babelrc-rollup": "^3.0.0",
     "bower": "~1.3.8",
     "browserify": "~3.44.2",
+    "cli": "^0.11.2",
     "coffee-script": "~1.7.1",
     "coffeelint": "~1.1.0",
     "desugar": "0.0.3",
@@ -80,6 +83,7 @@
     "marked": "~0.3.2",
     "minimist": "~1.1.0",
     "nib": "~1.0.2",
+    "package-preamble": "0.0",
     "request": "~2.34.0",
     "rollup": "^0.33.2",
     "rollup-plugin-babel": "^2.6.1",

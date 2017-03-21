@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites errors="0"
+            failures="1"
+            tests="2">
+
+  <testsuite name="example"
+    errors="0" failures="1" hostname="" id="" package="example" skipped="0"
+    tests="2" time="4.253" timestamp="Mon, 19 Dec 2016 21:02:24 GMT">
+  
+    <testcase name="step one" time="2.802" assertions="2">
+
+    
+
+    
+    </testcase>
+  
+    <testcase name="step two" time="1.451" assertions="1">  <failure message="Testing if element &lt;#main&gt; contains text: &quot;asdfghjkl;;lkjhgffdsa&quot;.">    at Object.step two (/Users/m/workspace/drift/tests/example.js:14:15)
+    at _combinedTickCallback (internal/process/next_tick.js:67:7)</failure>
+
+    
+    </testcase>
+  
+  
+  </testsuite>
+</testsuites>

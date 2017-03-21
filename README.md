@@ -16,6 +16,11 @@ there is a nice [user guide](https://github.com/h2oai/h2o-3/blob/8858aac90dce771
 
 ## Development Instructions
 
+```
+npm install
+npm run build
+```
+
 It is recommended that you clone [h2o-3](https://github.com/h2oai/h2o-3) and h2o-flow in the same parent directory. 
 
 If you develop for Flow from a Java [IDE](https://en.wikipedia.org/wiki/Integrated_development_environment) like [IntelliJ IDEA](https://www.jetbrains.com/idea/) or [Eclipse](https://eclipse.org/users/), you can see your changes to Flow in the browser immediately after you run the `make` command, without waiting to build a new H2O binary and restart H2O.  
