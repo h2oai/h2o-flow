@@ -9,8 +9,8 @@
   "scripts": {
     "start": "npm install && bower install && gulp",
     "build-templates": "gulp",
-    "build-js": "rollup -c  -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/flow.js && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/flow.js",
-    "build": "gulp && rollup -c -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/flow.js && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/flow.js",
+    "build-js": "rollup -c  -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/ && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/",
+    "build": "gulp && rollup -c -- src/index.js && cp build/js/flow.js ../h2o-3/h2o-web/src/main/resources/www/flow/js/ && cp build/js/flow.js ../h2o-3/h2o-web/lib/h2o-flow/build/js/",
     "build-tests": "rollup -c tests.rollup.js -- test/index.js",
     "lint": "eslint test --fix",
     "headless": "phantomjs build/js/headless-test.js"
