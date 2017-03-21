@@ -10,3 +10,11 @@ lib
 *.sublime*project
 *.sublime*workspace
 sublime-projects
+node_modules/
+bin/
+sublime-projects/
+tests/selenium-debug.log
+tests/nightwatch.json
+tests/example.js
+tests/reports/
+npm-debug.log
