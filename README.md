@@ -4,11 +4,7 @@
 
 *H2O Flow* is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media to build machine learning workflows.
 
-Think of Flow as a code notebook: a hybrid [GUI](https://en.wikipedia.org/wiki/Graphical_user_interface) + [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) + storytelling environment for exploratory data analysis and machine learning, with async, re-scriptable record/replay capabilities. 
-
-Flow is written in standard [es2015](https://babeljs.io/learn-es2015/) [Javascript](https://en.wikipedia.org/wiki/JavaScript). Flow uses the [Pug](https://github.com/pugjs/pug) templating engine _(formerly known as [Jade](https://github.com/pugjs/pug#rename-from-jade))_ to define HTML views and lay out pages.  Flow uses the [KnockoutJS](https://github.com/knockout/knockout) Model-View-View-Model library for declarative data binding.  
-
-Flow contains a veritable heap of little embedded [DSL](https://en.wikipedia.org/wiki/Domain-specific_language)s for reactive [dataflow programming](https://en.wikipedia.org/wiki/Dataflow_programming), markup generation, lazy evaluation and multicast signals/slots. Flow sandboxes and evaluates user-Javascript in the browser via static analysis and tree-rewriting. 
+Think of Flow as a hybrid [GUI](https://en.wikipedia.org/wiki/Graphical_user_interface) + [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) + storytelling environment for exploratory data analysis and machine learning, with async, re-scriptable record/replay capabilities. Flow sandboxes and evals user-Javascript in the browser via static analysis and tree-rewriting. Flow is written in non-standard Javascript (with compile-time unqualified imports), with a veritable heap of little embedded [DSL](https://en.wikipedia.org/wiki/Domain-specific_language)s for reactive [dataflow programming](https://en.wikipedia.org/wiki/Dataflow_programming), markup generation, lazy evaluation and multicast signals/slots.
 
 ## Docs
 
@@ -28,6 +24,16 @@ If you have not already, follow these instructions to  [set up your preferred ID
 2. Open up [h2o-3](https://github.com/h2oai/h2o-3) in IDEA, build and launch `H2OApp`.
 3. Run `cd h2o-flow && make install`. You can now access and debug Flow at [http://localhost:54321/](http://localhost:54321/)
 4. After each change to h2o-flow sources, run the command `cd h2o-flow && make` to push your changes to the running instance of [h2o-3](https://github.com/h2oai/h2o-3).
+
+### Phantom JS installation notes
+
+The task `npm run headless` requires installing [Phantom JS](http://phantomjs.org).
+
+Note:
+Phantom JS refuses to run on OSX Yosemite, and requires [this fix](https://github.com/ariya/phantomjs/issues/12900):
+
+    brew install upx
+    upx -d bin/phantomjs
 
 ### Testing a new Flow Feature with Sparkling Water  
 
