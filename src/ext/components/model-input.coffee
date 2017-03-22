@@ -235,16 +235,18 @@ createModelsControl = (_, parameter) ->
     unless error
       _frames (frame.frame_id.name for frame in frames)
 
-  createModelItem = (model) ->
+  createModelItem = (modelKey) ->
     _isSelected = signal no
 
-    value: model.model_id.name
+    value: modelKey
     isSelected: _isSelected
 
-  lift _selectedFrame, (frame) ->
-    opts = {} # TODO add args for fetching compatible frames.
-    createModelItems = (error, models) -> _models map models, createModelItem
-    _.requestModels createModelItems, opts
+  createModelItems = (error, frame) ->
+    _models map frame.compatible_models, createModelItem
+
+  lift _selectedFrame, (frameKey) ->
+    if frameKey
+      _.requestFrame frameKey, createModelItems, find_compatible_models: yes
 
   control = createControl 'models', parameter
   control.clientId = do uniqueId

@@ -4,7 +4,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     span(data-bind='visible:isRequired') *
   td(colspan='2')
     div
-      | Compatible Frame:
+      | Show models compatible with frame:
       select(data-bind="options:frames, value:selectedFrame")
     div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
       // ko foreach:value

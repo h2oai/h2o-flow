@@ -173,8 +173,12 @@ H2O.Proxy = (_) ->
       else
         go null, result.frames
 
-  requestFrame = (key, go) ->
-    doGet "/3/Frames/#{encodeURIComponent key}", unwrap go, (result) -> head result.frames
+  requestFrame = (key, go, opts) ->
+    requestWithOpts "/3/Frames/#{encodeURIComponent key}", opts, (error, result) ->
+      if error
+        go error
+      else
+        go null, head result.frames
 
   requestFrameSlice = (key, searchTerm, offset, count, go) ->
     #TODO send search term
