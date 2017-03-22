@@ -1,0 +1,23 @@
+tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:isVisible")
+  th
+    label(data-bind='text:label')
+    span(data-bind='visible:isRequired') *
+  td(colspan='2')
+    div
+      | Compatible Frame:
+      select(data-bind="options:frames, value:selectedFrame")
+    div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
+      // ko foreach:value
+      div(style='padding:5px')
+        label
+          input(type='checkbox' data-bind='checked:isSelected')
+          span(data-bind='text:value')
+      // /ko
+
+  td
+    input(type='checkbox' title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided")
+tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage")
+  th &nbsp;
+  td(colspan='3' data-bind='text:message')
+
+

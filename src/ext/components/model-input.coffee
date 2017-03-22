@@ -226,7 +226,34 @@ createCheckboxControl = (parameter) ->
   control.value = _value
   control
 
-createControlFromParameter = (parameter) ->
+createModelsControl = (_, parameter) ->
+  _models = signal []
+  _frames = signal []
+  _selectedFrame = signal null
+
+  _.requestFrames (error, frames) ->
+    unless error
+      _frames (frame.frame_id.name for frame in frames)
+
+  createModelItem = (model) ->
+    _isSelected = signal no
+
+    value: model.model_id.name
+    isSelected: _isSelected
+
+  lift _selectedFrame, (frame) ->
+    opts = {} # TODO add args for fetching compatible frames.
+    createModelItems = (error, models) -> _models map models, createModelItem
+    _.requestModels createModelItems, opts
+
+  control = createControl 'models', parameter
+  control.clientId = do uniqueId
+  control.frames = _frames
+  control.selectedFrame = _selectedFrame
+  control.value = _models
+  control
+
+createControlFromParameter = (_, parameter) ->
   switch parameter.type
     when 'enum', 'Key<Frame>', 'VecSpecifier'
       createDropdownControl parameter
@@ -236,6 +263,8 @@ createControlFromParameter = (parameter) ->
       createCheckboxControl parameter
     when 'Key<Model>', 'string', 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
       createTextboxControl parameter, parameter.type
+    when 'Key<Model>[]'
+      createModelsControl _, parameter
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null
@@ -259,7 +288,8 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
   _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
   _controlGroups = map [ 'critical', 'secondary', 'expert' ], (type) ->
-    controls = filter (map _parametersByLevel[type], createControlFromParameter), (a) -> if a then yes else no
+    controls = map _parametersByLevel[type], (p) -> createControlFromParameter _, p
+    controls = filter controls, (a) -> if a then yes else no
     # Show/hide grid settings if any controls are grid-ified.
     forEach controls, (control) ->
       react control.isGrided, ->
@@ -370,6 +400,10 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                   selectedValues = for entry in value when entry.isSelected()
                     entry.value
                   parameters[control.name] = selectedValues
+              when 'models'
+                selectedValues = for entry in value when entry.isSelected()
+                  entry.value
+                parameters[control.name] = selectedValues
               else
                 parameters[control.name] = value
     if isGrided
