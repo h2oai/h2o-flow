@@ -3,3 +3,8 @@
     i.fa.fa-tasks
     | Leaderboard
 
+  h4(data-bind='collapse:false') User Feedback
+  div
+    div(data-bind='text:feedbackDescription')
+    .flow-plot(data-bind='raw:feedback')
+
