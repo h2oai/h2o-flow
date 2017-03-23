@@ -64,7 +64,7 @@ H2O.JobOutput = (_, _go, _job) ->
 
   canView = (job) ->
     switch _destinationType
-      when 'Model', 'Grid'
+      when 'Model', 'Grid', 'Auto Model'
         job.ready_for_view
       else
         not isJobRunning job
@@ -120,11 +120,8 @@ H2O.JobOutput = (_, _go, _job) ->
         _.insertAndExecuteCell 'cs', "getGrid #{stringify _destinationKey}"
       when 'PartialDependence'
         _.insertAndExecuteCell 'cs', "getPartialDependence #{stringify _destinationKey}"
-
       when 'Auto Model'
-        # FIXME getGrid() for AutoML is hosed; resort to getGrids() for now.
-        _.insertAndExecuteCell 'cs', "getGrids"
-
+        _.insertAndExecuteCell 'cs', "getLeaderboard #{stringify _destinationKey}"
       when 'Void'
         alert "This frame was exported to\n#{_job.dest.name}"
 

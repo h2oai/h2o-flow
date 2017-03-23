@@ -18,6 +18,10 @@ H2O.JobsOutput = (_, _go, jobs) ->
         'Grid'
       when 'Key<PartialDependence>'
         'PartialDependence'
+      when 'Key<AutoML>'
+        'Auto Model'
+      when 'Key<KeyedVoid>'
+        'Void'
       else
         'Unknown'
 

@@ -301,12 +301,20 @@ H2O.Proxy = (_) ->
         go error, result
       else go error, result
 
-  requestGrids = (go, opts) ->
+  requestGrids = (go) ->
     doGet "/99/Grids", (error, result) ->
       if error
         go error, result
       else
         go error, result.grids
+
+  requestLeaderboard = (key, go) ->
+    doGet "/99/AutoML/#{encodeURIComponent key}", (error, result) ->
+      if error
+        go error, result
+      else
+        go error, result
+
 
   requestModels = (go, opts) ->
     requestWithOpts '/3/Models', opts, (error, result) ->
@@ -622,6 +630,7 @@ H2O.Proxy = (_) ->
   link _.requestPartialDependence, requestPartialDependence
   link _.requestPartialDependenceData, requestPartialDependenceData
   link _.requestGrids, requestGrids
+  link _.requestLeaderboard, requestLeaderboard
   link _.requestModels, requestModels
   link _.requestGrid, requestGrid
   link _.requestModel, requestModel

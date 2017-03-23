@@ -671,6 +671,9 @@ H2O.Routines = (_) ->
   extendGrids = (grids) ->
     render_ grids, H2O.GridsOutput, grids
 
+  extendLeaderboard = (result) ->
+    render_ result, H2O.LeaderboardOutput, result
+
   extendModels = (models) ->
     inspections = {}
 
@@ -1273,6 +1276,13 @@ H2O.Routines = (_) ->
   getGrids = ->
     _fork requestGrids
 
+  requestLeaderboard = (key, go) ->
+    _.requestLeaderboard key, (error, leaderboard) ->
+      if error then go error else go null, extendLeaderboard leaderboard
+
+  getLeaderboard = (key) ->
+    _fork requestLeaderboard, key
+
   requestModel = (modelKey, go) ->
     _.requestModel modelKey, (error, model) ->
       if error then go error else go null, extendModel model
@@ -1562,14 +1572,22 @@ H2O.Routines = (_) ->
 
 
   requestAutoModelBuild = (opts, go) ->
-
+    # TODO loss
     params =
       input_spec:
-        training_frame: opts.frame
-        response_column: opts.column
+        training_frame: opts.training_frame
+        validation_frame: opts.validation_frame
+        response_column: opts.response_column
       build_control:
         stopping_criteria:
-          max_runtime_secs: opts.maxRunTime
+          seed: opts.seed
+          max_models: opts.max_models
+          max_runtime_secs: opts.max_runtime_secs
+          stopping_rounds: opts.stopping_rounds
+          stopping_tolerance: opts.stopping_tolerance
+          # TODO Enums currently fail with:
+          # ERROR MESSAGE: setField can't yet convert a: class java.lang.String to a: class hex.ScoreKeeper$StoppingMetric
+          # stopping_metric: opts.stopping_metric
 
     _.requestAutoModelBuild params, (error, result) ->
       if error
@@ -1985,6 +2003,7 @@ H2O.Routines = (_) ->
     buildModel: buildModel
     buildAutoModel: buildAutoModel
     getGrids: getGrids
+    getLeaderboard: getLeaderboard
     getModels: getModels
     getModel: getModel
     getGrid: getGrid
