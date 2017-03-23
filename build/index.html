@@ -1811,6 +1811,34 @@
         <td colspan="3" data-bind="text:message"></td>
       </tr>
     </script>
+    <script type="text/html" id="flow-models-model-parameter">
+      <tr data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:isVisible">
+        <th>
+          <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
+        </th>
+        <td colspan="2">
+          <div>Show models compatible with frame:
+            <select data-bind="options:frames, value:selectedFrame"></select>
+          </div>
+          <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
+            <!-- ko foreach:value-->
+            <div style="padding:5px">
+              <label>
+                <input type="checkbox" data-bind="checked:isSelected"><span data-bind="text:value"></span>
+              </label>
+            </div>
+            <!-- /ko-->
+          </div>
+        </td>
+        <td>
+          <input type="checkbox" title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided">
+        </td>
+      </tr>
+      <tr data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage">
+        <th>&nbsp;</th>
+        <td colspan="3" data-bind="text:message"></td>
+      </tr>
+    </script>
     <script type="text/html" id="flow-group-model-parameter">
       <tr>
         <th colspan="3" style="text-align:left;text-transform:inherit">
@@ -2301,14 +2329,14 @@
         <table class="flow-form">
           <tbody>
             <tr>
-              <th width="1">
-                <label>Frame:</label>
+              <th width="225">
+                <label>Training Frame:</label>
               </th>
               <td>
-                <select data-bind="options:frames, value:frame, optionsCaption:'(Select)'"></select>
+                <select data-bind="options:trainingFrames, value:trainingFrame, optionsCaption:'(Select)'"></select>
               </td>
             </tr>
-            <!-- ko if:hasFrame-->
+            <!-- ko if:hasTrainingFrame-->
             <tr>
               <th>
                 <label>Response Column:</label>
@@ -2317,13 +2345,61 @@
                 <select data-bind="options:columns, value:column, optionsCaption:'(Select)'"></select>
               </td>
             </tr>
+            <tr>
+              <th>
+                <label>Validation Frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:validationFrames, value:validationFrame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
             <!-- /ko-->
+            <tr>
+              <th>
+                <label>Seed:</label>
+              </th>
+              <td>
+                <input data-bind="value:seed">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Max models to build:</label>
+              </th>
+              <td>
+                <input data-bind="value:maxModels">
+              </td>
+            </tr>
             <tr>
               <th>
                 <label>Max Run Time (sec):</label>
               </th>
               <td>
-                <input data-bind="value:maxRunTime">
+                <input data-bind="value:maxRuntimeSecs">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Early stopping metric:</label>
+              </th>
+              <td>
+                <select data-bind="options:stoppingMetrics, value:stoppingMetric"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Early stopping rounds:</label>
+              </th>
+              <td>
+                <input data-bind="value:stoppingRounds">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Stopping Tolerance:</label>
+              </th>
+              <td>
+                <input data-bind="value:stoppingTolerance">
               </td>
             </tr>
           </tbody>
@@ -2331,6 +2407,16 @@
         <div class="flow-panel">
               <button type="button" data-bind="click:buildModel, enable:canBuildModel" class="flow-button"><i class="fa fa-cube"></i><span>Build Model</span>
               </button>
+        </div>
+      </div>
+    </script>
+    <script type="text/html" id="flow-leaderboard-output">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-tasks"></i>Leaderboard</h3>
+        <h4 data-bind="collapse:false">User Feedback</h4>
+        <div>
+          <div data-bind="text:feedbackDescription"></div>
+          <div data-bind="raw:feedback" class="flow-plot"></div>
         </div>
       </div>
     </script>
