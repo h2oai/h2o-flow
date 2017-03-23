@@ -4,22 +4,52 @@
   table.flow-form
     tbody
       tr
-        th(width='1')
-          label Frame:
+        th(width='225')
+          label Training Frame:
         td
-          select(data-bind="options:frames, value:frame, optionsCaption:'(Select)'")
-      // ko if:hasFrame
+          select(data-bind="options:trainingFrames, value:trainingFrame, optionsCaption:'(Select)'")
+      // ko if:hasTrainingFrame
       tr
         th
           label Response Column:
         td
           select(data-bind="options:columns, value:column, optionsCaption:'(Select)'")
+      tr
+        th
+          label Validation Frame:
+        td
+          select(data-bind="options:validationFrames, value:validationFrame, optionsCaption:'(Select)'")
       // /ko
+      tr
+        th
+          label Seed:
+        td
+          input(data-bind="value:seed")
+      tr
+        th
+          label Max models to build:
+        td
+          input(data-bind="value:maxModels")
       tr
         th
           label Max Run Time (sec):
         td
-          input(data-bind="value:maxRunTime")
+          input(data-bind="value:maxRuntimeSecs")
+      tr
+        th
+          label Early stopping metric:
+        td
+          select(data-bind="options:stoppingMetrics, value:stoppingMetric")
+      tr
+        th
+          label Early stopping rounds:
+        td
+          input(data-bind="value:stoppingRounds")
+      tr
+        th
+          label Stopping Tolerance:
+        td
+          input(data-bind="value:stoppingTolerance")
 
   .flow-panel
     +button('Build Model', 'cube', 'buildModel', 'canBuildModel')
