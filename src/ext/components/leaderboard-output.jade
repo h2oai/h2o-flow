@@ -3,6 +3,26 @@
     i.fa.fa-tasks
     | Leaderboard
 
+  .flow-panel
+    button.flow-button(type='button' data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }")
+      // ko if:isLive
+      i.fa.fa-refresh.fa-spin
+      | Stop Monitoring
+      // /ko
+      // ko ifnot:isLive
+      i.fa.fa-refresh
+      | Monitor Live
+      // /ko
+
+  // ko if:exception
+  div(data-bind="template: { name:'flow-failure', data:exception }")
+  // /ko
+
+  h4(data-bind='collapse:false') Models
+  div
+    div(data-bind='text:leaderboardDescription')
+    .flow-plot(data-bind='raw:leaderboard')
+
   h4(data-bind='collapse:false') User Feedback
   div
     div(data-bind='text:feedbackDescription')
