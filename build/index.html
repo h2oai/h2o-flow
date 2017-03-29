@@ -2413,6 +2413,22 @@
     <script type="text/html" id="flow-leaderboard-output">
       <div class="flow-widget">
         <h3 class="flow-hint"><i class="fa fa-tasks"></i>Leaderboard</h3>
+        <div class="flow-panel">
+          <button type="button" data-bind="click:toggleRefresh, css:{ 'flow-button-toggle':isLive }" class="flow-button">
+            <!-- ko if:isLive--><i class="fa fa-refresh fa-spin"></i>Stop Monitoring
+            <!-- /ko-->
+            <!-- ko ifnot:isLive--><i class="fa fa-refresh"></i>Monitor Live
+            <!-- /ko-->
+          </button>
+        </div>
+        <!-- ko if:exception-->
+        <div data-bind="template: { name:'flow-failure', data:exception }"></div>
+        <!-- /ko-->
+        <h4 data-bind="collapse:false">Models</h4>
+        <div>
+          <div data-bind="text:leaderboardDescription"></div>
+          <div data-bind="raw:leaderboard" class="flow-plot"></div>
+        </div>
         <h4 data-bind="collapse:false">User Feedback</h4>
         <div>
           <div data-bind="text:feedbackDescription"></div>

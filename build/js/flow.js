@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.6.3';
+    Flow.Version = '0.6.4';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -10189,9 +10189,50 @@
 }.call(this));
 (function () {
     H2O.LeaderboardOutput = function (_, _go, _result) {
-        var renderFeedback, _feedback, _feedbackDescription;
+        var refresh, render, renderFeedback, renderLeaderboard, toggleRefresh, _exception, _feedback, _feedbackDescription, _isLive, _leaderboard, _leaderboardDescription;
+        _leaderboard = Flow.Dataflow.signal('');
+        _leaderboardDescription = Flow.Dataflow.signal('');
         _feedback = Flow.Dataflow.signal('');
         _feedbackDescription = Flow.Dataflow.signal('');
+        _exception = Flow.Dataflow.signal(null);
+        _isLive = Flow.Dataflow.signal(false);
+        renderLeaderboard = function (leaderboard) {
+            var a, column, columnCount, columns, data, description, i, leaderboardEl, modelIdColumnIndex, rowcount, table, tbody, td, th, thead, ths, tr, trs, _i, _j, _len, _ref;
+            _ref = Flow.HTML.template('table', 'thead', 'tbody', 'tr', 'th', 'td', 'a href=\'#\' data-key=\'$1\''), table = _ref[0], thead = _ref[1], tbody = _ref[2], tr = _ref[3], th = _ref[4], td = _ref[5], a = _ref[6];
+            description = leaderboard.description, columns = leaderboard.columns, rowcount = leaderboard.rowcount, data = leaderboard.data;
+            modelIdColumnIndex = -1;
+            for (i = _i = 0, _len = columns.length; _i < _len; i = ++_i) {
+                column = columns[i];
+                if (column.name === 'model_id') {
+                    modelIdColumnIndex = i;
+                }
+            }
+            columnCount = columns.length;
+            ths = lodash.map(columns, function (column) {
+                return th(column.name);
+            });
+            trs = [];
+            for (i = _j = 0; 0 <= rowcount ? _j < rowcount : _j > rowcount; i = 0 <= rowcount ? ++_j : --_j) {
+                trs.push(tr(lodash.map(data, function (d, j) {
+                    if (j === modelIdColumnIndex) {
+                        return td(a(d[i], d[i]));
+                    } else {
+                        return td(d[i]);
+                    }
+                })));
+            }
+            leaderboardEl = Flow.HTML.render('div', table([
+                thead(tr(ths)),
+                tbody(trs)
+            ]));
+            $('a', leaderboardEl).on('click', function (e) {
+                var $a;
+                $a = $(e.target);
+                return _.insertAndExecuteCell('cs', 'getModel ' + Flow.Prelude.stringify($a.attr('data-key')));
+            });
+            _leaderboardDescription(description);
+            return _leaderboard(leaderboardEl);
+        };
         renderFeedback = function (feedback) {
             var columnCount, columns, data, description, i, rowcount, table, tbody, td, th, thead, ths, tr, trs, _i, _ref;
             _ref = Flow.HTML.template('table', 'thead', 'tbody', 'tr', 'th', 'td'), table = _ref[0], thead = _ref[1], tbody = _ref[2], tr = _ref[3], th = _ref[4], td = _ref[5];
@@ -10212,11 +10253,41 @@
                 tbody(trs)
             ])));
         };
-        renderFeedback(_result.user_feedback);
+        render = function (result) {
+            renderLeaderboard(result.leaderboard_table);
+            return renderFeedback(result.user_feedback_table);
+        };
+        toggleRefresh = function () {
+            return _isLive(!_isLive());
+        };
+        refresh = function () {
+            return _.requestLeaderboard(_result.automl_id.name, function (error, result) {
+                if (error) {
+                    _exception(Flow.Failure(_, new Flow.Error('Error fetching leaderboard', error)));
+                    return _isLive(false);
+                } else {
+                    render(result);
+                    if (_isLive()) {
+                        return lodash.delay(refresh, 2000);
+                    }
+                }
+            });
+        };
+        Flow.Dataflow.act(_isLive, function (isLive) {
+            if (isLive) {
+                return refresh();
+            }
+        });
+        render(_result);
         lodash.defer(_go);
         return {
+            leaderboard: _leaderboard,
+            leaderboardDescription: _leaderboardDescription,
             feedback: _feedback,
             feedbackDescription: _feedbackDescription,
+            isLive: _isLive,
+            toggleRefresh: toggleRefresh,
+            exception: _exception,
             template: 'flow-leaderboard-output'
         };
     };
