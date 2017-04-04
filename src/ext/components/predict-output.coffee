@@ -1,4 +1,4 @@
-H2O.PredictOutput = (_, _go, prediction) ->
+H2O.PredictOutput = (_, _go, modelKey, frameKey, predictionFrameKey, prediction) ->
   if prediction
     { frame, model } = prediction
 
@@ -9,10 +9,9 @@ H2O.PredictOutput = (_, _go, prediction) ->
     container = signal null
 
     combineWithFrame = ->
-      predictionsFrameName = prediction.predictions.frame_id.name
-      targetFrameName = "combined-#{predictionsFrameName}"
+      targetFrameName = "combined-#{predictionFrameKey}"
 
-      _.insertAndExecuteCell 'cs', "bindFrames #{stringify targetFrameName}, [ #{stringify predictionsFrameName}, #{stringify frame.name} ]"
+      _.insertAndExecuteCell 'cs', "bindFrames #{stringify targetFrameName}, [ #{stringify predictionFrameKey}, #{stringify frameKey} ]"
 
     render (error, vis) ->
       if error

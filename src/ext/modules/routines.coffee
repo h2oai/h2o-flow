@@ -709,7 +709,7 @@ H2O.Routines = (_) ->
       inspectObject inspections, 'Prediction', "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", { prediction_frame: predictionFrame }
 
     inspect_ prediction, inspections
-    render_ prediction, H2O.PredictOutput, prediction
+    render_ prediction, H2O.PredictOutput, modelKey, frameKey, predictionFrame.name, prediction
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
