@@ -699,7 +699,7 @@ H2O.Routines = (_) ->
     modelKey = result.model.name
     frameKey = result.frame?.name
     prediction = head result.model_metrics
-    predictionFrame = result.predictions_frame
+    predictionFrame = if result.predictions_frame is null then result.frame? else result.predictions_frame
 
     inspections = {}
     if prediction
@@ -709,7 +709,7 @@ H2O.Routines = (_) ->
       inspectObject inspections, 'Prediction', "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", { prediction_frame: predictionFrame }
 
     inspect_ prediction, inspections
-    render_ prediction, H2O.PredictOutput, modelKey, frameKey, predictionFrame.name, prediction
+    render_ prediction, H2O.PredictOutput, modelKey, frameKey, predictionFrame, prediction
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
