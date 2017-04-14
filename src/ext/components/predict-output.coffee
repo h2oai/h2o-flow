@@ -1,7 +1,8 @@
-H2O.PredictOutput = (_, _go, modelKey, frameKey, predictionFrameKey, prediction) ->
+H2O.PredictOutput = (_, _go, modelKey, frameKey, predictionFrame, prediction) ->
   if prediction
     { frame, model } = prediction
 
+  predictionFrameKey = predictionFrame.name
   _plots = signals []
   _canInspect = if prediction.__meta then yes else no
 
