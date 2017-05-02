@@ -781,6 +781,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
     toggle: toggle
     cloneModel: cloneModel
     predict: predict
+    interpret: interpret
     inspect: inspect
     previewPojo: previewPojo
     downloadPojo: downloadPojo

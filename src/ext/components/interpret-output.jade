@@ -1,0 +1,20 @@
+.flow-widget
+  +subtitle('Prediction', 'bolt')
+
+  // ko if:canInspect
+  table.flow-form
+    tbody
+      tr
+        th(width='1')
+          label Actions:
+        td
+          +button('Inspect', 'list', 'inspect')
+  // /ko
+
+  // ko foreach:plots
+  h4(data-bind='text:title, collapse:false')
+  .flow-plot(data-bind='raw:plot')
+  // ko if:canCombineWithFrame
+  +button('Combine predictions with frame', 'table', 'combineWithFrame')
+  // /ko
+  // /ko

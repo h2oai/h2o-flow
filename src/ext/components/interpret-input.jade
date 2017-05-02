@@ -1,0 +1,76 @@
+.flow-widget
+  +subtitle('Predict', 'bolt')
+
+  table.flow-form
+    tr
+      th(width='1')
+        label Name:
+      td
+        input(data-bind="value:destinationKey")
+    tr
+      th(width='1')
+        label Model:
+      td
+        // ko if:hasModels
+        span(data-bind='text:selectedModelsCaption')
+        // /ko
+        // ko ifnot:hasModels
+        select(data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'")
+        // /ko
+    // ko ifnot:hasExemplarIndex
+    tr
+      th
+        label Frame:
+      td
+        // ko if:hasFrames
+        span(data-bind='text:selectedFramesCaption')
+        // /ko
+        // ko ifnot:hasFrames
+        select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)'")
+        // /ko
+    // /ko
+
+    // ko if:hasReconError
+    tr
+      th
+        label Compute Reconstruction Error:
+      td
+        input(type='checkbox' data-bind="checked:computeReconstructionError")
+    // /ko
+    // ko if:isDeepLearning
+    tr
+      th
+        label Compute Deep Features Hidden Layer:
+      td
+        input(type='checkbox' data-bind="checked:computeDeepFeaturesHiddenLayer")
+        // ko if:computeDeepFeaturesHiddenLayer
+        span Hidden Layer #:
+        input.flow-textbox(type='textbox' style='width:50px' data-bind="value:deepFeaturesHiddenLayer, valueUpdate:'afterkeydown'")
+        // /ko
+    // /ko
+    // ko if:hasLeafNodeAssignment
+    tr
+      th
+        label Compute Leaf Node Assignment:
+      td
+        input(type='checkbox' data-bind="checked:computeLeafNodeAssignment")
+    // /ko
+
+    // ko if:hasExemplarIndex
+    tr
+      th
+        label Compute Exemplar Index:
+      td
+        span Exemplar Index #:
+        input.flow-textbox(type='textbox' style='width:50px' data-bind="value:exemplarIndex, valueUpdate:'afterkeydown'")
+    // /ko
+    tr
+      th
+        label Actions:
+      td
+        button.flow-button(type='button' data-bind='click:predict, enable:canPredict')
+          i.fa.fa-bolt
+          span Predict
+
+    // /ko
+
