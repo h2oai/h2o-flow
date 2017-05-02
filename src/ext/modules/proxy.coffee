@@ -288,6 +288,8 @@ H2O.Proxy = (_) ->
   requestPartialDependence = (opts, go) ->
     doPost '/3/PartialDependence/', opts, go
 
+  requestInterpretModel = (modelKey, go) ->
+    doPost '/3/InterpretModel/', modelKey, go
 
   # make a post request to h2o-3 to do request
   # the data about the specified model and frame

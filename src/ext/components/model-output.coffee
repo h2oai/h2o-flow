@@ -747,6 +747,8 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
 
     predict = ->
       _.insertAndExecuteCell 'cs', "predict model: #{stringify _model.model_id.name}"
+    interpret = ->
+      _.insertAndExecuteCell 'cs', "interpretModel Model: #{stringify _model.model_id.name}"
 
     inspect = ->
       _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.model_id.name}"

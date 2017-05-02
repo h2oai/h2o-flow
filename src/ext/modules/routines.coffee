@@ -1411,6 +1411,20 @@ H2O.Routines = (_) ->
     else
       assist exportModel, modelKey, path, opts
 
+  interpretModel = (modelKey) ->
+    _fork requestInterpretModel, modelKey
+
+  requestInterpretModel = (opts, go) ->
+    _.requestInterpretModel opts, (error, result) ->
+      if error
+        go error
+      else
+        _.requestJob result.key.name, (error, job) ->
+          if error
+            go error
+          else
+            go null, extendJob job
+
   requestDeleteModels = (modelKeys, go) ->
     futures = map modelKeys, (modelKey) ->
       _fork _.requestDeleteModel, modelKey
@@ -1606,7 +1620,6 @@ H2O.Routines = (_) ->
       _fork requestModelBuild, algo, opts
     else
       assist buildModel, algo, opts
-
   unwrapPrediction = (go) ->
     (error, result) ->
       if error
@@ -2010,6 +2023,7 @@ H2O.Routines = (_) ->
     deleteModels: deleteModels
     deleteModel: deleteModel
     importModel: importModel
+    interpretModel: interpretModel
     exportModel: exportModel
     predict: predict
     getPrediction: getPrediction

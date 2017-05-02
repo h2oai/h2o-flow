@@ -34,6 +34,7 @@ H2O.ApplicationContext = (_) ->
   _.requestGrid = do slot
   _.requestLeaderboard = do slot
   _.requestModel = do slot
+  _.requestInterpretModel = do slot
   _.requestPojoPreview = do slot
   _.requestDeleteModel = do slot
   _.requestImportModel = do slot

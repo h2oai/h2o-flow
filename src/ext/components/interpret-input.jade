@@ -1,12 +1,14 @@
 .flow-widget
-  +subtitle('Predict', 'bolt')
+  +subtitle('Interpret', 'bolt')
 
   table.flow-form
     tr
       th(width='1')
         label Name:
       td
-        input(data-bind="value:destinationKey")
+        input(data-bind="value:destinationPredictionKey")
+      td
+        input(data-bind="value:destinationInterpretKey")
     tr
       th(width='1')
         label Model:
