@@ -674,6 +674,7 @@ H2O.Proxy = (_) ->
   link _.requestFlow, requestFlow
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
+  link _.requestInterpretModel, requestInterpretModel
   link _.requestExec, requestExec
   #
   # Sparkling-Water
