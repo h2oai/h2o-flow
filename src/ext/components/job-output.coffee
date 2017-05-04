@@ -124,10 +124,8 @@ H2O.JobOutput = (_, _go, _job) ->
         _.insertAndExecuteCell 'cs', "getPartialDependence #{stringify _destinationKey}"
       when 'Auto Model'
         _.insertAndExecuteCell 'cs', "getLeaderboard #{stringify _destinationKey}"
-      when 'InterpretModel'
-         # todo 
-         # do window.open here
-        window.open "/mli/test_plot/#{encodeURIComponent _model.model_id.name}", '_blank'
+      when 'Interpret'
+        window.open "/mli/test_plot/index.html?interpret_key=" + _job.dest.name, '_blank'
       when 'Void'
         alert "This frame was exported to\n#{_job.dest.name}"
 
