@@ -1411,8 +1411,13 @@ H2O.Routines = (_) ->
     else
       assist exportModel, modelKey, path, opts
 
-  interpretModel = (modelKey) ->
-    _fork requestInterpretModel, modelKey
+  interpretModel = (opts) ->
+    if opts
+      _fork requestInterpretModel, opts
+    else
+      # specify function to call if user
+      # provides malformed input
+      assist interpretModel
 
   requestInterpretModel = (opts, go) ->
     _.requestInterpretModel opts, (error, result) ->

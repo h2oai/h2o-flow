@@ -748,7 +748,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
     predict = ->
       _.insertAndExecuteCell 'cs', "predict model: #{stringify _model.model_id.name}"
     interpret = ->
-      _.insertAndExecuteCell 'cs', "interpretModel #{stringify _model.model_id.name}"
+      opts = 
+        model_id: _model.model_id.name
+        destination_key: "interpret-#{Flow.Util.uuid()}"
+      _.insertAndExecuteCell 'cs', "interpretModel model_id: #{stringify opts.model_id}, destination_key: #{stringify opts.destination_key}"
+      #_.insertAndExecuteCell 'cs', "interpretModel #{stringify opts}"
 
     inspect = ->
       _.insertAndExecuteCell 'cs', "inspect getModel #{stringify _model.model_id.name}"
