@@ -533,8 +533,8 @@ H2O.Proxy = (_) ->
   requestEcho = (message, go) ->
     doPost '/3/LogAndEcho', { message: message }, go
 
-  requestLogFile = (nodeIndex, fileType, go) ->
-    doGet "/3/Logs/nodes/#{nodeIndex}/files/#{fileType}", go
+  requestLogFile = (nodeIpPort, fileType, go) ->
+    doGet "/3/Logs/nodes/#{nodeIpPort}/files/#{fileType}", go
 
   requestNetworkTest = (go) ->
     doGet '/3/NetworkTest', go
