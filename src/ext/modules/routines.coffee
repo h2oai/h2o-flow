@@ -400,8 +400,8 @@ H2O.Routines = (_) ->
   extendStackTrace = (stackTrace) ->
     render_ stackTrace, H2O.StackTraceOutput, stackTrace
 
-  extendLogFile = (cloud, nodeIndex, fileType, logFile) ->
-    render_ logFile, H2O.LogFileOutput, cloud, nodeIndex, fileType, logFile
+  extendLogFile = (cloud, nodeIpPort, fileType, logFile) ->
+    render_ logFile, H2O.LogFileOutput, cloud, nodeIpPort, fileType, logFile
 
   inspectNetworkTestResult = (testResult) -> ->
     convertTableToFrame testResult.table, testResult.table.name,
@@ -1722,22 +1722,19 @@ H2O.Routines = (_) ->
   getStackTrace = ->
     _fork requestStackTrace
 
-  requestLogFile = (nodeIndex, fileType, go) ->
+  requestLogFile = (nodeIpPort, fileType, go) ->
     _.requestCloud (error, cloud) ->
       if error
         go error
       else
-        if nodeIndex < 0 or nodeIndex >= cloud.nodes.length
-          NODE_INDEX_SELF = -1
-          nodeIndex = NODE_INDEX_SELF
-        _.requestLogFile nodeIndex, fileType, (error, logFile) ->
+        _.requestLogFile nodeIpPort, fileType, (error, logFile) ->
           if error
             go error
           else
-            go null, extendLogFile cloud, nodeIndex, fileType, logFile
+            go null, extendLogFile cloud, nodeIpPort, fileType, logFile
 
-  getLogFile = (nodeIndex=-1, fileType='info') ->
-    _fork requestLogFile, nodeIndex, fileType
+  getLogFile = (nodeIpPort="self", fileType='warn') ->
+    _fork requestLogFile, nodeIpPort, fileType
 
   requestNetworkTest = (go) ->
     _.requestNetworkTest (error, result) ->
