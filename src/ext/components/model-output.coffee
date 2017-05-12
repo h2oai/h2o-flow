@@ -761,6 +761,9 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
     downloadPojo = ->
       window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}", '_blank'
 
+    downloadGenJar = ->
+      window.open "/3/h2o-genmodel.jar",'_blank'
+
     downloadMojo = ->
       window.open "/3/Models/#{encodeURIComponent _model.model_id.name}/mojo", '_blank'
 
@@ -784,6 +787,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
     inspect: inspect
     previewPojo: previewPojo
     downloadPojo: downloadPojo
+    downloadGenJar: downloadGenJar
     downloadMojo: downloadMojo
     pojoPreview: _pojoPreview
     isPojoLoaded: _isPojoLoaded
