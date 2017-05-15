@@ -27,7 +27,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
             if result?._flow_?.render
               output.data result._flow_.render -> output.end()
             else
-              output.data Flow.ObjectBrowser _, (-> output.end()) 'output', result
+              output.data Flow.ObjectBrowser _, (-> output.end()), 'output', result
       else
         output.data Flow.ObjectBrowser _, (-> output.end()), 'output', ft
 
