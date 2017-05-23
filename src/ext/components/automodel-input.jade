@@ -16,6 +16,16 @@
           select(data-bind="options:columns, value:column, optionsCaption:'(Select)'")
       tr
         th
+          label Fold Column:
+        td
+          select(data-bind="options:columns, value:foldColumn, optionsCaption:'(Select)'")
+      tr
+        th
+          label Weights Column:
+        td
+          select(data-bind="options:columns, value:weightsColumn, optionsCaption:'(Select)'")
+      tr
+        th
           label Validation Frame:
         td
           select(data-bind="options:validationFrames, value:validationFrame, optionsCaption:'(Select)'")

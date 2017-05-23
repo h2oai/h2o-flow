@@ -1581,6 +1581,8 @@ H2O.Routines = (_) ->
         training_frame: opts.training_frame
         validation_frame: opts.validation_frame
         response_column: opts.response_column
+        fold_column: opts.fold_column
+        weights_column: opts.weights_column
       build_control:
         stopping_criteria:
           seed: opts.seed

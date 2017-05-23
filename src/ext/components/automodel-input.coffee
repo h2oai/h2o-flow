@@ -6,6 +6,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _hasTrainingFrame = lift _trainingFrame, (frame) -> if frame then yes else no
   _columns = signal []
   _column = signal null
+  _foldColumn = signal null
+  _weightsColumn = signal null
   _canBuildModel = lift _trainingFrame, _column, (frame, column) -> frame and column
 
   # TODO loss
@@ -47,6 +49,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
     arg =
       training_frame: _trainingFrame()
       response_column: _column()
+      fold_column: _foldColumn()
+      weights_column: _weightsColumn()
       validation_frame: _validationFrame()
       seed: seed
       max_models: maxModels
@@ -103,6 +107,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   validationFrame: _validationFrame
   columns: _columns
   column: _column
+  foldColumn: _foldColumn
+  weightsColumn: _weightsColumn
   seed: _seed
   maxModels: _maxModels
   maxRuntimeSecs: _maxRuntimeSecs
