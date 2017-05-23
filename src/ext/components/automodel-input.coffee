@@ -55,7 +55,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       stopping_rounds: stoppingRounds
       stopping_tolerance: stoppingTolerance
 
-    _.insertAndExecuteCell 'cs', "buildAutoModel #{JSON.stringify arg}"
+    _.insertAndExecuteCell 'cs', "runAutoML #{JSON.stringify arg}"
 
   _.requestFrames (error, frames) ->
     unless error
