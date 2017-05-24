@@ -2347,6 +2347,22 @@
             </tr>
             <tr>
               <th>
+                <label>Fold Column:</label>
+              </th>
+              <td>
+                <select data-bind="options:columns, value:foldColumn, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Weights Column:</label>
+              </th>
+              <td>
+                <select data-bind="options:columns, value:weightsColumn, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
                 <label>Validation Frame:</label>
               </th>
               <td>
@@ -3102,28 +3118,6 @@
           </tbody>
         </table>
         <pre data-bind="text:contents"></pre>
-        <table style="width:auto" class="flow-form">
-          <tbody>
-            <tr>
-              <th>
-                <label>Select Log File Type:</label>
-              </th>
-              <td>
-                <select data-bind="options:fileTypes, value:activeFileType"></select>
-              </td>
-              <th>
-                <label>Select Node: </label>
-              </th>
-              <td>
-                <select data-bind="options:nodes, optionsText:'name', value:activeNode"></select>
-              </td>
-              <td>
-                    <button type="button" data-bind="click:refresh" class="flow-button"><i class="fa fa-refresh"></i><span>Refresh</span>
-                    </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </script>
     <script type="text/html" id="flow-network-test-output">

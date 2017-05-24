@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.6.7';
+    Flow.Version = '0.6.8';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -5106,8 +5106,8 @@
         requestEcho = function (message, go) {
             return doPost('/3/LogAndEcho', { message: message }, go);
         };
-        requestLogFile = function (nodeIndex, fileType, go) {
-            return doGet('/3/Logs/nodes/' + nodeIndex + '/files/' + fileType, go);
+        requestLogFile = function (nodeIpPort, fileType, go) {
+            return doGet('/3/Logs/nodes/' + nodeIpPort + '/files/' + fileType, go);
         };
         requestNetworkTest = function (go) {
             return doGet('/3/NetworkTest', go);
@@ -5804,8 +5804,8 @@
         extendStackTrace = function (stackTrace) {
             return render_(stackTrace, H2O.StackTraceOutput, stackTrace);
         };
-        extendLogFile = function (cloud, nodeIndex, fileType, logFile) {
-            return render_(logFile, H2O.LogFileOutput, cloud, nodeIndex, fileType, logFile);
+        extendLogFile = function (cloud, nodeIpPort, fileType, logFile) {
+            return render_(logFile, H2O.LogFileOutput, cloud, nodeIpPort, fileType, logFile);
         };
         inspectNetworkTestResult = function (testResult) {
             return function () {
@@ -7435,7 +7435,9 @@
                 input_spec: {
                     training_frame: opts.training_frame,
                     validation_frame: opts.validation_frame,
-                    response_column: opts.response_column
+                    response_column: opts.response_column,
+                    fold_column: opts.fold_column,
+                    weights_column: opts.weights_column
                 },
                 build_control: {
                     stopping_criteria: {
@@ -7642,34 +7644,29 @@
         getStackTrace = function () {
             return _fork(requestStackTrace);
         };
-        requestLogFile = function (nodeIndex, fileType, go) {
+        requestLogFile = function (nodeIpPort, fileType, go) {
             return _.requestCloud(function (error, cloud) {
-                var NODE_INDEX_SELF;
                 if (error) {
                     return go(error);
                 } else {
-                    if (nodeIndex < 0 || nodeIndex >= cloud.nodes.length) {
-                        NODE_INDEX_SELF = -1;
-                        nodeIndex = NODE_INDEX_SELF;
-                    }
-                    return _.requestLogFile(nodeIndex, fileType, function (error, logFile) {
+                    return _.requestLogFile(nodeIpPort, fileType, function (error, logFile) {
                         if (error) {
                             return go(error);
                         } else {
-                            return go(null, extendLogFile(cloud, nodeIndex, fileType, logFile));
+                            return go(null, extendLogFile(cloud, nodeIpPort, fileType, logFile));
                         }
                     });
                 }
             });
         };
-        getLogFile = function (nodeIndex, fileType) {
-            if (nodeIndex == null) {
-                nodeIndex = -1;
+        getLogFile = function (nodeIpPort, fileType) {
+            if (nodeIpPort == null) {
+                nodeIpPort = 'self';
             }
             if (fileType == null) {
-                fileType = 'info';
+                fileType = 'warn';
             }
-            return _fork(requestLogFile, nodeIndex, fileType);
+            return _fork(requestLogFile, nodeIpPort, fileType);
         };
         requestNetworkTest = function (go) {
             return _.requestNetworkTest(function (error, result) {
@@ -8048,7 +8045,7 @@
 }.call(this));
 (function () {
     H2O.AutoModelInput = function (_, _go, opts) {
-        var buildModel, defaultMaxModels, defaultMaxRunTime, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, findSchemaField, _canBuildModel, _column, _columns, _hasTrainingFrame, _maxModels, _maxRuntimeSecs, _seed, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames;
+        var buildModel, defaultMaxModels, defaultMaxRunTime, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, findSchemaField, _canBuildModel, _column, _columns, _foldColumn, _hasTrainingFrame, _maxModels, _maxRuntimeSecs, _seed, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
         if (opts == null) {
             opts = {};
         }
@@ -8065,6 +8062,8 @@
         });
         _columns = Flow.Dataflow.signal([]);
         _column = Flow.Dataflow.signal(null);
+        _foldColumn = Flow.Dataflow.signal(null);
+        _weightsColumn = Flow.Dataflow.signal(null);
         _canBuildModel = Flow.Dataflow.lift(_trainingFrame, _column, function (frame, column) {
             return frame && column;
         });
@@ -8105,6 +8104,8 @@
             arg = {
                 training_frame: _trainingFrame(),
                 response_column: _column(),
+                fold_column: _foldColumn(),
+                weights_column: _weightsColumn(),
                 validation_frame: _validationFrame(),
                 seed: seed,
                 max_models: maxModels,
@@ -8192,6 +8193,8 @@
             validationFrame: _validationFrame,
             columns: _columns,
             column: _column,
+            foldColumn: _foldColumn,
+            weightsColumn: _weightsColumn,
             seed: _seed,
             maxModels: _maxModels,
             maxRuntimeSecs: _maxRuntimeSecs,
@@ -10299,7 +10302,7 @@
     };
 }.call(this));
 (function () {
-    H2O.LogFileOutput = function (_, _go, _cloud, _nodeIndex, _fileType, _logFile) {
+    H2O.LogFileOutput = function (_, _go, _cloud, _nodeIpPort, _fileType, _logFile) {
         var createNode, initialize, refresh, refreshActiveView, _activeFileType, _activeNode, _contents, _exception, _fileTypes, _nodes;
         _exception = Flow.Dataflow.signal(null);
         _contents = Flow.Dataflow.signal('');
@@ -10325,7 +10328,7 @@
         };
         refreshActiveView = function (node, fileType) {
             if (node) {
-                return _.requestLogFile(node.index, fileType, function (error, logFile) {
+                return _.requestLogFile(node.name, fileType, function (error, logFile) {
                     if (error) {
                         return _contents('Error fetching log file: ' + error.message);
                     } else {
@@ -10339,13 +10342,13 @@
         refresh = function () {
             return refreshActiveView(_activeNode(), _activeFileType());
         };
-        initialize = function (cloud, nodeIndex, fileType, logFile) {
+        initialize = function (cloud, nodeIpPort, fileType, logFile) {
             var NODE_INDEX_SELF, clientNode, i, n, nodes, _i, _len, _ref;
             _activeFileType(fileType);
             _contents(logFile.log);
             nodes = [];
             if (cloud.is_client) {
-                clientNode = { ip_port: 'driver' };
+                clientNode = { ip_port: 'self' };
                 NODE_INDEX_SELF = -1;
                 nodes.push(createNode(clientNode, NODE_INDEX_SELF));
             }
@@ -10355,13 +10358,21 @@
                 nodes.push(createNode(n, i));
             }
             _nodes(nodes);
-            if (nodeIndex < nodes.length) {
-                _activeNode(nodes[nodeIndex]);
-            }
+            _activeNode(function () {
+                var _j, _len1, _results;
+                _results = [];
+                for (_j = 0, _len1 = nodes.length; _j < _len1; _j++) {
+                    n = nodes[_j];
+                    if (n.name === nodeIpPort) {
+                        _results.push(n);
+                    }
+                }
+                return _results;
+            }()[0]);
             Flow.Dataflow.react(_activeNode, _activeFileType, refreshActiveView);
             return lodash.defer(_go);
         };
-        initialize(_cloud, _nodeIndex, _fileType, _logFile);
+        initialize(_cloud, _nodeIpPort, _fileType, _logFile);
         return {
             nodes: _nodes,
             activeNode: _activeNode,
