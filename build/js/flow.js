@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.6.8';
+    Flow.Version = '0.6.9';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -11344,7 +11344,7 @@
         var createOutput, _isLive, _output, _refresh, _toggleRefresh;
         _output = Flow.Dataflow.signal(null);
         createOutput = function (_model) {
-            var cloneModel, confusionMatrix, deleteModel, downloadMojo, downloadPojo, exportModel, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref14, _ref15, _ref16, _ref17, _ref18, _ref19, _ref2, _ref20, _ref21, _ref22, _ref23, _ref24, _ref25, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
+            var cloneModel, confusionMatrix, deleteModel, downloadGenJar, downloadMojo, downloadPojo, exportModel, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref14, _ref15, _ref16, _ref17, _ref18, _ref19, _ref2, _ref20, _ref21, _ref22, _ref23, _ref24, _ref25, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
             _isExpanded = Flow.Dataflow.signal(false);
             _plots = Flow.Dataflow.signals([]);
             _pojoPreview = Flow.Dataflow.signal(null);
@@ -11873,6 +11873,9 @@
             downloadPojo = function () {
                 return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name), '_blank');
             };
+            downloadGenJar = function () {
+                return window.open('/3/h2o-genmodel.jar', '_blank');
+            };
             downloadMojo = function () {
                 return window.open('/3/Models/' + encodeURIComponent(_model.model_id.name) + '/mojo', '_blank');
             };
@@ -11901,6 +11904,7 @@
                 inspect: inspect,
                 previewPojo: previewPojo,
                 downloadPojo: downloadPojo,
+                downloadGenJar: downloadGenJar,
                 downloadMojo: downloadMojo,
                 pojoPreview: _pojoPreview,
                 isPojoLoaded: _isPojoLoaded,
