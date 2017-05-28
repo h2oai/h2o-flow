@@ -1738,7 +1738,7 @@ H2O.Routines = (_) ->
           else
             go null, extendLogFile cloud, nodeIpPort, fileType, logFile
 
-  getLogFile = (nodeIpPort="self", fileType='warn') ->
+  getLogFile = (nodeIpPort="self", fileType='info') ->
     _fork requestLogFile, nodeIpPort, fileType
 
   requestNetworkTest = (go) ->
