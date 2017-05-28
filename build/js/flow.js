@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.6.9';
+    Flow.Version = '0.7.0';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -7664,7 +7664,7 @@
                 nodeIpPort = 'self';
             }
             if (fileType == null) {
-                fileType = 'warn';
+                fileType = 'info';
             }
             return _fork(requestLogFile, nodeIpPort, fileType);
         };
