@@ -19,7 +19,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _maxRuntimeSecs = signal defaultMaxRunTime
   _stoppingMetrics = signal []
   _stoppingMetric = signal null
-  defaultStoppingRounds = 0
+  defaultStoppingRounds = 3
   _stoppingRounds = signal defaultStoppingRounds
   defaultStoppingTolerance = 0.001
   _stoppingTolerance = signal defaultStoppingTolerance

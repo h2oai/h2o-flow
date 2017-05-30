@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.7.0';
+    Flow.Version = '0.7.1';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -8075,7 +8075,7 @@
         _maxRuntimeSecs = Flow.Dataflow.signal(defaultMaxRunTime);
         _stoppingMetrics = Flow.Dataflow.signal([]);
         _stoppingMetric = Flow.Dataflow.signal(null);
-        defaultStoppingRounds = 0;
+        defaultStoppingRounds = 3;
         _stoppingRounds = Flow.Dataflow.signal(defaultStoppingRounds);
         defaultStoppingTolerance = 0.001;
         _stoppingTolerance = Flow.Dataflow.signal(defaultStoppingTolerance);
