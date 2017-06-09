@@ -37,9 +37,6 @@ _assistance =
   buildModel:
     description: 'Build a model'
     icon: 'cube'
-  runAutoML:
-    description: 'Automatically train and tune many models'
-    icon: 'sitemap'
   importModel:
     description: 'Import a saved model'
     icon: 'cube'
@@ -1600,12 +1597,6 @@ H2O.Routines = (_) ->
       else
         go null, extendJob result.job
 
-  runAutoML = (opts) ->
-    if opts and keys(opts).length > 1
-      _fork requestAutoModelBuild, opts
-    else
-      assist runAutoML, opts
-
   buildModel = (algo, opts) ->
     if algo and opts and keys(opts).length > 1
       _fork requestModelBuild, algo, opts
@@ -1894,8 +1885,6 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.ImportFilesInput, []
         when buildModel
           _fork proceed, H2O.ModelInput, args
-        when runAutoML
-          _fork proceed, H2O.AutoModelInput, args
         when predict, getPrediction
           _fork proceed, H2O.PredictInput, args
         when createFrame
@@ -2003,7 +1992,6 @@ H2O.Routines = (_) ->
     changeColumnType: changeColumnType
     imputeColumn: imputeColumn
     buildModel: buildModel
-    runAutoML: runAutoML
     getGrids: getGrids
     getLeaderboard: getLeaderboard
     getModels: getModels
