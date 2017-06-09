@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.7.2';
+    Flow.Version = '0.7.3';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1725,9 +1725,7 @@
                 createMenuItem('List All Models', executeCommand('getModels')),
                 createMenuItem('List Grid Search Results', executeCommand('getGrids')),
                 createMenuItem('Import Model...', executeCommand('importModel')),
-                createMenuItem('Export Model...', executeCommand('exportModel')),
-                menuDivider,
-                createMenuItem('Run AutoML...', executeCommand('runAutoML'))
+                createMenuItem('Export Model...', executeCommand('exportModel'))
             ]);
             return [
                 createMenu('Flow', [
@@ -5314,10 +5312,6 @@
             description: 'Build a model',
             icon: 'cube'
         },
-        runAutoML: {
-            description: 'Automatically train and tune many models',
-            icon: 'sitemap'
-        },
         importModel: {
             description: 'Import a saved model',
             icon: 'cube'
@@ -5577,7 +5571,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var asDataFrame, asH2OFrameFromDF, asH2OFrameFromRDD, assist, attrname, bindFrames, blacklistedAttributesBySchema, buildModel, buildPartialDependence, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendAsDataFrame, extendAsH2OFrame, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDataFrames, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLeaderboard, extendLogFile, extendMergeFramesResult, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPartialDependence, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendScalaCode, extendScalaIntp, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getDataFrames, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLeaderboard, getLogFile, getModel, getModelParameterValue, getModels, getPartialDependence, getPrediction, getPredictions, getProfile, getRDDs, getScalaIntp, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, initAssistanceSparklingWater, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, mergeFrames, name, parseFiles, plot, predict, proceed, read, render_, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestAutoModelBuild, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLeaderboard, requestLogFile, requestMergeFrames, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPartialDependence, requestPartialDependenceData, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSplitFrame, requestStackTrace, requestTimeline, routines, routinesOnSw, runAutoML, runScalaCode, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var asDataFrame, asH2OFrameFromDF, asH2OFrameFromRDD, assist, attrname, bindFrames, blacklistedAttributesBySchema, buildModel, buildPartialDependence, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendAsDataFrame, extendAsH2OFrame, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDataFrames, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendJob, extendJobs, extendLeaderboard, extendLogFile, extendMergeFramesResult, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPartialDependence, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendScalaCode, extendScalaIntp, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getDataFrames, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLeaderboard, getLogFile, getModel, getModelParameterValue, getModels, getPartialDependence, getPrediction, getPredictions, getProfile, getRDDs, getScalaIntp, getStackTrace, getTimeline, grid, gui, importFiles, importModel, imputeColumn, initAssistanceSparklingWater, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, mergeFrames, name, parseFiles, plot, predict, proceed, read, render_, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestAutoModelBuild, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImputeColumn, requestJob, requestJobs, requestLeaderboard, requestLogFile, requestMergeFrames, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPartialDependence, requestPartialDependenceData, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSplitFrame, requestStackTrace, requestTimeline, routines, routinesOnSw, runScalaCode, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -7457,13 +7451,6 @@
                 }
             });
         };
-        runAutoML = function (opts) {
-            if (opts && lodash.keys(opts).length > 1) {
-                return _fork(requestAutoModelBuild, opts);
-            } else {
-                return assist(runAutoML, opts);
-            }
-        };
         buildModel = function (algo, opts) {
             if (algo && opts && lodash.keys(opts).length > 1) {
                 return _fork(requestModelBuild, algo, opts);
@@ -7864,8 +7851,6 @@
                     return _fork(proceed, H2O.ImportFilesInput, []);
                 case buildModel:
                     return _fork(proceed, H2O.ModelInput, args);
-                case runAutoML:
-                    return _fork(proceed, H2O.AutoModelInput, args);
                 case predict:
                 case getPrediction:
                     return _fork(proceed, H2O.PredictInput, args);
@@ -7964,7 +7949,6 @@
             changeColumnType: changeColumnType,
             imputeColumn: imputeColumn,
             buildModel: buildModel,
-            runAutoML: runAutoML,
             getGrids: getGrids,
             getLeaderboard: getLeaderboard,
             getModels: getModels,
