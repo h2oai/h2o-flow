@@ -3,6 +3,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _trainingFrame = signal null
   _validationFrames = signal []
   _validationFrame = signal null
+  _leaderboardFrames = signal []
+  _leaderboardFrame = signal null
   _hasTrainingFrame = lift _trainingFrame, (frame) -> if frame then yes else no
   _columns = signal []
   _column = signal null
@@ -52,6 +54,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       fold_column: _foldColumn()
       weights_column: _weightsColumn()
       validation_frame: _validationFrame()
+      leaderboard_frame: _leaderboardFrame()
       seed: seed
       max_models: maxModels
       max_runtime_secs: maxRuntimeSecs
@@ -66,10 +69,13 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       frames = (frame.frame_id.name for frame in frames when not frame.is_text)
       _trainingFrames frames
       _validationFrames frames
+      _leaderboardFrames frames
       if opts.training_frame
         _trainingFrame opts.training_frame
       if opts.validation_frame
         _validationFrame opts.validation_frame
+      if opts.leaderboard_frame
+        _leaderboardFrame opts.leaderboard_frame
 
       return
   
@@ -105,6 +111,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   hasTrainingFrame: _hasTrainingFrame
   validationFrames: _validationFrames
   validationFrame: _validationFrame
+  leaderboardFrames: _leaderboardFrames
+  leaderboardFrame: _leaderboardFrame
   columns: _columns
   column: _column
   foldColumn: _foldColumn
