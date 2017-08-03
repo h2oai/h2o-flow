@@ -23,8 +23,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _stoppingMetric = signal null
   defaultStoppingRounds = 3
   _stoppingRounds = signal defaultStoppingRounds
-  defaultStoppingTolerance = 0.001
-  _stoppingTolerance = signal defaultStoppingTolerance
+  defaultStoppingTolerance = -1
+  _stoppingTolerance = signal ''
 
   buildModel = ->
     seed = defaultSeed
