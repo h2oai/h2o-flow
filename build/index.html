@@ -1475,10 +1475,8 @@
                   </button>
                       <button type="button" data-bind="click:predict" class="flow-button"><i class="fa fa-bolt"></i><span>Predict&hellip;</span>
                       </button>
-                      <button type="button" data-bind="click:downloadPojo" class="flow-button"><i class="fa fa-download"></i><span>Download POJO</span>
-                      </button>
-                      <button type="button" data-bind="click:downloadMojo" class="flow-button"><i class="fa fa-download"></i><span>Download Model Deployment Package (MOJO)</span>
-                      </button>
+                  <button type="button" data-bind="click: downloadPojo, enable: $data.havePojo" class="flow-button"><i class="fa fa-download"></i><span></span>Download POJO</button>
+                  <button type="button" data-bind="click: downloadMojo, enable: $data.haveMojo" class="flow-button"><i class="fa fa-download"></i><span></span>Download Model Deployment Package (MOJO)</button>
                       <button type="button" data-bind="click:exportModel" class="flow-button"><i class="fa fa-save"></i><span>Export</span>
                       </button>
                       <button type="button" data-bind="click:inspect" class="flow-button"><i class="fa fa-list"></i><span>Inspect</span>
@@ -1567,15 +1565,16 @@
           </table>
         </div>
         <!-- /ko-->
-        <h4 data-bind="collapse:false">Preview POJO</h4>
-        <div>
-          <!-- ko ifnot:isPojoLoaded-->
-              <button type="button" data-bind="click:previewPojo" class="flow-button"><i class="fa fa-code"></i><span>Preview POJO</span>
-              </button>
-          <!-- /ko-->
-          <!-- ko if:isPojoLoaded-->
-          <div data-bind="html:pojoPreview"></div>
-          <!-- /ko-->
+        <div data-bind="visible: $data.havePojo">
+          <h4 data-bind="collapse:false">Preview POJO</h4>
+          <div>
+            <!-- ko ifnot:isPojoLoaded-->
+            <button type="button" data-bind="click: previewPojo, enable: $data.havePojo" class="flow-button"><i class="fa fa-code"></i><span></span>Preview POJO</button>
+            <!-- /ko-->
+            <!-- ko if:isPojoLoaded-->
+            <div data-bind="html:pojoPreview"></div>
+            <!-- /ko-->
+          </div>
         </div>
         <!-- /ko-->
       </div>
