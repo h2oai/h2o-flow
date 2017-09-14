@@ -781,6 +781,8 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
     plots: _plots
     inputParameters: _inputParameters
     isExpanded: _isExpanded
+    havePojo: _model.have_pojo
+    haveMojo: _model.have_mojo
     toggle: toggle
     cloneModel: cloneModel
     predict: predict

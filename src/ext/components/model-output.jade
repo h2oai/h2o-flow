@@ -29,8 +29,14 @@
 
             +button('Predict&hellip;', 'bolt', 'predict')
             //- +button('Clone this model&hellip;', 'copy', 'cloneModel')
-            +button('Download POJO', 'download', 'downloadPojo')
-            +button('Download Model Deployment Package (MOJO)', 'download', 'downloadMojo')
+            button.flow-button(type='button' data-bind="click: downloadPojo, enable: $data.havePojo")
+              i.fa.fa-download
+              span
+              | Download POJO
+            button.flow-button(type='button' data-bind="click: downloadMojo, enable: $data.haveMojo")
+              i.fa.fa-download
+              span
+              | Download Model Deployment Package (MOJO)
             +button('Export', 'save', 'exportModel')
             +button('Inspect', 'list', 'inspect')
             +button('Delete', 'trash-o', 'deleteModel')
@@ -91,13 +97,17 @@
           // /ko
   // /ko
 
-  h4(data-bind='collapse:false') Preview POJO
-  div
-    // ko ifnot:isPojoLoaded
-    +button('Preview POJO', 'code', 'previewPojo')
-    // /ko
-    // ko if:isPojoLoaded
-    div(data-bind='html:pojoPreview')
-    // /ko
+  div(data-bind='visible: $data.havePojo')
+    h4(data-bind='collapse:false') Preview POJO
+    div
+      // ko ifnot:isPojoLoaded
+      button.flow-button(type='button' data-bind="click: previewPojo, enable: $data.havePojo")
+        i.fa.fa-code
+        span
+        | Preview POJO
+      // /ko
+      // ko if:isPojoLoaded
+      div(data-bind='html:pojoPreview')
+      // /ko
 
   // /ko
