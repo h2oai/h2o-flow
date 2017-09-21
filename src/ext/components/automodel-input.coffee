@@ -50,7 +50,6 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
 
     # TODO loss
     arg =
-      project_name: _projectName()
       training_frame: _trainingFrame()
       response_column: _column()
       fold_column: _foldColumn()
@@ -63,6 +62,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       stopping_metric: _stoppingMetric()
       stopping_rounds: stoppingRounds
       stopping_tolerance: stoppingTolerance
+    if _projectName() and _projectName().trim() != ''
+      arg.project_name = _projectName().trim()
 
     _.insertAndExecuteCell 'cs', "runAutoML #{JSON.stringify arg}"
 
