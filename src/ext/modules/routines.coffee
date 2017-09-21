@@ -1593,6 +1593,7 @@ H2O.Routines = (_) ->
           # TODO Enums currently fail with:
           # ERROR MESSAGE: setField can't yet convert a: class java.lang.String to a: class hex.ScoreKeeper$StoppingMetric
           # stopping_metric: opts.stopping_metric
+        project_name: opts.project_name
 
     _.requestAutoModelBuild params, (error, result) ->
       if error

@@ -1,4 +1,5 @@
 H2O.AutoModelInput = (_, _go, opts={}) ->
+  _projectName = signal null
   _trainingFrames = signal []
   _trainingFrame = signal null
   _validationFrames = signal []
@@ -49,6 +50,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
 
     # TODO loss
     arg =
+      project_name: _projectName()
       training_frame: _trainingFrame()
       response_column: _column()
       fold_column: _foldColumn()
@@ -106,6 +108,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   
   defer _go
 
+  projectName: _projectName
   trainingFrames: _trainingFrames
   trainingFrame: _trainingFrame
   hasTrainingFrame: _hasTrainingFrame
