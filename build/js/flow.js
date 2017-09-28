@@ -2026,7 +2026,7 @@
     };
 }.call(this));
 (function () {
-    Flow.Version = '0.7.8';
+    Flow.Version = '0.7.9';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -7449,6 +7449,9 @@
                     }
                 }
             };
+            if (opts.project_name !== '') {
+                params.build_control.project_name = opts.project_name;
+            }
             return _.requestAutoModelBuild(params, function (error, result) {
                 if (error) {
                     return go(error);
@@ -8045,10 +8048,11 @@
 }.call(this));
 (function () {
     H2O.AutoModelInput = function (_, _go, opts) {
-        var buildModel, defaultMaxModels, defaultMaxRunTime, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, findSchemaField, _canBuildModel, _column, _columns, _foldColumn, _hasTrainingFrame, _leaderboardFrame, _leaderboardFrames, _maxModels, _maxRuntimeSecs, _seed, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
+        var buildModel, defaultMaxModels, defaultMaxRunTime, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, findSchemaField, _canBuildModel, _column, _columns, _foldColumn, _hasTrainingFrame, _leaderboardFrame, _leaderboardFrames, _maxModels, _maxRuntimeSecs, _projectName, _seed, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
         if (opts == null) {
             opts = {};
         }
+        _projectName = Flow.Dataflow.signal(null);
         _trainingFrames = Flow.Dataflow.signal([]);
         _trainingFrame = Flow.Dataflow.signal(null);
         _validationFrames = Flow.Dataflow.signal([]);
@@ -8117,6 +8121,9 @@
                 stopping_rounds: stoppingRounds,
                 stopping_tolerance: stoppingTolerance
             };
+            if (_projectName() && _projectName().trim() !== '') {
+                arg.project_name = _projectName().trim();
+            }
             return _.insertAndExecuteCell('cs', 'runAutoML ' + JSON.stringify(arg));
         };
         _.requestFrames(function (error, frames) {
@@ -8193,6 +8200,7 @@
         });
         lodash.defer(_go);
         return {
+            projectName: _projectName,
             trainingFrames: _trainingFrames,
             trainingFrame: _trainingFrame,
             hasTrainingFrame: _hasTrainingFrame,

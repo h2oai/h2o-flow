@@ -1,4 +1,5 @@
 H2O.AutoModelInput = (_, _go, opts={}) ->
+  _projectName = signal null
   _trainingFrames = signal []
   _trainingFrame = signal null
   _validationFrames = signal []
@@ -61,6 +62,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       stopping_metric: _stoppingMetric()
       stopping_rounds: stoppingRounds
       stopping_tolerance: stoppingTolerance
+    if _projectName() and _projectName().trim() != ''
+      arg.project_name = _projectName().trim()
 
     _.insertAndExecuteCell 'cs', "runAutoML #{JSON.stringify arg}"
 
@@ -106,6 +109,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   
   defer _go
 
+  projectName: _projectName
   trainingFrames: _trainingFrames
   trainingFrame: _trainingFrame
   hasTrainingFrame: _hasTrainingFrame
