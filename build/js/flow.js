@@ -7427,7 +7427,7 @@
         exportNotebook = function () {
             var remoteName;
             if (remoteName = _remoteName()) {
-                return window.open('/3/NodePersistentStorage.bin/notebook/' + remoteName, '_blank');
+                return window.open(window.Flow.ContextPath + '3/NodePersistentStorage.bin/notebook/' + remoteName, '_blank');
             } else {
                 return _.alert('Please save this notebook before exporting.');
             }
