@@ -32,6 +32,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       required: no,
       gridable: no
   })
+  defaultNfolds = 5
+  _nfolds = signal defaultNfolds
 
   buildModel = ->
     seed = defaultSeed
@@ -54,6 +56,10 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
     unless isNaN parsed = parseFloat _stoppingTolerance()
       stoppingTolerance = parsed
 
+    nfolds = defaultNfolds
+    unless isNaN parsed = parseInt _nfolds()
+      nfolds = parsed
+
     # TODO loss
     arg =
       training_frame: _trainingFrame()
@@ -68,6 +74,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       stopping_metric: _stoppingMetric()
       stopping_rounds: stoppingRounds
       stopping_tolerance: stoppingTolerance
+      nfolds: nfolds
       ignored_columns: for entry in _ignoredColumnsControl.entries() when entry.isSelected()
           entry.value
     if _projectName() and _projectName().trim() != ''
@@ -139,8 +146,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   stoppingMetric: _stoppingMetric
   stoppingRounds: _stoppingRounds
   stoppingTolerance: _stoppingTolerance
+  nfolds: _nfolds
   canBuildModel: _canBuildModel
   buildModel: buildModel
   template: 'flow-automodel-input'
-
   ignoredColumnsControl: _ignoredColumnsControl

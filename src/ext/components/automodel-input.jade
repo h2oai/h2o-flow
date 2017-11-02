@@ -107,6 +107,11 @@
           label Stopping Tolerance:
         td
           input(data-bind="value:stoppingTolerance")
+      tr
+        th
+          label nfolds:
+        td
+          input(data-bind="value:nfolds")
 
   .flow-panel
     +button('Build Model', 'cube', 'buildModel', 'canBuildModel')
