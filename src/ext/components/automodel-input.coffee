@@ -26,6 +26,12 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _stoppingRounds = signal defaultStoppingRounds
   defaultStoppingTolerance = -1
   _stoppingTolerance = signal ''
+  _ignoredColumnsControl = H2O.Util.createListControl({
+      name: 'ignored_columns',
+      label: 'Ignored Columns',
+      required: no,
+      gridable: no
+  })
 
   buildModel = ->
     seed = defaultSeed
@@ -62,6 +68,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       stopping_metric: _stoppingMetric()
       stopping_rounds: stoppingRounds
       stopping_tolerance: stoppingTolerance
+      ignored_columns: for entry in _ignoredColumnsControl.entries() when entry.isSelected()
+          entry.value
     if _projectName() and _projectName().trim() != ''
       arg.project_name = _projectName().trim()
 
@@ -101,6 +109,9 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       _.requestFrameSummaryWithoutData frame, (error, frame) ->
         unless error
           _columns (column.label for column in frame.columns)
+
+          _ignoredColumnsControl.values H2O.Util.columnLabelsFromFrame(frame)
+
           if opts.response_column
             _column opts.response_column
             delete opts.response_column #HACK
@@ -132,3 +143,4 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   buildModel: buildModel
   template: 'flow-automodel-input'
 
+  ignoredColumnsControl: _ignoredColumnsControl

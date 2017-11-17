@@ -146,11 +146,11 @@ parseAndFormatArray = (source) ->
   target = new Array source.length
   for element, i in source
     target[i] = if element?
-      if isNumber element 
+      if isNumber element
         format6fi element
       else
         element
-    else 
+    else
       undefined
   target
 
@@ -164,7 +164,7 @@ parseAndFormatObjectArray = (source) ->
         "<a href='#' data-type='frame' data-key=#{stringify element.name}>#{escape element.name}</a>"
       else
         element
-    else 
+    else
       undefined
   target
 
@@ -187,7 +187,7 @@ concatArrays = (arrays) ->
 computeTruePositiveRate = (cm) ->
   [[tn, fp], [fn, tp]] = cm
   tp / (tp + fn)
-  
+
 computeFalsePositiveRate = (cm) ->
   [[tn, fp], [fn, tp]] = cm
   fp / (fp + tn)
@@ -200,7 +200,7 @@ formatConfusionMatrix = (cm) ->
 
   [ table, tbody, tr, strong, normal, yellow ] = Flow.HTML.template 'table.flow-matrix', 'tbody', 'tr', 'td.strong.flow-center', 'td', 'td.bg-yellow'
 
-  table [ 
+  table [
     tbody [
       tr [
         strong 'Actual/Predicted'
@@ -557,7 +557,7 @@ H2O.Routines = (_) ->
     ModelMetricsBinomialGLM:
       fields: null
       transform: transformBinomialMetrics
-    ModelMetricsBinomial: 
+    ModelMetricsBinomial:
       fields: null
       transform: transformBinomialMetrics
     ModelMetricsMultinomialGLM:
@@ -682,7 +682,7 @@ H2O.Routines = (_) ->
 
     algos = unique (model.algo for model in models)
     if algos.length is 1
-      inspections.parameters = inspectParametersAcrossModels models 
+      inspections.parameters = inspectParametersAcrossModels models
 
     # modelCategories = unique (model.output.model_category for model in models)
     # TODO implement model comparision after 2d table cleanup for model metrics
@@ -765,7 +765,7 @@ H2O.Routines = (_) ->
     actionsData = for i in [0 ... frameColumns.length]
       "#{typeVector.valueAt i}\0#{labelVector.valueAt i}"
     vectors.push createFactor 'Actions', TString, actionsData, null, toConversionLink
-         
+
     createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
       origin: "getFrameSummary #{stringify frameKey}"
@@ -840,7 +840,7 @@ H2O.Routines = (_) ->
         createVector 'value', TNumber, column.percentiles
       ]
 
-      createDataframe 'percentiles', vectors, (sequence frame.default_percentiles.length), null, 
+      createDataframe 'percentiles', vectors, (sequence frame.default_percentiles.length), null,
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
@@ -849,7 +849,7 @@ H2O.Routines = (_) ->
       { histogram_base:base, histogram_stride:stride, histogram_bins:bins } = column
       width = Math.ceil bins.length / minBinCount
       interval = stride * width
-      
+
       rows = []
       if width > 0
         binCount = minBinCount + if bins.length % width > 0 then 1 else 0
@@ -891,7 +891,7 @@ H2O.Routines = (_) ->
         createVector 'count', TNumber, countData
       ]
 
-      createDataframe 'distribution', vectors, (sequence binCount), null, 
+      createDataframe 'distribution', vectors, (sequence binCount), null,
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: "plot inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -938,7 +938,7 @@ H2O.Routines = (_) ->
         createVector 'max', TNumber, [ maximum ]
       ]
 
-      createDataframe 'summary', vectors, (sequence 1), null, 
+      createDataframe 'summary', vectors, (sequence 1), null,
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: "plot inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -1155,7 +1155,7 @@ H2O.Routines = (_) ->
     else
       assist mergeFrames
 
-  # define the function that is called when 
+  # define the function that is called when
   # the Partial Dependence plot input form
   # is submitted
   buildPartialDependence = (opts) ->
@@ -1169,11 +1169,11 @@ H2O.Routines = (_) ->
   getPartialDependence = (destinationKey) ->
     if destinationKey
       _fork requestPartialDependenceData, destinationKey
-    else 
+    else
       assist getPartialDependence
 
   getFrames = ->
-    _fork requestFrames  
+    _fork requestFrames
 
   getFrame = (frameKey) ->
     switch typeOf frameKey
@@ -1266,9 +1266,9 @@ H2O.Routines = (_) ->
   getModels = (modelKeys) ->
     if isArray modelKeys
       if modelKeys.length
-        _fork requestModelsByKeys, modelKeys     
+        _fork requestModelsByKeys, modelKeys
       else
-        _fork requestModels 
+        _fork requestModels
     else
       _fork requestModels
 
@@ -1319,7 +1319,7 @@ H2O.Routines = (_) ->
 
 
   requestImputeColumn = (opts, go) ->
-    { frame, column, method, combineMethod, groupByColumns } = opts 
+    { frame, column, method, combineMethod, groupByColumns } = opts
     combineMethod = combineMethod ? 'interpolate'
     _.requestFrameSummaryWithoutData frame, (error, result) ->
       if error
@@ -1583,6 +1583,7 @@ H2O.Routines = (_) ->
         response_column: opts.response_column
         fold_column: opts.fold_column
         weights_column: opts.weights_column
+        ignored_columns: opts.ignored_columns
       build_control:
         stopping_criteria:
           seed: opts.seed
@@ -1636,7 +1637,7 @@ H2O.Routines = (_) ->
         go null, extendPredictions opts, predictions
 
   predict = (opts={}) ->
-    { predictions_frame, model, models, frame, frames, reconstruction_error, deep_features_hidden_layer, leaf_node_assignment, exemplar_index } = opts 
+    { predictions_frame, model, models, frame, frames, reconstruction_error, deep_features_hidden_layer, leaf_node_assignment, exemplar_index } = opts
     if models or frames
       unless models
         if model
@@ -1663,7 +1664,7 @@ H2O.Routines = (_) ->
       else if model and exemplar_index isnt undefined
         _fork requestPredict, predictions_frame, model, null,
           exemplar_index: exemplar_index
-      else 
+      else
         assist predict, predictions_frame: predictions_frame, model: model, frame: frame
 
   requestPrediction = (modelKey, frameKey, go) ->
@@ -1697,7 +1698,7 @@ H2O.Routines = (_) ->
       assist getPrediction, predictions_frame: predictions_frame, model: model, frame: frame
 
   getPredictions = (opts={}) ->
-    _fork requestPredictions, opts 
+    _fork requestPredictions, opts
 
   requestCloud = (go) ->
     _.requestCloud (error, cloud) ->
@@ -1885,7 +1886,7 @@ H2O.Routines = (_) ->
     if f?.isFuture
       _fork dumpFuture, f
     else
-      Flow.Async.async -> f 
+      Flow.Async.async -> f
 
   assist = (func, args...) ->
     if func is undefined
@@ -1935,7 +1936,7 @@ H2O.Routines = (_) ->
       )
     link _.requestFrameDataE, requestFrameData
     link _.requestFrameSummarySliceE, requestFrameSummarySlice
-   
+
   initAssistanceSparklingWater = ->
     _assistance.getRDDs =
       description: 'Get a list of Spark\'s RDDs'
@@ -2038,4 +2039,3 @@ H2O.Routines = (_) ->
     for attrname of routinesOnSw
       routines[attrname] = routinesOnSw[attrname]
   routines
-
