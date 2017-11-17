@@ -2026,7 +2026,7 @@
     };
 }.call(this));
 (function () {
-    Flow.Version = '0.7.9';
+    Flow.Version = '0.7.10';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -7437,7 +7437,8 @@
                     validation_frame: opts.validation_frame,
                     response_column: opts.response_column,
                     fold_column: opts.fold_column,
-                    weights_column: opts.weights_column
+                    weights_column: opts.weights_column,
+                    ignored_columns: opts.ignored_columns
                 },
                 build_control: {
                     stopping_criteria: {
@@ -8006,16 +8007,220 @@
     };
 }.call(this));
 (function () {
-    var getFileBaseName, validateFileExtension;
+    var columnLabelsFromFrame, createControl, createListControl, getFileBaseName, validateFileExtension;
     validateFileExtension = function (filename, extension) {
         return -1 !== filename.indexOf(extension, filename.length - extension.length);
     };
     getFileBaseName = function (filename, extension) {
         return Flow.Util.sanitizeName(filename.substr(0, filename.length - extension.length));
     };
+    createListControl = function (parameter) {
+        var MaxItemsPerPage, blockSelectionUpdates, changeSelection, control, createEntry, deselectFiltered, filterItems, goToNextPage, goToPreviousPage, incrementSelectionCount, selectFiltered, _canGoToNextPage, _canGoToPreviousPage, _currentPage, _entries, _filteredItems, _hasFilteredItems, _ignoreNATerm, _isUpdatingSelectionCount, _lastUsedIgnoreNaTerm, _lastUsedSearchTerm, _maxPages, _searchCaption, _searchTerm, _selectionCount, _values, _visibleItems;
+        MaxItemsPerPage = 100;
+        _searchTerm = Flow.Dataflow.signal('');
+        _ignoreNATerm = Flow.Dataflow.signal('');
+        _values = Flow.Dataflow.signal([]);
+        _selectionCount = Flow.Dataflow.signal(0);
+        _isUpdatingSelectionCount = false;
+        blockSelectionUpdates = function (f) {
+            _isUpdatingSelectionCount = true;
+            f();
+            return _isUpdatingSelectionCount = false;
+        };
+        incrementSelectionCount = function (amount) {
+            return _selectionCount(_selectionCount() + amount);
+        };
+        createEntry = function (value) {
+            var isSelected;
+            isSelected = Flow.Dataflow.signal(false);
+            Flow.Dataflow.react(isSelected, function (isSelected) {
+                if (!_isUpdatingSelectionCount) {
+                    if (isSelected) {
+                        incrementSelectionCount(1);
+                    } else {
+                        incrementSelectionCount(-1);
+                    }
+                }
+            });
+            return {
+                isSelected: isSelected,
+                value: value.value,
+                type: value.type,
+                missingLabel: value.missingLabel,
+                missingPercent: value.missingPercent
+            };
+        };
+        _entries = Flow.Dataflow.lift(_values, function (values) {
+            return lodash.map(values, createEntry);
+        });
+        _filteredItems = Flow.Dataflow.signal([]);
+        _visibleItems = Flow.Dataflow.signal([]);
+        _hasFilteredItems = Flow.Dataflow.lift(_filteredItems, function (entries) {
+            return entries.length > 0;
+        });
+        _currentPage = Flow.Dataflow.signal(0);
+        _maxPages = Flow.Dataflow.lift(_filteredItems, function (entries) {
+            return Math.ceil(entries.length / MaxItemsPerPage);
+        });
+        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
+            return index > 0;
+        });
+        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
+            return index < maxPages - 1;
+        });
+        _searchCaption = Flow.Dataflow.lift(_entries, _filteredItems, _selectionCount, _currentPage, _maxPages, function (entries, filteredItems, selectionCount, currentPage, maxPages) {
+            var caption;
+            caption = maxPages === 0 ? '' : 'Showing page ' + (currentPage + 1) + ' of ' + maxPages + '.';
+            if (filteredItems.length !== entries.length) {
+                caption += ' Filtered ' + filteredItems.length + ' of ' + entries.length + '.';
+            }
+            if (selectionCount !== 0) {
+                caption += ' ' + selectionCount + ' ignored.';
+            }
+            return caption;
+        });
+        Flow.Dataflow.react(_entries, function () {
+            return filterItems(true);
+        });
+        _lastUsedSearchTerm = null;
+        _lastUsedIgnoreNaTerm = null;
+        filterItems = function (force) {
+            var entry, filteredItems, hide, i, ignoreNATerm, missingPercent, searchTerm, start, _i, _len, _ref;
+            if (force == null) {
+                force = false;
+            }
+            searchTerm = _searchTerm().trim();
+            ignoreNATerm = _ignoreNATerm().trim();
+            if (force || searchTerm !== _lastUsedSearchTerm || ignoreNATerm !== _lastUsedIgnoreNaTerm) {
+                filteredItems = [];
+                _ref = _entries();
+                for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                    entry = _ref[i];
+                    missingPercent = parseFloat(ignoreNATerm);
+                    hide = false;
+                    if (searchTerm !== '' && -1 === entry.value.toLowerCase().indexOf(searchTerm.toLowerCase())) {
+                        hide = true;
+                    } else if (!lodash.isNaN(missingPercent) && missingPercent !== 0 && entry.missingPercent <= missingPercent) {
+                        hide = true;
+                    }
+                    if (!hide) {
+                        filteredItems.push(entry);
+                    }
+                }
+                _lastUsedSearchTerm = searchTerm;
+                _lastUsedIgnoreNaTerm = ignoreNATerm;
+                _currentPage(0);
+                _filteredItems(filteredItems);
+            }
+            start = _currentPage() * MaxItemsPerPage;
+            _visibleItems(_filteredItems().slice(start, start + MaxItemsPerPage));
+        };
+        changeSelection = function (source, value) {
+            var entry, _i, _len;
+            for (_i = 0, _len = source.length; _i < _len; _i++) {
+                entry = source[_i];
+                entry.isSelected(value);
+            }
+        };
+        selectFiltered = function () {
+            var entries;
+            entries = _filteredItems();
+            blockSelectionUpdates(function () {
+                return changeSelection(entries, true);
+            });
+            return _selectionCount(entries.length);
+        };
+        deselectFiltered = function () {
+            blockSelectionUpdates(function () {
+                return changeSelection(_filteredItems(), false);
+            });
+            return _selectionCount(0);
+        };
+        goToPreviousPage = function () {
+            if (_canGoToPreviousPage()) {
+                _currentPage(_currentPage() - 1);
+                filterItems();
+            }
+        };
+        goToNextPage = function () {
+            if (_canGoToNextPage()) {
+                _currentPage(_currentPage() + 1);
+                filterItems();
+            }
+        };
+        Flow.Dataflow.react(_searchTerm, lodash.throttle(filterItems, 500));
+        Flow.Dataflow.react(_ignoreNATerm, lodash.throttle(filterItems, 500));
+        control = createControl('list', parameter);
+        control.values = _values;
+        control.entries = _visibleItems;
+        control.hasFilteredItems = _hasFilteredItems;
+        control.searchCaption = _searchCaption;
+        control.searchTerm = _searchTerm;
+        control.ignoreNATerm = _ignoreNATerm;
+        control.value = _entries;
+        control.selectFiltered = selectFiltered;
+        control.deselectFiltered = deselectFiltered;
+        control.goToPreviousPage = goToPreviousPage;
+        control.goToNextPage = goToNextPage;
+        control.canGoToPreviousPage = _canGoToPreviousPage;
+        control.canGoToNextPage = _canGoToNextPage;
+        return control;
+    };
+    createControl = function (kind, parameter) {
+        var _hasError, _hasInfo, _hasMessage, _hasWarning, _isGrided, _isNotGrided, _isVisible, _message;
+        _hasError = Flow.Dataflow.signal(false);
+        _hasWarning = Flow.Dataflow.signal(false);
+        _hasInfo = Flow.Dataflow.signal(false);
+        _message = Flow.Dataflow.signal('');
+        _hasMessage = Flow.Dataflow.lift(_message, function (message) {
+            if (message) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+        _isVisible = Flow.Dataflow.signal(true);
+        _isGrided = Flow.Dataflow.signal(false);
+        _isNotGrided = Flow.Dataflow.lift(_isGrided, function (value) {
+            return !value;
+        });
+        return {
+            kind: kind,
+            name: parameter.name,
+            label: parameter.label,
+            description: parameter.help,
+            isRequired: parameter.required,
+            hasError: _hasError,
+            hasWarning: _hasWarning,
+            hasInfo: _hasInfo,
+            message: _message,
+            hasMessage: _hasMessage,
+            isVisible: _isVisible,
+            isGridable: parameter.gridable,
+            isGrided: _isGrided,
+            isNotGrided: _isNotGrided
+        };
+    };
+    columnLabelsFromFrame = function (frame) {
+        var columnLabels;
+        columnLabels = lodash.map(frame.columns, function (column) {
+            var missingPercent;
+            missingPercent = 100 * column.missing_count / frame.rows;
+            return {
+                type: column.type === 'enum' ? 'enum(' + column.domain_cardinality + ')' : column.type,
+                value: column.label,
+                missingPercent: missingPercent,
+                missingLabel: missingPercent === 0 ? '' : '' + Math.round(missingPercent) + '% NA'
+            };
+        });
+        return columnLabels;
+    };
     H2O.Util = {
         validateFileExtension: validateFileExtension,
-        getFileBaseName: getFileBaseName
+        getFileBaseName: getFileBaseName,
+        createListControl: createListControl,
+        createControl: createControl,
+        columnLabelsFromFrame: columnLabelsFromFrame
     };
 }.call(this));
 (function () {
@@ -8048,7 +8253,7 @@
 }.call(this));
 (function () {
     H2O.AutoModelInput = function (_, _go, opts) {
-        var buildModel, defaultMaxModels, defaultMaxRunTime, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, findSchemaField, _canBuildModel, _column, _columns, _foldColumn, _hasTrainingFrame, _leaderboardFrame, _leaderboardFrames, _maxModels, _maxRuntimeSecs, _projectName, _seed, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
+        var buildModel, defaultMaxModels, defaultMaxRunTime, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, findSchemaField, _canBuildModel, _column, _columns, _foldColumn, _hasTrainingFrame, _ignoredColumnsControl, _leaderboardFrame, _leaderboardFrames, _maxModels, _maxRuntimeSecs, _projectName, _seed, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
         if (opts == null) {
             opts = {};
         }
@@ -8085,8 +8290,14 @@
         _stoppingRounds = Flow.Dataflow.signal(defaultStoppingRounds);
         defaultStoppingTolerance = -1;
         _stoppingTolerance = Flow.Dataflow.signal('');
+        _ignoredColumnsControl = H2O.Util.createListControl({
+            name: 'ignored_columns',
+            label: 'Ignored Columns',
+            required: false,
+            gridable: false
+        });
         buildModel = function () {
-            var arg, maxModels, maxRuntimeSecs, parsed, seed, stoppingRounds, stoppingTolerance;
+            var arg, entry, maxModels, maxRuntimeSecs, parsed, seed, stoppingRounds, stoppingTolerance;
             seed = defaultSeed;
             if (!lodash.isNaN(parsed = parseInt(_seed(), 10))) {
                 seed = parsed;
@@ -8119,7 +8330,19 @@
                 max_runtime_secs: maxRuntimeSecs,
                 stopping_metric: _stoppingMetric(),
                 stopping_rounds: stoppingRounds,
-                stopping_tolerance: stoppingTolerance
+                stopping_tolerance: stoppingTolerance,
+                ignored_columns: function () {
+                    var _i, _len, _ref, _results;
+                    _ref = _ignoredColumnsControl.entries();
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        entry = _ref[_i];
+                        if (entry.isSelected()) {
+                            _results.push(entry.value);
+                        }
+                    }
+                    return _results;
+                }()
             };
             if (_projectName() && _projectName().trim() !== '') {
                 arg.project_name = _projectName().trim();
@@ -8188,6 +8411,7 @@
                             }
                             return _results;
                         }());
+                        _ignoredColumnsControl.values(H2O.Util.columnLabelsFromFrame(frame));
                         if (opts.response_column) {
                             _column(opts.response_column);
                             return delete opts.response_column;
@@ -8221,7 +8445,8 @@
             stoppingTolerance: _stoppingTolerance,
             canBuildModel: _canBuildModel,
             buildModel: buildModel,
-            template: 'flow-automodel-input'
+            template: 'flow-automodel-input',
+            ignoredColumnsControl: _ignoredColumnsControl
         };
     };
 }.call(this));
@@ -10510,39 +10735,7 @@
 (function () {
     var createCheckboxControl, createControl, createControlFromParameter, createDropdownControl, createGridableValues, createListControl, createModelsControl, createTextboxControl;
     createControl = function (kind, parameter) {
-        var _hasError, _hasInfo, _hasMessage, _hasWarning, _isGrided, _isNotGrided, _isVisible, _message;
-        _hasError = Flow.Dataflow.signal(false);
-        _hasWarning = Flow.Dataflow.signal(false);
-        _hasInfo = Flow.Dataflow.signal(false);
-        _message = Flow.Dataflow.signal('');
-        _hasMessage = Flow.Dataflow.lift(_message, function (message) {
-            if (message) {
-                return true;
-            } else {
-                return false;
-            }
-        });
-        _isVisible = Flow.Dataflow.signal(true);
-        _isGrided = Flow.Dataflow.signal(false);
-        _isNotGrided = Flow.Dataflow.lift(_isGrided, function (value) {
-            return !value;
-        });
-        return {
-            kind: kind,
-            name: parameter.name,
-            label: parameter.label,
-            description: parameter.help,
-            isRequired: parameter.required,
-            hasError: _hasError,
-            hasWarning: _hasWarning,
-            hasInfo: _hasInfo,
-            message: _message,
-            hasMessage: _hasMessage,
-            isVisible: _isVisible,
-            isGridable: parameter.gridable,
-            isGrided: _isGrided,
-            isNotGrided: _isNotGrided
-        };
+        return H2O.Util.createControl(kind, parameter);
     };
     createTextboxControl = function (parameter, type) {
         var control, isArrayValued, isInt, isReal, textToValues, _ref, _ref1, _text, _textGrided, _value, _valueGrided;
@@ -10637,156 +10830,7 @@
         return control;
     };
     createListControl = function (parameter) {
-        var MaxItemsPerPage, blockSelectionUpdates, changeSelection, control, createEntry, deselectFiltered, filterItems, goToNextPage, goToPreviousPage, incrementSelectionCount, selectFiltered, _canGoToNextPage, _canGoToPreviousPage, _currentPage, _entries, _filteredItems, _hasFilteredItems, _ignoreNATerm, _isUpdatingSelectionCount, _lastUsedIgnoreNaTerm, _lastUsedSearchTerm, _maxPages, _searchCaption, _searchTerm, _selectionCount, _values, _visibleItems;
-        MaxItemsPerPage = 100;
-        _searchTerm = Flow.Dataflow.signal('');
-        _ignoreNATerm = Flow.Dataflow.signal('');
-        _values = Flow.Dataflow.signal([]);
-        _selectionCount = Flow.Dataflow.signal(0);
-        _isUpdatingSelectionCount = false;
-        blockSelectionUpdates = function (f) {
-            _isUpdatingSelectionCount = true;
-            f();
-            return _isUpdatingSelectionCount = false;
-        };
-        incrementSelectionCount = function (amount) {
-            return _selectionCount(_selectionCount() + amount);
-        };
-        createEntry = function (value) {
-            var isSelected;
-            isSelected = Flow.Dataflow.signal(false);
-            Flow.Dataflow.react(isSelected, function (isSelected) {
-                if (!_isUpdatingSelectionCount) {
-                    if (isSelected) {
-                        incrementSelectionCount(1);
-                    } else {
-                        incrementSelectionCount(-1);
-                    }
-                }
-            });
-            return {
-                isSelected: isSelected,
-                value: value.value,
-                type: value.type,
-                missingLabel: value.missingLabel,
-                missingPercent: value.missingPercent
-            };
-        };
-        _entries = Flow.Dataflow.lift(_values, function (values) {
-            return lodash.map(values, createEntry);
-        });
-        _filteredItems = Flow.Dataflow.signal([]);
-        _visibleItems = Flow.Dataflow.signal([]);
-        _hasFilteredItems = Flow.Dataflow.lift(_filteredItems, function (entries) {
-            return entries.length > 0;
-        });
-        _currentPage = Flow.Dataflow.signal(0);
-        _maxPages = Flow.Dataflow.lift(_filteredItems, function (entries) {
-            return Math.ceil(entries.length / MaxItemsPerPage);
-        });
-        _canGoToPreviousPage = Flow.Dataflow.lift(_currentPage, function (index) {
-            return index > 0;
-        });
-        _canGoToNextPage = Flow.Dataflow.lift(_maxPages, _currentPage, function (maxPages, index) {
-            return index < maxPages - 1;
-        });
-        _searchCaption = Flow.Dataflow.lift(_entries, _filteredItems, _selectionCount, _currentPage, _maxPages, function (entries, filteredItems, selectionCount, currentPage, maxPages) {
-            var caption;
-            caption = maxPages === 0 ? '' : 'Showing page ' + (currentPage + 1) + ' of ' + maxPages + '.';
-            if (filteredItems.length !== entries.length) {
-                caption += ' Filtered ' + filteredItems.length + ' of ' + entries.length + '.';
-            }
-            if (selectionCount !== 0) {
-                caption += ' ' + selectionCount + ' ignored.';
-            }
-            return caption;
-        });
-        Flow.Dataflow.react(_entries, function () {
-            return filterItems(true);
-        });
-        _lastUsedSearchTerm = null;
-        _lastUsedIgnoreNaTerm = null;
-        filterItems = function (force) {
-            var entry, filteredItems, hide, i, ignoreNATerm, missingPercent, searchTerm, start, _i, _len, _ref;
-            if (force == null) {
-                force = false;
-            }
-            searchTerm = _searchTerm().trim();
-            ignoreNATerm = _ignoreNATerm().trim();
-            if (force || searchTerm !== _lastUsedSearchTerm || ignoreNATerm !== _lastUsedIgnoreNaTerm) {
-                filteredItems = [];
-                _ref = _entries();
-                for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-                    entry = _ref[i];
-                    missingPercent = parseFloat(ignoreNATerm);
-                    hide = false;
-                    if (searchTerm !== '' && -1 === entry.value.toLowerCase().indexOf(searchTerm.toLowerCase())) {
-                        hide = true;
-                    } else if (!lodash.isNaN(missingPercent) && missingPercent !== 0 && entry.missingPercent <= missingPercent) {
-                        hide = true;
-                    }
-                    if (!hide) {
-                        filteredItems.push(entry);
-                    }
-                }
-                _lastUsedSearchTerm = searchTerm;
-                _lastUsedIgnoreNaTerm = ignoreNATerm;
-                _currentPage(0);
-                _filteredItems(filteredItems);
-            }
-            start = _currentPage() * MaxItemsPerPage;
-            _visibleItems(_filteredItems().slice(start, start + MaxItemsPerPage));
-        };
-        changeSelection = function (source, value) {
-            var entry, _i, _len;
-            for (_i = 0, _len = source.length; _i < _len; _i++) {
-                entry = source[_i];
-                entry.isSelected(value);
-            }
-        };
-        selectFiltered = function () {
-            var entries;
-            entries = _filteredItems();
-            blockSelectionUpdates(function () {
-                return changeSelection(entries, true);
-            });
-            return _selectionCount(entries.length);
-        };
-        deselectFiltered = function () {
-            blockSelectionUpdates(function () {
-                return changeSelection(_filteredItems(), false);
-            });
-            return _selectionCount(0);
-        };
-        goToPreviousPage = function () {
-            if (_canGoToPreviousPage()) {
-                _currentPage(_currentPage() - 1);
-                filterItems();
-            }
-        };
-        goToNextPage = function () {
-            if (_canGoToNextPage()) {
-                _currentPage(_currentPage() + 1);
-                filterItems();
-            }
-        };
-        Flow.Dataflow.react(_searchTerm, lodash.throttle(filterItems, 500));
-        Flow.Dataflow.react(_ignoreNATerm, lodash.throttle(filterItems, 500));
-        control = createControl('list', parameter);
-        control.values = _values;
-        control.entries = _visibleItems;
-        control.hasFilteredItems = _hasFilteredItems;
-        control.searchCaption = _searchCaption;
-        control.searchTerm = _searchTerm;
-        control.ignoreNATerm = _ignoreNATerm;
-        control.value = _entries;
-        control.selectFiltered = selectFiltered;
-        control.deselectFiltered = deselectFiltered;
-        control.goToPreviousPage = goToPreviousPage;
-        control.goToNextPage = goToNextPage;
-        control.canGoToPreviousPage = _canGoToPreviousPage;
-        control.canGoToNextPage = _canGoToNextPage;
-        return control;
+        return H2O.Util.createListControl(parameter);
     };
     createCheckboxControl = function (parameter) {
         var control, _value;
@@ -11005,26 +11049,16 @@
                     return Flow.Dataflow.act(trainingFrameParameter.value, function (frameKey) {
                         if (frameKey) {
                             _.requestFrameSummaryWithoutData(frameKey, function (error, frame) {
-                                var columnLabels, columnValues;
+                                var columnValues;
                                 if (!error) {
                                     columnValues = lodash.map(frame.columns, function (column) {
                                         return column.label;
-                                    });
-                                    columnLabels = lodash.map(frame.columns, function (column) {
-                                        var missingPercent;
-                                        missingPercent = 100 * column.missing_count / frame.rows;
-                                        return {
-                                            type: column.type === 'enum' ? 'enum(' + column.domain_cardinality + ')' : column.type,
-                                            value: column.label,
-                                            missingPercent: missingPercent,
-                                            missingLabel: missingPercent === 0 ? '' : '' + Math.round(missingPercent) + '% NA'
-                                        };
                                     });
                                     if (responseColumnParameter) {
                                         responseColumnParameter.values(columnValues);
                                     }
                                     if (ignoredColumnsParameter) {
-                                        ignoredColumnsParameter.values(columnLabels);
+                                        ignoredColumnsParameter.values(H2O.Util.columnLabelsFromFrame(frame));
                                     }
                                     if (weightsColumnParameter) {
                                         weightsColumnParameter.values(columnValues);
