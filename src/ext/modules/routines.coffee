@@ -1585,6 +1585,7 @@ H2O.Routines = (_) ->
         weights_column: opts.weights_column
         ignored_columns: opts.ignored_columns
       build_control:
+        nfolds: opts.nfolds
         stopping_criteria:
           seed: opts.seed
           max_models: opts.max_models
