@@ -39,9 +39,10 @@ parseDelimiters = do ->
     "' ' SPACE"
   ]
 
+  CHAR_CODE_PAD = '000'
   createDelimiter = (caption, charCode) ->
     charCode: charCode
-    caption: "#{caption}: '#{('00' + charCode).slice(-2)}'"
+    caption: "#{caption}: '#{(CHAR_CODE_PAD + charCode).slice(-CHAR_CODE_PAD.length)}'"
 
   whitespaceDelimiters = map whitespaceSeparators, createDelimiter
 
