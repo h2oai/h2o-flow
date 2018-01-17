@@ -85,6 +85,12 @@ createModelsControl = (_, parameter) ->
   _frames = signal []
   _selectedFrame = signal null
 
+  _isUpdatingSelectionCount = no
+  blockSelectionUpdates = (f) ->
+    _isUpdatingSelectionCount = yes
+    f()
+    _isUpdatingSelectionCount = no
+
   _.requestFrames (error, frames) ->
     unless error
       _frames (frame.frame_id.name for frame in frames)
@@ -98,6 +104,19 @@ createModelsControl = (_, parameter) ->
   createModelItems = (error, frame) ->
     _models map frame.compatible_models, createModelItem
 
+  changeSelection = (source, value) ->
+    for entry in source
+      entry.isSelected value
+    return
+
+  selectFiltered = ->
+    entries = _models()
+    blockSelectionUpdates -> changeSelection entries, yes
+
+  deselectFiltered = ->
+    entries = _models()
+    blockSelectionUpdates -> changeSelection entries, no
+
   lift _selectedFrame, (frameKey) ->
     if frameKey
       _.requestFrame frameKey, createModelItems, find_compatible_models: yes
@@ -106,6 +125,8 @@ createModelsControl = (_, parameter) ->
   control.clientId = do uniqueId
   control.frames = _frames
   control.selectedFrame = _selectedFrame
+  control.selectFiltered = selectFiltered
+  control.deselectFiltered = deselectFiltered
   control.value = _models
   control
 

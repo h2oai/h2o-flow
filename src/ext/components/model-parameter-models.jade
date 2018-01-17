@@ -13,6 +13,12 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
           input(type='checkbox' data-bind='checked:isSelected')
           span(data-bind='text:value')
       // /ko
+    table(style='margin-bottom:10px;width:100%')
+      tbody
+        tr
+          td
+            +button('All', 'check-square-o', 'selectFiltered')
+            +button('None', 'square-o', 'deselectFiltered')
 
   td
     input(type='checkbox' title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided")
