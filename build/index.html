@@ -1830,6 +1830,18 @@
             </div>
             <!-- /ko-->
           </div>
+          <table style="margin-bottom:10px;width:100%">
+            <tbody>
+              <tr>
+                <td>
+                      <button type="button" data-bind="click:selectFiltered" class="flow-button"><i class="fa fa-check-square-o"></i><span>All</span>
+                      </button>
+                      <button type="button" data-bind="click:deselectFiltered" class="flow-button"><i class="fa fa-square-o"></i><span>None</span>
+                      </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </td>
         <td>
           <input type="checkbox" title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided">
