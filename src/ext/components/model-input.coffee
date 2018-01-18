@@ -206,7 +206,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   findFormField = (name) -> find _form, (field) -> field.name is name
 
   do ->
-    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter ] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column' ], findFormField
+    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter, interactionsParameter] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column', 'interactions' ], findFormField
 
     if trainingFrameParameter
       if responseColumnParameter or ignoredColumnsParameter
@@ -236,6 +236,9 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                   lift responseColumnParameter.value, (responseVariableName) ->
                     # FIXME
                     # ignoredColumnsParameter.unavailableValues [ responseVariableName ]
+
+                if interactionsParameter
+                  interactionsParameter.values H2O.Util.columnLabelsFromFrame(frame)
 
           return
 
