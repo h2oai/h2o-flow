@@ -84,12 +84,7 @@ createModelsControl = (_, parameter) ->
   _models = signal []
   _frames = signal []
   _selectedFrame = signal null
-
-  _isUpdatingSelectionCount = no
-  blockSelectionUpdates = (f) ->
-    _isUpdatingSelectionCount = yes
-    f()
-    _isUpdatingSelectionCount = no
+  _checkAllModels = signal false
 
   _.requestFrames (error, frames) ->
     unless error
@@ -104,9 +99,12 @@ createModelsControl = (_, parameter) ->
   createModelItems = (error, frame) ->
     _models map frame.compatible_models, createModelItem
 
-  changeSelection = (source, value) ->
-    for entry in source
-      entry.isSelected value
+  _isCheckingAll = no
+  lift _checkAllModels, (checkAll) ->
+    _isCheckingAll = yes
+    for view in _models()
+      view.isSelected checkAll
+    _isCheckingAll = no
     return
 
   selectFiltered = ->
@@ -125,8 +123,7 @@ createModelsControl = (_, parameter) ->
   control.clientId = do uniqueId
   control.frames = _frames
   control.selectedFrame = _selectedFrame
-  control.selectFiltered = selectFiltered
-  control.deselectFiltered = deselectFiltered
+  control.checkAllModels = _checkAllModels
   control.value = _models
   control
 
