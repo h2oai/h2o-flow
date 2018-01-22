@@ -6,6 +6,13 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     div
       | Show models compatible with frame:
       select(data-bind="options:frames, value:selectedFrame")
+    table(style='margin-top:10px;width:100%')
+      tbody
+        tr
+          td
+            label(style='margin-left: 1px; font-style: italic;')
+              input(type='checkbox' title='Select or deselect all' data-bind="checked:checkAllModels")
+              | Select All
     div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
       // ko foreach:value
       div(style='padding:5px')
@@ -13,12 +20,6 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
           input(type='checkbox' data-bind='checked:isSelected')
           span(data-bind='text:value')
       // /ko
-    table(style='margin-bottom:10px;width:100%')
-      tbody
-        tr
-          td
-            +button('All', 'check-square-o', 'selectFiltered')
-            +button('None', 'square-o', 'deselectFiltered')
 
   td
     input(type='checkbox' title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided")
