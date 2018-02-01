@@ -16,6 +16,12 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
           if actual_value then actual_value.name else null
         when 'VecSpecifier'
           if actual_value then actual_value.column_name else null
+        when 'StringPair[]'
+          if actual_value
+            pairs = actual_value.map (pair) -> pair.a + ':' + pair.b
+            join pairs, ', '
+          else
+            null
         when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
           if actual_value then join actual_value, ', ' else null
         else
