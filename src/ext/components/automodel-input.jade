@@ -67,6 +67,25 @@
         // /ko
 
       tr
+        // ko with:excludeAlgosControl
+        th
+          label(data-bind='text:label')
+          span(data-bind='visible:isRequired') *
+        td(colspan='2')
+          div(style='margin-bottom:5px;max-height:300px;overflow:auto;border:1px dotted #ccc')
+            table
+              tbody
+                // ko foreach:entries
+                tr
+                  td
+                    label
+                      input(type='checkbox' data-bind='checked:isSelected')
+                      span(data-bind='text:value')
+                // /ko
+
+        // /ko
+
+      tr
         th
           label Validation Frame:
         td

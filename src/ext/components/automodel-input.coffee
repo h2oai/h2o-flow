@@ -26,12 +26,23 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _stoppingRounds = signal defaultStoppingRounds
   defaultStoppingTolerance = -1
   _stoppingTolerance = signal ''
+
   _ignoredColumnsControl = H2O.Util.createListControl({
       name: 'ignored_columns',
       label: 'Ignored Columns',
       required: no,
       gridable: no
   })
+
+  _excludeAlgosControl = H2O.Util.createListControl({
+      name: 'exclude_algos',
+      label: 'Exclude Algorithms',
+      required: no,
+      grodable: no
+  })
+  excludeAlgosValues = [{value: 'GLM'}, {value: 'DRF'}, {value: 'GBM'}, {value: 'DeepLearning'}, {value: 'StackedEnsemble'}]
+  _excludeAlgosControl.values excludeAlgosValues
+
   defaultNfolds = 5
   _nfolds = signal defaultNfolds
 
@@ -76,6 +87,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       stopping_tolerance: stoppingTolerance
       nfolds: nfolds
       ignored_columns: for entry in _ignoredColumnsControl.entries() when entry.isSelected()
+          entry.value
+      exclude_algos: for entry in _excludeAlgosControl.entries() when entry.isSelected()
           entry.value
     if _projectName() and _projectName().trim() != ''
       arg.project_name = _projectName().trim()
@@ -151,3 +164,4 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   buildModel: buildModel
   template: 'flow-automodel-input'
   ignoredColumnsControl: _ignoredColumnsControl
+  excludeAlgosControl: _excludeAlgosControl
