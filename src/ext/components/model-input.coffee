@@ -203,7 +203,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   findFormField = (name) -> find _form, (field) -> field.name is name
 
   do ->
-    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter, interactionsParameter] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column', 'interactions' ], findFormField
+    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter, interactionsParameter, metalearnerFoldColumnParameter] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column', 'interactions' , 'metalearner_fold_column'], findFormField
 
     if trainingFrameParameter
       if responseColumnParameter or ignoredColumnsParameter
@@ -236,6 +236,9 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
                 if interactionsParameter
                   interactionsParameter.values H2O.Util.columnLabelsFromFrame(frame)
+
+                if metalearnerFoldColumnParameter
+                  metalearnerFoldColumnParameter.values columnValues
 
           return
 
