@@ -67,6 +67,17 @@
         // /ko
 
       tr
+        th
+          label Validation Frame:
+        td
+          select(data-bind="options:validationFrames, value:validationFrame, optionsCaption:'(Select)'")
+      tr
+        th
+          label Leaderboard Frame:
+        td
+          select(data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'")
+
+      tr
         // ko with:excludeAlgosControl
         th
           label(data-bind='text:label')
@@ -84,23 +95,7 @@
                 // /ko
 
         // /ko
-
-      tr
-        th
-          label Validation Frame:
-        td
-          select(data-bind="options:validationFrames, value:validationFrame, optionsCaption:'(Select)'")
-      tr
-        th
-          label Leaderboard Frame:
-        td
-          select(data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'")
       // /ko
-      tr
-        th
-          label Seed:
-        td
-          input(data-bind="value:seed")
       tr
         th
           label Max models to build:
@@ -131,6 +126,11 @@
           label nfolds:
         td
           input(data-bind="value:nfolds")
+      tr
+        th
+          label Seed:
+        td
+          input(data-bind="value:seed")
 
   .flow-panel
     +button('Build Model', 'cube', 'buildModel', 'canBuildModel')
