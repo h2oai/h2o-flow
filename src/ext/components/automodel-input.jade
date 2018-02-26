@@ -76,12 +76,26 @@
           label Leaderboard Frame:
         td
           select(data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'")
-      // /ko
+
       tr
+        // ko with:excludeAlgosControl
         th
-          label Seed:
-        td
-          input(data-bind="value:seed")
+          label(data-bind='text:label')
+          span(data-bind='visible:isRequired') *
+        td(colspan='2')
+          div(style='margin-bottom:5px;max-height:300px;overflow:auto;border:1px dotted #ccc')
+            table
+              tbody
+                // ko foreach:entries
+                tr
+                  td
+                    label
+                      input(type='checkbox' data-bind='checked:isSelected')
+                      span(data-bind='text:value')
+                // /ko
+
+        // /ko
+      // /ko
       tr
         th
           label Max models to build:
@@ -112,6 +126,11 @@
           label nfolds:
         td
           input(data-bind="value:nfolds")
+      tr
+        th
+          label Seed:
+        td
+          input(data-bind="value:seed")
 
   .flow-panel
     +button('Build Model', 'cube', 'buildModel', 'canBuildModel')
