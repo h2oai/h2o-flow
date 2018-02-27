@@ -2448,15 +2448,31 @@
                 <select data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'"></select>
               </td>
             </tr>
-            <!-- /ko-->
             <tr>
+              <!-- ko with:excludeAlgosControl-->
               <th>
-                <label>Seed:</label>
+                <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
               </th>
-              <td>
-                <input data-bind="value:seed">
+              <td colspan="2">
+                <div style="margin-bottom:5px;max-height:300px;overflow:auto;border:1px dotted #ccc">
+                  <table>
+                    <tbody>
+                      <!-- ko foreach:entries-->
+                      <tr>
+                        <td>
+                          <label>
+                            <input type="checkbox" data-bind="checked:isSelected"><span data-bind="text:value"></span>
+                          </label>
+                        </td>
+                      </tr>
+                      <!-- /ko-->
+                    </tbody>
+                  </table>
+                </div>
               </td>
+              <!-- /ko-->
             </tr>
+            <!-- /ko-->
             <tr>
               <th>
                 <label>Max models to build:</label>
@@ -2503,6 +2519,14 @@
               </th>
               <td>
                 <input data-bind="value:nfolds">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Seed:</label>
+              </th>
+              <td>
+                <input data-bind="value:seed">
               </td>
             </tr>
           </tbody>
