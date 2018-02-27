@@ -1,0 +1,21 @@
+#! /bin/bash
+
+set -e -x
+
+id
+env
+
+cd ~
+pwd
+
+git clone https://github.com/h2oai/h2o-flow
+cd h2o-flow
+
+mkdir -p /home/jenkins/flow-cache/node_modules /home/jenkins/flow-cache/lib
+ln -s /home/jenkins/flow-cache/node_modules/ ./node_modules
+ln -s /home/jenkins/flow-cache/lib/ ./lib
+
+make install
+make
+cd ..
+rm -rf h2o-flow
