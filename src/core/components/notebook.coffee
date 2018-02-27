@@ -585,16 +585,16 @@ Flow.Notebook = (_, _renderers) ->
     menuCell = [menuCell..., menuCellSW...]
 
   initializeMenus = (builder) ->
-    modelMenuItems = map(builder, (builder) ->
-      createMenuItem "#{ builder.algo_full_name }...", executeCommand "buildModel #{stringify builder.algo}"
-    ).concat [
+    modelMenuItems = [createMenuItem('Run AutoML...', executeCommand 'runAutoML'), menuDivider]
+    modelMenuItems = modelMenuItems.concat map(builder, (builder) ->
+      createMenuItem("#{ builder.algo_full_name }...", executeCommand "buildModel #{stringify builder.algo}")
+    )
+    modelMenuItems = modelMenuItems.concat [
       menuDivider
       createMenuItem 'List All Models', executeCommand 'getModels'
       createMenuItem 'List Grid Search Results', executeCommand 'getGrids'
       createMenuItem 'Import Model...', executeCommand 'importModel'
       createMenuItem 'Export Model...', executeCommand 'exportModel'
-      menuDivider
-      createMenuItem 'Run AutoML...', executeCommand 'runAutoML'
     ]
 
     [

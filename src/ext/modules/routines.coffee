@@ -34,12 +34,12 @@ _assistance =
   getJobs:
     description: 'Get a list of jobs running in H<sub>2</sub>O'
     icon: 'tasks'
-  buildModel:
-    description: 'Build a model'
-    icon: 'cube'
   runAutoML:
     description: 'Automatically train and tune many models'
     icon: 'sitemap'
+  buildModel:
+    description: 'Build a model'
+    icon: 'cube'
   importModel:
     description: 'Import a saved model'
     icon: 'cube'
