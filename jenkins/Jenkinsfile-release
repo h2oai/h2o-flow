@@ -55,7 +55,7 @@ try {
                                     ln -s /home/jenkins/flow-cache/node_modules/ ./node_modules
                                     ln -s /home/jenkins/flow-cache/lib/ ./lib
         
-                                    npm run build
+                                    make build
                                     sed -E "s/.+version.+/  \\"version\\": \\"$FLOW_VERSION\\",/" bower.json > bower.json.tmp && mv bower.json.tmp bower.json
                                     sed -E "s/999\\.999\\.999/$FLOW_VERSION/" build/js/flow.js > build/js/flow.js.tmp && mv build/js/flow.js.tmp build/js/flow.js
                                 """
