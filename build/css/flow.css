@@ -531,6 +531,8 @@ table.flow-form-ruled tr:first-child {
 .flow-plot {
   font-family: 'Source Code Pro', Menlo, Monaco, Consolas, "Courier New", monospace !important;
   overflow: visible;
+  max-height: 500px;
+  overflow: auto;
   margin-bottom: 20px;
 }
 .flow-plot table {
