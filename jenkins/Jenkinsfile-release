@@ -1,0 +1,82 @@
+@Library('test-shared-library@mr/ita/190-build-summary-emailer') _
+
+import ai.h2o.ci.buildsummary.StagesSummary
+import ai.h2o.ci.buildsummary.DetailsSummary
+import ai.h2o.ci.BuildResult
+
+BuildResult result = BuildResult.FAILURE
+
+// initialize build summary
+buildSummary('https://github.com/h2oai/h2o-flow', true)
+// use default StagesSummary implementation
+buildSummary.get().addStagesSummary(this, new StagesSummary())
+
+FLOW_VERSION = null
+DEFAULT_BRANCH = 'master'
+REGISTRY = 'docker.h2o.ai'
+IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
+
+try {
+    ansiColor('xterm') {
+        timestamps {
+            node('master') {
+                buildSummary.stageWithSummary('Checkout') {
+                    def final scmEnv = checkout scm
+                    echo "${scmEnv}"
+                    env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
+
+                    if (env.BRANCH_NAME == DEFAULT_BRANCH) {
+                        FLOW_VERSION = "0.7.${currentBuild.number}"
+                    } else {
+                        FLOW_VERSION = "0.8.${currentBuild.number}-${env.BRANCH_NAME.replaceAll('/', '-')}-SNAPSHOT"
+                    }
+
+                    // setup custom DetailsSummary
+                    DetailsSummary detailsSummary = new DetailsSummary()
+                    detailsSummary.setEntry(this, 'Branch Name', env.BRANCH_NAME)
+                    detailsSummary.setEntry(this, 'SHA', scmEnv['GIT_COMMIT'])
+                    detailsSummary.setEntry(this, 'Version', FLOW_VERSION)
+                    buildSummary.get().addDetailsSummary(this, detailsSummary)
+                }
+
+                buildSummary.stageWithSummary("Build") {
+                    withCredentials([usernamePassword(credentialsId: REGISTRY, usernameVariable: 'REGISTRY_USERNAME', passwordVariable: 'REGISTRY_PASSWORD')]) {
+                        sh "docker login -u $REGISTRY_USERNAME -p $REGISTRY_PASSWORD ${REGISTRY}"
+                        sh "docker pull ${IMAGE}"
+                    }
+
+                    timeout(time: 5, unit: 'MINUTES') {
+                        docker.withRegistry("https://${REGISTRY}") {
+                            docker.image(IMAGE).inside("--init") {
+                                sh """
+                                    env
+                                    id
+                                    
+                                    ln -s /home/jenkins/flow-cache/node_modules/ ./node_modules
+                                    ln -s /home/jenkins/flow-cache/lib/ ./lib
+        
+                                    make build
+                                    sed -E "s/.+version.+/  \\"version\\": \\"$FLOW_VERSION\\",/" bower.json > bower.json.tmp && mv bower.json.tmp bower.json
+                                    sed -E "s/999\\.999\\.999/$FLOW_VERSION/" build/js/flow.js > build/js/flow.js.tmp && mv build/js/flow.js.tmp build/js/flow.js
+                                """
+                            }
+                        }
+                    }
+                }
+
+                buildSummary.stageWithSummary("Commit and Push") {
+                    sh """
+                        git add .
+                        git commit -m "Release $FLOW_VERSION"
+                        git push --set-upstream origin ${env.BRANCH_NAME}
+                        git tag -a $FLOW_VERSION -m "$FLOW_VERSION"
+                        git push --tags
+                    """
+                }
+            }
+            result = BuildResult.SUCCESS
+        }
+    }
+} finally {
+    sendEmailNotif(result, buildSummary.get().toEmail(this), ['michalr@h2o.ai'])
+}

@@ -1,0 +1,69 @@
+@Library('test-shared-library@mr/ita/190-build-summary-emailer') _
+
+import ai.h2o.ci.buildsummary.StagesSummary
+import ai.h2o.ci.buildsummary.DetailsSummary
+import ai.h2o.ci.BuildResult
+
+properties([
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '25')),
+        parameters([
+                string(name: 'gitBranch', defaultValue: 'master', description: 'Branch to load the Dockerfile from.'),
+                string(name: 'registry', defaultValue: 'docker.h2o.ai', description: 'Docker registry to push images to'),
+                booleanParam(name: 'publish', defaultValue: true, description: 'If true, publish the docker image'),
+        ]),
+        pipelineTriggers([])
+])
+
+IMAGE_NAME = "${params.registry}/opsh2oai/h2o-flow-build"
+
+BuildResult result = BuildResult.FAILURE
+
+// initialize build summary
+buildSummary('https://github.com/h2oai/h2o-flow', true)
+// setup custom DetailsSummary
+DetailsSummary detailsSummary = new DetailsSummary()
+detailsSummary.setEntry(this, 'Branch', params.gitBranch)
+detailsSummary.setEntry(this, 'Publish', params.publish ? 'Yes' : 'No')
+buildSummary.get().addDetailsSummary(this, detailsSummary)
+// use default StagesSummary implementation
+buildSummary.get().addStagesSummary(this, new StagesSummary())
+
+try {
+    ansiColor('xterm') {
+        timestamps {
+            node('docker && !mr-0xc8') {
+                buildSummary.stageWithSummary('Checkout') {
+                    def final scmEnv = git url: 'https://github.com/h2oai/h2o-flow', branch: params.gitBranch
+                    env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
+                }
+
+                buildSummary.stageWithSummary("Build Image") {
+                    dir('docker') {
+                        sh "docker build -t ${IMAGE_NAME} ."
+                    }
+                }
+
+                if (params.publish) {
+                    buildSummary.stageWithSummary("Publish Image") {
+                        withCredentials([usernamePassword(credentialsId: "${params.registry}", usernameVariable: 'REGISTRY_USERNAME', passwordVariable: 'REGISTRY_PASSWORD')]) {
+                            sh """
+                                docker login -u $REGISTRY_USERNAME -p $REGISTRY_PASSWORD ${params.registry}
+                                docker push ${IMAGE_NAME}
+                            """
+                            echo "###### Docker image ${IMAGE_NAME} built and pushed. ######"
+                        }
+                    }
+                }
+
+                buildSummary.stageWithSummary("Remove Image") {
+                    dir('docker') {
+                        sh "docker rmi ${IMAGE_NAME}"
+                    }
+                }
+            }
+            result = BuildResult.SUCCESS
+        }
+    }
+} finally {
+    sendEmailNotif(result, buildSummary.get().toEmail(this), ['michalr@h2o.ai'])
+}

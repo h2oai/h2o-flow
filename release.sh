@@ -1,16 +1,6 @@
+#! /bin/bash
+
 set -e
 
-FLOW_VERSION="$1"
-
-git pull --rebase
-
-npm run build
-
-sed -E "s/.+version.+/  \"version\": \"$FLOW_VERSION\",/" bower.json > bower.json.tmp && mv bower.json.tmp bower.json
-sed -E "s/999\.999\.999/$FLOW_VERSION/" build/js/flow.js > build/js/flow.js.tmp && mv build/js/flow.js.tmp build/js/flow.js
-
-git add .
-git commit -m "Release $FLOW_VERSION"
-git push
-git tag -a $FLOW_VERSION -m "$FLOW_VERSION"
-git push --tags
+echo "To release Flow, please use the release pipeline in Jenkins: http://mr-0xc1:8080/view/H2O-3/job/h2o-flow-release-pipeline/"
+exit 1
