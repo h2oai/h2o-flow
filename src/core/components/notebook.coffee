@@ -618,6 +618,7 @@ Flow.Notebook = (_, _renderers) ->
     ,
       createMenu 'Data', [
         createMenuItem 'Import Files...', executeCommand 'importFiles'
+        createMenuItem 'Import SQL Table...', executeCommand 'importSqlTable'
         createMenuItem 'Upload File...', uploadFile
         createMenuItem 'Split Frame...', executeCommand 'splitFrame'
         createMenuItem 'Merge Frames...', executeCommand 'mergeFrames'

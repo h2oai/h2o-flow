@@ -247,6 +247,16 @@ H2O.Proxy = (_) ->
     opts = path: encodeURIComponent path
     requestWithOpts '/3/ImportFiles', opts, go
 
+  requestImportSqlTable = (args, go) ->
+    opts =
+      connection_url: args.connection_url
+      table: args.table
+      username: args.username
+      password: args.password
+    if args.columns != ''
+      opts.columns = args.columns
+    doPost '/99/ImportSQLTable', opts, go
+
   requestParseSetup = (sourceKeys, go) ->
     opts =
       source_frames: encodeArrayForPost sourceKeys
@@ -624,6 +634,7 @@ H2O.Proxy = (_) ->
   link _.requestFileGlob, requestFileGlob
   link _.requestImportFiles, requestImportFiles
   link _.requestImportFile, requestImportFile
+  link _.requestImportSqlTable, requestImportSqlTable
   link _.requestParseSetup, requestParseSetup
   link _.requestParseSetupPreview, requestParseSetupPreview
   link _.requestParseFiles, requestParseFiles
