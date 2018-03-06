@@ -16,6 +16,9 @@ _assistance =
   importSqlTable:
     description: 'Import SQL table into H<sub>2</sub>O'
     icon: 'table'
+  importBqTable:
+    description: 'Import BigQuery table into H<sub>2</sub>O'
+    icon: 'table'
   getFrames:
     description: 'Get a list of frames in H<sub>2</sub>O'
     icon: 'table'
@@ -1512,6 +1515,9 @@ H2O.Routines = (_) ->
       else
         assist importSqlTable
 
+  importBqTable = ->
+    assist importBqTable
+
   extendParseSetupResults = (args, parseSetupResults) ->
     render_ parseSetupResults, H2O.SetupParseOutput, args, parseSetupResults
 
@@ -1918,6 +1924,8 @@ H2O.Routines = (_) ->
           _fork proceed, H2O.ImportFilesInput, []
         when importSqlTable
           _fork proceed, H2O.ImportSqlTableInput, args
+        when importBqTable
+          _fork proceed, H2O.ImportBqTableInput, args
         when buildModel
           _fork proceed, H2O.ModelInput, args
         when runAutoML
@@ -2011,6 +2019,7 @@ H2O.Routines = (_) ->
     cancelJob: cancelJob
     importFiles: importFiles
     importSqlTable: importSqlTable
+    importBqTable: importBqTable
     setupParse: setupParse
     parseFiles: parseFiles
     createFrame: createFrame
