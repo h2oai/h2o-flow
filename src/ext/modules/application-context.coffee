@@ -4,6 +4,7 @@ H2O.ApplicationContext = (_) ->
   _.requestSplitFrame = do slot
   _.requestImportFile = do slot
   _.requestImportFiles = do slot
+  _.requestImportSqlTable = do slot
   _.requestParseFiles = do slot
   _.requestInspect = do slot
   _.requestParseSetup = do slot
