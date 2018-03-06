@@ -16,9 +16,6 @@ _assistance =
   importSqlTable:
     description: 'Import SQL table into H<sub>2</sub>O'
     icon: 'table'
-  importBqTable:
-    description: 'Import BigQuery table into H<sub>2</sub>O'
-    icon: 'table'
   getFrames:
     description: 'Get a list of frames in H<sub>2</sub>O'
     icon: 'table'
