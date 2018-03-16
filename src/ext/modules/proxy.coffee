@@ -605,6 +605,11 @@ H2O.Proxy = (_) ->
     else
       doPost "/3/h2oframes/#{hf_id}/dataframe", {dataframe_id: name}, go
 
+  requestFlowDir = (go) ->
+    doGet "/3/FlowLoad.bin/flow_dir", go
+
+  requestFlowLoadPersist = (name, path, go) ->
+    doPost "/3/FlowLoad.bin/notebook/#{encodeURIComponent name}", { path: path }, go
 
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
@@ -670,6 +675,8 @@ H2O.Proxy = (_) ->
   link _.requestPacks, requestPacks
   link _.requestPack, requestPack
   link _.requestFlow, requestFlow
+  link _.requestFlowDir, requestFlowDir
+  link _.requestFlowLoadPersist, requestFlowLoadPersist
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
   link _.requestExec, requestExec

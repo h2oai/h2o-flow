@@ -296,15 +296,20 @@ Flow.Notebook = (_, _renderers) ->
           storeNotebook localName, remoteName
     return
 
+  promptForNotebookCallback = (result) ->
+    if result
+      { error, filename } = result
+      if error
+        _.growl error.message ? error
+      else
+        loadNotebook filename
+        _.loaded()
+
   promptForNotebook = ->
-    _.dialog Flow.FileOpenDialog, (result) ->
-      if result
-        { error, filename } = result
-        if error
-          _.growl error.message ? error
-        else
-          loadNotebook filename
-          _.loaded()
+    _.dialog Flow.FileOpenDialog, promptForNotebookCallback
+
+  promptForNotebookPersist = ->
+    _.dialog Flow.FileOpenPersistDialog, promptForNotebookCallback
 
   uploadFile = ->
     _.dialog Flow.FileUploadDialog, (result) ->
@@ -601,6 +606,7 @@ Flow.Notebook = (_, _renderers) ->
       createMenu 'Flow', [
         createMenuItem 'New Flow', createNotebook
         createMenuItem 'Open Flow...', promptForNotebook
+        createMenuItem 'Open Persisted Flow...', promptForNotebookPersist
         createMenuItem 'Save Flow', saveNotebook, ['s']
         createMenuItem 'Make a Copy...', duplicateNotebook
         menuDivider
@@ -611,7 +617,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Toggle All Cell Outputs', toggleAllOutputs
         createMenuItem 'Clear All Cell Outputs', clearAllCells
         menuDivider
-        createMenuItem 'Download this Flow...', exportNotebook 
+        createMenuItem 'Download this Flow...', exportNotebook
       ]
     ,
       createMenu 'Cell', menuCell
