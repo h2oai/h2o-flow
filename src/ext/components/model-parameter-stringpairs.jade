@@ -1,0 +1,37 @@
+tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}")
+  th
+    label(data-bind='text:label')
+    span(data-bind='visible:isRequired') *
+  td
+    table
+      tbody
+        // ko with:newPair
+        tr
+          td(style="padding-bottom:10px;")
+            select(data-bind="options:leftColumns, value:leftColumn, optionsCaption:'Choose...'", style="width:150px;text-overflow:ellipsis;")
+          td
+            i.fa.fa-arrows-h
+          td
+            select(data-bind="options:rightColumns, value:rightColumn, enable:leftSelected", style="width:150px;text-overflow:ellipsis;")
+          td
+            button(type='button' data-bind='click:create' title='Create interaction pair', style='border:0px;padding:0 10px;margin-right:20px;background-color:inherit;')
+              i.fa.fa-plus
+        // /ko
+        // ko foreach:pairs
+        tr
+          td(data-bind="style: {paddingTop: $index() == 0 ? '5px' : 'inherit', textAlign: 'right', paddingRight: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '150px'}, text:leftColumn")
+          td(data-bind="style: {paddingTop: $index() == 0 ? '5px' : 'inherit'}")
+            i.fa.fa-arrows-h
+          td(data-bind="style: {paddingTop: $index() == 0 ? '5px' : 'inherit', textAlign: 'left', paddingRight: '10px', paddingLeft: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '150px'}, text:rightColumn")
+          td(data-bind="style: {padding: '0', textAlign: 'center', verticalAlign: 'middle'}")
+            button(type='button' data-bind='click:remove' title='Remove interaction pair', style='border:0px;padding:0 10px;margin-right:20px;background-color:inherit;')
+              i.fa.fa-times
+        // /ko
+  td
+    span(data-bind='text:description')
+  td
+    input(type='checkbox' title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided")
+tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage")
+  th &nbsp;
+  td(colspan='3' data-bind='text:message')
+
