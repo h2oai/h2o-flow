@@ -127,6 +127,80 @@ createModelsControl = (_, parameter) ->
   control.value = _models
   control
 
+createStringPairsControl = (parameter) ->
+  _pairs = signal []
+  _columns = signal []
+
+  react _columns, () ->
+    _pairs []
+
+  pairEquals = (pair, leftValue, rightValue) ->
+      return (pair.leftColumn() == leftValue and pair.rightColumn() == rightValue) or (pair.rightColumn() == leftValue and pair.leftColumn() == rightValue)
+
+  pairExists = (leftValue, rightValue) ->
+    samePairs = (pair for pair in _pairs() when pairEquals(pair, leftValue, rightValue))
+    return samePairs.length != 0
+
+  _stringPair = (leftValue, rightValue) ->
+    _leftColumn = signal leftValue
+    _rightColumn = signal rightValue
+    _id = signal uniqueId()
+
+    leftColumn: _leftColumn
+    rightColumn: _rightColumn
+    id: _id
+    remove: ->
+      _pairs (entry for entry in _pairs() when entry.id() != _id())
+
+  _pairConstructor = ->
+    _leftColumn = signal ''
+    _leftColumns = signal _columns()
+    _leftSelected = signal no
+
+    _rightColumn = signal ''
+    _rightColumns = signal []
+
+    _calculateRightColumns = ->
+      _rightColumns (entry for entry in _leftColumns() when entry != _leftColumn() and not pairExists(_leftColumn(), entry))
+
+    react _leftColumn, (leftColumn) ->
+      if leftColumn
+        _calculateRightColumns()
+        _leftSelected yes
+      else
+        _rightColumns []
+        _leftSelected no
+
+    react _pairs, () ->
+      _calculateRightColumns()
+
+    leftColumn: _leftColumn
+    leftColumns: _leftColumns
+    leftSelected: _leftSelected
+    rightColumn: _rightColumn
+    rightColumns: _rightColumns
+    create: ->
+      if not _rightColumn() or not _leftColumn() or pairExists(_leftColumn(), _rightColumn())
+        return
+      new_entries = _pairs()
+      new_entries.push _stringPair(_leftColumn(), _rightColumn())
+      _pairs new_entries
+
+  _pairToValue = (pairs) ->
+    result = []
+    for pair in pairs
+      result.push {a: pair.leftColumn(), b: pair.rightColumn()}
+    return result
+
+  _value = lift _pairs, _pairToValue
+
+  control = createControl 'stringpairs', parameter
+  control.value = _value
+  control.newPair = _pairConstructor
+  control.pairs = _pairs
+  control.columns = _columns
+  control
+
 createControlFromParameter = (_, parameter) ->
   switch parameter.type
     when 'enum', 'Key<Frame>', 'VecSpecifier'
@@ -139,6 +213,8 @@ createControlFromParameter = (_, parameter) ->
       createTextboxControl parameter, parameter.type
     when 'Key<Model>[]'
       createModelsControl _, parameter
+    when 'StringPair[]'
+      createStringPairsControl parameter
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null
@@ -203,7 +279,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   findFormField = (name) -> find _form, (field) -> field.name is name
 
   do ->
-    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter, interactionsParameter, metalearnerFoldColumnParameter] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column', 'interactions' , 'metalearner_fold_column'], findFormField
+    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter, interactionsParameter, metalearnerFoldColumnParameter, interactionPairsParameter] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column', 'interactions' , 'metalearner_fold_column', 'interaction_pairs'], findFormField
 
     if trainingFrameParameter
       if responseColumnParameter or ignoredColumnsParameter
@@ -239,6 +315,9 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
                 if metalearnerFoldColumnParameter
                   metalearnerFoldColumnParameter.values columnValues
+
+                if interactionPairsParameter
+                  interactionPairsParameter.columns columnValues
 
           return
 

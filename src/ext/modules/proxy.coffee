@@ -117,8 +117,14 @@ H2O.Proxy = (_) ->
     if array
       if array.length is 0
         null 
-      else 
-        "[#{join (map array, (element) -> if isNumber element then element else "\"#{element}\""), ','}]"
+      else
+        mappedArray = map array, (element) ->
+          if isNumber element
+            return element
+          if isObject element
+            return JSON.stringify element
+          return "\"#{element}\""
+        "[#{join mappedArray, ','}]"
     else
       null
 
