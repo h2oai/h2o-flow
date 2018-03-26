@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.7.18';
+    Flow.Version = '0.7.19';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4565,17 +4565,21 @@
             return doGet(composePath(path, opts), go);
         };
         encodeArrayForPost = function (array) {
+            var mappedArray;
             if (array) {
                 if (array.length === 0) {
                     return null;
                 } else {
-                    return '[' + lodash.map(array, function (element) {
+                    mappedArray = lodash.map(array, function (element) {
                         if (lodash.isNumber(element)) {
                             return element;
-                        } else {
-                            return '"' + element + '"';
                         }
-                    }).join(',') + ']';
+                        if (lodash.isObject(element)) {
+                            return JSON.stringify(element);
+                        }
+                        return '"' + element + '"';
+                    });
+                    return '[' + mappedArray.join(',') + ']';
                 }
             } else {
                 return null;
@@ -10773,7 +10777,7 @@
     };
 }.call(this));
 (function () {
-    var createCheckboxControl, createControl, createControlFromParameter, createDropdownControl, createGridableValues, createListControl, createModelsControl, createTextboxControl;
+    var createCheckboxControl, createControl, createControlFromParameter, createDropdownControl, createGridableValues, createListControl, createModelsControl, createStringPairsControl, createTextboxControl;
     createControl = function (kind, parameter) {
         return H2O.Util.createControl(kind, parameter);
     };
@@ -10949,6 +10953,129 @@
         control.value = _models;
         return control;
     };
+    createStringPairsControl = function (parameter) {
+        var control, pairEquals, pairExists, _columns, _pairConstructor, _pairToValue, _pairs, _stringPair, _value;
+        _pairs = Flow.Dataflow.signal([]);
+        _columns = Flow.Dataflow.signal([]);
+        Flow.Dataflow.react(_columns, function () {
+            return _pairs([]);
+        });
+        pairEquals = function (pair, leftValue, rightValue) {
+            return pair.leftColumn() === leftValue && pair.rightColumn() === rightValue || pair.rightColumn() === leftValue && pair.leftColumn() === rightValue;
+        };
+        pairExists = function (leftValue, rightValue) {
+            var pair, samePairs;
+            samePairs = function () {
+                var _i, _len, _ref, _results;
+                _ref = _pairs();
+                _results = [];
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    pair = _ref[_i];
+                    if (pairEquals(pair, leftValue, rightValue)) {
+                        _results.push(pair);
+                    }
+                }
+                return _results;
+            }();
+            return samePairs.length !== 0;
+        };
+        _stringPair = function (leftValue, rightValue) {
+            var _id, _leftColumn, _rightColumn;
+            _leftColumn = Flow.Dataflow.signal(leftValue);
+            _rightColumn = Flow.Dataflow.signal(rightValue);
+            _id = Flow.Dataflow.signal(lodash.uniqueId());
+            return {
+                leftColumn: _leftColumn,
+                rightColumn: _rightColumn,
+                id: _id,
+                remove: function () {
+                    var entry;
+                    return _pairs(function () {
+                        var _i, _len, _ref, _results;
+                        _ref = _pairs();
+                        _results = [];
+                        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                            entry = _ref[_i];
+                            if (entry.id() !== _id()) {
+                                _results.push(entry);
+                            }
+                        }
+                        return _results;
+                    }());
+                }
+            };
+        };
+        _pairConstructor = function () {
+            var _calculateRightColumns, _leftColumn, _leftColumns, _leftSelected, _rightColumn, _rightColumns;
+            _leftColumn = Flow.Dataflow.signal('');
+            _leftColumns = Flow.Dataflow.signal(_columns());
+            _leftSelected = Flow.Dataflow.signal(false);
+            _rightColumn = Flow.Dataflow.signal('');
+            _rightColumns = Flow.Dataflow.signal([]);
+            _calculateRightColumns = function () {
+                var entry;
+                return _rightColumns(function () {
+                    var _i, _len, _ref, _results;
+                    _ref = _leftColumns();
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                        entry = _ref[_i];
+                        if (entry !== _leftColumn() && !pairExists(_leftColumn(), entry)) {
+                            _results.push(entry);
+                        }
+                    }
+                    return _results;
+                }());
+            };
+            Flow.Dataflow.react(_leftColumn, function (leftColumn) {
+                if (leftColumn) {
+                    _calculateRightColumns();
+                    return _leftSelected(true);
+                } else {
+                    _rightColumns([]);
+                    return _leftSelected(false);
+                }
+            });
+            Flow.Dataflow.react(_pairs, function () {
+                return _calculateRightColumns();
+            });
+            return {
+                leftColumn: _leftColumn,
+                leftColumns: _leftColumns,
+                leftSelected: _leftSelected,
+                rightColumn: _rightColumn,
+                rightColumns: _rightColumns,
+                create: function () {
+                    var new_entries;
+                    if (!_rightColumn() || !_leftColumn() || pairExists(_leftColumn(), _rightColumn())) {
+                        return;
+                    }
+                    new_entries = _pairs();
+                    new_entries.push(_stringPair(_leftColumn(), _rightColumn()));
+                    return _pairs(new_entries);
+                }
+            };
+        };
+        _pairToValue = function (pairs) {
+            var pair, result, _i, _len;
+            result = [];
+            for (_i = 0, _len = pairs.length; _i < _len; _i++) {
+                pair = pairs[_i];
+                result.push({
+                    a: pair.leftColumn(),
+                    b: pair.rightColumn()
+                });
+            }
+            return result;
+        };
+        _value = Flow.Dataflow.lift(_pairs, _pairToValue);
+        control = createControl('stringpairs', parameter);
+        control.value = _value;
+        control.newPair = _pairConstructor;
+        control.pairs = _pairs;
+        control.columns = _columns;
+        return control;
+    };
     createControlFromParameter = function (_, parameter) {
         switch (parameter.type) {
         case 'enum':
@@ -10976,6 +11103,8 @@
             return createTextboxControl(parameter, parameter.type);
         case 'Key<Model>[]':
             return createModelsControl(_, parameter);
+        case 'StringPair[]':
+            return createStringPairsControl(parameter);
         default:
             console.error('Invalid field', JSON.stringify(parameter, null, 2));
             return null;
@@ -11101,7 +11230,7 @@
             });
         };
         (function () {
-            var foldColumnParameter, ignoredColumnsParameter, interactionsParameter, metalearnerFoldColumnParameter, offsetColumnsParameter, responseColumnParameter, trainingFrameParameter, validationFrameParameter, weightsColumnParameter, _ref;
+            var foldColumnParameter, ignoredColumnsParameter, interactionPairsParameter, interactionsParameter, metalearnerFoldColumnParameter, offsetColumnsParameter, responseColumnParameter, trainingFrameParameter, validationFrameParameter, weightsColumnParameter, _ref;
             _ref = lodash.map([
                 'training_frame',
                 'validation_frame',
@@ -11111,8 +11240,9 @@
                 'weights_column',
                 'fold_column',
                 'interactions',
-                'metalearner_fold_column'
-            ], findFormField), trainingFrameParameter = _ref[0], validationFrameParameter = _ref[1], responseColumnParameter = _ref[2], ignoredColumnsParameter = _ref[3], offsetColumnsParameter = _ref[4], weightsColumnParameter = _ref[5], foldColumnParameter = _ref[6], interactionsParameter = _ref[7], metalearnerFoldColumnParameter = _ref[8];
+                'metalearner_fold_column',
+                'interaction_pairs'
+            ], findFormField), trainingFrameParameter = _ref[0], validationFrameParameter = _ref[1], responseColumnParameter = _ref[2], ignoredColumnsParameter = _ref[3], offsetColumnsParameter = _ref[4], weightsColumnParameter = _ref[5], foldColumnParameter = _ref[6], interactionsParameter = _ref[7], metalearnerFoldColumnParameter = _ref[8], interactionPairsParameter = _ref[9];
             if (trainingFrameParameter) {
                 if (responseColumnParameter || ignoredColumnsParameter) {
                     return Flow.Dataflow.act(trainingFrameParameter.value, function (frameKey) {
@@ -11146,7 +11276,10 @@
                                         interactionsParameter.values(H2O.Util.columnLabelsFromFrame(frame));
                                     }
                                     if (metalearnerFoldColumnParameter) {
-                                        return metalearnerFoldColumnParameter.values(columnValues);
+                                        metalearnerFoldColumnParameter.values(columnValues);
+                                    }
+                                    if (interactionPairsParameter) {
+                                        return interactionPairsParameter.columns(columnValues);
                                     }
                                 }
                             });
