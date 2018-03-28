@@ -358,8 +358,8 @@ H2O.Proxy = (_) ->
       force: overwrite
     doPost "/99/Models.bin/not_in_use", opts, go
 
-  requestExportModel = (key, path, overwrite, go) ->
-    doGet "/99/Models.bin/#{encodeURIComponent key}?dir=#{encodeURIComponent path}&force=#{overwrite}", go
+  requestExportModel = (format, key, path, overwrite, go) ->
+    doGet "/99/Models.#{format}/#{encodeURIComponent key}?dir=#{encodeURIComponent path}&force=#{overwrite}", go
 
   # TODO Obsolete
   requestModelBuildersVisibility = (go) ->
