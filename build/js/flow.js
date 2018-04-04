@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.7.19';
+    Flow.Version = '0.7.20';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4859,8 +4859,8 @@
             };
             return doPost('/99/Models.bin/not_in_use', opts, go);
         };
-        requestExportModel = function (key, path, overwrite, go) {
-            return doGet('/99/Models.bin/' + encodeURIComponent(key) + '?dir=' + encodeURIComponent(path) + '&force=' + overwrite, go);
+        requestExportModel = function (format, key, path, overwrite, go) {
+            return doGet('/99/Models.' + format + '/' + encodeURIComponent(key) + '?dir=' + encodeURIComponent(path) + '&force=' + overwrite, go);
         };
         requestModelBuildersVisibility = function (go) {
             return doGet('/3/Configuration/ModelBuilders/visibility', unwrap(go, function (result) {
@@ -7212,7 +7212,7 @@
             return render_(result, H2O.ExportModelOutput, result);
         };
         requestExportModel = function (modelKey, path, opts, go) {
-            return _.requestExportModel(modelKey, path, opts.overwrite ? true : false, function (error, result) {
+            return _.requestExportModel(opts.format, modelKey, path, opts.overwrite ? true : false, function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
@@ -9085,19 +9085,40 @@
 }.call(this));
 (function () {
     H2O.ExportModelInput = function (_, _go, modelKey, path, opt) {
-        var exportModel, _canExportModel, _models, _overwrite, _path, _selectedModelKey;
+        var exportModel, exportModelMojo, _canExportModel, _canExportModelMojo, _export, _hasMojo, _models, _overwrite, _path, _rawModels, _selectedModelKey;
         if (opt == null) {
             opt = {};
         }
         _models = Flow.Dataflow.signal([]);
+        _rawModels = Flow.Dataflow.signal([]);
         _selectedModelKey = Flow.Dataflow.signal(null);
         _path = Flow.Dataflow.signal(null);
         _overwrite = Flow.Dataflow.signal(opt.overwrite ? true : false);
+        _hasMojo = Flow.Dataflow.lift(_selectedModelKey, function (modelKey) {
+            var model, _i, _len, _ref;
+            _ref = _rawModels();
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                model = _ref[_i];
+                if (model.model_id.name === modelKey && model.have_mojo === true) {
+                    return true;
+                }
+            }
+            return false;
+        });
         _canExportModel = Flow.Dataflow.lift(_selectedModelKey, _path, function (modelKey, path) {
             return modelKey && path;
         });
+        _canExportModelMojo = Flow.Dataflow.lift(_canExportModel, _hasMojo, function (exportable, hasMojo) {
+            return exportable && hasMojo;
+        });
+        _export = function (format) {
+            return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_selectedModelKey()) + ', ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false') + ', format: "' + format + '"');
+        };
         exportModel = function () {
-            return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_selectedModelKey()) + ', ' + Flow.Prelude.stringify(_path()) + ', overwrite: ' + (_overwrite() ? 'true' : 'false'));
+            return _export('bin');
+        };
+        exportModelMojo = function () {
+            return _export('mojo');
         };
         _.requestModels(function (error, models) {
             var model;
@@ -9112,6 +9133,7 @@
                     }
                     return _results;
                 }());
+                _rawModels(models);
                 return _selectedModelKey(modelKey);
             }
         });
@@ -9122,7 +9144,9 @@
             path: _path,
             overwrite: _overwrite,
             canExportModel: _canExportModel,
+            canExportModelMojo: _canExportModelMojo,
             exportModel: exportModel,
+            exportModelMojo: exportModelMojo,
             template: 'flow-export-model-input'
         };
     };
