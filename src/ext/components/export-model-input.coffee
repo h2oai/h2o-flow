@@ -5,7 +5,7 @@ H2O.ExportModelInput = (_, _go, modelKey, path, opt={}) ->
   _path = signal null
   _overwrite = signal if opt.overwrite then yes else no
   _hasMojo = lift _selectedModelKey, (modelKey) ->
-    for model in _rawModels
+    for model in _rawModels()
       if model.model_id.name == modelKey and model.have_mojo == true
           return true
     return false
@@ -26,7 +26,7 @@ H2O.ExportModelInput = (_, _go, modelKey, path, opt={}) ->
       #TODO handle properly
     else
       _models (model.model_id.name for model in models)
-      _rawModels = models
+      _rawModels models
       _selectedModelKey modelKey
 
   defer _go
