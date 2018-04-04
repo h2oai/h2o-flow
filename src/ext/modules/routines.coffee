@@ -1405,7 +1405,7 @@ H2O.Routines = (_) ->
     render_ result, H2O.ExportModelOutput, result
 
   requestExportModel = (modelKey, path, opts, go) ->
-    _.requestExportModel modelKey, path, (if opts.overwrite then yes else no), (error, result) ->
+    _.requestExportModel opts.format, modelKey, path, (if opts.overwrite then yes else no), (error, result) ->
       if error then go error else go null, extendExportModel result
 
   exportModel = (modelKey, path, opts) ->
