@@ -63,6 +63,7 @@
     "node-uuid": "~1.4.1",
     "diecut": "~0.0.1",
     "highlightjs": "~8.5.0",
-    "codemirror": "~5.12.0"
+    "codemirror": "~5.12.0",
+    "aes-js": "~3.1.0"
   }
 }

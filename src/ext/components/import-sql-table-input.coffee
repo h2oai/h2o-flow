@@ -1,5 +1,4 @@
 H2O.ImportSqlTableInput = (_, _go) ->
-
   _specifiedUrl = signal ''
   _specifiedTable = signal ''
   _specifiedColumns = signal ''
@@ -9,12 +8,14 @@ H2O.ImportSqlTableInput = (_, _go) ->
   _hasErrorMessage = lift _exception, (exception) -> if exception then yes else no
 
   importSqlTableAction = ->
+    encryptedPassword = H2O.Util.encryptPassword _specifiedPassword()
+
     opt =
        connection_url: _specifiedUrl()
        table: _specifiedTable()
        columns: _specifiedColumns()
        username: _specifiedUsername()
-       password: _specifiedPassword()
+       password: encryptedPassword
     _.insertAndExecuteCell 'cs', "importSqlTable #{ stringify opt }"
 
   defer _go

@@ -248,11 +248,12 @@ H2O.Proxy = (_) ->
     requestWithOpts '/3/ImportFiles', opts, go
 
   requestImportSqlTable = (args, go) ->
+    decryptedPassword = H2O.Util.decryptPassword args.password
     opts =
       connection_url: args.connection_url
       table: args.table
       username: args.username
-      password: args.password
+      password: decryptedPassword
     if args.columns != ''
       opts.columns = args.columns
     doPost '/99/ImportSQLTable', opts, go
