@@ -35,6 +35,7 @@ H2O.ApplicationContext = (_) ->
   _.requestLeaderboard = do slot
   _.requestModel = do slot
   _.requestPojoPreview = do slot
+  _.requestTreeViz = do slot
   _.requestDeleteModel = do slot
   _.requestImportModel = do slot
   _.requestExportModel = do slot
@@ -83,3 +84,4 @@ H2O.ApplicationContext = (_) ->
   _.requestAsH2OFrameFromRDD = do slot
   _.requestAsH2OFrameFromDF = do slot
   _.requestAsDataFrame = do slot
+

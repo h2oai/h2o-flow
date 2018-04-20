@@ -67,6 +67,7 @@ config =
       'lib/codemirror/lib/codemirror.js'
       'lib/codemirror/mode/clike/clike.js'
       'lib/codemirror/addon/edit/matchbrackets.js'
+      'lib/featherlight/release/featherlight.min.js'
 
     ]
     css: [
@@ -76,6 +77,7 @@ config =
       'lib/highlightjs/styles/tomorrow.css'
       'lib/bootstrap/dist/css/bootstrap.css'
       'lib/codemirror/lib/codemirror.css'
+      'lib/featherlight/release/featherlight.min.css'
     ]
     cssmap: [
       'lib/bootstrap/dist/css/bootstrap.css.map'

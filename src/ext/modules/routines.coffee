@@ -46,6 +46,9 @@ _assistance =
   predict:
     description: 'Make a prediction'
     icon: 'bolt'
+  visualizeTree:
+    description: 'Visualize Tree'
+    icon: 'tree'
 
 parseNumbers = (source) ->
   target = new Array source.length
@@ -635,6 +638,9 @@ H2O.Routines = (_) ->
             record[k] = if isNumber v then format6fi v else v
 
     return
+
+  extendTreeViz = (trees) ->
+    render_ trees, H2O.TreeVizOutput, trees
 
   extendModel = (model) ->
 
@@ -1378,6 +1384,16 @@ H2O.Routines = (_) ->
     else
       assist changeColumnType, opts
 
+  requestTreeViz = (modelKey, go) ->
+    _.requestTreeViz modelKey, (error, trees) ->
+      if error then go error else go null, extendTreeViz trees
+
+  visualizeTree = (modelKey) ->
+    if modelKey
+      _fork requestTreeViz, modelKey
+    else
+      assist visualizeTree
+
   requestDeleteModel = (modelKey, go) ->
     _.requestDeleteModel modelKey, (error, result) ->
       if error then go error else go null, extendDeletedKeys [ modelKey ]
@@ -2029,6 +2045,7 @@ H2O.Routines = (_) ->
     getLogFile: getLogFile
     testNetwork: testNetwork
     deleteAll: deleteAll
+    visualizeTree: visualizeTree
 
   if _.onSparklingWater
     routinesOnSw =
