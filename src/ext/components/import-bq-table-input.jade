@@ -1,0 +1,53 @@
+.flow-widget
+  h3.flow-hint
+    i.fa.fa-table
+    | Import BigQuery Table
+  table.flow-form
+    tbody
+      tr
+        th(width='125') Project:
+        td
+          table(width='100%')
+            tbody
+              tr
+                td.flow-wide
+                  input.flow-textbox(type='text' style='width:100%' data-bind="value:specifiedProject" placeholder='Enter a BigQuery project ID.')
+      tr
+        th(width='125') Dataset:
+        td
+          table(width='100%')
+            tbody
+              tr
+                td.flow-wide
+                  input.flow-textbox(type='text' style='width:100%' data-bind="value:specifiedDataset" placeholder='Enter a BigQuery dataset name.')
+      tr
+        th(width='125') Table:
+        td
+          table(width='100%')
+            tbody
+              tr
+                td.flow-wide
+                  input.flow-textbox(type='text' style='width:100%' data-bind="value:specifiedTable" placeholder='Enter a BigQuery table name.')
+      tr
+        th(width='125') Columns:
+        td
+          table(width='100%')
+            tbody
+              tr
+                td.flow-wide
+                  input.flow-textbox(type='text' style='width:100%' data-bind="value:specifiedColumns" placeholder='Enter a comma-separated list of column names to import. Default is to import all columns.')
+
+      // ko if:hasErrorMessage
+      tr
+        th &nbsp;
+        td(data-bind='text:exception')
+      // /ko
+
+      tr.flow-actions
+        th Actions:
+        td
+          button.flow-button(type='button' data-bind='click:importSqlTableAction')
+            i.fa.fa-cloud-upload
+            | Import
+// /ko
+
