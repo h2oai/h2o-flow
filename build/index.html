@@ -1681,6 +1681,184 @@
       </div>
       <!-- /ko-->
     </script>
+    <script type="text/html" id="flow-import-sql-table-input">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-table"></i>Import SQL Table</h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th width="125">Connection URL:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedUrl" placeholder="Enter URL of the SQL database as specified by the JDBC." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <th width="125">Table:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedTable" placeholder="Enter a name of SQL table." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <th width="125">Columns:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedColumns" placeholder="Enter a comma-separated list of column names to import. Default is to import all columns." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <th width="125">Username:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedUsername" placeholder="Enter a username for SQL server." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <th width="125">Password:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="password" style="width:100%" data-bind="value:specifiedPassword" placeholder="Enter a password for SQL server." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <!-- ko if:hasErrorMessage-->
+            <tr>
+              <th>&nbsp;</th>
+              <td data-bind="text:exception"></td>
+            </tr>
+            <!-- /ko-->
+            <tr class="flow-actions">
+              <th>Actions:</th>
+              <td>
+                <button type="button" data-bind="click:importSqlTableAction" class="flow-button"><i class="fa fa-cloud-upload"></i>Import</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko-->
+    </script>
+    <script type="text/html" id="flow-import-bq-table-input">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-table"></i>Import BigQuery Table</h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th width="125">Project:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedProject" placeholder="Enter a BigQuery project ID." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <th width="125">Dataset:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedDataset" placeholder="Enter a BigQuery dataset name." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <th width="125">Table:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedTable" placeholder="Enter a BigQuery table name." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <th width="125">Columns:</th>
+              <td>
+                <table width="100%">
+                  <tbody>
+                    <tr>
+                      <td class="flow-wide">
+                        <input type="text" style="width:100%" data-bind="value:specifiedColumns" placeholder="Enter a comma-separated list of column names to import. Default is to import all columns." class="flow-textbox">
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            <!-- ko if:hasErrorMessage-->
+            <tr>
+              <th>&nbsp;</th>
+              <td data-bind="text:exception"></td>
+            </tr>
+            <!-- /ko-->
+            <tr class="flow-actions">
+              <th>Actions:</th>
+              <td>
+                <button type="button" data-bind="click:importSqlTableAction" class="flow-button"><i class="fa fa-cloud-upload"></i>Import</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko-->
+    </script>
+    <script type="text/html" id="flow-import-sql-table-output">
+      <div class="flow-widget">
+            <h3 class="flow-hint"><i class="fa fa-save"></i>Table Import
+            </h3>
+        <blockquote>The specified SQL Table is being imported.</blockquote>
+        <button type="button" data-bind="click:viewData" class="flow-button"><i class="fa fa-table"></i><span>View</span></button>
+      </div>
+    </script>
     <script type="text/html" id="flow-checkbox-model-parameter">
       <tr data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:isVisible">
         <th>
