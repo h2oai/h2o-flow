@@ -167,6 +167,18 @@ columnLabelsFromFrame = (frame) ->
 
   columnLabels
 
+key = [64, 14, 190, 99, 77, 107, 95, 26, 211, 235, 41, 125, 110, 237, 151, 148]
+encryptPassword = (password) ->
+  aesCtr = new aesjs.ModeOfOperation.ctr key, new aesjs.Counter 5;
+  passwordBytes = aesjs.utils.utf8.toBytes password
+  encryptedBytes = aesCtr.encrypt passwordBytes
+  aesjs.utils.hex.fromBytes encryptedBytes
+
+decryptPassword = (encrypted) ->
+  aesCtr = new aesjs.ModeOfOperation.ctr key, new aesjs.Counter 5;
+  encryptedBytes = aesjs.utils.hex.toBytes encrypted
+  passwordBytes = aesCtr.decrypt encryptedBytes
+  aesjs.utils.utf8.fromBytes passwordBytes
 
 H2O.Util =
   validateFileExtension: validateFileExtension
@@ -174,3 +186,5 @@ H2O.Util =
   createListControl: createListControl
   createControl: createControl
   columnLabelsFromFrame: columnLabelsFromFrame
+  encryptPassword: encryptPassword
+  decryptPassword: decryptPassword

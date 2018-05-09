@@ -48,10 +48,13 @@ Flow.Notebook = (_, _renderers) ->
       else
         _.scalaIntpId response.session_id
 
+  sanitizeCellInput = (cellInput) ->
+    cellInput.replace /\"password\":\"[^\"]*\"/g, "\"password\":\"\""
+
   serialize = ->
     cells = for cell in _cells()
       type: cell.type()
-      input: cell.input()
+      input: sanitizeCellInput cell.input()
 
     version: '1.0.0'
     cells: cells
@@ -618,6 +621,7 @@ Flow.Notebook = (_, _renderers) ->
     ,
       createMenu 'Data', [
         createMenuItem 'Import Files...', executeCommand 'importFiles'
+        createMenuItem 'Import SQL Table...', executeCommand 'importSqlTable'
         createMenuItem 'Upload File...', uploadFile
         createMenuItem 'Split Frame...', executeCommand 'splitFrame'
         createMenuItem 'Merge Frames...', executeCommand 'mergeFrames'
