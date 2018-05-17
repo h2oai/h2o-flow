@@ -563,10 +563,11 @@ table
 .flow-plot
   monospace()
   overflow visible
-  max-height: 500px
-  overflow: auto
   margin-bottom 20px
   table
+    display: block
+    max-height: 500px
+    overflow: auto
     // margin 10px 0 20px 0
     font-size 85%
     tr:nth-child(odd)
@@ -594,6 +595,7 @@ table
 
   // Nasty hacks - FIXME
   .lz-tooltip
+    z-index 1
     table
       margin 0 !important
       font-size 100% !important
