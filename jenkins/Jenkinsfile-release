@@ -25,10 +25,10 @@ try {
                     echo "${scmEnv}"
                     env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
 
-                    if (env.BRANCH_NAME == DEFAULT_BRANCH) {
-                        FLOW_VERSION = "0.7.${currentBuild.number}"
+                    if (env.BRANCH_NAME.startsWith('rel-0.7.23')) {
+                        FLOW_VERSION = "0.7.23"
                     } else {
-                        FLOW_VERSION = "0.8.${currentBuild.number}-${env.BRANCH_NAME.replaceAll('/', '-')}-SNAPSHOT"
+                        error "These fix releases can be released only from rel-0.7.23 branch"
                     }
 
                     // setup custom DetailsSummary
