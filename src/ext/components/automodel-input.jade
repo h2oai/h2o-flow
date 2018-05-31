@@ -76,7 +76,7 @@
           label Leaderboard Frame:
         td
           select(data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'")
-
+      // /ko
       tr
         // ko with:excludeAlgosControl
         th
@@ -95,7 +95,6 @@
                 // /ko
 
         // /ko
-      // /ko
       tr
         th
           label Max models to build:
@@ -118,7 +117,7 @@
           input(data-bind="value:stoppingRounds")
       tr
         th
-          label Stopping Tolerance:
+          label Early stopping tolerance:
         td
           input(data-bind="value:stoppingTolerance")
       tr
