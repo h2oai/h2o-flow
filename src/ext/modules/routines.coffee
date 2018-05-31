@@ -1611,6 +1611,8 @@ H2O.Routines = (_) ->
         exclude_algos: opts.exclude_algos
       build_control:
         nfolds: opts.nfolds
+        keep_cross_validation_predictions: opts.keep_cross_validation_predictions
+        keep_cross_validation_models: opts.keep_cross_validation_models
         stopping_criteria:
           seed: opts.seed
           max_models: opts.max_models

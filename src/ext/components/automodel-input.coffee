@@ -46,6 +46,9 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   defaultNfolds = 5
   _nfolds = signal defaultNfolds
 
+  _keepCrossValidationPredictions = signal yes
+  _keepCrossValidationModels = signal yes
+
   buildModel = ->
     seed = defaultSeed
     unless isNaN parsed = parseInt _seed(), 10
@@ -86,6 +89,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       stopping_rounds: stoppingRounds
       stopping_tolerance: stoppingTolerance
       nfolds: nfolds
+      keep_cross_validation_predictions: _keepCrossValidationPredictions()
+      keep_cross_validation_models: _keepCrossValidationModels()
       ignored_columns: for entry in _ignoredColumnsControl.entries() when entry.isSelected()
           entry.value
       exclude_algos: for entry in _excludeAlgosControl.entries() when entry.isSelected()
@@ -160,6 +165,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   stoppingRounds: _stoppingRounds
   stoppingTolerance: _stoppingTolerance
   nfolds: _nfolds
+  keepCrossValidationPredictions: _keepCrossValidationPredictions
+  keepCrossValidationModels: _keepCrossValidationModels
   canBuildModel: _canBuildModel
   buildModel: buildModel
   template: 'flow-automodel-input'

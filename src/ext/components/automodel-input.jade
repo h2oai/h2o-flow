@@ -128,6 +128,16 @@
           input(data-bind="value:nfolds")
       tr
         th
+          label Keep cross-validation predictions
+        td
+          input(data-bind="checked:keepCrossValidationPredictions" type="checkbox")
+      tr
+        th
+          label Keep cross-validation models
+        td
+          input(data-bind="checked:keepCrossValidationModels" type="checkbox")
+      tr
+        th
           label Seed:
         td
           input(data-bind="value:seed")
