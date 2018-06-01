@@ -2677,6 +2677,7 @@
                 <select data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'"></select>
               </td>
             </tr>
+            <!-- /ko-->
             <tr>
               <!-- ko with:excludeAlgosControl-->
               <th>
@@ -2701,7 +2702,6 @@
               </td>
               <!-- /ko-->
             </tr>
-            <!-- /ko-->
             <tr>
               <th>
                 <label>Max models to build:</label>
@@ -2736,7 +2736,7 @@
             </tr>
             <tr>
               <th>
-                <label>Stopping Tolerance:</label>
+                <label>Early stopping tolerance:</label>
               </th>
               <td>
                 <input data-bind="value:stoppingTolerance">
@@ -2748,6 +2748,22 @@
               </th>
               <td>
                 <input data-bind="value:nfolds">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Keep cross-validation predictions</label>
+              </th>
+              <td>
+                <input data-bind="checked:keepCrossValidationPredictions" type="checkbox">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Keep cross-validation models</label>
+              </th>
+              <td>
+                <input data-bind="checked:keepCrossValidationModels" type="checkbox">
               </td>
             </tr>
             <tr>
