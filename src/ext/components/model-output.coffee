@@ -156,11 +156,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
       headers = map cm.columns, (column, i) -> bold column.description
       headers.unshift normal ' ' # NW corner cell
       rows = [tr headers]
-      errorColumnIndex = columnCount - 2
-      totalRowIndex = rowCount - 1
+      errorColumnIndex = columnCount - 3
+      totalRowIndex = rowCount - 2
       for rowIndex in [0 ... rowCount]
         cells = for column, i in cm.data
-          # Last two columns should be emphasized
+          # Last three columns should be emphasized
           cell = if i < errorColumnIndex
             if i is rowIndex
               yellow
@@ -174,7 +174,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
           # special-format error column
           cell if i is errorColumnIndex then format4f column[rowIndex] else column[rowIndex]
         # Add the corresponding column label
-        cells.unshift bold if rowIndex is rowCount - 1 then 'Total' else cm.columns[rowIndex].description
+        cells.unshift bold if rowIndex is rowCount - 2 then 'Total' else if rowIndex is rowCount - 1 then 'Precision' else cm.columns[rowIndex].description
         rows.push tr cells
 
       _plots.push
