@@ -112,6 +112,11 @@
           select(data-bind="options:stoppingMetrics, value:stoppingMetric")
       tr
         th
+          label Leaderboard sort metric:
+        td
+          select(data-bind="options:sortMetrics, value:sortMetric")
+      tr
+        th
           label Early stopping rounds:
         td
           input(data-bind="value:stoppingRounds")

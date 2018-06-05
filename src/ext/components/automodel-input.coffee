@@ -22,6 +22,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _maxRuntimeSecs = signal defaultMaxRunTime
   _stoppingMetrics = signal []
   _stoppingMetric = signal null
+  _sortMetrics = signal []
+  _sortMetric = signal null
   defaultStoppingRounds = 3
   _stoppingRounds = signal defaultStoppingRounds
   defaultStoppingTolerance = -1
@@ -74,6 +76,12 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
     unless isNaN parsed = parseInt _nfolds()
       nfolds = parsed
 
+    sortMetric = _sortMetric()
+    if sortMetric is 'deviance'
+      sortMetric = 'mean_residual_deviance'
+    if sortMetric is 'AUTO'
+      sortMetric = null
+
     # TODO loss
     arg =
       training_frame: _trainingFrame()
@@ -86,6 +94,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       max_models: maxModels
       max_runtime_secs: maxRuntimeSecs
       stopping_metric: _stoppingMetric()
+      sort_metric: sortMetric
       stopping_rounds: stoppingRounds
       stopping_tolerance: stoppingTolerance
       nfolds: nfolds
@@ -127,6 +136,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
 
       if field = findSchemaField schema, 'ScoreKeeperStoppingMetric'
         _stoppingMetrics field.values
+        _sortMetrics field.values
 
 
   react _trainingFrame, (frame) ->
@@ -162,6 +172,8 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   maxRuntimeSecs: _maxRuntimeSecs
   stoppingMetrics: _stoppingMetrics
   stoppingMetric: _stoppingMetric
+  sortMetrics: _sortMetrics
+  sortMetric: _sortMetric
   stoppingRounds: _stoppingRounds
   stoppingTolerance: _stoppingTolerance
   nfolds: _nfolds
