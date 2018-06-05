@@ -1608,6 +1608,7 @@ H2O.Routines = (_) ->
         weights_column: opts.weights_column
         ignored_columns: opts.ignored_columns
         leaderboard_frame: opts.leaderboard_frame
+        sort_metric: opts.sort_metric
       build_models:
         exclude_algos: opts.exclude_algos
       build_control:
