@@ -28,6 +28,10 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _stoppingRounds = signal defaultStoppingRounds
   defaultStoppingTolerance = -1
   _stoppingTolerance = signal ''
+  _balanceClasses = signal no
+  _classSamplingFactors = signal null
+  defaultMaxAfterBalanceSize = 5
+  _maxAfterBalanceSize = signal defaultMaxAfterBalanceSize
 
   _ignoredColumnsControl = H2O.Util.createListControl({
       name: 'ignored_columns',
@@ -82,6 +86,17 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
     if sortMetric is 'AUTO'
       sortMetric = null
 
+    classSamplingFactors = []
+    for value in split(_classSamplingFactors() ? '', /\s*,\s*/g)
+      unless isNaN parsed = parseFloat value
+        classSamplingFactors.push parsed
+    if classSamplingFactors is []
+      classSamplingFactors = null
+
+    maxAfterBalanceSize = defaultMaxAfterBalanceSize
+    unless isNaN parsed = parseInt _maxAfterBalanceSize(), 10
+      maxAfterBalanceSize = parsed
+
     # TODO loss
     arg =
       training_frame: _trainingFrame()
@@ -98,6 +113,9 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       stopping_rounds: stoppingRounds
       stopping_tolerance: stoppingTolerance
       nfolds: nfolds
+      balance_classes: _balanceClasses()
+      class_sampling_factors: classSamplingFactors
+      max_after_balance_size: maxAfterBalanceSize
       keep_cross_validation_predictions: _keepCrossValidationPredictions()
       keep_cross_validation_models: _keepCrossValidationModels()
       ignored_columns: for entry in _ignoredColumnsControl.entries() when entry.isSelected()
@@ -179,6 +197,9 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   nfolds: _nfolds
   keepCrossValidationPredictions: _keepCrossValidationPredictions
   keepCrossValidationModels: _keepCrossValidationModels
+  balanceClasses: _balanceClasses
+  classSamplingFactors: _classSamplingFactors
+  maxAfterBalanceSize: _maxAfterBalanceSize
   canBuildModel: _canBuildModel
   buildModel: buildModel
   template: 'flow-automodel-input'
