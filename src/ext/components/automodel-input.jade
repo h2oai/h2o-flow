@@ -78,6 +78,23 @@
           select(data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'")
       // /ko
       tr
+        th
+          label Balance classes:
+        td
+          input(type='checkbox' data-bind='checked:balanceClasses')
+      // ko if:balanceClasses
+      tr
+        th
+          label Class sampling factors:
+        td
+          input(data-bind='value:classSamplingFactors')
+      tr
+        th
+          label Maximum after-balance size:
+        td
+          input(data-bind='value:maxAfterBalanceSize')
+      // /ko
+      tr
         // ko with:excludeAlgosControl
         th
           label(data-bind='text:label')
