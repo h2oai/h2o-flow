@@ -2679,6 +2679,32 @@
             </tr>
             <!-- /ko-->
             <tr>
+              <th>
+                <label>Balance classes:</label>
+              </th>
+              <td>
+                <input type="checkbox" data-bind="checked:balanceClasses">
+              </td>
+            </tr>
+            <!-- ko if:balanceClasses-->
+            <tr>
+              <th>
+                <label>Class sampling factors:</label>
+              </th>
+              <td>
+                <input data-bind="value:classSamplingFactors">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Maximum after-balance size:</label>
+              </th>
+              <td>
+                <input data-bind="value:maxAfterBalanceSize">
+              </td>
+            </tr>
+            <!-- /ko-->
+            <tr>
               <!-- ko with:excludeAlgosControl-->
               <th>
                 <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>

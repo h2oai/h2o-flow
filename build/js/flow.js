@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.7.28';
+    Flow.Version = '0.7.29';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -7501,6 +7501,9 @@
                     nfolds: opts.nfolds,
                     keep_cross_validation_predictions: opts.keep_cross_validation_predictions,
                     keep_cross_validation_models: opts.keep_cross_validation_models,
+                    balance_classes: opts.balance_classes,
+                    class_sampling_factors: opts.class_sampling_factors,
+                    max_after_balance_size: opts.max_after_balance_size,
                     stopping_criteria: {
                         seed: opts.seed,
                         max_models: opts.max_models,
@@ -8353,7 +8356,7 @@
 }.call(this));
 (function () {
     H2O.AutoModelInput = function (_, _go, opts) {
-        var buildModel, defaultMaxModels, defaultMaxRunTime, defaultNfolds, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, excludeAlgosValues, findSchemaField, _canBuildModel, _column, _columns, _excludeAlgosControl, _foldColumn, _hasTrainingFrame, _ignoredColumnsControl, _keepCrossValidationModels, _keepCrossValidationPredictions, _leaderboardFrame, _leaderboardFrames, _maxModels, _maxRuntimeSecs, _nfolds, _projectName, _seed, _sortMetric, _sortMetrics, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
+        var buildModel, defaultMaxAfterBalanceSize, defaultMaxModels, defaultMaxRunTime, defaultNfolds, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, excludeAlgosValues, findSchemaField, _balanceClasses, _canBuildModel, _classSamplingFactors, _column, _columns, _excludeAlgosControl, _foldColumn, _hasTrainingFrame, _ignoredColumnsControl, _keepCrossValidationModels, _keepCrossValidationPredictions, _leaderboardFrame, _leaderboardFrames, _maxAfterBalanceSize, _maxModels, _maxRuntimeSecs, _nfolds, _projectName, _seed, _sortMetric, _sortMetrics, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
         if (opts == null) {
             opts = {};
         }
@@ -8392,6 +8395,10 @@
         _stoppingRounds = Flow.Dataflow.signal(defaultStoppingRounds);
         defaultStoppingTolerance = -1;
         _stoppingTolerance = Flow.Dataflow.signal('');
+        _balanceClasses = Flow.Dataflow.signal(false);
+        _classSamplingFactors = Flow.Dataflow.signal(null);
+        defaultMaxAfterBalanceSize = 5;
+        _maxAfterBalanceSize = Flow.Dataflow.signal(defaultMaxAfterBalanceSize);
         _ignoredColumnsControl = H2O.Util.createListControl({
             name: 'ignored_columns',
             label: 'Ignored Columns',
@@ -8417,7 +8424,7 @@
         _keepCrossValidationPredictions = Flow.Dataflow.signal(true);
         _keepCrossValidationModels = Flow.Dataflow.signal(true);
         buildModel = function () {
-            var arg, entry, maxModels, maxRuntimeSecs, nfolds, parsed, seed, sortMetric, stoppingRounds, stoppingTolerance;
+            var arg, classSamplingFactors, entry, maxAfterBalanceSize, maxModels, maxRuntimeSecs, nfolds, parsed, seed, sortMetric, stoppingRounds, stoppingTolerance, value, _i, _len, _ref, _ref1;
             seed = defaultSeed;
             if (!lodash.isNaN(parsed = parseInt(_seed(), 10))) {
                 seed = parsed;
@@ -8449,6 +8456,21 @@
             if (sortMetric === 'AUTO') {
                 sortMetric = null;
             }
+            classSamplingFactors = [];
+            _ref1 = ((_ref = _classSamplingFactors()) != null ? _ref : '').split(/\s*,\s*/g);
+            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+                value = _ref1[_i];
+                if (!lodash.isNaN(parsed = parseFloat(value))) {
+                    classSamplingFactors.push(parsed);
+                }
+            }
+            if (classSamplingFactors === []) {
+                classSamplingFactors = null;
+            }
+            maxAfterBalanceSize = defaultMaxAfterBalanceSize;
+            if (!lodash.isNaN(parsed = parseInt(_maxAfterBalanceSize(), 10))) {
+                maxAfterBalanceSize = parsed;
+            }
             arg = {
                 training_frame: _trainingFrame(),
                 response_column: _column(),
@@ -8464,14 +8486,17 @@
                 stopping_rounds: stoppingRounds,
                 stopping_tolerance: stoppingTolerance,
                 nfolds: nfolds,
+                balance_classes: _balanceClasses(),
+                class_sampling_factors: classSamplingFactors,
+                max_after_balance_size: maxAfterBalanceSize,
                 keep_cross_validation_predictions: _keepCrossValidationPredictions(),
                 keep_cross_validation_models: _keepCrossValidationModels(),
                 ignored_columns: function () {
-                    var _i, _len, _ref, _results;
-                    _ref = _ignoredColumnsControl.entries();
+                    var _j, _len1, _ref2, _results;
+                    _ref2 = _ignoredColumnsControl.entries();
                     _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        entry = _ref[_i];
+                    for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
+                        entry = _ref2[_j];
                         if (entry.isSelected()) {
                             _results.push(entry.value);
                         }
@@ -8479,11 +8504,11 @@
                     return _results;
                 }(),
                 exclude_algos: function () {
-                    var _i, _len, _ref, _results;
-                    _ref = _excludeAlgosControl.entries();
+                    var _j, _len1, _ref2, _results;
+                    _ref2 = _excludeAlgosControl.entries();
                     _results = [];
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        entry = _ref[_i];
+                    for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
+                        entry = _ref2[_j];
                         if (entry.isSelected()) {
                             _results.push(entry.value);
                         }
@@ -8596,6 +8621,9 @@
             nfolds: _nfolds,
             keepCrossValidationPredictions: _keepCrossValidationPredictions,
             keepCrossValidationModels: _keepCrossValidationModels,
+            balanceClasses: _balanceClasses,
+            classSamplingFactors: _classSamplingFactors,
+            maxAfterBalanceSize: _maxAfterBalanceSize,
             canBuildModel: _canBuildModel,
             buildModel: buildModel,
             template: 'flow-automodel-input',
