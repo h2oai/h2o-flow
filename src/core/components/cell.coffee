@@ -86,7 +86,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
       # escape new-lines
       input = input.replace(/\n/g, '\\n')
       # pass the cell body as an argument, representing the scala code, to the appropriate function
-      input = 'runScalaCode ' + _.scalaIntpId() + ', \'' + input + '\''
+      input = 'runScalaCode ' + _.scalaIntpId() + ', ' + _.scalaIntpAsync() + ', \'' + input + '\''
 
     render input,
       data: (result) ->

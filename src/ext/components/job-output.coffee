@@ -38,6 +38,8 @@ H2O.JobOutput = (_, _go, _job) ->
         'PartialDependence'
       when 'Key<AutoML>'
         'Auto Model'
+      when 'Key<ScalaCodeResult>'
+        'Scala Code Execution'
       when 'Key<KeyedVoid>'
         'Void'
       else
@@ -122,6 +124,8 @@ H2O.JobOutput = (_, _go, _job) ->
         _.insertAndExecuteCell 'cs', "getPartialDependence #{stringify _destinationKey}"
       when 'Auto Model'
         _.insertAndExecuteCell 'cs', "getLeaderboard #{stringify _destinationKey}"
+      when 'Scala Code Execution'
+        _.insertAndExecuteCell 'cs', "getScalaCodeExecutionResult #{stringify _destinationKey}"
       when 'Void'
         alert "This frame was exported to\n#{_job.dest.name}"
 

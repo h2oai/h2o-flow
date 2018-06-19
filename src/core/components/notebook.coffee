@@ -45,8 +45,10 @@ Flow.Notebook = (_, _renderers) ->
       if error
         # Handle the error
         _.scalaIntpId -1
+        _.scalaIntpAsync false
       else
         _.scalaIntpId response.session_id
+        _.scalaIntpAsync response.async
 
   sanitizeCellInput = (cellInput) ->
     cellInput.replace /\"password\":\"[^\"]*\"/g, "\"password\":\"\""

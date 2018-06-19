@@ -622,6 +622,8 @@ H2O.Proxy = (_) ->
     else
       doPost "/3/h2oframes/#{hf_id}/dataframe", {dataframe_id: name}, go
 
+  requestScalaCodeExecutionResult = (key, go) ->
+    doPost "/3/scalaint/result/#{key}", {result_key: key}, go
 
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
@@ -700,5 +702,6 @@ H2O.Proxy = (_) ->
   link _.requestAsH2OFrameFromDF, requestAsH2OFrameFromDF
   link _.requestAsH2OFrameFromRDD, requestAsH2OFrameFromRDD
   link _.requestAsDataFrame, requestAsDataFrame
+  link _.requestScalaCodeExecutionResult, requestScalaCodeExecutionResult
 
 
