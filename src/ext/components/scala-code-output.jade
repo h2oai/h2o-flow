@@ -6,5 +6,9 @@
 
     h4 Scala Response:
     p(data-bind="text: response, visible: scalaResponseVisible " style="white-space: pre-wrap")
-    a(href="#" data-bind="click: toggleVisibility, text: scalaLinkText")
+    a(href="#" data-bind="click: toggleResponseVisibility, text: scalaLinkText")
+
+    h4 Executed Code:
+    p(data-bind="text: code, visible: scalaCodeVisible " style="white-space: pre-wrap")
+    a(href="#" data-bind="click: toggleCodeVisibility, text: scalaCodeLinkText")
     // /ko

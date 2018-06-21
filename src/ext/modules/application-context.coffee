@@ -77,6 +77,7 @@ H2O.ApplicationContext = (_) ->
   #
   # Sparkling-Water
   _.scalaIntpId = signal -1
+  _.scalaIntpAsync = signal false
   _.requestRDDs = do slot
   _.requestDataFrames = do slot
   _.requestScalaIntp = do slot
@@ -84,3 +85,4 @@ H2O.ApplicationContext = (_) ->
   _.requestAsH2OFrameFromRDD = do slot
   _.requestAsH2OFrameFromDF = do slot
   _.requestAsDataFrame = do slot
+  _.requestScalaCodeExecutionResult = do slot

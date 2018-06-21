@@ -1864,19 +1864,41 @@ H2O.Routines = (_) ->
   asDataFrame = (hf_id, name=undefined) ->
     _fork requestAsDataFrame, hf_id, name
 
-  requestScalaCode = (session_id, code, go) ->
+  getScalaCodeExecutionResult = (key) ->
+    switch typeOf key
+      when 'String'
+        _fork requestScalaCodeExecutionResult, key
+      else
+        assist getScalaCodeExecutionResult
+
+  requestScalaCodeExecutionResult = (key, go) ->
+    _.requestScalaCodeExecutionResult key, (error, result) ->
+      if error
+        go error
+      else
+        go null, extendScalaSyncCode result
+
+  requestScalaCode = (session_id, async, code, go) ->
     _.requestScalaCode session_id, code,  (error, result) ->
       if error
         go error
       else
-        go null, extendScalaCode result
+        if async
+            go null, extendScalaAsyncCode result
+        else
+            go null, extendScalaSyncCode result
 
-  extendScalaCode = (result) ->
+
+  extendScalaSyncCode = (result) ->
     render_ result, H2O.ScalaCodeOutput, result
     result
 
-  runScalaCode = (session_id, code) ->
-    _fork requestScalaCode, session_id, code
+  extendScalaAsyncCode = (result) ->
+    render_ result, H2O.JobOutput, result.job
+    result
+
+  runScalaCode = (session_id, async, code) ->
+    _fork requestScalaCode, session_id, async, code
 
   requestScalaIntp = (go) ->
     _.requestScalaIntp (error, result) ->
@@ -2075,6 +2097,7 @@ H2O.Routines = (_) ->
       asH2OFrameFromRDD: asH2OFrameFromRDD
       asH2OFrameFromDF: asH2OFrameFromDF
       asDataFrame: asDataFrame
+      getScalaCodeExecutionResult: getScalaCodeExecutionResult
     for attrname of routinesOnSw
       routines[attrname] = routinesOnSw[attrname]
   routines

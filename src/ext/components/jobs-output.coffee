@@ -20,6 +20,8 @@ H2O.JobsOutput = (_, _go, jobs) ->
         'PartialDependence'
       when 'Key<AutoML>'
         'Auto Model'
+      when 'Key<ScalaCodeResult>'
+        'Scala Code Execution'
       when 'Key<KeyedVoid>'
         'Void'
       else
