@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.7.29';
+    Flow.Version = '0.7.30';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -283,7 +283,7 @@
                 input = input.replace(/\\/g, '\\\\');
                 input = input.replace(/'/g, '\\\'');
                 input = input.replace(/\n/g, '\\n');
-                input = 'runScalaCode ' + _.scalaIntpId() + ', \'' + input + '\'';
+                input = 'runScalaCode ' + _.scalaIntpId() + ', ' + _.scalaIntpAsync() + ', \'' + input + '\'';
             }
             render(input, {
                 data: function (result) {
@@ -1034,9 +1034,11 @@
         _initializeInterpreter = function () {
             return _.requestScalaIntp(function (error, response) {
                 if (error) {
-                    return _.scalaIntpId(-1);
+                    _.scalaIntpId(-1);
+                    return _.scalaIntpAsync(false);
                 } else {
-                    return _.scalaIntpId(response.session_id);
+                    _.scalaIntpId(response.session_id);
+                    return _.scalaIntpAsync(response.async);
                 }
             });
         };
@@ -4409,13 +4411,15 @@
         _.grid = Flow.Dataflow.slot();
         _.enumerate = Flow.Dataflow.slot();
         _.scalaIntpId = Flow.Dataflow.signal(-1);
+        _.scalaIntpAsync = Flow.Dataflow.signal(false);
         _.requestRDDs = Flow.Dataflow.slot();
         _.requestDataFrames = Flow.Dataflow.slot();
         _.requestScalaIntp = Flow.Dataflow.slot();
         _.requestScalaCode = Flow.Dataflow.slot();
         _.requestAsH2OFrameFromRDD = Flow.Dataflow.slot();
         _.requestAsH2OFrameFromDF = Flow.Dataflow.slot();
-        return _.requestAsDataFrame = Flow.Dataflow.slot();
+        _.requestAsDataFrame = Flow.Dataflow.slot();
+        return _.requestScalaCodeExecutionResult = Flow.Dataflow.slot();
     };
 }.call(this));
 (function () {
@@ -4426,7 +4430,7 @@
 }.call(this));
 (function () {
     H2O.Proxy = function (_) {
-        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPostJSON, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getGridModelBuilderEndpoint, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestAutoModelBuild, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestGrid, requestGrids, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestImportSqlTable, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLeaderboard, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPartialDependence, requestPartialDependenceData, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __gridModelBuilderEndpoints, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
+        var cacheModelBuilders, composePath, doDelete, doGet, doPost, doPostJSON, doPut, doUpload, download, encodeArrayForPost, encodeObject, encodeObjectForPost, getGridModelBuilderEndpoint, getLines, getModelBuilderEndpoint, getModelBuilders, http, mapWithKey, optsToString, requestAbout, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestAutoModelBuild, requestCancelJob, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteModel, requestDeleteObject, requestEcho, requestEndpoint, requestEndpoints, requestExec, requestExportFrame, requestExportModel, requestFileGlob, requestFlow, requestFrame, requestFrameSlice, requestFrameSummary, requestFrameSummarySlice, requestFrameSummaryWithoutData, requestFrames, requestGrid, requestGrids, requestHelpContent, requestHelpIndex, requestImportFile, requestImportFiles, requestImportModel, requestImportSqlTable, requestInspect, requestIsStorageConfigured, requestJob, requestJobs, requestLeaderboard, requestLogFile, requestModel, requestModelBuild, requestModelBuilder, requestModelBuilders, requestModelBuildersVisibility, requestModelInputValidation, requestModels, requestNetworkTest, requestObject, requestObjectExists, requestObjects, requestPack, requestPacks, requestParseFiles, requestParseSetup, requestParseSetupPreview, requestPartialDependence, requestPartialDependenceData, requestPojoPreview, requestPredict, requestPrediction, requestPredictions, requestProfile, requestPutObject, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaCodeExecutionResult, requestScalaIntp, requestSchema, requestSchemas, requestShutdown, requestSplitFrame, requestStackTrace, requestTimeline, requestUploadFile, requestUploadObject, requestWithOpts, trackPath, unwrap, __gridModelBuilderEndpoints, __modelBuilderEndpoints, __modelBuilders, _storageConfiguration;
         download = function (type, url, go) {
             if (url.substring(0, 1) === '/') {
                 url = window.Flow.ContextPath + url.substring(1);
@@ -5213,6 +5217,9 @@
                 return doPost('/3/h2oframes/' + hf_id + '/dataframe', { dataframe_id: name }, go);
             }
         };
+        requestScalaCodeExecutionResult = function (key, go) {
+            return doPost('/3/scalaint/result/' + key, { result_key: key }, go);
+        };
         Flow.Dataflow.link(_.requestInspect, requestInspect);
         Flow.Dataflow.link(_.requestCreateFrame, requestCreateFrame);
         Flow.Dataflow.link(_.requestSplitFrame, requestSplitFrame);
@@ -5287,7 +5294,8 @@
         Flow.Dataflow.link(_.requestScalaCode, requestScalaCode);
         Flow.Dataflow.link(_.requestAsH2OFrameFromDF, requestAsH2OFrameFromDF);
         Flow.Dataflow.link(_.requestAsH2OFrameFromRDD, requestAsH2OFrameFromRDD);
-        return Flow.Dataflow.link(_.requestAsDataFrame, requestAsDataFrame);
+        Flow.Dataflow.link(_.requestAsDataFrame, requestAsDataFrame);
+        return Flow.Dataflow.link(_.requestScalaCodeExecutionResult, requestScalaCodeExecutionResult);
     };
 }.call(this));
 (function () {
@@ -5608,7 +5616,7 @@
         }
     };
     H2O.Routines = function (_) {
-        var asDataFrame, asH2OFrameFromDF, asH2OFrameFromRDD, assist, attrname, bindFrames, blacklistedAttributesBySchema, buildModel, buildPartialDependence, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendAsDataFrame, extendAsH2OFrame, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDataFrames, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendImportSqlResults, extendJob, extendJobs, extendLeaderboard, extendLogFile, extendMergeFramesResult, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPartialDependence, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendScalaCode, extendScalaIntp, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getDataFrames, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLeaderboard, getLogFile, getModel, getModelParameterValue, getModels, getPartialDependence, getPrediction, getPredictions, getProfile, getRDDs, getScalaIntp, getStackTrace, getTimeline, grid, gui, importBqTable, importFiles, importModel, importSqlTable, imputeColumn, initAssistanceSparklingWater, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, mergeFrames, name, parseFiles, plot, predict, proceed, read, render_, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestAutoModelBuild, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImportSqlTable, requestImputeColumn, requestJob, requestJobs, requestLeaderboard, requestLogFile, requestMergeFrames, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPartialDependence, requestPartialDependenceData, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaIntp, requestSplitFrame, requestStackTrace, requestTimeline, routines, routinesOnSw, runAutoML, runScalaCode, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
+        var asDataFrame, asH2OFrameFromDF, asH2OFrameFromRDD, assist, attrname, bindFrames, blacklistedAttributesBySchema, buildModel, buildPartialDependence, cancelJob, changeColumnType, computeSplits, createFrame, createGui, createPlot, deleteAll, deleteFrame, deleteFrames, deleteModel, deleteModels, dump, dumpFuture, exportFrame, exportModel, extendAsDataFrame, extendAsH2OFrame, extendBindFrames, extendCancelJob, extendCloud, extendColumnSummary, extendDataFrames, extendDeletedKeys, extendExportFrame, extendExportModel, extendFrame, extendFrameData, extendFrameSummary, extendFrames, extendGrid, extendGrids, extendGuiForm, extendImportModel, extendImportResults, extendImportSqlResults, extendJob, extendJobs, extendLeaderboard, extendLogFile, extendMergeFramesResult, extendModel, extendModels, extendNetworkTest, extendParseResult, extendParseSetupResults, extendPartialDependence, extendPlot, extendPrediction, extendPredictions, extendProfile, extendRDDs, extendScalaAsyncCode, extendScalaIntp, extendScalaSyncCode, extendSplitFrameResult, extendStackTrace, extendTimeline, f, findColumnIndexByColumnLabel, findColumnIndicesByColumnLabels, flow_, getCloud, getColumnSummary, getDataFrames, getFrame, getFrameData, getFrameSummary, getFrames, getGrid, getGrids, getJob, getJobs, getLeaderboard, getLogFile, getModel, getModelParameterValue, getModels, getPartialDependence, getPrediction, getPredictions, getProfile, getRDDs, getScalaCodeExecutionResult, getScalaIntp, getStackTrace, getTimeline, grid, gui, importBqTable, importFiles, importModel, importSqlTable, imputeColumn, initAssistanceSparklingWater, inspect, inspect$1, inspect$2, inspectFrameColumns, inspectFrameData, inspectModelParameters, inspectNetworkTestResult, inspectObject, inspectObjectArray_, inspectParametersAcrossModels, inspectRawArray_, inspectRawObject_, inspectTwoDimTable_, inspect_, loadScript, ls, mergeFrames, name, parseFiles, plot, predict, proceed, read, render_, requestAsDataFrame, requestAsH2OFrameFromDF, requestAsH2OFrameFromRDD, requestAutoModelBuild, requestBindFrames, requestCancelJob, requestChangeColumnType, requestCloud, requestColumnSummary, requestCreateFrame, requestDataFrames, requestDeleteFrame, requestDeleteFrames, requestDeleteModel, requestDeleteModels, requestExportFrame, requestExportModel, requestFrame, requestFrameData, requestFrameSummary, requestFrameSummarySlice, requestFrames, requestGrid, requestGrids, requestImportAndParseFiles, requestImportAndParseSetup, requestImportFiles, requestImportModel, requestImportSqlTable, requestImputeColumn, requestJob, requestJobs, requestLeaderboard, requestLogFile, requestMergeFrames, requestModel, requestModelBuild, requestModels, requestModelsByKeys, requestNetworkTest, requestParseFiles, requestParseSetup, requestPartialDependence, requestPartialDependenceData, requestPredict, requestPrediction, requestPredictions, requestPredicts, requestProfile, requestRDDs, requestRemoveAll, requestScalaCode, requestScalaCodeExecutionResult, requestScalaIntp, requestSplitFrame, requestStackTrace, requestTimeline, routines, routinesOnSw, runAutoML, runScalaCode, schemaTransforms, setupParse, splitFrame, testNetwork, transformBinomialMetrics, unwrapPrediction, _apply, _async, _call, _fork, _get, _isFuture, _join, _plot, _ref, _schemaHacks;
         _fork = function () {
             var args, f;
             f = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
@@ -7844,21 +7852,46 @@
             }
             return _fork(requestAsDataFrame, hf_id, name);
         };
-        requestScalaCode = function (session_id, code, go) {
+        getScalaCodeExecutionResult = function (key) {
+            switch (Flow.Prelude.typeOf(key)) {
+            case 'String':
+                return _fork(requestScalaCodeExecutionResult, key);
+            default:
+                return assist(getScalaCodeExecutionResult);
+            }
+        };
+        requestScalaCodeExecutionResult = function (key, go) {
+            return _.requestScalaCodeExecutionResult(key, function (error, result) {
+                if (error) {
+                    return go(error);
+                } else {
+                    return go(null, extendScalaSyncCode(result));
+                }
+            });
+        };
+        requestScalaCode = function (session_id, async, code, go) {
             return _.requestScalaCode(session_id, code, function (error, result) {
                 if (error) {
                     return go(error);
                 } else {
-                    return go(null, extendScalaCode(result));
+                    if (async) {
+                        return go(null, extendScalaAsyncCode(result));
+                    } else {
+                        return go(null, extendScalaSyncCode(result));
+                    }
                 }
             });
         };
-        extendScalaCode = function (result) {
+        extendScalaSyncCode = function (result) {
             render_(result, H2O.ScalaCodeOutput, result);
             return result;
         };
-        runScalaCode = function (session_id, code) {
-            return _fork(requestScalaCode, session_id, code);
+        extendScalaAsyncCode = function (result) {
+            render_(result, H2O.JobOutput, result.job);
+            return result;
+        };
+        runScalaCode = function (session_id, async, code) {
+            return _fork(requestScalaCode, session_id, async, code);
         };
         requestScalaIntp = function (go) {
             return _.requestScalaIntp(function (error, result) {
@@ -8066,7 +8099,8 @@
                 runScalaCode: runScalaCode,
                 asH2OFrameFromRDD: asH2OFrameFromRDD,
                 asH2OFrameFromDF: asH2OFrameFromDF,
-                asDataFrame: asDataFrame
+                asDataFrame: asDataFrame,
+                getScalaCodeExecutionResult: getScalaCodeExecutionResult
             };
             for (attrname in routinesOnSw) {
                 routines[attrname] = routinesOnSw[attrname];
@@ -10501,6 +10535,8 @@
                 return 'PartialDependence';
             case 'Key<AutoML>':
                 return 'Auto Model';
+            case 'Key<ScalaCodeResult>':
+                return 'Scala Code Execution';
             case 'Key<KeyedVoid>':
                 return 'Void';
             default:
@@ -10612,6 +10648,8 @@
                 return _.insertAndExecuteCell('cs', 'getPartialDependence ' + Flow.Prelude.stringify(_destinationKey));
             case 'Auto Model':
                 return _.insertAndExecuteCell('cs', 'getLeaderboard ' + Flow.Prelude.stringify(_destinationKey));
+            case 'Scala Code Execution':
+                return _.insertAndExecuteCell('cs', 'getScalaCodeExecutionResult ' + Flow.Prelude.stringify(_destinationKey));
             case 'Void':
                 return alert('This frame was exported to\n' + _job.dest.name);
             }
@@ -10685,6 +10723,8 @@
                     return 'PartialDependence';
                 case 'Key<AutoML>':
                     return 'Auto Model';
+                case 'Key<ScalaCodeResult>':
+                    return 'Scala Code Execution';
                 case 'Key<KeyedVoid>':
                     return 'Void';
                 default:
@@ -13712,23 +13752,36 @@
 }.call(this));
 (function () {
     H2O.ScalaCodeOutput = function (_, _go, _result) {
-        var createScalaCodeView, _scalaCodeView, _scalaLinkText, _scalaResponseVisible;
+        var createScalaCodeView, _scalaCodeLinkText, _scalaCodeView, _scalaCodeVisible, _scalaLinkText, _scalaResponseVisible;
         _scalaCodeView = Flow.Dataflow.signal(null);
         _scalaResponseVisible = Flow.Dataflow.signal(false);
         _scalaLinkText = Flow.Dataflow.signal('Show Scala Response');
+        _scalaCodeVisible = Flow.Dataflow.signal(false);
+        _scalaCodeLinkText = Flow.Dataflow.signal('Show Executed Code');
         createScalaCodeView = function (result) {
             return {
+                code: result.code,
                 output: result.output,
                 response: result.response,
                 status: result.status,
                 scalaResponseVisible: _scalaResponseVisible,
                 scalaLinkText: _scalaLinkText,
-                toggleVisibility: function () {
+                scalaCodeVisible: _scalaCodeVisible,
+                scalaCodeLinkText: _scalaCodeLinkText,
+                toggleResponseVisibility: function () {
                     _scalaResponseVisible(!_scalaResponseVisible());
                     if (_scalaResponseVisible()) {
                         return _scalaLinkText('Hide Scala Response');
                     } else {
                         return _scalaLinkText('Show Scala Response');
+                    }
+                },
+                toggleCodeVisibility: function () {
+                    _scalaCodeVisible(!_scalaCodeVisible());
+                    if (_scalaCodeVisible()) {
+                        return _scalaCodeLinkText('Hide Executed Code');
+                    } else {
+                        return _scalaCodeLinkText('Show Executed Code');
                     }
                 }
             };

@@ -2460,6 +2460,14 @@
         <!-- /ko-->
       </div>
     </script>
+    <script type="text/html" id="flow-scala-intp-output">
+      <div class="flow-widget">
+        <!-- ko with:scalaIntpView-->
+        <h4>Interpreter ID:</h4>
+        <p data-bind="text:session_id"></p>
+        <!-- /ko-->
+      </div>
+    </script>
     <script type="text/html" id="flow-scala-code-output">
       <div class="flow-widget">
         <!-- ko with:scalaCodeView-->
@@ -2467,15 +2475,9 @@
         <h4>Console Output:</h4>
         <p data-bind="text:output" style="white-space: pre-wrap"></p>
         <h4>Scala Response:</h4>
-        <p data-bind="text: response, visible: scalaResponseVisible " style="white-space: pre-wrap"></p><a href="#" data-bind="click: toggleVisibility, text: scalaLinkText"></a>
-        <!-- /ko-->
-      </div>
-    </script>
-    <script type="text/html" id="flow-scala-intp-output">
-      <div class="flow-widget">
-        <!-- ko with:scalaIntpView-->
-        <h4>Interpreter ID:</h4>
-        <p data-bind="text:session_id"></p>
+        <p data-bind="text: response, visible: scalaResponseVisible " style="white-space: pre-wrap"></p><a href="#" data-bind="click: toggleResponseVisibility, text: scalaLinkText"></a>
+        <h4>Executed Code:</h4>
+        <p data-bind="text: code, visible: scalaCodeVisible " style="white-space: pre-wrap"></p><a href="#" data-bind="click: toggleCodeVisibility, text: scalaCodeLinkText"></a>
         <!-- /ko-->
       </div>
     </script>
