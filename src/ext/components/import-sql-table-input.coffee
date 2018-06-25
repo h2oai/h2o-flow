@@ -7,6 +7,10 @@ H2O.ImportSqlTableInput = (_, _go) ->
   _exception = signal ''
   _hasErrorMessage = lift _exception, (exception) -> if exception then yes else no
 
+  # This is a shim for ko binding handlers to attach methods to
+  # The ko 'autoResize' custom binding attaches an autoResize() method to this.
+  _actions = {}
+
   importSqlTableAction = ->
     encryptedPassword = H2O.Util.encryptPassword _specifiedPassword()
 
@@ -32,5 +36,7 @@ H2O.ImportSqlTableInput = (_, _go) ->
   specifiedUsername: _specifiedUsername
   specifiedPassword: _specifiedPassword
   exception: _exception
+  _actions: _actions
+  autoResize: -> _actions.autoResize()
   importSqlTableAction: importSqlTableAction
   template: 'flow-import-sql-table-input'

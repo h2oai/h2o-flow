@@ -19,7 +19,7 @@
             tbody
               tr
                 td.flow-wide
-                  input.flow-textbox(type='text' style='width:100%' data-bind="value:specifiedTable" placeholder='Enter a name of SQL table or SQL SELECT query.')
+                  textarea.flow-textbox(type='textarea' style='width:100%; padding: 0px; margin: 0px;' data-bind="value:specifiedTable, autoResize:_actions" placeholder='Enter a name of SQL table or SQL SELECT query.' rows='1')
       tr
         th(width='125') Columns:
         td
