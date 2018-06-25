@@ -12,10 +12,15 @@ H2O.ImportSqlTableInput = (_, _go) ->
 
     opt =
        connection_url: _specifiedUrl()
-       table: _specifiedTable()
        columns: _specifiedColumns()
        username: _specifiedUsername()
        password: encryptedPassword
+
+    if _specifiedTable().trim().toLowerCase().startsWith("select")
+      opt.select_query = _specifiedTable().trim()
+    else
+      opt.table = _specifiedTable()
+
     _.insertAndExecuteCell 'cs', "importSqlTable #{ stringify opt }"
 
   defer _go

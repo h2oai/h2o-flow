@@ -258,6 +258,7 @@ H2O.Proxy = (_) ->
     opts =
       connection_url: args.connection_url
       table: args.table
+      select_query: args.select_query
       username: args.username
       password: decryptedPassword
     if args.columns != ''
