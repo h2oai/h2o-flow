@@ -159,6 +159,11 @@
           input(data-bind="checked:keepCrossValidationModels" type="checkbox")
       tr
         th
+          label Keep cross-validation fold assignment
+        td
+          input(data-bind="checked:keepCrossValidationFoldAssignment" type="checkbox")
+      tr
+        th
           label Seed:
         td
           input(data-bind="value:seed")

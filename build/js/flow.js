@@ -7509,6 +7509,7 @@
                     nfolds: opts.nfolds,
                     keep_cross_validation_predictions: opts.keep_cross_validation_predictions,
                     keep_cross_validation_models: opts.keep_cross_validation_models,
+                    keepCrossValidationFoldAssignment: opts.keepCrossValidationFoldAssignment,
                     balance_classes: opts.balance_classes,
                     class_sampling_factors: opts.class_sampling_factors,
                     max_after_balance_size: opts.max_after_balance_size,
@@ -8390,7 +8391,7 @@
 }.call(this));
 (function () {
     H2O.AutoModelInput = function (_, _go, opts) {
-        var buildModel, defaultMaxAfterBalanceSize, defaultMaxModels, defaultMaxRunTime, defaultNfolds, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, excludeAlgosValues, findSchemaField, _balanceClasses, _canBuildModel, _classSamplingFactors, _column, _columns, _excludeAlgosControl, _foldColumn, _hasTrainingFrame, _ignoredColumnsControl, _keepCrossValidationModels, _keepCrossValidationPredictions, _leaderboardFrame, _leaderboardFrames, _maxAfterBalanceSize, _maxModels, _maxRuntimeSecs, _nfolds, _projectName, _seed, _sortMetric, _sortMetrics, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
+        var buildModel, defaultMaxAfterBalanceSize, defaultMaxModels, defaultMaxRunTime, defaultNfolds, defaultSeed, defaultStoppingRounds, defaultStoppingTolerance, excludeAlgosValues, findSchemaField, _balanceClasses, _canBuildModel, _classSamplingFactors, _column, _columns, _excludeAlgosControl, _foldColumn, _hasTrainingFrame, _ignoredColumnsControl, _keepCrossValidationModels, _keepCrossValidationPredictions, _keepCrossValidationFoldAssignment, _leaderboardFrame, _leaderboardFrames, _maxAfterBalanceSize, _maxModels, _maxRuntimeSecs, _nfolds, _projectName, _seed, _sortMetric, _sortMetrics, _stoppingMetric, _stoppingMetrics, _stoppingRounds, _stoppingTolerance, _trainingFrame, _trainingFrames, _validationFrame, _validationFrames, _weightsColumn;
         if (opts == null) {
             opts = {};
         }
@@ -8457,6 +8458,7 @@
         _nfolds = Flow.Dataflow.signal(defaultNfolds);
         _keepCrossValidationPredictions = Flow.Dataflow.signal(true);
         _keepCrossValidationModels = Flow.Dataflow.signal(true);
+        _keepCrossValidationFoldAssignment = Flow.Dataflow.signal(false);
         buildModel = function () {
             var arg, classSamplingFactors, entry, maxAfterBalanceSize, maxModels, maxRuntimeSecs, nfolds, parsed, seed, sortMetric, stoppingRounds, stoppingTolerance, value, _i, _len, _ref, _ref1;
             seed = defaultSeed;
@@ -8525,6 +8527,7 @@
                 max_after_balance_size: maxAfterBalanceSize,
                 keep_cross_validation_predictions: _keepCrossValidationPredictions(),
                 keep_cross_validation_models: _keepCrossValidationModels(),
+                keepCrossValidationFoldAssignment: _keepCrossValidationFoldAssignment(),
                 ignored_columns: function () {
                     var _j, _len1, _ref2, _results;
                     _ref2 = _ignoredColumnsControl.entries();
@@ -8655,6 +8658,7 @@
             nfolds: _nfolds,
             keepCrossValidationPredictions: _keepCrossValidationPredictions,
             keepCrossValidationModels: _keepCrossValidationModels,
+            keepCrossValidationFoldAssignment: _keepCrossValidationFoldAssignment,
             balanceClasses: _balanceClasses,
             classSamplingFactors: _classSamplingFactors,
             maxAfterBalanceSize: _maxAfterBalanceSize,
