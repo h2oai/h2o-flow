@@ -149,10 +149,36 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         controls: signal rocPanel
         isCollapsed: isCollapsed
 
+    calcRecall = (cm, index) ->
+        tp = cm.data[index][index]
+        result = tp / cm.data[index][cm.data[index].length - 2]
+        return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0')
+
+    calcPrecision = (cm, index) ->
+        tp = cm.data[index][index]
+        fp = 0
+        for column, i in cm.data # iterate over all columns
+            if i > cm.data.length - 3 # do not count Error, Rate and Recall columns
+                break
+            if i != index # if not on diagonal
+                fp += column[index] # pick value at index from each column; sum of row
+        result = tp / (tp + fp)
+        return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0')
+
     renderMultinomialConfusionMatrix = (title, cm) ->
+      cm.columns.push({'name':'Recall', 'type':'long', 'format': '%.2f', 'description': 'Recall'})
+      recallValues = []
+      for column, i in cm.data
+          if i > cm.data.length - 3
+              break
+          column.push(calcPrecision(cm, i))
+          recallValues.push(calcRecall(cm, i))
+      cm.data.push(recallValues)
+      cm.rowcount += 1
+
       [table, tbody, tr, normal, bold] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'
       tooltip = (text) ->
-          Flow.HTML.template "td tooltip='#{text}'"
+          Flow.HTML.template "td tooltip='#{text}' testTop='500px'"
       tooltipYellowBg = (text) ->
           Flow.HTML.template "td.bg-yellow tooltip='#{text}'"
       tooltipBold = (text) ->
