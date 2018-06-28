@@ -2,13 +2,13 @@
     // ko with:scalaCodeView
     h4(data-bind="text:\"Status: \"+status")
     h4 Console Output:
-    p(data-bind="text:output" style="white-space: pre-wrap")
+    p(data-bind="text:output" style='white-space: pre-wrap; font-family: Courier')
 
     h4 Scala Response:
-    p(data-bind="text: response, visible: scalaResponseVisible " style="white-space: pre-wrap")
+    p(data-bind="text: response, visible: scalaResponseVisible" style='white-space: pre-wrap; font-family: Courier')
     a(href="#" data-bind="click: toggleResponseVisibility, text: scalaLinkText")
 
     h4 Executed Code:
-    p(data-bind="text: code, visible: scalaCodeVisible " style="white-space: pre-wrap")
+    p(data-bind="text: code, visible: scalaCodeVisible" style='white-space: pre-wrap; font-family: Courier')
     a(href="#" data-bind="click: toggleCodeVisibility, text: scalaCodeLinkText")
     // /ko
