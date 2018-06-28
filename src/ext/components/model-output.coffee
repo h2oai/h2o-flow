@@ -74,7 +74,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
       linkedFrame = signal null
 
       if thresholdsAndCriteria # TODO HACK
-        rocPanel = 
+        rocPanel =
           thresholds: signals thresholdsAndCriteria.thresholds
           threshold: signal null
           criteria: signals thresholdsAndCriteria.criteria
@@ -106,7 +106,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
               (_.plot renderTable) (error, table) ->
                 unless error
                   linkedFrame table.element
-              
+
               if rocPanel # TODO HACK
                 if indices.length is 1
                   selectedIndex = head indices
@@ -128,7 +128,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
 
             vis.subscribe 'markdeselect', ->
               linkedFrame null
-              
+
               if rocPanel # TODO HACK
                 rocPanel.criterion null
                 rocPanel.threshold null
@@ -142,7 +142,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
                 if criterion and _autoHighlight
                   vis.highlight [ criterion.index ]
 
-      _plots.push 
+      _plots.push
         title: title
         plot: container
         frame: linkedFrame
@@ -150,27 +150,47 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         isCollapsed: isCollapsed
 
     renderMultinomialConfusionMatrix = (title, cm) ->
-      [table, tbody, tr, normal, bold, yellow] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong', 'td.bg-yellow'
+      [table, tbody, tr, normal, bold] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'
+      tooltip = (text) ->
+          Flow.HTML.template "td tooltip='#{text}'"
+      tooltipYellowBg = (text) ->
+          Flow.HTML.template "td.bg-yellow tooltip='#{text}'"
+      tooltipBold = (text) ->
+          Flow.HTML.template "td.strong tooltip='#{text}'"
       columnCount = cm.columns.length
       rowCount = cm.rowcount
       headers = map cm.columns, (column, i) -> bold column.description
       headers.unshift normal ' ' # NW corner cell
       rows = [tr headers]
       errorColumnIndex = columnCount - 3
+      recallColumnIndex = columnCount - 1
       totalRowIndex = rowCount - 2
+      precisionRowIndex = rowCount - 1
       for rowIndex in [0 ... rowCount]
         cells = for column, i in cm.data
-          # Last three columns should be emphasized
+          tooltipText = "Actual: #{cm.columns[rowIndex].description}&#013;&#010;Predicted: #{cm.columns[i].description}"
           cell = if i < errorColumnIndex
             if i is rowIndex
-              yellow
+              tooltipYellowBg(tooltipText) # Yellow lines on diagonal
             else
               if rowIndex < totalRowIndex
-                normal
+                tooltip(tooltipText) # "Basic" cells inside cm
               else
-                bold
+                if rowIndex is totalRowIndex
+                    tooltipBold("Total: #{cm.columns[i].description}") # Totals of features
+                else
+                    if rowIndex is precisionRowIndex
+                        tooltipBold("Precision: #{cm.columns[i].description}") # Precision of features
+                    else
+                        bold
           else
-            bold
+            if (rowIndex < totalRowIndex)
+                tooltipBold("#{cm.columns[i].description}: #{cm.columns[rowIndex].description}") # Error, Rate and Recall of features
+            else
+                if i < recallColumnIndex
+                    tooltipBold("Total: #{cm.columns[i].description}") # Totals of Error and Rate
+                else
+                    bold
           # special-format error column
           cell if i is errorColumnIndex then format4f column[rowIndex] else column[rowIndex]
         # Add the corresponding column label
@@ -203,7 +223,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
       when 'glm'
         if table = _.inspect 'output - Scoring History', _model
           lambdaSearchParameter = find _model.parameters, (parameter) -> parameter.name is 'lambda_search'
-        
+
           if lambdaSearchParameter?.actual_value
             renderPlot 'Scoring History', no, _.plot (g) ->
               g(
@@ -548,7 +568,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
                   )
                   g.from table
                 )
-            
+
         if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
             g(
@@ -748,7 +768,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
       _isExpanded not _isExpanded()
 
     cloneModel = ->
-      # _.insertAndExecuteCell 'cs', 'assist buildModel, 
+      # _.insertAndExecuteCell 'cs', 'assist buildModel,
       alert 'Not implemented'
 
     predict = ->
@@ -824,4 +844,3 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
   toggleRefresh: _toggleRefresh
   isLive: _isLive
   template: 'flow-model-output'
-
