@@ -187,11 +187,14 @@ ko.bindingHandlers.file =
 ko.bindingHandlers.codemirror =
   init:  (element, valueAccessor,  allBindings, viewModel, bindingContext) ->
     # get the code mirror options
-    options = ko.unwrap(valueAccessor())
+    options = ko.unwrap(valueAccessor()).options
+
     # created editor replaces the textarea on which it was created
     editor = CodeMirror.fromTextArea element, options
+
     editor.on 'change', (cm) ->
       allBindings().value(cm.getValue())
+
     element.editor = editor
     if(allBindings().value())
       editor.setValue(allBindings().value())
@@ -201,10 +204,15 @@ ko.bindingHandlers.codemirror =
     internalTextArea.attr('spellcheck','false')
     internalTextArea.removeAttr("wrap")
 
-
     editor.refresh()
 
 
   update: (element, valueAccessor) ->
-            if element.editor
-                element.editor.refresh()
+    if element.editor
+        active = ko.unwrap(valueAccessor().active)
+        if active
+            element.editor.focus()
+
+        element.editor.refresh()
+
+
