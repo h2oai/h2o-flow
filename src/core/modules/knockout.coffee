@@ -216,8 +216,12 @@ ko.bindingHandlers.codemirror =
   update: (element, valueAccessor) ->
     if element.editor
         active = ko.unwrap(valueAccessor().active)
+        cell = ko.unwrap(valueAccessor()).cell
         if active
             element.editor.focus()
+        else
+            # Focus on root element so codemirror can cleanly loose focus
+            $(":root").focus()
 
         element.editor.refresh()
 
