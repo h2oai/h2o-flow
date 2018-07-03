@@ -188,12 +188,18 @@ ko.bindingHandlers.codemirror =
   init:  (element, valueAccessor,  allBindings, viewModel, bindingContext) ->
     # get the code mirror options
     options = ko.unwrap(valueAccessor()).options
-
+    cell = ko.unwrap(valueAccessor()).cell
     # created editor replaces the textarea on which it was created
     editor = CodeMirror.fromTextArea element, options
 
     editor.on 'change', (cm) ->
       allBindings().value(cm.getValue())
+
+    editor.on 'mousedown', (cm) ->
+      cell.activate()
+
+    editor.on 'blur', (cm) ->
+      cell.isActive no
 
     element.editor = editor
     if(allBindings().value())
