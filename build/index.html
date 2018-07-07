@@ -546,7 +546,7 @@
                     <textarea placeholder="Expression..." rows="1" spellcheck="false" data-bind="value:input, valueUpdate:'afterkeydown', hasFocus:isActive, cursorPosition:_actions, autoResize:_actions"></textarea>
                     <!-- /ko-->
                     <!--ko if:type()=='sca'-->
-                    <textarea data-bind="value:input, cursorPosition:_actions, autoResize:_actions, valueUpdate: 'afterkeydown', hasFocus:isActive, codemirror: {readOnly: false, lineWrapping: true, lineNumbers: true, theme: 'flow', matchBrackets: true, mode: {name: 'text/x-scala'}}"></textarea>
+                    <textarea data-bind="value:input, cursorPosition:_actions, autoResize:_actions, valueUpdate: 'afterkeydown', codemirror: {cell: $data, active: isActive, options: {readOnly: false, lineWrapping: true, lineNumbers: true, theme: 'flow', matchBrackets: true, mode: {name: 'text/x-scala'}}}"></textarea>
                     <!-- /ko-->
                   </td>
                   <td class="flow-cell-actions"><i title="Save to clipboard" data-bind="click:clip" class="fa fa-paperclip flow-pointer"></i></td>
@@ -2473,11 +2473,11 @@
         <!-- ko with:scalaCodeView-->
         <h4 data-bind="text:&quot;Status: &quot;+status"></h4>
         <h4>Console Output:</h4>
-        <p data-bind="text:output" style="white-space: pre-wrap"></p>
+        <p data-bind="text:output" style="white-space: pre-wrap; font-family: Courier"></p>
         <h4>Scala Response:</h4>
-        <p data-bind="text: response, visible: scalaResponseVisible " style="white-space: pre-wrap"></p><a href="#" data-bind="click: toggleResponseVisibility, text: scalaLinkText"></a>
+        <p data-bind="text: response, visible: scalaResponseVisible" style="white-space: pre-wrap; font-family: Courier"></p><a href="#" data-bind="click: toggleResponseVisibility, text: scalaLinkText"></a>
         <h4>Executed Code:</h4>
-        <p data-bind="text: code, visible: scalaCodeVisible " style="white-space: pre-wrap"></p><a href="#" data-bind="click: toggleCodeVisibility, text: scalaCodeLinkText"></a>
+        <p data-bind="text: code, visible: scalaCodeVisible" style="white-space: pre-wrap; font-family: Courier"></p><a href="#" data-bind="click: toggleCodeVisibility, text: scalaCodeLinkText"></a>
         <!-- /ko-->
       </div>
     </script>

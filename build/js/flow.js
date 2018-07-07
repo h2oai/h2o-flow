@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.7.30';
+    Flow.Version = '0.7.31';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -3995,11 +3995,18 @@
     };
     ko.bindingHandlers.codemirror = {
         init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            var editor, internalTextArea, options;
-            options = ko.unwrap(valueAccessor());
+            var cell, editor, internalTextArea, options;
+            options = ko.unwrap(valueAccessor()).options;
+            cell = ko.unwrap(valueAccessor()).cell;
             editor = CodeMirror.fromTextArea(element, options);
             editor.on('change', function (cm) {
                 return allBindings().value(cm.getValue());
+            });
+            editor.on('mousedown', function (cm) {
+                return cell.activate();
+            });
+            editor.on('blur', function (cm) {
+                return cell.isActive(false);
             });
             element.editor = editor;
             if (allBindings().value()) {
@@ -4012,7 +4019,15 @@
             return editor.refresh();
         },
         update: function (element, valueAccessor) {
+            var active, cell;
             if (element.editor) {
+                active = ko.unwrap(valueAccessor().active);
+                cell = ko.unwrap(valueAccessor()).cell;
+                if (active) {
+                    element.editor.focus();
+                } else {
+                    $(':root').focus();
+                }
                 return element.editor.refresh();
             }
         }
@@ -11911,7 +11926,7 @@
         var createOutput, _isLive, _output, _refresh, _toggleRefresh;
         _output = Flow.Dataflow.signal(null);
         createOutput = function (_model) {
-            var cloneModel, confusionMatrix, deleteModel, downloadGenJar, downloadMojo, downloadPojo, exportModel, format4f, getAucAsLabel, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref14, _ref15, _ref16, _ref17, _ref18, _ref19, _ref2, _ref20, _ref21, _ref22, _ref23, _ref24, _ref25, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
+            var calcPrecision, calcRecall, cloneModel, confusionMatrix, deleteModel, downloadGenJar, downloadMojo, downloadPojo, exportModel, format4f, getAucAsLabel, getCellWithTooltip, getThresholdsAndCriteria, inspect, lambdaSearchParameter, output, plotter, predict, previewPojo, renderMultinomialConfusionMatrix, renderPlot, table, tableName, toggle, _i, _inputParameters, _isExpanded, _isPojoLoaded, _len, _plots, _pojoPreview, _ref, _ref1, _ref10, _ref11, _ref12, _ref13, _ref14, _ref15, _ref16, _ref17, _ref18, _ref19, _ref2, _ref20, _ref21, _ref22, _ref23, _ref24, _ref25, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _ref9;
             _isExpanded = Flow.Dataflow.signal(false);
             _plots = Flow.Dataflow.signals([]);
             _pojoPreview = Flow.Dataflow.signal(null);
@@ -12123,31 +12138,109 @@
                     isCollapsed: isCollapsed
                 });
             };
+            calcRecall = function (cm, index, firstInvalidIndex) {
+                var fn, i, result, tp, value, _i, _len, _ref;
+                tp = cm.data[index][index];
+                fn = 0;
+                _ref = cm.data[index];
+                for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                    value = _ref[i];
+                    if (i >= firstInvalidIndex) {
+                        break;
+                    }
+                    if (i !== index) {
+                        fn += value;
+                    }
+                }
+                result = tp / (tp + fn);
+                return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0');
+            };
+            calcPrecision = function (cm, index, firstInvalidIndex) {
+                var column, fp, i, result, tp, _i, _len, _ref;
+                tp = cm.data[index][index];
+                fp = 0;
+                _ref = cm.data;
+                for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                    column = _ref[i];
+                    if (i >= firstInvalidIndex) {
+                        break;
+                    }
+                    if (i !== index) {
+                        fp += column[index];
+                    }
+                }
+                result = tp / (tp + fp);
+                return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0');
+            };
+            getCellWithTooltip = function (tdClasses, content, tooltipText) {
+                var textDiv, tooltipDiv;
+                textDiv = Flow.HTML.template('span.tooltip-text')(tooltipText);
+                tooltipDiv = Flow.HTML.template('div.tooltip-tooltip')([
+                    content,
+                    textDiv
+                ]);
+                return Flow.HTML.template('td.' + tdClasses)(tooltipDiv);
+            };
             renderMultinomialConfusionMatrix = function (title, cm) {
-                var bold, cell, cells, column, columnCount, errorColumnIndex, headers, i, normal, rowCount, rowIndex, rows, table, tbody, totalRowIndex, tr, yellow, _i, _ref;
-                _ref = Flow.HTML.template('table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong', 'td.bg-yellow'), table = _ref[0], tbody = _ref[1], tr = _ref[2], normal = _ref[3], bold = _ref[4], yellow = _ref[5];
-                columnCount = cm.columns.length;
-                rowCount = cm.rowcount;
+                var bold, cell, cells, column, errorColumnIndex, headers, i, normal, precisionRowIndex, recallColumnIndex, recallValues, rowIndex, rows, table, tbody, tooltip, tooltipBold, tooltipText, tooltipYellowBg, totalRowIndex, tr, _i, _j, _len, _ref, _ref1, _ref2;
+                cm.columns.push({
+                    'name': 'Recall',
+                    'type': 'long',
+                    'format': '%.2f',
+                    'description': 'Recall'
+                });
+                errorColumnIndex = cm.columns.length - 3;
+                recallValues = [];
+                cm.rowcount += 1;
+                totalRowIndex = cm.rowcount - 2;
+                _ref = cm.data;
+                for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                    column = _ref[i];
+                    if (i < errorColumnIndex) {
+                        column.push(calcPrecision(cm, i, errorColumnIndex));
+                    }
+                    if (i < totalRowIndex) {
+                        recallValues.push(calcRecall(cm, i, totalRowIndex));
+                    }
+                }
+                cm.data.push(recallValues);
+                _ref1 = Flow.HTML.template('table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'), table = _ref1[0], tbody = _ref1[1], tr = _ref1[2], normal = _ref1[3], bold = _ref1[4];
+                tooltip = function (tooltipText) {
+                    return function (content) {
+                        return getCellWithTooltip('', content, tooltipText);
+                    };
+                };
+                tooltipYellowBg = function (tooltipText) {
+                    return function (content) {
+                        return getCellWithTooltip('.bg-yellow', content, tooltipText);
+                    };
+                };
+                tooltipBold = function (tooltipText) {
+                    return function (content) {
+                        return getCellWithTooltip('.strong', content, tooltipText);
+                    };
+                };
                 headers = lodash.map(cm.columns, function (column, i) {
                     return bold(column.description);
                 });
                 headers.unshift(normal(' '));
                 rows = [tr(headers)];
-                errorColumnIndex = columnCount - 2;
-                totalRowIndex = rowCount - 1;
-                for (rowIndex = _i = 0; 0 <= rowCount ? _i < rowCount : _i > rowCount; rowIndex = 0 <= rowCount ? ++_i : --_i) {
+                recallColumnIndex = cm.columns.length - 1;
+                precisionRowIndex = cm.rowcount - 1;
+                for (rowIndex = _j = 0, _ref2 = cm.rowcount; 0 <= _ref2 ? _j < _ref2 : _j > _ref2; rowIndex = 0 <= _ref2 ? ++_j : --_j) {
                     cells = function () {
-                        var _j, _len, _ref1, _results;
-                        _ref1 = cm.data;
+                        var _k, _len1, _ref3, _results;
+                        _ref3 = cm.data;
                         _results = [];
-                        for (i = _j = 0, _len = _ref1.length; _j < _len; i = ++_j) {
-                            column = _ref1[i];
-                            cell = i < errorColumnIndex ? i === rowIndex ? yellow : rowIndex < totalRowIndex ? normal : bold : bold;
+                        for (i = _k = 0, _len1 = _ref3.length; _k < _len1; i = ++_k) {
+                            column = _ref3[i];
+                            tooltipText = 'Actual: ' + cm.columns[rowIndex].description + '&#013;&#010;Predicted: ' + cm.columns[i].description;
+                            cell = i < errorColumnIndex ? i === rowIndex ? tooltipYellowBg(tooltipText) : rowIndex < totalRowIndex ? tooltip(tooltipText) : rowIndex === totalRowIndex ? tooltipBold('Total: ' + cm.columns[i].description) : rowIndex === precisionRowIndex ? tooltipBold('Precision: ' + cm.columns[i].description) : bold : rowIndex < totalRowIndex ? tooltipBold('' + cm.columns[i].description + ': ' + cm.columns[rowIndex].description) : rowIndex === totalRowIndex && i < recallColumnIndex ? tooltipBold('Total: ' + cm.columns[i].description) : bold;
                             _results.push(cell(i === errorColumnIndex ? format4f(column[rowIndex]) : column[rowIndex]));
                         }
                         return _results;
                     }();
-                    cells.unshift(bold(rowIndex === rowCount - 1 ? 'Total' : cm.columns[rowIndex].description));
+                    cells.unshift(bold(rowIndex === cm.rowcount - 2 ? 'Total' : rowIndex === cm.rowcount - 1 ? 'Precision' : cm.columns[rowIndex].description));
                     rows.push(tr(cells));
                 }
                 return _plots.push({
