@@ -74,7 +74,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
       linkedFrame = signal null
 
       if thresholdsAndCriteria # TODO HACK
-        rocPanel = 
+        rocPanel =
           thresholds: signals thresholdsAndCriteria.thresholds
           threshold: signal null
           criteria: signals thresholdsAndCriteria.criteria
@@ -106,7 +106,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
               (_.plot renderTable) (error, table) ->
                 unless error
                   linkedFrame table.element
-              
+
               if rocPanel # TODO HACK
                 if indices.length is 1
                   selectedIndex = head indices
@@ -128,7 +128,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
 
             vis.subscribe 'markdeselect', ->
               linkedFrame null
-              
+
               if rocPanel # TODO HACK
                 rocPanel.criterion null
                 rocPanel.threshold null
@@ -142,39 +142,97 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
                 if criterion and _autoHighlight
                   vis.highlight [ criterion.index ]
 
-      _plots.push 
+      _plots.push
         title: title
         plot: container
         frame: linkedFrame
         controls: signal rocPanel
         isCollapsed: isCollapsed
 
+    calcRecall = (cm, index, firstInvalidIndex) ->
+        tp = cm.data[index][index]
+        fn = 0
+        for value, i in cm.data[index]
+            if i >= firstInvalidIndex
+                break
+            if i != index
+                fn += value
+        result = tp / (tp + fn)
+        return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0')
+
+    calcPrecision = (cm, index, firstInvalidIndex) ->
+        tp = cm.data[index][index]
+        fp = 0
+        for column, i in cm.data # iterate over all columns
+            if i >= firstInvalidIndex # do not count Error, Rate and Recall columns
+                break
+            if i != index # if not on diagonal
+                fp += column[index] # pick value at index from each column; sum of row
+        result = tp / (tp + fp)
+        return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0')
+
+    getCellWithTooltip = (tdClasses, content, tooltipText) ->
+        textDiv = Flow.HTML.template("span.tooltip-text")(tooltipText)
+        tooltipDiv = Flow.HTML.template("div.tooltip-tooltip")([content, textDiv])
+        Flow.HTML.template("td.#{tdClasses}")(tooltipDiv)
+
     renderMultinomialConfusionMatrix = (title, cm) ->
-      [table, tbody, tr, normal, bold, yellow] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong', 'td.bg-yellow'
-      columnCount = cm.columns.length
-      rowCount = cm.rowcount
+      cm.columns.push({'name':'Recall', 'type':'long', 'format': '%.2f', 'description': 'Recall'})
+      errorColumnIndex = cm.columns.length - 3 # last three cols are Error, Rate Recall
+      recallValues = []
+      cm.rowcount += 1 # We will have new row with Precision values
+      totalRowIndex = cm.rowcount - 2 # Last two rows will be Totals and Precision
+      for column, i in cm.data
+          if i < errorColumnIndex
+              column.push(calcPrecision(cm, i, errorColumnIndex)) # calculate precision for each feature and add it as last row for each column
+          if i < totalRowIndex
+              recallValues.push(calcRecall(cm, i, totalRowIndex)) # calculate recall for each feature, will be added as new column
+      cm.data.push(recallValues) # add recall values as new (last) column
+
+      [table, tbody, tr, normal, bold] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'
+      tooltip = (tooltipText) ->
+          return (content) ->
+              getCellWithTooltip('', content, tooltipText)
+      tooltipYellowBg = (tooltipText) ->
+          return (content) ->
+              getCellWithTooltip('.bg-yellow', content, tooltipText)
+      tooltipBold = (tooltipText) ->
+          return (content) ->
+              getCellWithTooltip('.strong', content, tooltipText)
       headers = map cm.columns, (column, i) -> bold column.description
       headers.unshift normal ' ' # NW corner cell
       rows = [tr headers]
-      errorColumnIndex = columnCount - 2
-      totalRowIndex = rowCount - 1
-      for rowIndex in [0 ... rowCount]
+      recallColumnIndex = cm.columns.length - 1
+      precisionRowIndex = cm.rowcount - 1
+      for rowIndex in [0 ... cm.rowcount]
         cells = for column, i in cm.data
-          # Last two columns should be emphasized
+          tooltipText = "Actual: #{cm.columns[rowIndex].description}&#013;&#010;Predicted: #{cm.columns[i].description}"
           cell = if i < errorColumnIndex
             if i is rowIndex
-              yellow
+              tooltipYellowBg(tooltipText) # Yellow lines on diagonal
             else
               if rowIndex < totalRowIndex
-                normal
+                tooltip(tooltipText) # "Basic" cells inside cm
               else
-                bold
+                if rowIndex is totalRowIndex
+                    tooltipBold("Total: #{cm.columns[i].description}") # Totals of features
+                else
+                    if rowIndex is precisionRowIndex
+                        tooltipBold("Precision: #{cm.columns[i].description}") # Precision of features
+                    else
+                        bold
           else
-            bold
+            if rowIndex < totalRowIndex
+                tooltipBold("#{cm.columns[i].description}: #{cm.columns[rowIndex].description}") # Error, Rate and Recall of features
+            else
+                if rowIndex is totalRowIndex and i < recallColumnIndex
+                    tooltipBold("Total: #{cm.columns[i].description}") # Totals of Error and Rate
+                else
+                    bold
           # special-format error column
           cell if i is errorColumnIndex then format4f column[rowIndex] else column[rowIndex]
         # Add the corresponding column label
-        cells.unshift bold if rowIndex is rowCount - 1 then 'Total' else cm.columns[rowIndex].description
+        cells.unshift bold if rowIndex is cm.rowcount - 2 then 'Total' else if rowIndex is cm.rowcount - 1 then 'Precision' else cm.columns[rowIndex].description
         rows.push tr cells
 
       _plots.push
@@ -203,7 +261,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
       when 'glm'
         if table = _.inspect 'output - Scoring History', _model
           lambdaSearchParameter = find _model.parameters, (parameter) -> parameter.name is 'lambda_search'
-        
+
           if lambdaSearchParameter?.actual_value
             renderPlot 'Scoring History', no, _.plot (g) ->
               g(
@@ -548,7 +606,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
                   )
                   g.from table
                 )
-            
+
         if table = _.inspect 'output - training_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
             g(
@@ -748,7 +806,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
       _isExpanded not _isExpanded()
 
     cloneModel = ->
-      # _.insertAndExecuteCell 'cs', 'assist buildModel, 
+      # _.insertAndExecuteCell 'cs', 'assist buildModel,
       alert 'Not implemented'
 
     predict = ->
@@ -824,4 +882,3 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
   toggleRefresh: _toggleRefresh
   isLive: _isLive
   template: 'flow-model-output'
-

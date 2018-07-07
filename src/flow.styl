@@ -117,9 +117,9 @@ flow-sidebar-header-height = 31px
 //TODO table.table is used in frame output
 //TODO alert is used in flow-failure
 
-// 
+//
 // Bootstrap overrides
-// 
+//
 
 body
   font-family Lato, 'Source Sans Pro', 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif
@@ -288,7 +288,7 @@ th
 
 .flow-header
   border-top 5px solid flow-color-yellow
-  padding 20px 0  
+  padding 20px 0
 
 .flow-cell
   position relative
@@ -363,10 +363,10 @@ th
 .flow-cell-code
   .flow-hide-output
     display none
-  
-// 
-// Styles that apply only to html cells 
-// 
+
+//
+// Styles that apply only to html cells
+//
 
 .flow-html-output
   h1, h2, h3, blockquote
@@ -546,7 +546,7 @@ table
       color flow-color-link
     .fa-pencil
       display inline
-  
+
 
 
 //TODO move to failure.styl
@@ -823,3 +823,27 @@ table
 
 .intercom-launcher-preview
   display none !important
+
+
+.tooltip-tooltip
+  position: relative
+  display: inline-block
+
+.tooltip-tooltip .tooltip-text
+  visibility: hidden
+  background-color: #2c2c2c
+  color: #ffffff
+  padding: 2px 3px
+  white-space: pre
+
+  /* Position the tooltip */
+  position: absolute
+  z-index: 1
+  top: 130%
+  left: 50%
+
+.tooltip-tooltip:hover > .tooltip-text
+  visibility: visible
+
+td:hover > .tooltip-tooltip > .tooltip-text
+  visibility: visible
