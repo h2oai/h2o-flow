@@ -1615,6 +1615,7 @@ H2O.Routines = (_) ->
         nfolds: opts.nfolds
         keep_cross_validation_predictions: opts.keep_cross_validation_predictions
         keep_cross_validation_models: opts.keep_cross_validation_models
+        keep_cross_validation_fold_assignment: opts.keep_cross_validation_fold_assignment
         balance_classes: opts.balance_classes
         class_sampling_factors: opts.class_sampling_factors
         max_after_balance_size: opts.max_after_balance_size
