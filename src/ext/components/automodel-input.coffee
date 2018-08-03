@@ -120,9 +120,9 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       keep_cross_validation_predictions: _keepCrossValidationPredictions()
       keep_cross_validation_models: _keepCrossValidationModels()
       keep_cross_validation_fold_assignment: _keepCrossValidationFoldAssignment()
-      ignored_columns: for entry in _ignoredColumnsControl.entries() when entry.isSelected()
+      ignored_columns: for entry in _ignoredColumnsControl.value() when entry.isSelected()
           entry.value
-      exclude_algos: for entry in _excludeAlgosControl.entries() when entry.isSelected()
+      exclude_algos: for entry in _excludeAlgosControl.value() when entry.isSelected()
           entry.value
     if _projectName() and _projectName().trim() != ''
       arg.project_name = _projectName().trim()
