@@ -12,7 +12,7 @@ buildSummary('https://github.com/h2oai/h2o-flow', true)
 buildSummary.get().addStagesSummary(this, new StagesSummary())
 
 FLOW_VERSION = null
-DEFAULT_BRANCH = 'master'
+REQUIRED_BRANCH = 'rel-wright'
 REGISTRY = 'docker.h2o.ai'
 IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
 
@@ -25,11 +25,10 @@ try {
                     echo "${scmEnv}"
                     env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
 
-                    if (env.BRANCH_NAME == DEFAULT_BRANCH) {
-                        FLOW_VERSION = "0.7.${currentBuild.number}"
-                    } else {
-                        FLOW_VERSION = "0.8.${currentBuild.number}-${env.BRANCH_NAME.replaceAll('/', '-')}-SNAPSHOT"
+                    if (env.BRANCH_NAME != REQUIRED_BRANCH) {
+                        error "Can release from ${REQUIRED_BRANCH} only. Current branch is ${env.BRANCH_NAME}."
                     }
+                    FLOW_VERSION = "0.7.${currentBuild.number}"
 
                     // setup custom DetailsSummary
                     DetailsSummary detailsSummary = new DetailsSummary()
@@ -51,10 +50,10 @@ try {
                                 sh """
                                     env
                                     id
-                                    
+
                                     ln -s /home/jenkins/flow-cache/node_modules/ ./node_modules
                                     ln -s /home/jenkins/flow-cache/lib/ ./lib
-        
+
                                     make build
                                     sed -E "s/.+version.+/  \\"version\\": \\"$FLOW_VERSION\\",/" bower.json > bower.json.tmp && mv bower.json.tmp bower.json
                                     sed -E "s/999\\.999\\.999/$FLOW_VERSION/" build/js/flow.js > build/js/flow.js.tmp && mv build/js/flow.js.tmp build/js/flow.js
