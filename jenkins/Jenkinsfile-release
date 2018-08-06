@@ -11,30 +11,36 @@ buildSummary('https://github.com/h2oai/h2o-flow', true)
 // use default StagesSummary implementation
 buildSummary.get().addStagesSummary(this, new StagesSummary())
 
-FLOW_VERSION = "0.8.${currentBuild.number}-SNAPSHOT"
-REQUIRED_BRANCH = 'master'
 REGISTRY = 'docker.h2o.ai'
 IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
+
+MASTER_BRANCH = 'master'
+REL_BRANCH_PREFIX = 'rel-'
+
+def flowVersion = "0.8.${currentBuild.number}"
 
 try {
     ansiColor('xterm') {
         timestamps {
             node('master') {
                 buildSummary.stageWithSummary('Checkout') {
-                    currentBuild.displayName = "v${FLOW_VERSION}"
                     def final scmEnv = checkout scm
-                    echo "${scmEnv}"
                     env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
 
-                    if (env.BRANCH_NAME != REQUIRED_BRANCH) {
-                        error "Can release from ${REQUIRED_BRANCH} only. Current branch is ${env.BRANCH_NAME}."
+                    if (env.BRANCH_NAME == MASTER_BRANCH) {
+                        flowVersion += '-SNAPSHOT'
+                    }
+                    currentBuild.displayName = "v${flowVersion}"
+
+                    if (env.BRANCH_NAME != 'master' || !env.BRANCH_NAME.startsWith(REL_BRANCH_PREFIX)) {
+                        error "Can release from master or ${REL_BRANCH_PREFIX}* only. Current branch is ${env.BRANCH_NAME}."
                     }
 
                     // setup custom DetailsSummary
                     DetailsSummary detailsSummary = new DetailsSummary()
                     detailsSummary.setEntry(this, 'Branch Name', env.BRANCH_NAME)
                     detailsSummary.setEntry(this, 'SHA', scmEnv['GIT_COMMIT'])
-                    detailsSummary.setEntry(this, 'Version', FLOW_VERSION)
+                    detailsSummary.setEntry(this, 'Version', flowVersion)
                     buildSummary.get().addDetailsSummary(this, detailsSummary)
                 }
 
@@ -55,8 +61,8 @@ try {
                                     ln -s /home/jenkins/flow-cache/lib/ ./lib
 
                                     make build
-                                    sed -E "s/.+version.+/  \\"version\\": \\"$FLOW_VERSION\\",/" bower.json > bower.json.tmp && mv bower.json.tmp bower.json
-                                    sed -E "s/999\\.999\\.999/$FLOW_VERSION/" build/js/flow.js > build/js/flow.js.tmp && mv build/js/flow.js.tmp build/js/flow.js
+                                    sed -E "s/.+version.+/  \\"version\\": \\"$flowVersion\\",/" bower.json > bower.json.tmp && mv bower.json.tmp bower.json
+                                    sed -E "s/999\\.999\\.999/$flowVersion/" build/js/flow.js > build/js/flow.js.tmp && mv build/js/flow.js.tmp build/js/flow.js
                                 """
                             }
                         }
@@ -66,9 +72,9 @@ try {
                 buildSummary.stageWithSummary("Commit and Push") {
                     sh """
                         git add .
-                        git commit -m "Release $FLOW_VERSION"
+                        git commit -m "Release $flowVersion"
                         git push --set-upstream origin ${env.BRANCH_NAME}
-                        git tag -a $FLOW_VERSION -m "$FLOW_VERSION"
+                        git tag -a $flowVersion -m "$flowVersion"
                         git push --tags
                     """
                 }
