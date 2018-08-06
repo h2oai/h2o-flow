@@ -5,7 +5,6 @@ lib
 *.swp
 *.log
 *.tmp
-*.iml
 .gradle
 .idea/
 *.sublime*project
