@@ -11,8 +11,8 @@ buildSummary('https://github.com/h2oai/h2o-flow', true)
 // use default StagesSummary implementation
 buildSummary.get().addStagesSummary(this, new StagesSummary())
 
-FLOW_VERSION = null
-REQUIRED_BRANCH = 'rel-wright'
+FLOW_VERSION = "0.8.${currentBuild.number}-SNAPSHOT"
+REQUIRED_BRANCH = 'master'
 REGISTRY = 'docker.h2o.ai'
 IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
 
@@ -21,6 +21,7 @@ try {
         timestamps {
             node('master') {
                 buildSummary.stageWithSummary('Checkout') {
+                    currentBuild.displayName = "v${FLOW_VERSION}"
                     def final scmEnv = checkout scm
                     echo "${scmEnv}"
                     env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
@@ -28,7 +29,6 @@ try {
                     if (env.BRANCH_NAME != REQUIRED_BRANCH) {
                         error "Can release from ${REQUIRED_BRANCH} only. Current branch is ${env.BRANCH_NAME}."
                     }
-                    FLOW_VERSION = "0.7.${currentBuild.number}"
 
                     // setup custom DetailsSummary
                     DetailsSummary detailsSummary = new DetailsSummary()
