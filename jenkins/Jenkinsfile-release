@@ -32,7 +32,7 @@ try {
                     }
                     currentBuild.displayName = "v${flowVersion}"
 
-                    if (env.BRANCH_NAME != 'master' || !env.BRANCH_NAME.startsWith(REL_BRANCH_PREFIX)) {
+                    if (env.BRANCH_NAME != 'master' && !env.BRANCH_NAME.startsWith(REL_BRANCH_PREFIX)) {
                         error "Can release from master or ${REL_BRANCH_PREFIX}* only. Current branch is ${env.BRANCH_NAME}."
                     }
 
