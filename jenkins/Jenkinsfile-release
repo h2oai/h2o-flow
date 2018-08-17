@@ -17,7 +17,7 @@ IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
 MASTER_BRANCH = 'master'
 REL_BRANCH_PREFIX = 'rel-'
 
-def flowVersion = "0.8.${currentBuild.number}"
+def flowVersion = null
 
 try {
     ansiColor('xterm') {
@@ -26,22 +26,46 @@ try {
                 buildSummary.stageWithSummary('Checkout') {
                     def final scmEnv = checkout scm
                     env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
+                    env.GIT_COMMIT = scmEnv['GIT_COMMIT']
+                }
 
-                    if (env.BRANCH_NAME == MASTER_BRANCH) {
-                        flowVersion += '-SNAPSHOT'
+                buildSummary.stageWithSummary('Calculate Version') {
+                    def final latestTag = sh(script: 'git describe --abbrev=0', returnStdout: true).trim()
+                    def final lastVersionParts = latestTag.split('\\.')
+                    def flowVersionMajor = readFile('VERSION_MAJOR.txt').trim()
+                    if (flowVersionMajor != lastVersionParts[0..-2].join('.')) {
+                        echo "Current major version is new, check if second number in version is as expected."
+                        // The second number in expected version needs to be +1 from latest tag else throw error
+                        currentSecondNum = Integer.parseInt(flowVersionMajor.split('\\.')[1])
+                        latestSecondNum = Integer.parseInt(lastVersionParts[1])
+                        expectedSecondNum = latestSecondNum + 1
+                        if (currentSecondNum != expectedSecondNum) {
+                            error "Latest tag should be 0.${expectedSecondNum}.# but was 0.${latestSecondNum}.#"
+                        }
+                        flowVersion = "${flowVersionMajor}.1"
+                    } else {
+                        echo "Current major version already exists, increment last number."
+                        def final latestVersionMinor = Integer.parseInt(lastVersionParts.last())
+                        flowVersion = "${flowVersionMajor}.${latestVersionMinor + 1}"
                     }
                     currentBuild.displayName = "v${flowVersion}"
 
-                    if (env.BRANCH_NAME != 'master' && !env.BRANCH_NAME.startsWith(REL_BRANCH_PREFIX)) {
-                        error "Can release from master or ${REL_BRANCH_PREFIX}* only. Current branch is ${env.BRANCH_NAME}."
+                    echo "Check that tag ${flowVersion} does not exist."
+                    final def tagExists = sh(script: "git rev-parse ${flowVersion} > /dev/null 2>&1", returnStatus: true) == 0
+                    if (tagExists) {
+                        error "Version ${flowVersion} already exists."
                     }
 
                     // setup custom DetailsSummary
                     DetailsSummary detailsSummary = new DetailsSummary()
                     detailsSummary.setEntry(this, 'Branch Name', env.BRANCH_NAME)
-                    detailsSummary.setEntry(this, 'SHA', scmEnv['GIT_COMMIT'])
+                    detailsSummary.setEntry(this, 'SHA', env.GIT_COMMIT)
                     detailsSummary.setEntry(this, 'Version', flowVersion)
                     buildSummary.get().addDetailsSummary(this, detailsSummary)
+
+                    if (env.BRANCH_NAME != MASTER_BRANCH || env.BRANCH_NAME != REL_BRANCH_PREFIX) {
+                        error "Can release only from ${MASTER_BRANCH} or ${REL_BRANCH_PREFIX}*"
+                    }
                 }
 
                 buildSummary.stageWithSummary("Build") {
