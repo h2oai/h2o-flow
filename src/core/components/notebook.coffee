@@ -73,7 +73,7 @@ Flow.Notebook = (_, _renderers) ->
 
     # Execute all non-code cells (headings, markdown, etc.)
     for cell in _cells()
-      cell.execute() unless cell.isCode() 
+      cell.execute() unless cell.isCode()
 
     return
 
@@ -156,7 +156,7 @@ Flow.Notebook = (_, _renderers) ->
         selectCell cells[_selectedCellIndex]
       _.saveClip 'trash', removedCell.type(), removedCell.input() if removedCell
     return
-    
+
   insertCell = (index, cell) ->
     splice _cells, index, 0, cell
     selectCell cell
@@ -200,7 +200,7 @@ Flow.Notebook = (_, _renderers) ->
     cell
 
   appendCellAndRun = (type, input) ->
-    cell = appendCell createCell type, input 
+    cell = appendCell createCell type, input
     cell.execute()
     cell
 
@@ -332,7 +332,7 @@ Flow.Notebook = (_, _renderers) ->
     _areInputsHidden not wereHidden
     #
     # If cells are generated while inputs are hidden, the input boxes
-    #   do not resize to fit contents. So explicitly ask all cells 
+    #   do not resize to fit contents. So explicitly ask all cells
     #   to resize themselves.
     #
     if wereHidden
@@ -384,7 +384,7 @@ Flow.Notebook = (_, _renderers) ->
 
 
   getBuildProperties = ->
-    projectVersion = findBuildProperty 'H2O Build project version' 
+    projectVersion = findBuildProperty 'H2O Build project version'
     [
       findBuildProperty 'H2O Build git branch'
       projectVersion
@@ -492,7 +492,7 @@ Flow.Notebook = (_, _renderers) ->
               executeNextCell()
         else
           go 'done'
-      else 
+      else
         go 'aborted'
 
     executeNextCell()
@@ -616,7 +616,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Toggle All Cell Outputs', toggleAllOutputs
         createMenuItem 'Clear All Cell Outputs', clearAllCells
         menuDivider
-        createMenuItem 'Download this Flow...', exportNotebook 
+        createMenuItem 'Download this Flow...', exportNotebook
       ]
     ,
       createMenu 'Cell', menuCell
@@ -660,6 +660,7 @@ Flow.Notebook = (_, _renderers) ->
         createMenuItem 'Download Logs', goToH2OUrl '3/Logs/download'
         menuDivider
         createMenuHeader 'Advanced'
+        createMenuItem 'Download Gen Model', goToH2OUrl '3/h2o-genmodel.jar'
         createMenuItem 'Create Synthetic Frame...', executeCommand 'createFrame'
         createMenuItem 'Stack Trace', executeCommand 'getStackTrace'
         createMenuItem 'Network Test', executeCommand 'testNetwork'
@@ -734,9 +735,9 @@ Flow.Notebook = (_, _renderers) ->
 
   # (From IPython Notebook keyboard shortcuts dialog)
   # The IPython Notebook has two different keyboard input modes. Edit mode allows you to type code/text into a cell and is indicated by a green cell border. Command mode binds the keyboard to notebook level actions and is indicated by a grey cell border.
-  # 
+  #
   # Command Mode (press Esc to enable)
-  # 
+  #
   normalModeKeyboardShortcuts = [
     [ 'enter', 'edit mode', switchToEditMode ]
     #[ 'shift+enter', 'run cell, select below', runCellAndSelectBelow ]
@@ -781,9 +782,9 @@ Flow.Notebook = (_, _renderers) ->
 
 
 
-  # 
-  # Edit Mode (press Enter to enable) 
-  # 
+  #
+  # Edit Mode (press Enter to enable)
+  #
   editModeKeyboardShortcuts = [
     # Tab : code completion or indent
     # Shift-Tab : tooltip
@@ -807,7 +808,7 @@ Flow.Notebook = (_, _renderers) ->
     [ 'ctrl+shift+-', 'split cell', splitCell ]
     [ 'mod+s', 'save notebook', saveNotebook ]
   ]
-  
+
   toKeyboardHelp = (shortcut) ->
     [ seq, caption ] = shortcut
     keystrokes = join (map (split seq, /\+/g), (key) -> "<kbd>#{key}</kbd>"), ' '
