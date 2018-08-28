@@ -63,7 +63,7 @@ try {
                     detailsSummary.setEntry(this, 'Version', flowVersion)
                     buildSummary.get().addDetailsSummary(this, detailsSummary)
 
-                    if (env.BRANCH_NAME != MASTER_BRANCH || env.BRANCH_NAME != REL_BRANCH_PREFIX) {
+                    if (BRANCH_NAME != MASTER_BRANCH && !BRANCH_NAME.startsWith(REL_BRANCH_PREFIX)) {
                         error "Can release only from ${MASTER_BRANCH} or ${REL_BRANCH_PREFIX}*"
                     }
                 }
