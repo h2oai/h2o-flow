@@ -50,19 +50,25 @@ H2O.PredictOutput = (_, _go, modelKey, frameKey, predictionFrame, prediction) ->
             )
 
     for tableName in _.ls prediction
-      if table = _.inspect tableName, prediction
-        if table.indices.length > 1
-          renderPlot tableName, prediction, _.plot (g) ->
-            g(
-              g.select()
-              g.from table
-            )
-        else
-          renderPlot tableName, prediction, _.plot (g) ->
-            g(
-              g.select 0
-              g.from table
-            )
+      cmTableName = prediction?.cm?.table?.name
+      if tableName is 'Prediction - cm' # Skip the empty section
+          continue
+      else if tableName.endsWith(cmTableName)
+        _plots.push Flow.Util.renderMultinomialConfusionMatrix("Prediction - Confusion Matrix", prediction.cm.table, {canCombineWithFrame: false})
+      else
+        if table = _.inspect tableName, prediction
+            if table.indices.length > 1
+              renderPlot tableName, prediction, _.plot (g) ->
+                g(
+                  g.select()
+                  g.from table
+                )
+            else
+              renderPlot tableName, prediction, _.plot (g) ->
+                g(
+                  g.select 0
+                  g.from table
+                )
 
   inspect = ->
     #XXX get this from prediction table
