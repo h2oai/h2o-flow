@@ -149,99 +149,6 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         controls: signal rocPanel
         isCollapsed: isCollapsed
 
-    calcRecall = (cm, index, firstInvalidIndex) ->
-        tp = cm.data[index][index]
-        fn = 0
-        for value, i in cm.data[index]
-            if i >= firstInvalidIndex
-                break
-            if i != index
-                fn += value
-        result = tp / (tp + fn)
-        return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0')
-
-    calcPrecision = (cm, index, firstInvalidIndex) ->
-        tp = cm.data[index][index]
-        fp = 0
-        for column, i in cm.data # iterate over all columns
-            if i >= firstInvalidIndex # do not count Error, Rate and Recall columns
-                break
-            if i != index # if not on diagonal
-                fp += column[index] # pick value at index from each column; sum of row
-        result = tp / (tp + fp)
-        return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0')
-
-    getCellWithTooltip = (tdClasses, content, tooltipText) ->
-        textDiv = Flow.HTML.template("span.tooltip-text")(tooltipText)
-        tooltipDiv = Flow.HTML.template("div.tooltip-tooltip")([content, textDiv])
-        Flow.HTML.template("td.#{tdClasses}")(tooltipDiv)
-
-    renderMultinomialConfusionMatrix = (title, cm) ->
-      cm.columns.push({'name':'Recall', 'type':'long', 'format': '%.2f', 'description': 'Recall'})
-      errorColumnIndex = cm.columns.length - 3 # last three cols are Error, Rate Recall
-      recallValues = []
-      cm.rowcount += 1 # We will have new row with Precision values
-      totalRowIndex = cm.rowcount - 2 # Last two rows will be Totals and Precision
-      for column, i in cm.data
-          if i < errorColumnIndex
-              column.push(calcPrecision(cm, i, errorColumnIndex)) # calculate precision for each feature and add it as last row for each column
-          if i < totalRowIndex
-              recallValues.push(calcRecall(cm, i, totalRowIndex)) # calculate recall for each feature, will be added as new column
-      cm.data.push(recallValues) # add recall values as new (last) column
-
-      [table, tbody, tr, normal, bold] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'
-      tooltip = (tooltipText) ->
-          return (content) ->
-              getCellWithTooltip('', content, tooltipText)
-      tooltipYellowBg = (tooltipText) ->
-          return (content) ->
-              getCellWithTooltip('.bg-yellow', content, tooltipText)
-      tooltipBold = (tooltipText) ->
-          return (content) ->
-              getCellWithTooltip('.strong', content, tooltipText)
-      headers = map cm.columns, (column, i) -> bold column.description
-      headers.unshift normal ' ' # NW corner cell
-      rows = [tr headers]
-      recallColumnIndex = cm.columns.length - 1
-      precisionRowIndex = cm.rowcount - 1
-      for rowIndex in [0 ... cm.rowcount]
-        cells = for column, i in cm.data
-          tooltipText = "Actual: #{cm.columns[rowIndex].description}&#013;&#010;Predicted: #{cm.columns[i].description}"
-          cell = if i < errorColumnIndex
-            if i is rowIndex
-              tooltipYellowBg(tooltipText) # Yellow lines on diagonal
-            else
-              if rowIndex < totalRowIndex
-                tooltip(tooltipText) # "Basic" cells inside cm
-              else
-                if rowIndex is totalRowIndex
-                    tooltipBold("Total: #{cm.columns[i].description}") # Totals of features
-                else
-                    if rowIndex is precisionRowIndex
-                        tooltipBold("Precision: #{cm.columns[i].description}") # Precision of features
-                    else
-                        bold
-          else
-            if rowIndex < totalRowIndex
-                tooltipBold("#{cm.columns[i].description}: #{cm.columns[rowIndex].description}") # Error, Rate and Recall of features
-            else
-                if rowIndex is totalRowIndex and i < recallColumnIndex
-                    tooltipBold("Total: #{cm.columns[i].description}") # Totals of Error and Rate
-                else
-                    bold
-          # special-format error column
-          cell if i is errorColumnIndex then format4f column[rowIndex] else column[rowIndex]
-        # Add the corresponding column label
-        cells.unshift bold if rowIndex is cm.rowcount - 2 then 'Total' else if rowIndex is cm.rowcount - 1 then 'Precision' else cm.columns[rowIndex].description
-        rows.push tr cells
-
-      _plots.push
-        title: title + if cm.description then " #{cm.description}" else ''
-        plot: signal Flow.HTML.render 'div', table tbody rows
-        frame: signal null
-        controls: signal null
-        isCollapsed: no
-
     switch _model.algo
       when 'kmeans'
         if table = _.inspect 'output - Scoring History', _model
@@ -356,11 +263,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         if output = _model.output
           if output.model_category is 'Multinomial'
             if confusionMatrix = output.training_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.validation_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
       when 'deeplearning', 'deepwater'
         if table = _.inspect 'output - Scoring History', _model
@@ -528,11 +435,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         if output = _model.output
           if output.model_category is 'Multinomial'
             if confusionMatrix = output.training_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.validation_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
       when 'gbm', 'drf', 'svm', 'xgboost'
         if table = _.inspect 'output - Scoring History', _model
@@ -666,13 +573,12 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
             )
 
         if output = _model.output
-          if output.model_category is 'Multinomial'
-            if confusionMatrix = output.training_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
-            if confusionMatrix = output.validation_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
-            if confusionMatrix = output.cross_validation_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.training_metrics?.cm?.table
+            _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.validation_metrics?.cm?.table
+            _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+          if confusionMatrix = output.cross_validation_metrics?.cm?.table
+            _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
     # end of when 'gbm', 'drf', 'svm', 'xgboost'
 
       when 'stackedensemble'
@@ -737,11 +643,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         if output = _model.output
           if output.model_category is 'Multinomial'
             if confusionMatrix = output.training_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.validation_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
-              renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
     # end of stackedensemble
 
     if table = _.inspect 'output - training_metrics - Gains/Lift Table', _model
@@ -786,14 +692,12 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
 
     for tableName in _.ls _model when tableName isnt 'parameters'
 
-      # Skip CM tables for multinomial models
-      if output = _model.output?.model_category is 'Multinomial'
-        if 0 is tableName.indexOf 'output - training_metrics - cm'
-          continue
-        else if 0 is tableName.indexOf 'output - validation_metrics - cm'
-          continue
-        else if 0 is tableName.indexOf 'output - cross_validation_metrics - cm'
-          continue
+      if 0 is tableName.indexOf 'output - training_metrics - cm'
+        continue
+      else if 0 is tableName.indexOf 'output - validation_metrics - cm'
+        continue
+      else if 0 is tableName.indexOf 'output - cross_validation_metrics - cm'
+        continue
 
       if table = _.inspect tableName, _model
         renderPlot tableName + (if table.metadata.description then " (#{table.metadata.description})" else ''), yes, _.plot (g) ->
