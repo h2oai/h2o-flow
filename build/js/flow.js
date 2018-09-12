@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.8.4';
+    Flow.Version = '0.8.5';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4390,11 +4390,8 @@
         ]);
         return Flow.HTML.template('td.' + tdClasses)(tooltipDiv);
     };
-    renderMultinomialConfusionMatrix = function (title, cm, customParams) {
+    renderMultinomialConfusionMatrix = function (title, cm) {
         var bold, cell, cells, column, errorColumnIndex, headers, i, normal, params, precisionRowIndex, recallColumnIndex, recallValues, rowIndex, rows, table, tbody, tooltip, tooltipBold, tooltipText, tooltipYellowBg, totalRowIndex, tr, _i, _j, _len, _ref, _ref1, _ref2;
-        if (customParams == null) {
-            customParams = {};
-        }
         cm.columns.push({
             'name': 'Recall',
             'type': 'long',
@@ -4455,14 +4452,14 @@
             cells.unshift(bold(rowIndex === cm.rowcount - 2 ? 'Total' : rowIndex === cm.rowcount - 1 ? 'Precision' : cm.columns[rowIndex].description));
             rows.push(tr(cells));
         }
-        params = {
+        return params = {
             title: title + (cm.description ? ' ' + cm.description : ''),
             plot: Flow.Dataflow.signal(Flow.HTML.render('div', table(tbody(rows)))),
             frame: Flow.Dataflow.signal(null),
             controls: Flow.Dataflow.signal(null),
-            isCollapsed: false
+            isCollapsed: false,
+            canCombineWithFrame: false
         };
-        return Object.assign({}, params, customParams);
     };
     Flow.Util = {
         describeCount: describeCount,
@@ -13640,8 +13637,8 @@
                 cmTableName = prediction != null ? (_ref2 = prediction.cm) != null ? (_ref3 = _ref2.table) != null ? _ref3.name : void 0 : void 0 : void 0;
                 if (tableName === 'Prediction - cm') {
                     continue;
-                } else if (cmTableName != null && (tableName != null ? tableName.endsWith(cmTableName) : void 0)) {
-                    _plots.push(Flow.Util.renderMultinomialConfusionMatrix('Prediction - Confusion Matrix', prediction.cm.table, { canCombineWithFrame: false }));
+                } else if (cmTableName != null && tableName != null && tableName.indexOf(cmTableName, tableName.length - cmTableName.length) !== -1) {
+                    _plots.push(Flow.Util.renderMultinomialConfusionMatrix('Prediction - Confusion Matrix', prediction.cm.table));
                 } else {
                     if (table = _.inspect(tableName, prediction)) {
                         if (table.indices.length > 1) {
