@@ -53,7 +53,7 @@ H2O.PredictOutput = (_, _go, modelKey, frameKey, predictionFrame, prediction) ->
       cmTableName = prediction?.cm?.table?.name
       if tableName is 'Prediction - cm' # Skip the empty section
           continue
-      else if tableName.endsWith(cmTableName)
+      else if cmTableName? and tableName?.endsWith(cmTableName)
         _plots.push Flow.Util.renderMultinomialConfusionMatrix("Prediction - Confusion Matrix", prediction.cm.table, {canCombineWithFrame: false})
       else
         if table = _.inspect tableName, prediction
