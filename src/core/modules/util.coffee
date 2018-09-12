@@ -99,7 +99,7 @@ getCellWithTooltip = (tdClasses, content, tooltipText) ->
     tooltipDiv = Flow.HTML.template("div.tooltip-tooltip")([content, textDiv])
     Flow.HTML.template("td.#{tdClasses}")(tooltipDiv)
 
-renderMultinomialConfusionMatrix = (title, cm, customParams = {}) ->
+renderMultinomialConfusionMatrix = (title, cm) ->
   cm.columns.push({'name':'Recall', 'type':'long', 'format': '%.2f', 'description': 'Recall'})
   errorColumnIndex = cm.columns.length - 3 # last three cols are Error, Rate Recall
   recallValues = []
@@ -158,14 +158,14 @@ renderMultinomialConfusionMatrix = (title, cm, customParams = {}) ->
     cells.unshift bold if rowIndex is cm.rowcount - 2 then 'Total' else if rowIndex is cm.rowcount - 1 then 'Precision' else cm.columns[rowIndex].description
     rows.push tr cells
 
-  params = {
+  return params = {
     title: title + if cm.description then " #{cm.description}" else ''
     plot: signal Flow.HTML.render 'div', table tbody rows
     frame: signal null
     controls: signal null
     isCollapsed: no
+    canCombineWithFrame: false
   }
-  return Object.assign({}, params, customParams)
 
 Flow.Util =
   describeCount: describeCount
