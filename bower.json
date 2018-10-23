@@ -45,6 +45,7 @@
     "jquery": "~2.1.0",
     "d3": "~3.5.2",
     "lodash": "~4.17.5",
+    "lodash-migrate": "0.3.16",
     "chai": "~1.9.1",
     "hasher": "~1.2.0",
     "crossroads": "~0.12.0",

@@ -51,6 +51,7 @@ config =
       'lib/mousetrap/mousetrap.js'
       'lib/mousetrap/plugins/global-bind/mousetrap-global-bind.js'
       'lib/lodash/dist/lodash.js'
+      'lib/lodash-migrate/dist/lodash-migrate.js'
       'lib/esprima/esprima.js'
       'vendor/escodegen/escodegen.browser.js'
       'lib/coffeescript/extras/coffee-script.js'
@@ -115,7 +116,7 @@ gulp.task 'build-tests', ->
     .pipe coffee bare: no
     .pipe concat 'flow-tests.js'
     .pipe expand 'desugar.yml'
-    .pipe header '"use strict";(function(){ var lodash = require(\'lodash\'); var test = require(\'tape\'); var Flow={}; var H2O={};'
+    .pipe header '"use strict";(function(){ require(\'lodash-migrate\'); var lodash = require(\'lodash\'); var test = require(\'tape\'); var Flow={}; var H2O={};'
     .pipe footer '}).call(this);'
     .pipe gulp.dest './build/js/'
 

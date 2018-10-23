@@ -74,6 +74,7 @@
     "js-yaml": "~3.2.2",
     "jshint": "~2.5.0",
     "lodash": "~4.17.5",
+    "lodash-migrate": "^0.3.16",
     "marked": "~0.3.9",
     "minimist": "~1.1.0",
     "nib": "~1.0.2",
