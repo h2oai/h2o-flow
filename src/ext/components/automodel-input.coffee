@@ -46,7 +46,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       required: no,
       gridable: no
   })
-  excludeAlgosValues = [{value: 'GLM'}, {value: 'DRF'}, {value: 'GBM'}, {value: 'DeepLearning'}, {value: 'StackedEnsemble'}]
+  excludeAlgosValues = [{value: 'GLM'}, {value: 'DRF'}, {value: 'GBM'}, {value: 'XGBoost'}, {value: 'DeepLearning'}, {value: 'StackedEnsemble'}]
   _excludeAlgosControl.values excludeAlgosValues
 
   defaultNfolds = 5
