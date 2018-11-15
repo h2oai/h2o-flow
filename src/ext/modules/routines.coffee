@@ -1619,6 +1619,7 @@ H2O.Routines = (_) ->
         balance_classes: opts.balance_classes
         class_sampling_factors: opts.class_sampling_factors
         max_after_balance_size: opts.max_after_balance_size
+        export_checkpoints_dir: opts.export_checkpoints_dir
         stopping_criteria:
           seed: opts.seed
           max_models: opts.max_models
