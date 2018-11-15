@@ -168,5 +168,11 @@
         td
           input(data-bind="value:seed")
 
+      tr
+        th
+          label Checkpoints path:
+        td
+          input(data-bind="value:exportCheckpointsDir")
+
   .flow-panel
     +button('Build Model', 'cube', 'buildModel', 'canBuildModel')

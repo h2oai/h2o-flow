@@ -55,6 +55,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   _keepCrossValidationPredictions = signal yes
   _keepCrossValidationModels = signal yes
   _keepCrossValidationFoldAssignment = signal no
+  _exportCheckpointsDir = signal ""
 
   buildModel = ->
     seed = defaultSeed
@@ -120,6 +121,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       keep_cross_validation_predictions: _keepCrossValidationPredictions()
       keep_cross_validation_models: _keepCrossValidationModels()
       keep_cross_validation_fold_assignment: _keepCrossValidationFoldAssignment()
+      export_checkpoints_dir: _exportCheckpointsDir()
       ignored_columns: for entry in _ignoredColumnsControl.value() when entry.isSelected()
           entry.value
       exclude_algos: for entry in _excludeAlgosControl.value() when entry.isSelected()
@@ -200,6 +202,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   keepCrossValidationPredictions: _keepCrossValidationPredictions
   keepCrossValidationModels: _keepCrossValidationModels
   keepCrossValidationFoldAssignment: _keepCrossValidationFoldAssignment
+  exportCheckpointsDir: _exportCheckpointsDir
   balanceClasses: _balanceClasses
   classSamplingFactors: _classSamplingFactors
   maxAfterBalanceSize: _maxAfterBalanceSize
