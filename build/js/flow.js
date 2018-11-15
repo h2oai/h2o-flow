@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.8.10';
+    Flow.Version = '0.8.11';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -4348,26 +4348,9 @@
         }
     };
     calcRecall = function (cm, index, firstInvalidIndex) {
-        var fn, i, result, tp, value, _i, _len, _ref;
+        var column, fn, i, result, tp, _i, _len, _ref;
         tp = cm.data[index][index];
         fn = 0;
-        _ref = cm.data[index];
-        for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-            value = _ref[i];
-            if (i >= firstInvalidIndex) {
-                break;
-            }
-            if (i !== index) {
-                fn += value;
-            }
-        }
-        result = tp / (tp + fn);
-        return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0');
-    };
-    calcPrecision = function (cm, index, firstInvalidIndex) {
-        var column, fp, i, result, tp, _i, _len, _ref;
-        tp = cm.data[index][index];
-        fp = 0;
         _ref = cm.data;
         for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
             column = _ref[i];
@@ -4375,7 +4358,24 @@
                 break;
             }
             if (i !== index) {
-                fp += column[index];
+                fn += column[index];
+            }
+        }
+        result = tp / (tp + fn);
+        return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0');
+    };
+    calcPrecision = function (cm, index, firstInvalidIndex) {
+        var fp, i, result, tp, value, _i, _len, _ref;
+        tp = cm.data[index][index];
+        fp = 0;
+        _ref = cm.data[index];
+        for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+            value = _ref[i];
+            if (i >= firstInvalidIndex) {
+                break;
+            }
+            if (i !== index) {
+                fp += value;
             }
         }
         result = tp / (tp + fp);
@@ -4391,28 +4391,28 @@
         return Flow.HTML.template('td.' + tdClasses)(tooltipDiv);
     };
     renderMultinomialConfusionMatrix = function (title, cm) {
-        var bold, cell, cells, column, errorColumnIndex, headers, i, normal, params, precisionRowIndex, recallColumnIndex, recallValues, rowIndex, rows, table, tbody, tooltip, tooltipBold, tooltipText, tooltipYellowBg, totalRowIndex, tr, _i, _j, _len, _ref, _ref1, _ref2;
+        var bold, cell, cells, column, errorColumnIndex, headers, i, normal, params, precisionColumnIndex, precisionValues, recallRowIndex, rowIndex, rows, table, tbody, tooltip, tooltipBold, tooltipText, tooltipYellowBg, totalRowIndex, tr, _i, _j, _len, _ref, _ref1, _ref2;
         cm.columns.push({
-            'name': 'Recall',
+            'name': 'Precision',
             'type': 'long',
             'format': '%.2f',
-            'description': 'Recall'
+            'description': 'Precision'
         });
         errorColumnIndex = cm.columns.length - 3;
-        recallValues = [];
+        precisionValues = [];
         cm.rowcount += 1;
         totalRowIndex = cm.rowcount - 2;
         _ref = cm.data;
         for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
             column = _ref[i];
             if (i < errorColumnIndex) {
-                column.push(calcPrecision(cm, i, errorColumnIndex));
+                column.push(calcRecall(cm, i, errorColumnIndex));
             }
             if (i < totalRowIndex) {
-                recallValues.push(calcRecall(cm, i, totalRowIndex));
+                precisionValues.push(calcPrecision(cm, i, totalRowIndex));
             }
         }
-        cm.data.push(recallValues);
+        cm.data.push(precisionValues);
         _ref1 = Flow.HTML.template('table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'), table = _ref1[0], tbody = _ref1[1], tr = _ref1[2], normal = _ref1[3], bold = _ref1[4];
         tooltip = function (tooltipText) {
             return function (content) {
@@ -4434,8 +4434,8 @@
         });
         headers.unshift(normal(' '));
         rows = [tr(headers)];
-        recallColumnIndex = cm.columns.length - 1;
-        precisionRowIndex = cm.rowcount - 1;
+        precisionColumnIndex = cm.columns.length - 1;
+        recallRowIndex = cm.rowcount - 1;
         for (rowIndex = _j = 0, _ref2 = cm.rowcount; 0 <= _ref2 ? _j < _ref2 : _j > _ref2; rowIndex = 0 <= _ref2 ? ++_j : --_j) {
             cells = function () {
                 var _k, _len1, _ref3, _results;
@@ -4444,12 +4444,12 @@
                 for (i = _k = 0, _len1 = _ref3.length; _k < _len1; i = ++_k) {
                     column = _ref3[i];
                     tooltipText = 'Actual: ' + cm.columns[rowIndex].description + '&#013;&#010;Predicted: ' + cm.columns[i].description;
-                    cell = i < errorColumnIndex ? i === rowIndex ? tooltipYellowBg(tooltipText) : rowIndex < totalRowIndex ? tooltip(tooltipText) : rowIndex === totalRowIndex ? tooltipBold('Total: ' + cm.columns[i].description) : rowIndex === precisionRowIndex ? tooltipBold('Precision: ' + cm.columns[i].description) : bold : rowIndex < totalRowIndex ? tooltipBold('' + cm.columns[i].description + ': ' + cm.columns[rowIndex].description) : rowIndex === totalRowIndex && i < recallColumnIndex ? tooltipBold('Total: ' + cm.columns[i].description) : bold;
+                    cell = i < errorColumnIndex ? i === rowIndex ? tooltipYellowBg(tooltipText) : rowIndex < totalRowIndex ? tooltip(tooltipText) : rowIndex === totalRowIndex ? tooltipBold('Total: ' + cm.columns[i].description) : rowIndex === recallRowIndex ? tooltipBold('Recall: ' + cm.columns[i].description) : bold : rowIndex < totalRowIndex ? tooltipBold('' + cm.columns[i].description + ': ' + cm.columns[rowIndex].description) : rowIndex === totalRowIndex && i < precisionColumnIndex ? tooltipBold('Total: ' + cm.columns[i].description) : bold;
                     _results.push(cell(i === errorColumnIndex ? format4f(column[rowIndex]) : column[rowIndex]));
                 }
                 return _results;
             }();
-            cells.unshift(bold(rowIndex === cm.rowcount - 2 ? 'Total' : rowIndex === cm.rowcount - 1 ? 'Precision' : cm.columns[rowIndex].description));
+            cells.unshift(bold(rowIndex === cm.rowcount - 2 ? 'Total' : rowIndex === cm.rowcount - 1 ? 'Recall' : cm.columns[rowIndex].description));
             rows.push(tr(cells));
         }
         return params = {
