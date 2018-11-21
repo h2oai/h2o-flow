@@ -1,11 +1,15 @@
-H2O.StackTraceOutput = (_, _go, _stackTrace) ->
+{ defer, tail, head} = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _stackTrace) ->
   _activeNode = signal null
 
   createThread = (thread) ->
-    lines = split thread, '\n'
+    lines = thread.split '\n'
 
     title: head lines
-    stackTrace: join (tail lines), '\n'
+    stackTrace: (tail lines).join '\n'
 
   createNode = (node) ->
     display = -> _activeNode self

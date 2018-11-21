@@ -1,3 +1,10 @@
+marked = require('../modules/marked')
+{ map, filter, head } = require('lodash')
+
+{ lift, link, signal, signals } = require("../modules/dataflow")
+html = require('../modules/html')
+util = require('../../ext/modules/util')
+
 _catalog = null
 _index = {}
 _homeContent = null
@@ -33,7 +40,7 @@ Flow packs are a great way to explore and learn H<sub>2</sub>O. Try out these Fl
 
 """
 
-Flow.Help = (_) ->
+exports.init = (_) ->
   _content = signal null
   _history = [] # [DOMElement]
   _historyIndex = -1
@@ -62,7 +69,7 @@ Flow.Help = (_) ->
 
   displayHtml = (content) ->
     if _historyIndex < _history.length - 1
-      splice _history, _historyIndex + 1, _history.length - (_historyIndex + 1), content
+      _history.splice _historyIndex + 1, _history.length - (_historyIndex + 1), content
     else
       _history.push content
     goTo _history.length - 1
@@ -75,7 +82,7 @@ Flow.Help = (_) ->
       when 'help'
         topic = _index[$el.attr 'data-topic']
         _.requestHelpContent topic.name, (error, html) ->
-          [ div, mark, h5, h6 ] = Flow.HTML.template 'div', 'mark', 'h5', 'h6'
+          [ div, mark, h5, h6 ] = html.template 'div', 'mark', 'h5', 'h6'
           contents = [
             mark 'Help'
             h5 topic.title
@@ -87,7 +94,7 @@ Flow.Help = (_) ->
             contents.push h6 'Topics'
             contents.push buildToc topic.children 
 
-          displayHtml Flow.HTML.render 'div', div contents
+          displayHtml html.render 'div', div contents
 
       when 'assist'
         _.insertAndExecuteCell 'cs', 'assist'
@@ -108,10 +115,10 @@ Flow.Help = (_) ->
           if accept
             packName = $el.attr 'data-pack-name'
             flowName = $el.attr 'data-flow-name'
-            if H2O.Util.validateFileExtension flowName, '.flow'
+            if util.validateFileExtension flowName, '.flow'
               _.requestFlow packName, flowName, (error, flow) ->
                 unless error
-                  _.open (H2O.Util.getFileBaseName flowName, '.flow'), flow
+                  _.open (util.getFileBaseName flowName, '.flow'), flow
 
       when 'endpoints'
         _.requestEndpoints (error, response) ->
@@ -138,7 +145,7 @@ Flow.Help = (_) ->
     return
 
   buildToc = (nodes) ->
-    [ ul, li, a ] = Flow.HTML.template 'ul', 'li', "a href='#' data-action='help' data-topic='$1'"
+    [ ul, li, a ] = html.template 'ul', 'li', "a href='#' data-action='help' data-topic='$1'"
     ul map nodes, (node) -> li a node.title, node.name
 
   buildTopics = (index, topics) ->
@@ -149,9 +156,9 @@ Flow.Help = (_) ->
     return
 
   displayPacks = (packNames) ->
-    [ div, mark, h5, p, i, a ] = Flow.HTML.template 'div', 'mark', 'h5', 'p', 'i.fa.fa-folder-o', "a href='#' data-action='get-pack' data-pack-name='$1'"
+    [ div, mark, h5, p, i, a ] = html.template 'div', 'mark', 'h5', 'p', 'i.fa.fa-folder-o', "a href='#' data-action='get-pack' data-pack-name='$1'"
 
-    displayHtml Flow.HTML.render 'div', div [
+    displayHtml html.render 'div', div [
       mark 'Packs'
       h5 'Installed Packs'
       div map packNames, (packName) -> p [ i(), a packName, packName ]
@@ -159,9 +166,9 @@ Flow.Help = (_) ->
     return
 
   displayFlows = (packName, flowNames) ->
-    [ div, mark, h5, p, i, a ] = Flow.HTML.template 'div', 'mark', 'h5', 'p', 'i.fa.fa-file-text-o', "a href='#' data-action='get-flow' data-pack-name='#{packName}' data-flow-name='$1'"
+    [ div, mark, h5, p, i, a ] = html.template 'div', 'mark', 'h5', 'p', 'i.fa.fa-file-text-o', "a href='#' data-action='get-flow' data-pack-name='#{packName}' data-flow-name='$1'"
 
-    displayHtml Flow.HTML.render 'div', div [
+    displayHtml html.render 'div', div [
       mark 'Pack'
       h5 packName 
       div map flowNames, (flowName) -> p [ i(), a flowName, flowName ]
@@ -170,7 +177,7 @@ Flow.Help = (_) ->
 
   
   displayEndpoints = (routes) ->
-    [ div, mark, h5, p, action, code ] = Flow.HTML.template 'div', 'mark', 'h5', 'p', "a href='#' data-action='endpoint' data-index='$1'", 'code'
+    [ div, mark, h5, p, action, code ] = html.template 'div', 'mark', 'h5', 'p', "a href='#' data-action='endpoint' data-index='$1'", 'code'
     els = [
       mark 'API'
       h5 'List of Routes'
@@ -178,16 +185,16 @@ Flow.Help = (_) ->
     for route, routeIndex in routes
       els.push p (action (code route.http_method + " " + route.url_pattern), routeIndex) + "<br/>" + route.summary
 
-    displayHtml Flow.HTML.render 'div', div els
+    displayHtml html.render 'div', div els
     return
 
   goHome = ->
-    displayHtml Flow.HTML.render 'div', _homeContent
+    displayHtml html.render 'div', _homeContent
 
   displayEndpoint = (route) ->
-    [ div, mark, h5, h6, p, action, code ] = Flow.HTML.template 'div', 'mark', 'h5', 'h6', 'p', "a href='#' data-action='schema' data-schema='$1'", 'code'
+    [ div, mark, h5, h6, p, action, code ] = html.template 'div', 'mark', 'h5', 'h6', 'p', "a href='#' data-action='schema' data-schema='$1'", 'code'
 
-    displayHtml Flow.HTML.render 'div', div [
+    displayHtml html.render 'div', div [
       mark 'Route'
 
       h5 route.url_pattern
@@ -199,7 +206,7 @@ Flow.Help = (_) ->
       p route.summary
 
       h6 'Parameters'
-      p if route.path_params?.length then join route.path_params, ', ' else '-'
+      p if route.path_params?.length then route.path_params.join ', ' else '-'
 
       h6 'Input Schema'
       p action (code route.input_schema), route.input_schema
@@ -210,7 +217,7 @@ Flow.Help = (_) ->
 
   displaySchemas = (schemas) ->
 
-    [ div, h5, ul, li, variable, mark, code, action ] = Flow.HTML.template 'div', 'h5', 'ul', 'li', 'var', 'mark', 'code', "a href='#' data-action='schema' data-schema='$1'"
+    [ div, h5, ul, li, variable, mark, code, action ] = html.template 'div', 'h5', 'ul', 'li', 'var', 'mark', 'code', "a href='#' data-action='schema' data-schema='$1'"
 
     els = [
       mark 'API'
@@ -218,10 +225,10 @@ Flow.Help = (_) ->
       ul (li "#{action (code schema.name), schema.name} #{variable escape schema.type}" for schema in schemas)
     ]
 
-    displayHtml Flow.HTML.render 'div', div els
+    displayHtml html.render 'div', div els
 
   displaySchema = (schema) ->
-    [ div, mark, h5, h6, p, code, variable, small ] = Flow.HTML.template 'div', 'mark', 'h5', 'h6', 'p', 'code', 'var', 'small'
+    [ div, mark, h5, h6, p, code, variable, small ] = html.template 'div', 'mark', 'h5', 'h6', 'p', 'code', 'var', 'small'
 
     content = [
       mark 'Schema'
@@ -232,7 +239,7 @@ Flow.Help = (_) ->
     for field in schema.fields when field.name isnt '__meta'
       content.push p "#{variable field.name}#{if field.required then '*' else ''} #{code escape field.type}<br/>#{small field.help}"
 
-    displayHtml Flow.HTML.render 'div', div content
+    displayHtml html.render 'div', div content
 
   initialize = (catalog) ->
     _catalog = catalog

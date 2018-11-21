@@ -1,4 +1,8 @@
-H2O.LogFileOutput = (_, _go, _cloud, _nodeIpPort, _fileType, _logFile) ->
+{ defer } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _cloud, _nodeIpPort, _fileType, _logFile) ->
   _exception = signal null #TODO Display in .jade
 
   _contents = signal ''

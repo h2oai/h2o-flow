@@ -1,4 +1,6 @@
-H2O.DeleteObjectsOutput = (_, _go, _keys) ->
+{ defer } = require('lodash')
+
+module.exports = (_, _go, _keys) ->
 
   defer _go
 

@@ -1,4 +1,9 @@
-H2O.ImportFilesOutput = (_, _go, _importResults) ->
+{ flatten, compact, defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _importResults) ->
   _allFrames = flatten compact map _importResults, (result) -> result.destination_frames
   _canParse = _allFrames.length > 0
   _title = "#{_allFrames.length} / #{_importResults.length} files imported."

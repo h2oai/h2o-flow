@@ -1,4 +1,6 @@
-Flow.Growl = (_) ->
+{ link } = require("../modules/dataflow")
+
+exports.init = (_) ->
   # Type should be one of:
   # undefined = info (blue)
   # success (green)
@@ -9,5 +11,3 @@ Flow.Growl = (_) ->
       $.bootstrapGrowl message, type: type
     else
       $.bootstrapGrowl message
-    
-

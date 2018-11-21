@@ -1,16 +1,23 @@
-Flow.Renderers = (_, _sandbox) ->
-  h1: -> Flow.Heading _, 'h1'
-  h2: -> Flow.Heading _, 'h2'
-  h3: -> Flow.Heading _, 'h3'
-  h4: -> Flow.Heading _, 'h4'
-  h5: -> Flow.Heading _, 'h5'
-  h6: -> Flow.Heading _, 'h6'
-  md: -> Flow.Markdown _
-  cs: (guid) -> Flow.Coffeescript _, guid, _sandbox
-  sca: (guid) -> Flow.Coffeescript _, guid, _sandbox
-  raw: -> Flow.Raw _
+{ map, defer, head, join, find } = require('lodash')
 
-Flow.Notebook = (_, _renderers) ->
+Mousetrap = require('mousetrap')
+window.Mousetrap = Mousetrap
+require('mousetrap/plugins/global-bind/mousetrap-global-bind')
+
+{ react, link, signal, signals } = require("../modules/dataflow")
+{ stringify } = require('../modules/prelude')
+
+status = require('./status')
+sidebar = require('./sidebar')
+status = require('./status')
+about = require('./about')
+dialogs = require('../modules/dialogs')
+Cell = require('./cell')
+util = require('../modules/util')
+fileOpenDialog = require('../../ext/components/file-open-dialog')
+fileUploadDialog = require('../../ext/components/file-upload-dialog')
+
+exports.init = (_, _renderers) ->
   _localName = signal 'Untitled Flow'
   react _localName, (name) ->
     document.title = 'H2O' + if name and name.trim() then "- #{name}" else ''
@@ -33,10 +40,10 @@ Flow.Notebook = (_, _renderers) ->
   _runningCaption = signal 'Running'
   _runningPercent = signal '0%'
   _runningCellInput = signal ''
-  _status = Flow.Status _
-  _sidebar = Flow.Sidebar _, _cells
-  _about = Flow.About _
-  _dialogs = Flow.Dialogs _
+  _status = status.init _
+  _sidebar = sidebar.init _, _cells
+  _about = about.init _
+  _dialogs = dialogs.init _
 
   # initialize the interpreter when the notebook is created
   # one interpreter is shared by all scala cells
@@ -72,13 +79,13 @@ Flow.Notebook = (_, _renderers) ->
     selectCell head cells
 
     # Execute all non-code cells (headings, markdown, etc.)
-    for cell in _cells()
-      cell.execute() unless cell.isCode()
+    for c in _cells()
+      c.execute() unless c.isCode()
 
     return
 
   createCell = (type='cs', input='') ->
-      Flow.Cell _, _renderers, type, input
+    Cell _, _renderers, type, input
 
   checkConsistency = ->
     selectionCount = 0
@@ -148,17 +155,17 @@ Flow.Notebook = (_, _renderers) ->
     if cells.length > 1
       if _selectedCellIndex is cells.length - 1
         #TODO call dispose() on this cell
-        removedCell = head splice _cells, _selectedCellIndex, 1
+        removedCell = head _cells.splice _selectedCellIndex, 1
         selectCell cells[_selectedCellIndex - 1]
       else
         #TODO call dispose() on this cell
-        removedCell = head splice _cells, _selectedCellIndex, 1
+        removedCell = head _cells.splice _selectedCellIndex, 1
         selectCell cells[_selectedCellIndex]
       _.saveClip 'trash', removedCell.type(), removedCell.input() if removedCell
     return
 
   insertCell = (index, cell) ->
-    splice _cells, index, 0, cell
+    _cells.splice index, 0, cell
     selectCell cell
     cell
 
@@ -208,17 +215,16 @@ Flow.Notebook = (_, _renderers) ->
   moveCellDown = ->
     cells = _cells()
     unless _selectedCellIndex is cells.length - 1
-      splice _cells, _selectedCellIndex, 1
+      _cells.splice _selectedCellIndex, 1
       _selectedCellIndex++
-      splice _cells, _selectedCellIndex, 0, _selectedCell
+      _cells.splice _selectedCellIndex, 0, _selectedCell
     return
 
   moveCellUp = ->
     unless _selectedCellIndex is 0
-      cells = _cells()
-      splice _cells, _selectedCellIndex, 1
+      _cells.splice _selectedCellIndex, 1
       _selectedCellIndex--
-      splice _cells, _selectedCellIndex, 0, _selectedCell
+      _cells.splice _selectedCellIndex, 0, _selectedCell
     return
 
   mergeCellBelow = ->
@@ -285,7 +291,7 @@ Flow.Notebook = (_, _renderers) ->
           _.saved()
 
   saveNotebook = ->
-    localName = Flow.Util.sanitizeName _localName()
+    localName = util.sanitizeName _localName()
     return _.alert 'Invalid notebook name.' if localName is ''
 
     remoteName = _remoteName()
@@ -302,7 +308,7 @@ Flow.Notebook = (_, _renderers) ->
     return
 
   promptForNotebook = ->
-    _.dialog Flow.FileOpenDialog, (result) ->
+    _.dialog fileOpenDialog, (result) ->
       if result
         { error, filename } = result
         if error
@@ -312,7 +318,7 @@ Flow.Notebook = (_, _renderers) ->
           _.loaded()
 
   uploadFile = ->
-    _.dialog Flow.FileUploadDialog, (result) ->
+    _.dialog fileUploadDialog, (result) ->
       if result
         { error } = result
         if error
@@ -374,8 +380,8 @@ Flow.Notebook = (_, _renderers) ->
     $('#keyboardHelpDialog').modal()
 
   findBuildProperty = (caption) ->
-    if Flow.BuildProperties
-      if entry = (find Flow.BuildProperties, (entry) -> entry.caption is caption)
+    if _.BuildProperties
+      if entry = (find _.BuildProperties, (entry) -> entry.caption is caption)
         entry.value
       else
         undefined
@@ -456,7 +462,7 @@ Flow.Notebook = (_, _renderers) ->
       _.alert "Please save this notebook before exporting."
 
   goToH2OUrl = (url) -> ->
-    window.open window.Flow.ContextPath + url, '_blank'
+    window.open _.ContextPath + url, '_blank'
 
   goToUrl = (url) -> ->
     window.open url, '_blank'
@@ -464,12 +470,12 @@ Flow.Notebook = (_, _renderers) ->
   executeAllCells = (fromBeginning, go) ->
     _isRunningAll yes
 
-    cells = slice _cells(), 0
+    cells = _cells().slice 0
     cellCount = cells.length
     cellIndex = 0
 
     unless fromBeginning
-      cells = slice cells, _selectedCellIndex
+      cells = cells.slice _selectedCellIndex
       cellIndex = _selectedCellIndex
 
     executeNextCell = ->
@@ -811,7 +817,7 @@ Flow.Notebook = (_, _renderers) ->
 
   toKeyboardHelp = (shortcut) ->
     [ seq, caption ] = shortcut
-    keystrokes = join (map (split seq, /\+/g), (key) -> "<kbd>#{key}</kbd>"), ' '
+    keystrokes = (map seq.split(/\+/g), (key) -> "<kbd>#{key}</kbd>").join ' '
     keystrokes: keystrokes
     caption: caption
 

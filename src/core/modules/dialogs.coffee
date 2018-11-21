@@ -1,4 +1,9 @@
-Flow.Dialogs = (_) ->
+{ link, signal, signals } = require("../modules/dataflow")
+
+confirmDialog = require('../components/confirm-dialog')
+alertDialog = require('../components/alert-dialog')
+
+exports.init = (_) ->
   _dialog = signal null
 
   showDialog = (ctor, args, _go) ->
@@ -9,7 +14,7 @@ Flow.Dialogs = (_) ->
         $dialog.modal 'hide'
         _go response if _go
 
-    _dialog dialog = apply ctor, null, [_].concat(args).concat go
+    _dialog dialog = ctor.apply null, [_].concat(args).concat go
 
     $dialog = $ "##{dialog.template}"
     $dialog.modal()
@@ -24,11 +29,10 @@ Flow.Dialogs = (_) ->
     showDialog ctor, args, go
 
   link _.confirm, (message, opts, go) ->
-    showDialog Flow.ConfirmDialog, [ message, opts ], go
+    showDialog confirmDialog, [ message, opts ], go
 
   link _.alert, (message, opts, go) ->
-    showDialog Flow.AlertDialog, [ message, opts ], go
+    showDialog alertDialog, [ message, opts ], go
 
   dialog: _dialog
   template: (dialog) -> 'flow-' + dialog.template
-

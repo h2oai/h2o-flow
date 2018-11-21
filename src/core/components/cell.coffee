@@ -1,4 +1,11 @@
-Flow.Cell = (_, _renderers, type='cs', input='') ->
+{ isString, isNumber, uniqueId } = require('lodash')
+
+{ act, react, lift, merge, isSignal, signal, signals } = require("../../core/modules/dataflow")
+{ stringify } = require('../../core/modules/prelude')
+util = require('../modules/util')
+failure = require('./failure')
+
+module.exports = (_, _renderers, type='cs', input='') ->
   _guid = do uniqueId
   _type = signal type
   _render = lift _type, (type) -> _renderers[type] _guid
@@ -68,7 +75,7 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
 
   execute = (go) ->
     startTime = Date.now()
-    _time "Started at #{Flow.Util.formatClockTime startTime}"
+    _time "Started at #{util.formatClockTime startTime}"
     input = _input().trim()
     unless input
       return if go then go null else undefined 
@@ -97,17 +104,18 @@ Flow.Cell = (_, _renderers, type='cs', input='') ->
       error: (error) ->
         _hasError yes
         #XXX review
+        console.debug error.cause
         if error.name is 'FlowError'
-          _outputs.push Flow.Failure _, error
+          _outputs.push failure _, error
         else
           _outputs.push
-            text: JSON.stringify error, null, 2
+            text: stringify error, null, 2
             template: 'flow-raw'
         _errors.push error # Only for headless use
       end: ->
         _hasInput _isCode()
         _isBusy no
-        _time Flow.Util.formatElapsedTime Date.now() - startTime
+        _time util.formatElapsedTime Date.now() - startTime
         if go
           go if _hasError() then _errors.slice 0 else null
         return

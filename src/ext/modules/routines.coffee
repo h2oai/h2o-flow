@@ -1,13 +1,19 @@
-lightning = if window?.plot? then window.plot else {}
-if lightning.settings
-  lightning.settings.axisLabelFont = '11px "Source Code Pro", monospace'
-  lightning.settings.axisTitleFont = 'bold 11px "Source Code Pro", monospace'
+{ flatten, compact, keyBy,
+  isFunction, isString, isNumber, isArray, isObject,
+  map, uniq, head, keys, range } = require('lodash')
 
-createTempKey = -> 'flow_' + Flow.Util.uuid().replace /\-/g, ''
-createVector = lightning.createVector
-createFactor = lightning.createFactor
-createList = lightning.createList
-createDataframe = lightning.createFrame
+{ words, typeOf, stringify } = require('../../core/modules/prelude')
+{ act, react, lift, link, merge, isSignal, signal, signals } = require("../../core/modules/dataflow")
+{ TString, TNumber } = require('../../core/modules/types')
+async = require('../../core/modules/async')
+html = require('../../core/modules/html')
+FlowError = require('../../core/modules/flow-error')
+objectBrowser = require('../../core/components/object-browser')
+util = require('../../core/modules/util')
+gui = require('../../core/modules/gui')
+form = require('../../core/components/form')
+h2o = require('./h2o')
+lightning = require('../../core/modules/lightning')
 
 _assistance =
   importFiles:
@@ -66,21 +72,21 @@ parseNumbers = (source) ->
 convertColumnToVector = (column, data) ->
   switch column.type
     when 'byte', 'short', 'int', 'integer', 'long'
-      createVector column.name, TNumber, parseNumbers data
+      lightning.createVector column.name, TNumber, parseNumbers data
     when 'float', 'double'
-      createVector column.name, TNumber, (parseNumbers data), format4f
+      lightning.createVector column.name, TNumber, (parseNumbers data), format4f
     when 'string'
-      createFactor column.name, TString, data
+      lightning.createFactor column.name, TString, data
     when 'matrix'
-      createList column.name, data, formatConfusionMatrix
+      lightning.createList column.name, data, formatConfusionMatrix
     else
-      createList column.name, data
+      lightning.createList column.name, data
 
 convertTableToFrame = (table, tableName, metadata) ->
   #TODO handle format strings and description
   vectors = for column, i in table.columns
     convertColumnToVector column, table.data[i]
-  createDataframe tableName, vectors, (sequence table.rowcount), null, metadata
+  lightning.createDataFrame tableName, vectors, (range table.rowcount), null, metadata
 
 getTwoDimData = (table, columnName) ->
   columnIndex = findIndex table.columns, (column) -> column.name is columnName
@@ -201,7 +207,7 @@ formatConfusionMatrix = (cm) ->
   fpr = fp / (fp + tn)
   domain = cm.domain
 
-  [ table, tbody, tr, strong, normal, yellow ] = Flow.HTML.template 'table.flow-matrix', 'tbody', 'tr', 'td.strong.flow-center', 'td', 'td.bg-yellow'
+  [ table, tbody, tr, strong, normal, yellow ] = html.template 'table.flow-matrix', 'tbody', 'tr', 'td.strong.flow-center', 'td', 'td.bg-yellow'
 
   table [
     tbody [
@@ -255,25 +261,25 @@ formulateGetPredictionsOrigin = (opts) ->
     else
       "getPredictions()"
 
-H2O.Routines = (_) ->
-  #TODO move these into Flow.Async
-  _fork = (f, args...) -> Flow.Async.fork f, args
-  _join = (args..., go) -> Flow.Async.join args, Flow.Async.applicate go
-  _call = (go, args...) -> Flow.Async.join args, Flow.Async.applicate go
-  _apply = (go, args) -> Flow.Async.join args, go
-  _isFuture = Flow.Async.isFuture
-  _async = Flow.Async.async
-  _get = Flow.Async.get
+exports.init = (_) ->
+  #TODO move these into async
+  _fork = (f, args...) -> async.fork f, args
+  _join = (args..., go) -> async.join args, async.applicate go
+  _call = (go, args...) -> async.join args, async.applicate go
+  _apply = (go, args) -> async.join args, go
+  _isFuture = async.isFuture
+  _async = async.async
+  _get = async.get
 
   #XXX obsolete
   proceed = (func, args, go) ->
-    go null, render_ {}, -> apply func, null, [_].concat args or []
+    go null, render_ {}, -> func.apply null, [_].concat args or []
 
   proceed = (func, args, go) ->
-    go null, apply render_, null, [ {}, func, ].concat args or []
+    go null, render_.apply null, [ {}, func, ].concat args or []
 
-  extendGuiForm = (form) ->
-    render_ form, Flow.Form, form
+  extendGuiForm = (f) ->
+    render_ f, form, f
 
   createGui = (controls, go) ->
     go null, extendGuiForm signals controls or []
@@ -281,7 +287,7 @@ H2O.Routines = (_) ->
   gui = (controls) ->
     _fork createGui, controls
 
-  gui[name] = f for name, f of Flow.Gui
+  gui[name] = f for name, f of gui
 
   flow_ = (raw) ->
     raw._flow_ or raw._flow_ = _cache_: {}
@@ -294,7 +300,7 @@ H2O.Routines = (_) ->
   render_ = (raw, render, args...) ->
     (flow_ raw).render = (go) ->
       # Prepend current context (_) and a continuation (go)
-      apply render, null, [_, go].concat args
+      render.apply null, [_, go].concat args
     raw
 
   inspect_ = (raw, inspectors) ->
@@ -318,7 +324,7 @@ H2O.Routines = (_) ->
         inspections = []
         for attr, f of inspectors
           inspections.push inspect$2 attr, obj
-        render_ inspections, H2O.InspectsOutput, inspections
+        render_ inspections, h2o.InspectsOutput, inspections
         inspections
       else
         {}
@@ -342,18 +348,18 @@ H2O.Routines = (_) ->
     return unless f = inspectors[attr]
     return unless isFunction f
     root._cache_[key] = inspection = f()
-    render_ inspection, H2O.InspectOutput, inspection
+    render_ inspection, h2o.InspectOutput, inspection
     inspection
 
   _plot = (render, go) ->
     render (error, vis) ->
       if error
-        go new Flow.Error 'Error rendering vis.', error
+        go new FlowError 'Error rendering vis.', error
       else
         go null, vis
 
   extendPlot = (vis) ->
-    render_ vis, H2O.PlotOutput, vis.element
+    render_ vis, h2o.PlotOutput, vis.element
 
   createPlot = (f, go) ->
     _plot (f lightning), (error, vis) ->
@@ -364,7 +370,7 @@ H2O.Routines = (_) ->
 
   plot = (f) ->
     if _isFuture f
-      _fork proceed, H2O.PlotInput, f
+      _fork proceed, h2o.PlotInput, f
     else if isFunction f
       _fork createPlot, f
     else
@@ -398,16 +404,16 @@ H2O.Routines = (_) ->
     metrics
 
   extendCloud = (cloud) ->
-    render_ cloud, H2O.CloudOutput, cloud
+    render_ cloud, h2o.CloudOutput, cloud
 
   extendTimeline = (timeline) ->
-    render_ timeline, H2O.TimelineOutput, timeline
+    render_ timeline, h2o.TimelineOutput, timeline
 
   extendStackTrace = (stackTrace) ->
-    render_ stackTrace, H2O.StackTraceOutput, stackTrace
+    render_ stackTrace, h2o.StackTraceOutput, stackTrace
 
   extendLogFile = (cloud, nodeIpPort, fileType, logFile) ->
-    render_ logFile, H2O.LogFileOutput, cloud, nodeIpPort, fileType, logFile
+    render_ logFile, h2o.LogFileOutput, cloud, nodeIpPort, fileType, logFile
 
   inspectNetworkTestResult = (testResult) -> ->
     convertTableToFrame testResult.table, testResult.table.name,
@@ -417,21 +423,21 @@ H2O.Routines = (_) ->
   extendNetworkTest = (testResult) ->
     inspect_ testResult,
       result: inspectNetworkTestResult testResult
-    render_ testResult, H2O.NetworkTestOutput, testResult
+    render_ testResult, h2o.NetworkTestOutput, testResult
 
   extendProfile = (profile) ->
-    render_ profile, H2O.ProfileOutput, profile
+    render_ profile, h2o.ProfileOutput, profile
 
   extendFrames = (frames) ->
-    render_ frames, H2O.FramesOutput, frames
+    render_ frames, h2o.FramesOutput, frames
     frames
 
   extendSplitFrameResult = (result) ->
-    render_ result, H2O.SplitFrameOutput, result
+    render_ result, h2o.SplitFrameOutput, result
     result
 
   extendMergeFramesResult = (result) ->
-    render_ result, H2O.MergeFramesOutput, result
+    render_ result, h2o.MergeFramesOutput, result
     result
 
   extendPartialDependence= (result) ->
@@ -440,7 +446,7 @@ H2O.Routines = (_) ->
       origin = "getPartialDependence #{stringify result.destination_key}"
       inspections["plot#{i+1}"] = inspectTwoDimTable_ origin, "plot#{i+1}", data
     inspect_ result, inspections
-    render_ result, H2O.PartialDependenceOutput, result
+    render_ result, h2o.PartialDependenceOutput, result
     result
 
 #   inspectOutputsAcrossModels = (modelCategory, models) -> ->
@@ -465,19 +471,19 @@ H2O.Routines = (_) ->
         getModelParameterValue parameter.type, model.parameters[i].actual_value
       switch parameter.type
         when 'enum', 'Frame', 'string'
-          createFactor parameter.label, TString, data
+          lightning.createFactor parameter.label, TString, data
         when 'byte', 'short', 'int', 'long', 'float', 'double'
-          createVector parameter.label, TNumber, data
+          lightning.createVector parameter.label, TNumber, data
         when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-          createList parameter.label, data, (a) -> if a then a else undefined
+          lightning.createList parameter.label, data, (a) -> if a then a else undefined
         when 'boolean'
-          createList parameter.label, data, (a) -> if a then 'true' else 'false'
+          lightning.createList parameter.label, data, (a) -> if a then 'true' else 'false'
         else
-          createList parameter.label, data
+          lightning.createList parameter.label, data
 
     modelKeys = (model.model_id.name for model in models)
 
-    createDataframe 'parameters', vectors, (sequence models.length), null,
+    lightning.createDataFrame 'parameters', vectors, (range models.length), null,
       description: "Parameters for models #{modelKeys.join ', '}"
       origin: "getModels #{stringify modelKeys}"
 
@@ -499,25 +505,25 @@ H2O.Routines = (_) ->
           getModelParameterValue parameter.type, parameter[attr]
         else
           parameter[attr]
-      createList attr, data
+      lightning.createList attr, data
 
-    createDataframe 'parameters', vectors, (sequence parameters.length), null,
+    lightning.createDataFrame 'parameters', vectors, (range parameters.length), null,
       description: "Parameters for model '#{model.model_id.name}'" #TODO frame model_id
       origin: "getModel #{stringify model.model_id.name}"
 
   extendJob = (job) ->
-    render_ job, H2O.JobOutput, job
+    render_ job, h2o.JobOutput, job
 
   extendJobs = (jobs) ->
     for job in jobs
       extendJob job
-    render_ jobs, H2O.JobsOutput, jobs
+    render_ jobs, h2o.JobsOutput, jobs
 
   extendCancelJob = (cancellation) ->
-    render_ cancellation, H2O.CancelJobOutput, cancellation
+    render_ cancellation, h2o.CancelJobOutput, cancellation
 
   extendDeletedKeys = (keys) ->
-    render_ keys, H2O.DeleteObjectsOutput, keys
+    render_ keys, h2o.DeleteObjectsOutput, keys
 
   inspectTwoDimTable_ = (origin, tableName, table) -> ->
     convertTableToFrame table, tableName,
@@ -525,20 +531,20 @@ H2O.Routines = (_) ->
       origin: origin
 
   inspectRawArray_ = (name, origin, description, array) -> ->
-    createDataframe name, [createList name, parseAndFormatArray array], (sequence array.length), null,
+    lightning.createDataFrame name, [lightning.createList name, parseAndFormatArray array], (range array.length), null,
       description: ''
       origin: origin
 
   inspectObjectArray_ = (name, origin, description, array) -> ->
-    createDataframe name, [createList name, parseAndFormatObjectArray array], (sequence array.length), null,
+    lightning.createDataFrame name, [lightning.createList name, parseAndFormatObjectArray array], (range array.length), null,
       description: ''
       origin: origin
 
   inspectRawObject_ = (name, origin, description, obj) -> ->
     vectors = for k, v of obj
-      createList k, [ if v is null then undefined else if isNumber v then format6fi v else v ]
+      lightning.createList k, [ if v is null then undefined else if isNumber v then format6fi v else v ]
 
-    createDataframe name, vectors, (sequence 1), null,
+    lightning.createDataFrame name, vectors, (range 1), null,
       description: ''
       origin: origin
 
@@ -663,7 +669,7 @@ H2O.Routines = (_) ->
 
     extend model
 
-    render_ model, H2O.ModelOutput, model, refresh
+    render_ model, h2o.ModelOutput, model, refresh
 
   extendGrid = (grid, opts) ->
     origin = "getGrid #{stringify grid.grid_id.name}"
@@ -672,18 +678,18 @@ H2O.Routines = (_) ->
       summary: inspectTwoDimTable_ origin, "summary", grid.summary_table
       scoring_history: inspectTwoDimTable_ origin, "scoring_history", grid.scoring_history
     inspect_ grid, inspections
-    render_ grid, H2O.GridOutput, grid
+    render_ grid, h2o.GridOutput, grid
 
   extendGrids = (grids) ->
-    render_ grids, H2O.GridsOutput, grids
+    render_ grids, h2o.GridsOutput, grids
 
   extendLeaderboard = (result) ->
-    render_ result, H2O.LeaderboardOutput, result
+    render_ result, h2o.LeaderboardOutput, result
 
   extendModels = (models) ->
     inspections = {}
 
-    algos = unique (model.algo for model in models)
+    algos = uniq (model.algo for model in models)
     if algos.length is 1
       inspections.parameters = inspectParametersAcrossModels models
 
@@ -693,12 +699,12 @@ H2O.Routines = (_) ->
     #  inspections.outputs = inspectOutputsAcrossModels (head modelCategories), models
 
     inspect_ models, inspections
-    render_ models, H2O.ModelsOutput, models
+    render_ models, h2o.ModelsOutput, models
 
   read = (value) -> if value is 'NaN' then null else value
 
   extendPredictions = (opts, predictions) ->
-    render_ predictions, H2O.PredictsOutput, opts, predictions
+    render_ predictions, h2o.PredictsOutput, opts, predictions
     predictions
 
   extendPrediction = (result) ->
@@ -715,7 +721,7 @@ H2O.Routines = (_) ->
       inspectObject inspections, 'Prediction', "getPrediction model: #{stringify modelKey}, frame: #{stringify frameKey}", { prediction_frame: predictionFrame }
 
     inspect_ prediction, inspections
-    render_ prediction, H2O.PredictOutput, modelKey, frameKey, predictionFrame, prediction
+    render_ prediction, h2o.PredictOutput, modelKey, frameKey, predictionFrame, prediction
 
   inspectFrameColumns = (tableLabel, frameKey, frame, frameColumns) -> ->
     attrs = [
@@ -746,30 +752,30 @@ H2O.Routines = (_) ->
           undefined
 
     vectors = for attr in attrs
-      [ name, title ] = split attr, '|'
+      [ name, title ] = attr.split '|'
       title = title ? name
       switch name
         when 'min'
-          createVector title, TNumber, (head column.mins for column in frameColumns), format4f
+          lightning.createVector title, TNumber, (head column.mins for column in frameColumns), format4f
         when 'max'
-          createVector title, TNumber, (head column.maxs for column in frameColumns), format4f
+          lightning.createVector title, TNumber, (head column.maxs for column in frameColumns), format4f
         when 'cardinality'
-          createVector title, TNumber, ((if column.type is 'enum' then column.domain_cardinality else undefined) for column in frameColumns)
+          lightning.createVector title, TNumber, ((if column.type is 'enum' then column.domain_cardinality else undefined) for column in frameColumns)
         when 'label'
-          createFactor title, TString, (column[name] for column in frameColumns), null, toColumnSummaryLink
+          lightning.createFactor title, TString, (column[name] for column in frameColumns), null, toColumnSummaryLink
         when 'type'
-          createFactor title, TString, (column[name] for column in frameColumns)
+          lightning.createFactor title, TString, (column[name] for column in frameColumns)
         when 'mean', 'sigma'
-          createVector title, TNumber, (column[name] for column in frameColumns), format4f
+          lightning.createVector title, TNumber, (column[name] for column in frameColumns), format4f
         else
-          createVector title, TNumber, (column[name] for column in frameColumns)
+          lightning.createVector title, TNumber, (column[name] for column in frameColumns)
 
     [ labelVector, typeVector ] = vectors
     actionsData = for i in [0 ... frameColumns.length]
       "#{typeVector.valueAt i}\0#{labelVector.valueAt i}"
-    vectors.push createFactor 'Actions', TString, actionsData, null, toConversionLink
+    vectors.push lightning.createFactor 'Actions', TString, actionsData, null, toConversionLink
 
-    createDataframe tableLabel, vectors, (sequence frameColumns.length), null,
+    lightning.createDataFrame tableLabel, vectors, (range frameColumns.length), null,
       description: "A list of #{tableLabel} in the H2O Frame."
       origin: "getFrameSummary #{stringify frameKey}"
       plot: "plot inspect '#{tableLabel}', getFrameSummary #{stringify frameKey}"
@@ -781,20 +787,20 @@ H2O.Routines = (_) ->
       #XXX format functions
       switch column.type
         when 'int', 'real'
-          createVector column.label, TNumber, (parseNaNs column.data), format4f
+          lightning.createVector column.label, TNumber, (parseNaNs column.data), format4f
         when 'enum'
           domain = column.domain
-          createFactor column.label, TString, ((if index? then domain[index] else undefined) for index in column.data)
+          lightning.createFactor column.label, TString, ((if index? then domain[index] else undefined) for index in column.data)
         when 'time'
-          createVector column.label, TNumber, parseNaNs column.data
+          lightning.createVector column.label, TNumber, parseNaNs column.data
         when 'string', 'uuid'
-          createList column.label, parseNulls column.string_data
+          lightning.createList column.label, parseNulls column.string_data
         else
-          createList column.label, parseNulls column.data
+          lightning.createList column.label, parseNulls column.data
 
-    vectors.unshift createVector 'Row', TNumber, (rowIndex + 1 for rowIndex in [frame.row_offset ... frame.row_count])
+    vectors.unshift lightning.createVector 'Row', TNumber, (rowIndex + 1 for rowIndex in [frame.row_offset ... frame.row_count])
 
-    createDataframe 'data', vectors, (sequence frame.row_count - frame.row_offset), null,
+    lightning.createDataFrame 'data', vectors, (range frame.row_count - frame.row_offset), null,
       description: 'A partial list of rows in the H2O Frame.'
       origin: "getFrameData #{stringify frameKey}"
 
@@ -804,7 +810,7 @@ H2O.Routines = (_) ->
 
     origin = "getFrameData #{stringify frameKey}"
     inspect_ frame, inspections
-    render_ frame, H2O.FrameDataOutput, frame
+    render_ frame, h2o.FrameDataOutput, frame
 
   extendFrame = (frameKey, frame) ->
     inspections =
@@ -818,7 +824,7 @@ H2O.Routines = (_) ->
     inspections[frame.chunk_summary.name] = inspectTwoDimTable_ origin, frame.chunk_summary.name, frame.chunk_summary
     inspections[frame.distribution_summary.name] = inspectTwoDimTable_ origin, frame.distribution_summary.name, frame.distribution_summary
     inspect_ frame, inspections
-    render_ frame, H2O.FrameOutput, frame
+    render_ frame, h2o.FrameOutput, frame
 
   extendFrameSummary = (frameKey, frame) ->
     inspections =
@@ -831,7 +837,7 @@ H2O.Routines = (_) ->
     inspections[frame.chunk_summary.name] = inspectTwoDimTable_ origin, frame.chunk_summary.name, frame.chunk_summary
     inspections[frame.distribution_summary.name] = inspectTwoDimTable_ origin, frame.distribution_summary.name, frame.distribution_summary
     inspect_ frame, inspections
-    render_ frame, H2O.FrameOutput, frame
+    render_ frame, h2o.FrameOutput, frame
 
   extendColumnSummary = (frameKey, frame, columnName) ->
     column = head frame.columns
@@ -839,11 +845,11 @@ H2O.Routines = (_) ->
 
     inspectPercentiles = ->
       vectors = [
-        createVector 'percentile', TNumber, frame.default_percentiles
-        createVector 'value', TNumber, column.percentiles
+        lightning.createVector 'percentile', TNumber, frame.default_percentiles
+        lightning.createVector 'value', TNumber, column.percentiles
       ]
 
-      createDataframe 'percentiles', vectors, (sequence frame.default_percentiles.length), null,
+      lightning.createDataFrame 'percentiles', vectors, (range frame.default_percentiles.length), null,
         description: "Percentiles for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
 
@@ -883,18 +889,18 @@ H2O.Routines = (_) ->
       for i in [binCount - 1 .. 0]
         if countData[i] isnt 0
           binCount = i + 1
-          intervalData = slice intervalData, 0, binCount
-          widthData = slice widthData, 0, binCount
-          countData = slice countData, 0, binCount
+          intervalData = intervalData.slice 0, binCount
+          widthData = widthData.slice 0, binCount
+          countData = countData.slice 0, binCount
           break
 
       vectors = [
-        createFactor 'interval', TString, intervalData
-        createVector 'width', TNumber, widthData
-        createVector 'count', TNumber, countData
+        lightning.createFactor 'interval', TString, intervalData
+        lightning.createVector 'width', TNumber, widthData
+        lightning.createVector 'count', TNumber, countData
       ]
 
-      createDataframe 'distribution', vectors, (sequence binCount), null,
+      lightning.createDataFrame 'distribution', vectors, (range binCount), null,
         description: "Distribution for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: "plot inspect 'distribution', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -909,12 +915,12 @@ H2O.Routines = (_) ->
         100 * count / rowCount
 
       vectors = [
-        createFactor 'characteristic', TString, characteristicData
-        createVector 'count', TNumber, countData
-        createVector 'percent', TNumber, percentData
+        lightning.createFactor 'characteristic', TString, characteristicData
+        lightning.createVector 'count', TNumber, countData
+        lightning.createVector 'percent', TNumber, percentData
       ]
 
-      createDataframe 'characteristics', vectors, (sequence characteristicData.length), null,
+      lightning.createDataFrame 'characteristics', vectors, (range characteristicData.length), null,
         description: "Characteristics for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: "plot inspect 'characteristics', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -927,21 +933,21 @@ H2O.Routines = (_) ->
       q1 = percentiles[defaultPercentiles.indexOf 0.25]
       q2 = percentiles[defaultPercentiles.indexOf 0.5]
       q3 = percentiles[defaultPercentiles.indexOf 0.75]
-      outliers = unique concat column.mins, column.maxs
+      outliers = uniq concat column.mins, column.maxs
       minimum = head column.mins
       maximum = head column.maxs
 
       vectors = [
-        createFactor 'column', TString, [ columnName ]
-        createVector 'mean', TNumber, [ mean ]
-        createVector 'q1', TNumber, [ q1 ]
-        createVector 'q2', TNumber, [ q2 ]
-        createVector 'q3', TNumber, [ q3 ]
-        createVector 'min', TNumber, [ minimum ]
-        createVector 'max', TNumber, [ maximum ]
+        lightning.createFactor 'column', TString, [ columnName ]
+        lightning.createVector 'mean', TNumber, [ mean ]
+        lightning.createVector 'q1', TNumber, [ q1 ]
+        lightning.createVector 'q2', TNumber, [ q2 ]
+        lightning.createVector 'q3', TNumber, [ q3 ]
+        lightning.createVector 'min', TNumber, [ minimum ]
+        lightning.createVector 'max', TNumber, [ maximum ]
       ]
 
-      createDataframe 'summary', vectors, (sequence 1), null,
+      lightning.createDataFrame 'summary', vectors, (range 1), null,
         description: "Summary for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: "plot inspect 'summary', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -959,12 +965,12 @@ H2O.Routines = (_) ->
         percents[i] = 100 * level.count / rowCount
 
       vectors = [
-        createFactor 'label', TString, labels
-        createVector 'count', TNumber, counts
-        createVector 'percent', TNumber, percents
+        lightning.createFactor 'label', TString, labels
+        lightning.createVector 'count', TNumber, counts
+        lightning.createVector 'percent', TNumber, percents
       ]
 
-      createDataframe 'domain', vectors, (sequence sortedLevels.length), null,
+      lightning.createDataFrame 'domain', vectors, (range sortedLevels.length), null,
         description: "Domain for column '#{column.label}' in frame '#{frameKey}'."
         origin: "getColumnSummary #{stringify frameKey}, #{stringify columnName}"
         plot: "plot inspect 'domain', getColumnSummary #{stringify frameKey}, #{stringify columnName}"
@@ -985,7 +991,7 @@ H2O.Routines = (_) ->
         inspections.domain = inspectDomain
 
     inspect_ frame, inspections
-    render_ frame, H2O.ColumnSummaryOutput, frameKey, frame, columnName
+    render_ frame, h2o.ColumnSummaryOutput, frameKey, frame, columnName
 
   requestFrame = (frameKey, go) ->
     _.requestFrameSlice frameKey, undefined, 0, 20, (error, frame) ->
@@ -1096,11 +1102,11 @@ H2O.Routines = (_) ->
     if splitRatios.length is splitKeys.length - 1
       splits = computeSplits splitRatios, splitKeys
 
-      randomVecKey = createTempKey()
+      randomVecKey = lightning.createTempKey()
 
       statements = []
 
-      push statements, "(tmp= #{randomVecKey} (h2o.runif #{frameKey} #{seed}))"
+      statements.push "(tmp= #{randomVecKey} (h2o.runif #{frameKey} #{seed}))"
 
       for part, i in splits
         g = if i isnt 0 then "(> #{randomVecKey} #{part.min})" else null
@@ -1114,9 +1120,9 @@ H2O.Routines = (_) ->
         else
           g
 
-        push statements, "(assign #{part.key} (rows #{frameKey} #{sliceExpr}))"
+        statements.push "(assign #{part.key} (rows #{frameKey} #{sliceExpr}))"
 
-      push statements, "(rm #{randomVecKey})"
+      statements.push "(rm #{randomVecKey})"
 
       _.requestExec "(, #{statements.join ' '})", (error, result) ->
         if error
@@ -1127,7 +1133,7 @@ H2O.Routines = (_) ->
             ratios: splitRatios
 
     else
-      go new Flow.Error 'The number of split ratios should be one less than the number of split keys'
+      go new FlowError 'The number of split ratios should be one less than the number of split keys'
 
   requestMergeFrames = (destinationKey, leftFrameKey, leftColumnIndex, includeAllLeftRows, rightFrameKey, rightColumnIndex, includeAllRightRows, go) ->
     lr = if includeAllLeftRows then 'TRUE' else 'FALSE'
@@ -1213,10 +1219,10 @@ H2O.Routines = (_) ->
       assist deleteFrame
 
   extendExportFrame = (result) ->
-    render_ result, H2O.ExportFrameOutput, result
+    render_ result, h2o.ExportFrameOutput, result
 
   extendBindFrames = (key, result) ->
-    render_ result, H2O.BindFramesOutput, key, result
+    render_ result, h2o.BindFramesOutput, key, result
 
   requestExportFrame = (frameKey, path, opts, go) ->
     _.requestExportFrame frameKey, path, (if opts.overwrite then yes else no), (error, result) ->
@@ -1238,7 +1244,7 @@ H2O.Routines = (_) ->
   requestDeleteFrames = (frameKeys, go) ->
     futures = map frameKeys, (frameKey) ->
       _fork _.requestDeleteFrame, frameKey
-    Flow.Async.join futures, (error, results) ->
+    async.join futures, (error, results) ->
       if error
         go error
       else
@@ -1263,7 +1269,7 @@ H2O.Routines = (_) ->
   requestModelsByKeys = (modelKeys, go) ->
     futures = map modelKeys, (key) ->
       _fork _.requestModel, key
-    Flow.Async.join futures, (error, models) ->
+    async.join futures, (error, models) ->
       if error then go error else go null, extendModels models
 
   getModels = (modelKeys) ->
@@ -1314,7 +1320,7 @@ H2O.Routines = (_) ->
   findColumnIndexByColumnLabel = (frame, columnLabel) ->
     for column, i in frame.columns when column.label is columnLabel
       return i
-    throw new Flow.Error "Column [#{columnLabel}] not found in frame"
+    throw new FlowError "Column [#{columnLabel}] not found in frame"
 
   findColumnIndicesByColumnLabels = (frame, columnLabels) ->
     for columnLabel in columnLabels
@@ -1392,7 +1398,7 @@ H2O.Routines = (_) ->
       assist deleteModel
 
   extendImportModel = (result) ->
-    render_ result, H2O.ImportModelOutput, result
+    render_ result, h2o.ImportModelOutput, result
 
   requestImportModel = (path, opts, go) ->
     _.requestImportModel path, (if opts.overwrite then yes else no), (error, result) ->
@@ -1405,7 +1411,7 @@ H2O.Routines = (_) ->
       assist importModel, path, opts
 
   extendExportModel = (result) ->
-    render_ result, H2O.ExportModelOutput, result
+    render_ result, h2o.ExportModelOutput, result
 
   requestExportModel = (modelKey, path, opts, go) ->
     _.requestExportModel opts.format, modelKey, path, (if opts.overwrite then yes else no), (error, result) ->
@@ -1420,7 +1426,7 @@ H2O.Routines = (_) ->
   requestDeleteModels = (modelKeys, go) ->
     futures = map modelKeys, (modelKey) ->
       _fork _.requestDeleteModel, modelKey
-    Flow.Async.join futures, (error, results) ->
+    async.join futures, (error, results) ->
       if error
         go error
       else
@@ -1479,7 +1485,7 @@ H2O.Routines = (_) ->
         assist cancelJob
 
   extendImportResults = (importResults) ->
-    render_ importResults, H2O.ImportFilesOutput, importResults
+    render_ importResults, h2o.ImportFilesOutput, importResults
 
   requestImportFiles = (paths, go) ->
     _.requestImportFiles paths, (error, importResults) ->
@@ -1496,7 +1502,7 @@ H2O.Routines = (_) ->
         assist importFiles
 
   extendImportSqlResults = (importResults) ->
-    render_ importResults, H2O.ImportSqlTableOutput, importResults
+    render_ importResults, h2o.ImportSqlTableOutput, importResults
 
   requestImportSqlTable = (arg, go) ->
     _.requestImportSqlTable arg, (error, importResults) ->
@@ -1516,7 +1522,7 @@ H2O.Routines = (_) ->
     assist importBqTable
 
   extendParseSetupResults = (args, parseSetupResults) ->
-    render_ parseSetupResults, H2O.SetupParseOutput, args, parseSetupResults
+    render_ parseSetupResults, h2o.SetupParseOutput, args, parseSetupResults
 
   requestImportAndParseSetup = (paths, go) ->
     _.requestImportFiles paths, (error, importResults) ->
@@ -1546,7 +1552,7 @@ H2O.Routines = (_) ->
       assist setupParse
 
   extendParseResult = (parseResult) ->
-    render_ parseResult, H2O.JobOutput, parseResult.job
+    render_ parseResult, h2o.JobOutput, parseResult.job
 
   requestImportAndParseFiles = (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
     _.requestImportFiles paths, (error, importResults) ->
@@ -1592,7 +1598,7 @@ H2O.Routines = (_) ->
       else
         if result.error_count > 0
           messages = (validation.message for validation in result.messages)
-          go new Flow.Error "Model build failure: #{messages.join '; '}"
+          go new FlowError "Model build failure: #{messages.join '; '}"
         else
           go null, extendJob result.job
 
@@ -1665,7 +1671,7 @@ H2O.Routines = (_) ->
       { model: modelKey, frame: frameKey, options: options } = opt
       _fork _.requestPredict, null, modelKey, frameKey, options or {}
 
-    Flow.Async.join futures, (error, predictions) ->
+    async.join futures, (error, predictions) ->
       if error
         go error
       else
@@ -1710,12 +1716,12 @@ H2O.Routines = (_) ->
       futures = map opts, (opt) ->
         { model: modelKey, frame: frameKey } = opt
         _fork _.requestPredictions, modelKey, frameKey
-      Flow.Async.join futures, (error, predictions) ->
+      async.join futures, (error, predictions) ->
         if error
           go error
         else
           # De-dupe predictions
-          uniquePredictions = values indexBy (flatten predictions, yes), (prediction) -> prediction.model.name + prediction.frame.name
+          uniquePredictions = values keyBy (flatten predictions, yes), (prediction) -> prediction.model.name + prediction.frame.name
           go null, extendPredictions opts, uniquePredictions
     else
       { model: modelKey, frame: frameKey } = opts
@@ -1800,7 +1806,7 @@ H2O.Routines = (_) ->
     _fork requestRemoveAll
 
   extendRDDs = (rdds) ->
-    render_ rdds, H2O.RDDsOutput, rdds
+    render_ rdds, h2o.RDDsOutput, rdds
     rdds
 
   requestRDDs = (go) ->
@@ -1814,7 +1820,7 @@ H2O.Routines = (_) ->
     _fork requestRDDs
 
   extendDataFrames = (dataframes) ->
-    render_ dataframes, H2O.DataFramesOutput, dataframes
+    render_ dataframes, h2o.DataFramesOutput, dataframes
     dataframes
 
   requestDataFrames = (go) ->
@@ -1828,7 +1834,7 @@ H2O.Routines = (_) ->
     _fork requestDataFrames
 
   extendAsH2OFrame = (result) ->
-    render_ result, H2O.H2OFrameOutput, result
+    render_ result, h2o.H2OFrameOutput, result
     result
 
   requestAsH2OFrameFromRDD = (rdd_id, name, go) ->
@@ -1853,7 +1859,7 @@ H2O.Routines = (_) ->
 
 
   extendAsDataFrame = (result) ->
-    render_ result, H2O.DataFrameOutput, result
+    render_ result, h2o.DataFrameOutput, result
     result
 
   requestAsDataFrame = (hf_id, name, go) ->
@@ -1892,11 +1898,11 @@ H2O.Routines = (_) ->
 
 
   extendScalaSyncCode = (result) ->
-    render_ result, H2O.ScalaCodeOutput, result
+    render_ result, h2o.ScalaCodeOutput, result
     result
 
   extendScalaAsyncCode = (result) ->
-    render_ result, H2O.JobOutput, result.job
+    render_ result, h2o.JobOutput, result.job
     result
 
   runScalaCode = (session_id, async, code) ->
@@ -1910,7 +1916,7 @@ H2O.Routines = (_) ->
         go null, extendScalaIntp result
 
   extendScalaIntp = (result) ->
-    render_ result, H2O.ScalaIntpOutput, result
+    render_ result, h2o.ScalaIntpOutput, result
     result
 
   getScalaIntp = ->
@@ -1936,50 +1942,50 @@ H2O.Routines = (_) ->
 
   dumpFuture = (result, go) ->
     result ?= {}
-    debug result
-    go null, render_ result, Flow.ObjectBrowser, 'dump', result
+    console.debug result
+    go null, render_ result, objectBrowser, 'dump', result
 
   dump = (f) ->
     if f?.isFuture
       _fork dumpFuture, f
     else
-      Flow.Async.async -> f
+      async.async -> f
 
   assist = (func, args...) ->
     if func is undefined
-      _fork proceed, H2O.Assist, [ _assistance ]
+      _fork proceed, h2o.Assist, [ _assistance ]
     else
       switch func
         when importFiles
-          _fork proceed, H2O.ImportFilesInput, []
+          _fork proceed, h2o.ImportFilesInput, []
         when importSqlTable
-          _fork proceed, H2O.ImportSqlTableInput, args
+          _fork proceed, h2o.ImportSqlTableInput, args
         when importBqTable
-          _fork proceed, H2O.ImportBqTableInput, args
+          _fork proceed, h2o.ImportBqTableInput, args
         when buildModel
-          _fork proceed, H2O.ModelInput, args
+          _fork proceed, h2o.ModelInput, args
         when runAutoML
-          _fork proceed, H2O.AutoModelInput, args
+          _fork proceed, h2o.AutoModelInput, args
         when predict, getPrediction
-          _fork proceed, H2O.PredictInput, args
+          _fork proceed, h2o.PredictInput, args
         when createFrame
-          _fork proceed, H2O.CreateFrameInput, args
+          _fork proceed, h2o.CreateFrameInput, args
         when splitFrame
-          _fork proceed, H2O.SplitFrameInput, args
+          _fork proceed, h2o.SplitFrameInput, args
         when mergeFrames
-          _fork proceed, H2O.MergeFramesInput, args
+          _fork proceed, h2o.MergeFramesInput, args
         when buildPartialDependence
-          _fork proceed, H2O.PartialDependenceInput, args
+          _fork proceed, h2o.PartialDependenceInput, args
         when exportFrame
-          _fork proceed, H2O.ExportFrameInput, args
+          _fork proceed, h2o.ExportFrameInput, args
         when imputeColumn
-          _fork proceed, H2O.ImputeInput, args
+          _fork proceed, h2o.ImputeInput, args
         when importModel
-          _fork proceed, H2O.ImportModelInput, args
+          _fork proceed, h2o.ImportModelInput, args
         when exportModel
-          _fork proceed, H2O.ExportModelInput, args
+          _fork proceed, h2o.ExportModelInput, args
         else
-          _fork proceed, H2O.NoAssist, []
+          _fork proceed, h2o.NoAssist, []
 
   link _.ready, ->
     link _.ls, ls

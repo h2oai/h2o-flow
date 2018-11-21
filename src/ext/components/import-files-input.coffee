@@ -1,4 +1,10 @@
-H2O.ImportFilesInput = (_, _go) ->
+{ defer, map, some, throttle } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+
+module.exports = (_, _go) ->
   #
   # Search files/dirs
   #
@@ -20,7 +26,7 @@ H2O.ImportFilesInput = (_, _go) ->
   # File selection 
   #
   _importedFiles = signals []
-  _importedFileCount = lift _importedFiles, (files) -> if files.length then "Found #{Flow.Util.describeCount files.length, 'file'}:" else ''
+  _importedFileCount = lift _importedFiles, (files) -> if files.length then "Found #{util.describeCount files.length, 'file'}:" else ''
   _hasImportedFiles = lift _importedFiles, (files) -> files.length > 0
   _hasUnselectedFiles = lift _importedFiles, (files) -> some files, (file) -> not file.isSelected()
   _selectedFiles = signals []
@@ -31,7 +37,7 @@ H2O.ImportFilesInput = (_, _go) ->
     dictionary
   _selectedFileCount = lift _selectedFiles, (files) -> 
     if files.length
-      "#{Flow.Util.describeCount files.length, 'file'} selected:"
+      "#{util.describeCount files.length, 'file'} selected:"
     else
       "(No files selected)"
 

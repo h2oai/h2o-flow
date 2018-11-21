@@ -1,6 +1,13 @@
-H2O.PartialDependenceInput = (_, _go) ->
+{ defer, map, throttle } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+FlowError = require('../../core/modules/flow-error')
+
+module.exports = (_, _go) ->
   _exception = signal null 
-  _destinationKey = signal "ppd-#{Flow.Util.uuid()}"
+  _destinationKey = signal "ppd-#{util.uuid()}"
 
   _frames = signals []
   _models = signals []
@@ -162,13 +169,13 @@ H2O.PartialDependenceInput = (_, _go) ->
 
   _.requestFrames (error, frames) ->
     if error
-      _exception new Flow.Error 'Error fetching frame list.', error
+      _exception new FlowError 'Error fetching frame list.', error
     else
       _frames (frame.frame_id.name for frame in frames when not frame.is_text)
 
   _.requestModels (error, models) ->
     if error
-      _exception new Flow.Error 'Error fetching model list.', error
+      _exception new FlowError 'Error fetching model list.', error
     else
       #TODO use models directly
       _models (model.model_id.name for model in models)

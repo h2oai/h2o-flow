@@ -1,5 +1,8 @@
 return unless window?.localStorage
 
+{ head } = require('lodash')
+{ stringify } = require('../../core/modules/prelude')
+
 _ls = window.localStorage
 
 keyOf = (type, id) -> "#{type}:#{id}"
@@ -24,7 +27,7 @@ read = (type, id) ->
     null
 
 write = (type, id, obj) ->
-  _ls.setItem (keyOf type, id), JSON.stringify obj
+  _ls.setItem (keyOf type, id), stringify obj
 
 purge = (type, id) ->
   if id
@@ -40,7 +43,7 @@ purgeAll = (type) ->
     _ls.removeItem key
   return
 
-Flow.LocalStorage =
+module.exports =
   list: list
   read: read
   write: write

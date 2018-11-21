@@ -1,4 +1,8 @@
-H2O.BindFramesOutput = (_, _go, key, result) ->
+{ defer } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+
+module.exports = (_, _go, key, result) ->
   viewFrame = ->
     _.insertAndExecuteCell 'cs', "getFrameSummary #{stringify key}"
 
@@ -6,5 +10,3 @@ H2O.BindFramesOutput = (_, _go, key, result) ->
 
   viewFrame: viewFrame
   template: 'flow-bind-frames-output'
-
-

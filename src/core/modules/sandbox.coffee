@@ -1,5 +1,4 @@
-Flow.Sandbox = (_, routines) ->
+module.exports = (_, routines) ->
   routines: routines 
   context: {}
   results: {}
-

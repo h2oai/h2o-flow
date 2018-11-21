@@ -1,11 +1,13 @@
+{ signal } = require('../modules/dataflow')
+
 traceCauses = (error, causes) ->
   causes.push error.message
   traceCauses error.cause, causes if error.cause
   return causes
 
-Flow.Failure = (_, error) ->
+module.exports = (_, error) ->
   causes = traceCauses error, []
-  message = shift causes
+  message = causes.shift()
   _isStackVisible = signal no
   toggleStack = -> _isStackVisible not _isStackVisible()
 
@@ -17,4 +19,3 @@ Flow.Failure = (_, error) ->
   isStackVisible: _isStackVisible
   toggleStack: toggleStack
   template: 'flow-failure'
-

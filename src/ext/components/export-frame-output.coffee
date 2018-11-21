@@ -1,4 +1,6 @@
-H2O.ExportFrameOutput = (_, _go, result) ->
+{ defer } = require('lodash')
+
+module.exports = (_, _go, result) ->
   defer _go
   template: 'flow-export-frame-output'
 

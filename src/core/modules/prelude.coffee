@@ -1,4 +1,8 @@
-Flow.Prelude = do ->
+{ head, isUndefined, indexOf } = require('lodash')
+
+{ TNull, TUndefined, TBoolean, TString, TNumber, TFunction, TObject, TArray, TArguments, TDate, TRegExp, TError } = require('./types')
+
+module.exports = do ->
   _isDefined = (value) -> not isUndefined value
   _isTruthy = (value) -> if value then yes else no
   _isFalsy = (value) -> if value then no else yes
@@ -8,10 +12,10 @@ Flow.Prelude = do ->
   _copy = (array) -> array.slice 0
   _remove = (array, element) ->
     if -1 < index = indexOf array, element
-      head splice array, index, 1
+      head array.splice, index, 1
     else
       undefined
-  _words = (text) -> split text, /\s+/
+  _words = (text) -> text.split /\s+/
   _repeat = (count, value) ->
     array = []
     for i in [0 ... count]

@@ -1,4 +1,10 @@
-H2O.PredictOutput = (_, _go, modelKey, frameKey, predictionFrame, prediction) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+
+module.exports = (_, _go, modelKey, frameKey, predictionFrame, prediction) ->
   if prediction
     { frame, model } = prediction
 
@@ -16,7 +22,7 @@ H2O.PredictOutput = (_, _go, modelKey, frameKey, predictionFrame, prediction) ->
 
     render (error, vis) ->
       if error
-        debug error
+        console.debug error
       else
         $('a', vis.element).on 'click', (e) ->
           $a = $ e.target
@@ -54,7 +60,7 @@ H2O.PredictOutput = (_, _go, modelKey, frameKey, predictionFrame, prediction) ->
       if tableName is 'Prediction - cm' # Skip the empty section
           continue
       else if cmTableName? and tableName? and tableName.indexOf(cmTableName, tableName.length - cmTableName.length) != -1
-        _plots.push Flow.Util.renderMultinomialConfusionMatrix("Prediction - Confusion Matrix", prediction.cm.table)
+        _plots.push util.renderMultinomialConfusionMatrix("Prediction - Confusion Matrix", prediction.cm.table)
       else
         if table = _.inspect tableName, prediction
             if table.indices.length > 1

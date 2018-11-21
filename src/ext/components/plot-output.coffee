@@ -1,4 +1,6 @@
-H2O.PlotOutput = (_, _go, _plot) ->
+{ defer, map } = require('lodash')
+
+module.exports = (_, _go, _plot) ->
 
   defer _go
   

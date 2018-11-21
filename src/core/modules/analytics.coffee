@@ -1,4 +1,6 @@
-Flow.Analytics = (_) ->
+{ defer } = require('lodash')
+
+module.exports = (_) ->
   link _.trackEvent, (category, action, label, value) ->
     defer ->
       window.ga 'send', 'event', category, action, label, value
@@ -11,4 +13,4 @@ Flow.Analytics = (_) ->
         exDescription: description
         exFatal: no
         appName: 'Flow'
-        appVersion: Flow.Version
+        appVersion: _.Version

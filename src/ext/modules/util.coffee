@@ -1,8 +1,14 @@
+aesjs = require('aes-js')
+{ throttle, map } = require("lodash")
+
+{ react, lift, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+
 validateFileExtension = (filename, extension) ->
   -1 isnt filename.indexOf extension, filename.length - extension.length
 
 getFileBaseName = (filename, extension) ->
-  Flow.Util.sanitizeName filename.substr 0, filename.length - extension.length
+  util.sanitizeName filename.substr 0, filename.length - extension.length
 
 createListControl = (parameter) ->
   MaxItemsPerPage = 100
@@ -180,7 +186,7 @@ decryptPassword = (encrypted) ->
   passwordBytes = aesCtr.decrypt encryptedBytes
   aesjs.utils.utf8.fromBytes passwordBytes
 
-H2O.Util =
+module.exports =
   validateFileExtension: validateFileExtension
   getFileBaseName: getFileBaseName
   createListControl: createListControl

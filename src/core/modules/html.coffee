@@ -1,6 +1,7 @@
-return unless window?.diecut?
+diecut = require('diecut')
+{ isString } = require('lodash')
 
-Flow.HTML =
+module.exports =
   template: diecut
   render: (name, html) ->
     el = document.createElement name
@@ -10,4 +11,3 @@ Flow.HTML =
       else
         el.appendChild html
     el
-

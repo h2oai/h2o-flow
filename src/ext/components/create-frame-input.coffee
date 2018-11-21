@@ -1,4 +1,9 @@
-H2O.CreateFrameInput = (_, _go) ->
+{ defer } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ stringify } = require('../../core/modules/prelude')
+
+module.exports = (_, _go) ->
   _key = signal ''
   _rows = signal 10000
   _columns = signal 100

@@ -1,4 +1,8 @@
-H2O.DataFramesOutput = (_, _go, _dataFrames) ->
+{ defer, map } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _dataFrames) ->
   _dataFramesViews = signal []
 
   createDataFrameView = (dataFrame) ->

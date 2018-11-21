@@ -9,20 +9,33 @@
 # arrow keys cause page to scroll - disable those behaviors
 # scrollTo() behavior
 
-getContextPath = () ->
-    window.Flow.ContextPath = "/"
-    $.ajax
-        url: window.referrer
-        type: 'GET'
-        success: (data, status, xhr) ->
-            if xhr.getAllResponseHeaders().search(/x-h2o-context-path/i) != -1
-                window.Flow.ContextPath = xhr.getResponseHeader('X-h2o-context-path')
-        async: false
+application = require('./modules/application')
+context = require("./modules/application-context")
+h2oApplication = require('../ext/modules/application')
+
+ko = require('./modules/knockout')
+bootstrap = require('bootstrap/js/modal')
+$ = require("jquery")
+window.$ = $
+window.Flow = {}
+
+getContextPath = (_) ->
+    if process.env.NODE_ENV == "development"
+      _.ContextPath = "http://localhost:54321/"
+    else
+      _.ContextPath = "/"
+      $.ajax
+          url: window.referrer
+          type: 'GET'
+          success: (data, status, xhr) ->
+              if xhr.getAllResponseHeaders().search(/x-h2o-context-path/i) != -1
+                  _.ContextPath = xhr.getResponseHeader('X-h2o-context-path')
+          async: false
 
 checkSparklingWater = (context) ->
     context.onSparklingWater = false
     $.ajax
-        url: window.Flow.ContextPath + "3/Metadata/endpoints"
+        url: context.ContextPath + "3/Metadata/endpoints"
         type: 'GET'
         dataType: 'json'
         success: (response) ->
@@ -31,14 +44,16 @@ checkSparklingWater = (context) ->
                     context.onSparklingWater = true
         async: false
 
+console.debug "Checking jQuery loaded"
 if window?.$?
   $ ->
-    context = {}
-    getContextPath()
+    console.debug "Starting Flow"
+    getContextPath context
     checkSparklingWater context
-    window.flow = Flow.Application context, H2O.Routines
-    H2O.Application context
+    window.flow = application.init context
+    h2oApplication.init context
     ko.applyBindings window.flow
     context.ready()
     context.initialized()
-  
+    console.debug "Initialization complete", context
+

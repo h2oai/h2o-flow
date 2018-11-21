@@ -1,4 +1,9 @@
-H2O.PredictsOutput = (_, _go, opts, _predictions) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, opts, _predictions) ->
 
   _predictionViews = signal []
   _checkAllPredictions = signal no

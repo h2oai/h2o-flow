@@ -1,4 +1,10 @@
-H2O.AutoModelInput = (_, _go, opts={}) ->
+{ defer, map, head } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ stringify } = require('../../core/modules/prelude')
+util = require('../modules/util')
+
+module.exports = (_, _go, opts={}) ->
   _projectName = signal null
   _trainingFrames = signal []
   _trainingFrame = signal null
@@ -33,14 +39,14 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
   defaultMaxAfterBalanceSize = 5
   _maxAfterBalanceSize = signal defaultMaxAfterBalanceSize
 
-  _ignoredColumnsControl = H2O.Util.createListControl({
+  _ignoredColumnsControl = util.createListControl({
       name: 'ignored_columns',
       label: 'Ignored Columns',
       required: no,
       gridable: no
   })
 
-  _excludeAlgosControl = H2O.Util.createListControl({
+  _excludeAlgosControl = util.createListControl({
       name: 'exclude_algos',
       label: 'Exclude these algorithms',
       required: no,
@@ -89,7 +95,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
       sortMetric = null
 
     classSamplingFactors = []
-    for value in split(_classSamplingFactors() ? '', /\s*,\s*/g)
+    for value in (_classSamplingFactors() ? '').split /\s*,\s*/g
       unless isNaN parsed = parseFloat value
         classSamplingFactors.push parsed
     if classSamplingFactors is []
@@ -129,7 +135,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
     if _projectName() and _projectName().trim() != ''
       arg.project_name = _projectName().trim()
 
-    _.insertAndExecuteCell 'cs', "runAutoML #{JSON.stringify arg}"
+    _.insertAndExecuteCell 'cs', "runAutoML #{stringify arg}"
 
   _.requestFrames (error, frames) ->
     unless error
@@ -167,7 +173,7 @@ H2O.AutoModelInput = (_, _go, opts={}) ->
         unless error
           _columns (column.label for column in frame.columns)
 
-          _ignoredColumnsControl.values H2O.Util.columnLabelsFromFrame(frame)
+          _ignoredColumnsControl.values util.columnLabelsFromFrame(frame)
 
           if opts.response_column
             _column opts.response_column

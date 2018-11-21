@@ -29,8 +29,12 @@
 #     }
 # };
 # 
+ko = require('knockout')
+{ defer, isFunction } = require('lodash')
+require('typeahead.js')
 
-return unless window?.ko?
+CodeMirror = require('codemirror')
+marked = require('./marked')
 
 ko.bindingHandlers.raw =
   update: (element, valueAccessor, allBindings, viewModel, bindingContext) ->
@@ -226,3 +230,4 @@ ko.bindingHandlers.codemirror =
         element.editor.refresh()
 
 
+module.exports = ko

@@ -1,4 +1,4 @@
-Flow.Raw = (_) ->
+module.exports = (_) ->
   render = (input, output) ->
     output.data
       text: input
@@ -6,4 +6,3 @@ Flow.Raw = (_) ->
     output.end()
   render.isCode = no
   render
-

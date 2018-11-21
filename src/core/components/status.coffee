@@ -1,11 +1,14 @@
-Flow.Status = (_) ->
+{ lift, link, signal } = require("../modules/dataflow")
+{ defer } = require('lodash')
+
+exports.init = (_) ->
   defaultMessage = 'Ready'
   _message = signal defaultMessage
   _connections = signal 0
   _isBusy = lift _connections, (connections) -> connections > 0
   
   onStatus = (category, type, data) ->
-    debug 'Status:', category, type, data
+    console.debug 'Status:', category, type, data
     switch category
       when 'server'
         switch type

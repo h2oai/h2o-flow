@@ -1,4 +1,11 @@
-H2O.ModelOutput = (_, _go, _model, refresh) ->
+{ defer, map, head, delay, find } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+lightning = require('../../core/modules/lightning')
+
+module.exports = (_, _go, _model, refresh) ->
   _output = signal null
 
   createOutput = (_model) ->
@@ -19,11 +26,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         when 'StringPair[]'
           if actual_value
             pairs = actual_value.map (pair) -> pair.a + ':' + pair.b
-            join pairs, ', '
+            pairs.join ', '
           else
             null
         when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-          if actual_value then join actual_value, ', ' else null
+          if actual_value then actual_value.join ', ' else null
         else
           actual_value
 
@@ -82,7 +89,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
 
       render (error, vis) ->
         if error
-          debug error
+          console.debug error
         else
           $('a', vis.element).on 'click', (e) ->
             $a = $ e.target
@@ -96,7 +103,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
           _autoHighlight = yes
           if vis.subscribe
             vis.subscribe 'markselect', ({frame, indices}) ->
-              subframe = window.plot.createFrame frame.label, frame.vectors, indices
+              subframe = lightning.createDataFrame frame.label, frame.vectors, indices
 
               renderTable = (g) ->
                 g(
@@ -263,11 +270,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         if output = _model.output
           if output.model_category is 'Multinomial'
             if confusionMatrix = output.training_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.validation_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
       when 'deeplearning', 'deepwater'
         if table = _.inspect 'output - Scoring History', _model
@@ -435,11 +442,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         if output = _model.output
           if output.model_category is 'Multinomial'
             if confusionMatrix = output.training_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.validation_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
 
       when 'gbm', 'drf', 'svm', 'xgboost'
         if table = _.inspect 'output - Scoring History', _model
@@ -574,11 +581,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
 
         if output = _model.output
           if confusionMatrix = output.training_metrics?.cm?.table
-            _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+            _plots.push util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
           if confusionMatrix = output.validation_metrics?.cm?.table
-            _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+            _plots.push util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
           if confusionMatrix = output.cross_validation_metrics?.cm?.table
-            _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+            _plots.push util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
     # end of when 'gbm', 'drf', 'svm', 'xgboost'
 
       when 'stackedensemble'
@@ -643,11 +650,11 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         if output = _model.output
           if output.model_category is 'Multinomial'
             if confusionMatrix = output.training_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Training Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.validation_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Validation Metrics - Confusion Matrix', confusionMatrix
             if confusionMatrix = output.cross_validation_metrics?.cm?.table
-              _plots.push Flow.Util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
+              _plots.push util.renderMultinomialConfusionMatrix 'Cross Validation Metrics - Confusion Matrix', confusionMatrix
     # end of stackedensemble
 
     if table = _.inspect 'output - training_metrics - Gains/Lift Table', _model
@@ -724,7 +731,7 @@ H2O.ModelOutput = (_, _go, _model, refresh) ->
         if error
           _pojoPreview "<pre>#{escape error}</pre>"
         else
-          _pojoPreview "<pre>#{Flow.Util.highlight result, 'java'}</pre>"
+          _pojoPreview "<pre>#{util.highlight result, 'java'}</pre>"
 
     downloadPojo = ->
       window.open "/3/Models.java/#{encodeURIComponent _model.model_id.name}", '_blank'

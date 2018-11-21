@@ -1,3 +1,6 @@
+d3 = require('d3')
+{ identity } = require('lodash')
+
 significantDigitsBeforeDecimal = (value) -> 1 + Math.floor Math.log(Math.abs value) / Math.LN10
 
 Digits = (digits, value) ->
@@ -11,13 +14,14 @@ Digits = (digits, value) ->
       magnitude = Math.pow 10, digits - sd
       Math.round(value * magnitude) / magnitude
 
-formatTime = d3.time.format '%Y-%m-%d %H:%M:%S' unless exports?
+formatTime = d3.timeFormat '%Y-%m-%d %H:%M:%S' unless exports?
 
 formatDate = (time) -> if time then formatTime new Date time else '-'
 
 __formatReal = {}
 formatReal = (precision) ->
-  format = if cached = __formatReal[precision]
+  cached = __formatReal[precision]
+  format = if cached
     cached
   else
     __formatReal[precision] = if precision is -1
@@ -27,7 +31,7 @@ formatReal = (precision) ->
 
   (value) -> format value
 
-Flow.Format =
+module.exports =
   Digits: Digits
   Real: formatReal
   Date: formatDate

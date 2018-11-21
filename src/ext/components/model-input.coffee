@@ -1,5 +1,12 @@
-createControl = (kind, parameter) ->
-  H2O.Util.createControl kind, parameter
+{ defer, groupBy, map, filter, throttle, forEach, find, uniqueId } = require('lodash')
+
+{ stringify, deepClone, isTruthy } = require('../../core/modules/prelude')
+{ act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+util = require('../../core/modules/util')
+{ createControl, createListControl, columnLabelsFromFrame } = require('../modules/util')
+failure = require('../../core/components/failure')
+FlowError = require('../../core/modules/flow-error')
 
 createTextboxControl = (parameter, type) ->
   isArrayValued = isInt = isReal = no
@@ -16,14 +23,14 @@ createTextboxControl = (parameter, type) ->
     when 'float', 'double'
       isReal = yes
   
-  _text = signal if isArrayValued then join (parameter.actual_value ? []), ', ' else (parameter.actual_value ? '')
+  _text = signal if isArrayValued then (parameter.actual_value ? []).join ', ' else (parameter.actual_value ? '')
 
   _textGrided = signal _text() + ';'
 
   textToValues = (text) ->
     if isArrayValued
       vals = []
-      for value in split text, /\s*,\s*/g
+      for value in text.split /\s*,\s*/g
         if isInt
           unless isNaN parsed = parseInt value, 10
             vals.push parsed
@@ -42,7 +49,7 @@ createTextboxControl = (parameter, type) ->
     values = []
     for part in "#{text}".split /\s*;\s*/g
       if token = part.trim()
-        push values, textToValues token
+        values.push textToValues token
     values
 
   control = createControl 'textbox', parameter
@@ -68,9 +75,6 @@ createDropdownControl = (parameter) ->
   control.gridedValues = lift control.values, (values) ->
     createGridableValues values
   control
-
-createListControl = (parameter) ->
-  H2O.Util.createListControl parameter
 
 createCheckboxControl = (parameter) ->
   _value = signal parameter.actual_value
@@ -219,14 +223,14 @@ createControlFromParameter = (_, parameter) ->
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null
 
-H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
+exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
   _exception = signal null
   _validationFailureMessage = signal ''
   _hasValidationFailures = lift _validationFailureMessage, isTruthy
 
   _gridStrategies = [ 'Cartesian', 'RandomDiscrete' ]
   _isGrided = signal false
-  _gridId = signal "grid-#{Flow.Util.uuid()}"
+  _gridId = signal "grid-#{util.uuid()}"
   _gridStrategy = signal 'Cartesian'
   _isGridRandomDiscrete = lift _gridStrategy, (strategy) -> strategy isnt _gridStrategies[0]
   _gridMaxModels = signal 1000
@@ -293,7 +297,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                   responseColumnParameter.values columnValues
 
                 if ignoredColumnsParameter
-                  ignoredColumnsParameter.values H2O.Util.columnLabelsFromFrame(frame)
+                  ignoredColumnsParameter.values columnLabelsFromFrame(frame)
 
                 if weightsColumnParameter
                   weightsColumnParameter.values columnValues
@@ -311,7 +315,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
                     # ignoredColumnsParameter.unavailableValues [ responseVariableName ]
 
                 if interactionsParameter
-                  interactionsParameter.values H2O.Util.columnLabelsFromFrame(frame)
+                  interactionsParameter.values columnLabelsFromFrame(frame)
 
                 if metalearnerFoldColumnParameter
                   metalearnerFoldColumnParameter.values columnValues
@@ -408,7 +412,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
 
     _.requestModelInputValidation _algorithm, parameters, (error, modelBuilder) ->
       if error
-        _exception Flow.Failure _, new Flow.Error 'Error fetching initial model builder state', error
+        _exception failure _, new FlowError 'Error fetching initial model builder state', error
       else
         hasErrors = no
 
@@ -486,7 +490,7 @@ H2O.ModelBuilderForm = (_, _algorithm, _parameters) ->
   hasValidationFailures: _hasValidationFailures
   validationFailureMessage: _validationFailureMessage
 
-H2O.ModelInput = (_, _go, _algo, _opts) ->
+exports.ModelInput = (_, _go, _algo, _opts) ->
   _exception = signal null
   _algorithms = signal []
   _algorithm = signal null
@@ -499,7 +503,7 @@ H2O.ModelInput = (_, _go, _algo, _opts) ->
     destinationKeyParameter = find parameters, (parameter) -> parameter.name is 'model_id'
 
     if destinationKeyParameter and not destinationKeyParameter.actual_value
-      destinationKeyParameter.actual_value = "#{algorithm}-#{Flow.Util.uuid()}"
+      destinationKeyParameter.actual_value = "#{algorithm}-#{util.uuid()}"
 
     #
     # Force classification.
@@ -537,7 +541,7 @@ H2O.ModelInput = (_, _go, _algo, _opts) ->
           algorithm = builder.algo
           parameters = deepClone builder.parameters
           populateFramesAndColumns frameKey, algorithm, parameters, ->
-            _modelForm H2O.ModelBuilderForm _, algorithm, parameters
+            _modelForm ModelBuilderForm _, algorithm, parameters
         else
           _modelForm null
 

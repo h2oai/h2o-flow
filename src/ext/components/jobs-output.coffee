@@ -1,4 +1,14 @@
-H2O.JobsOutput = (_, _go, jobs) ->
+{ defer, map, delay } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+failure = require('../../core/components/failure')
+FlowError = require('../../core/modules/flow-error')
+util = require('../../core/modules/util')
+format = require('../../core/modules/format')
+
+module.exports = (_, _go, jobs) ->
   _jobViews = signals []
   _hasJobViews = lift _jobViews, (jobViews) -> jobViews.length > 0
   _isLive = signal no
@@ -30,9 +40,9 @@ H2O.JobsOutput = (_, _go, jobs) ->
     destination: job.dest.name
     type: type
     description: job.description
-    startTime: Flow.Format.Time new Date job.start_time
-    endTime: Flow.Format.Time new Date job.start_time + job.msec
-    elapsedTime: Flow.Util.formatMilliseconds job.msec
+    startTime: format.Time new Date job.start_time
+    endTime: format.Time new Date job.start_time + job.msec
+    elapsedTime: util.formatMilliseconds job.msec
     status: job.status
     view: view
 
@@ -44,7 +54,7 @@ H2O.JobsOutput = (_, _go, jobs) ->
     _.requestJobs (error, jobs) ->
       _isBusy no
       if error
-        _exception Flow.Failure _, new Flow.Error 'Error fetching jobs', error
+        _exception failure _, new FlowError 'Error fetching jobs', error
         _isLive no
       else
         _jobViews map jobs, createJobView

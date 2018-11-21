@@ -1,3 +1,8 @@
+{ defer, head } = require('lodash')
+
+{ typeOf } = require('../modules/prelude')
+{ react, signal, signals } = require("../modules/dataflow")
+
 isExpandable = (type) ->
   switch type
     when 'null', 'undefined', 'Boolean', 'String', 'Number', 'Date', 'RegExp', 'Arguments', 'Function'
@@ -35,7 +40,7 @@ preview = (element, recurse=no) ->
       if recurse then previewObject element else type
 
 #TODO slice large arrays
-Flow.ObjectBrowserElement = (key, object) ->
+objectBrowserElement = (key, object) ->
   _expansions = signal null
   _isExpanded = signal no
   _type = typeOf object
@@ -45,7 +50,7 @@ Flow.ObjectBrowserElement = (key, object) ->
     if _expansions() is null
       expansions = []
       for key, value of object when key isnt '_flow_'
-        expansions.push Flow.ObjectBrowserElement key, value
+        expansions.push objectBrowserElement key, value
       _expansions expansions
     _isExpanded not _isExpanded()
 
@@ -56,9 +61,9 @@ Flow.ObjectBrowserElement = (key, object) ->
   isExpanded: _isExpanded
   canExpand: _canExpand
 
-Flow.ObjectBrowser = (_, _go, key, object) ->
+module.exports = (_, _go, key, object) ->
 
   defer _go
 
-  object: Flow.ObjectBrowserElement key, object
+  object: objectBrowserElement key, object
   template: 'flow-object'

@@ -1,3 +1,11 @@
+moment = require('moment')
+uuid = require('uuid')
+highlightjs = require('highlightjs')
+{ map, escape } = require("lodash")
+
+{ link, signal, signals } = require("../modules/dataflow")
+html = require('./html')
+
 describeCount = (count, singular, plural) ->
   plural = singular + 's' unless plural
   switch count
@@ -51,16 +59,13 @@ formatClockTime = (date) ->
 
 EOL = "\n"
 multilineTextToHTML = (text) ->
-  join (map (split text, EOL), (str) -> escape str), '<br/>'
+  (map text.split(EOL), (str) -> escape str).join '<br/>'
 
 sanitizeName = (name) ->
   name.replace(/[^a-z0-9_ \(\)-]/gi, '-').trim()
 
 highlight = (code, lang) ->
-  if window.hljs
-    (window.hljs.highlightAuto code, [ lang ]).value
-  else
-    code
+  (highlightjs.highlightAuto code, [ lang ]).value
 
 #TODO copied over from routines.coffee. replace post h2o.js integration.
 format4f = (number) ->
@@ -95,9 +100,9 @@ calcPrecision = (cm, index, firstInvalidIndex) ->
     return parseFloat(result).toFixed(2).replace(/\.0+$/, '.0')
 
 getCellWithTooltip = (tdClasses, content, tooltipText) ->
-    textDiv = Flow.HTML.template("span.tooltip-text")(tooltipText)
-    tooltipDiv = Flow.HTML.template("div.tooltip-tooltip")([content, textDiv])
-    Flow.HTML.template("td.#{tdClasses}")(tooltipDiv)
+    textDiv = html.template("span.tooltip-text")(tooltipText)
+    tooltipDiv = html.template("div.tooltip-tooltip")([content, textDiv])
+    html.template("td.#{tdClasses}")(tooltipDiv)
 
 renderMultinomialConfusionMatrix = (title, cm) ->
   cm.columns.push({'name':'Precision', 'type':'long', 'format': '%.2f', 'description': 'Precision'})
@@ -112,7 +117,7 @@ renderMultinomialConfusionMatrix = (title, cm) ->
           precisionValues.push(calcPrecision(cm, i, totalRowIndex)) # calculate precision for each feature and add it as last row for each column
   cm.data.push(precisionValues) # add recall values as new (last) column
 
-  [table, tbody, tr, normal, bold] = Flow.HTML.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'
+  [table, tbody, tr, normal, bold] = html.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'
   tooltip = (tooltipText) ->
       return (content) ->
           getCellWithTooltip('', content, tooltipText)
@@ -158,16 +163,16 @@ renderMultinomialConfusionMatrix = (title, cm) ->
     cells.unshift bold if rowIndex is cm.rowcount - 2 then 'Total' else if rowIndex is cm.rowcount - 1 then 'Recall' else cm.columns[rowIndex].description
     rows.push tr cells
 
-  return params = {
+  return {
     title: title + if cm.description then " #{cm.description}" else ''
-    plot: signal Flow.HTML.render 'div', table tbody rows
+    plot: signal html.render 'div', table tbody rows
     frame: signal null
     controls: signal null
     isCollapsed: no
     canCombineWithFrame: false
   }
 
-Flow.Util =
+module.exports =
   describeCount: describeCount
   fromNow: fromNow
   formatBytes: formatBytes
@@ -175,7 +180,7 @@ Flow.Util =
   formatElapsedTime: formatElapsedTime
   formatClockTime: formatClockTime
   multilineTextToHTML: multilineTextToHTML
-  uuid: if window?.uuid then window.uuid else null
+  uuid: uuid
   sanitizeName: sanitizeName
   highlight: highlight
   renderMultinomialConfusionMatrix: renderMultinomialConfusionMatrix

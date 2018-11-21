@@ -1,4 +1,13 @@
-H2O.LeaderboardOutput = (_, _go, _result) ->
+{ defer, mpa, delay } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+html = require('../../core/modules/html')
+failure = require('../../core/components/failure')
+FlowError = require('../../core/modules/flow-error')
+
+module.exports = (_, _go, _result) ->
 
   _leaderboard = signal ''
   _leaderboardDescription = signal ''
@@ -8,7 +17,7 @@ H2O.LeaderboardOutput = (_, _go, _result) ->
   _isLive = signal no
 
   renderLeaderboard = (leaderboard) ->
-    [table, thead, tbody, tr, th, td, a] = Flow.HTML.template 'table', 'thead', 'tbody', 'tr', 'th', 'td', "a href='#' data-key='$1'"
+    [table, thead, tbody, tr, th, td, a] = html.template 'table', 'thead', 'tbody', 'tr', 'th', 'td', "a href='#' data-key='$1'"
 
     { description, columns, rowcount, data } = leaderboard
 
@@ -16,7 +25,6 @@ H2O.LeaderboardOutput = (_, _go, _result) ->
     for column, i in columns when column.name is 'model_id'
       modelIdColumnIndex = i
 
-    columnCount = columns.length
     ths = map columns, (column) -> th column.name
 
     trs = []
@@ -27,7 +35,7 @@ H2O.LeaderboardOutput = (_, _go, _result) ->
         else
           td d[i]
 
-    leaderboardEl = Flow.HTML.render 'div', table [
+    leaderboardEl = html.render 'div', table [
       thead tr ths
       tbody trs
     ]
@@ -40,11 +48,10 @@ H2O.LeaderboardOutput = (_, _go, _result) ->
     _leaderboard leaderboardEl
 
   renderFeedback = (feedback) ->
-    [table, thead, tbody, tr, th, td] = Flow.HTML.template 'table', 'thead', 'tbody', 'tr', 'th', 'td'
+    [table, thead, tbody, tr, th, td] = html.template 'table', 'thead', 'tbody', 'tr', 'th', 'td'
 
     { description, columns, rowcount, data } = feedback
 
-    columnCount = columns.length
     ths = map columns, (column) -> th column.name
 
     trs = []
@@ -52,7 +59,7 @@ H2O.LeaderboardOutput = (_, _go, _result) ->
       trs.push tr map data, (d) -> td d[i]
 
     _feedbackDescription description
-    _feedback Flow.HTML.render 'div', table [
+    _feedback html.render 'div', table [
       thead tr ths
       tbody trs
     ]
@@ -67,7 +74,7 @@ H2O.LeaderboardOutput = (_, _go, _result) ->
   refresh = ->
     _.requestLeaderboard _result.automl_id.name, (error, result) ->
       if error
-        _exception Flow.Failure _, new Flow.Error 'Error fetching leaderboard', error
+        _exception failure _, new FlowError 'Error fetching leaderboard', error
         _isLive no
       else
         render result

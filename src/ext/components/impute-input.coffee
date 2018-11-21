@@ -1,3 +1,8 @@
+{ defer } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
 createOptions = (options) ->
   for option in options
     caption: option
@@ -15,7 +20,7 @@ _allCombineMethods = createOptions [
    'High'
 ]
 
-H2O.ImputeInput = (_, _go, opts={}) ->
+module.exports = (_, _go, opts={}) ->
   _frames = signal []
 
   _frame = signal null

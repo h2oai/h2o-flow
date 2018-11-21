@@ -1,3 +1,6 @@
+{ act, react, lift, merge, isSignal, signal, signals } = require("../../core/modules/dataflow")
+{ isString, isNumber, isArray, uniqueId } = require('lodash')
+
 wrapValue = (value, init) ->
   if value is undefined
     signal init
@@ -79,7 +82,7 @@ button = (opts) ->
   self.click = if isFunction opts.click then opts.click else noop
   self
 
-Flow.Gui =
+module.exports =
   text: text
   html: html
   markdown: markdown
@@ -89,5 +92,3 @@ Flow.Gui =
   textbox: textbox
   textarea: textarea
   button: button
-
-

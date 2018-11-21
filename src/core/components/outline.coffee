@@ -1,2 +1,2 @@
-Flow.Outline = (_, _cells) ->
+exports.init = (_, _cells) ->
   cells: _cells
