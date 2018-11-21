@@ -1,4 +1,8 @@
-H2O.FrameDataOutput = (_, _go, _frame) ->
+{ defer, throttle } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _frame) ->
   MaxItemsPerPage = 20
   _data = signal null
   _columnNameSearchTerm = signal null
@@ -10,7 +14,7 @@ H2O.FrameDataOutput = (_, _go, _frame) ->
   renderPlot = (container, render) ->
     render (error, vis) ->
       if error
-        debug error
+        console.debug error
       else
         container vis.element
 

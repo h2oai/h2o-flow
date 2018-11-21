@@ -1,4 +1,10 @@
-H2O.FramesOutput = (_, _go, _frames) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+
+module.exports = (_, _go, _frames) ->
   _frameViews = signal []
   _checkAllFrames = signal no
   _hasSelectedFrames = signal no
@@ -20,8 +26,6 @@ H2O.FramesOutput = (_, _go, _frames) ->
       checkedViews = (view for view in _frameViews() when view.isChecked())
       _hasSelectedFrames checkedViews.length > 0
 
-    columnLabels = head (map frame.columns, (column) -> column.label), 15
-
     view = ->
       if frame.is_text
         _.insertAndExecuteCell 'cs', "setupParse source_frames: [ #{stringify frame.frame_id.name } ]"
@@ -40,7 +44,7 @@ H2O.FramesOutput = (_, _go, _frames) ->
 
     key: frame.frame_id.name
     isChecked: _isChecked
-    size: Flow.Util.formatBytes frame.byte_size
+    size: util.formatBytes frame.byte_size
     rowCount: frame.rows
     columnCount: frame.columns
     isText: frame.is_text

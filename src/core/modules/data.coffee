@@ -1,4 +1,3 @@
-
 #
 # Insane hack to compress large 2D data tables.
 # The basis for doing this is described here:
@@ -21,17 +20,20 @@
 # foo = new Foo()
 #
 
+{ stringify } = require('../../core/modules/prelude')
+{ uniqueId } = require('lodash')
+
 _prototypeId = 0
 nextPrototypeName = -> "Map#{++_prototypeId}"
 _prototypeCache = {}
 createCompiledPrototype = (attrs) ->
   # Since the prototype depends only on attribute names,
   #  return a cached prototype, if any.
-  cacheKey = join attrs, '\0'
+  cacheKey = attrs.join '\0'
   return proto if proto = _prototypeCache[cacheKey]
 
   params = ( "a#{i}" for i in [0 ... attrs.length] )
-  inits = ( "this[#{JSON.stringify attr}]=a#{i};" for attr, i in attrs )
+  inits = ( "this[#{stringify attr}]=a#{i};" for attr, i in attrs )
 
   prototypeName = nextPrototypeName()
   _prototypeCache[cacheKey] = (new Function "function #{prototypeName}(#{params.join ','}){#{inits.join ''}} return #{prototypeName};")()
@@ -145,7 +147,7 @@ createFactor = (_label, _domain, _format, _read) ->
       level = if datum is undefined or datum is null then 'null' else datum
       unless undefined isnt id = _levels[level]
         _levels[level] = id = _id++
-        push self.domain, level
+        self.domain.push level
       id
 
   self
@@ -162,7 +164,7 @@ factor = (array) ->
     data[i] = id
   [ domain, data ]
 
-Flow.Data =
+module.exports =
   Table: createTable
   Variable: createVariable
   Factor: createFactor

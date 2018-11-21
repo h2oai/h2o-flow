@@ -1,3 +1,7 @@
+{ map } = require('lodash')
+
+{ lift, link, signal, signals } = require("../modules/dataflow")
+
 SystemClips = [
   'assist'
   'importFiles'
@@ -8,7 +12,8 @@ SystemClips = [
   'buildModel'
   'predict'
 ]
-Flow.Clipboard = (_) ->
+
+exports.init = (_) ->
   lengthOf = (array) -> if array.length then "(#{array.length})" else ''
   _systemClips = signals []
   _systemClipCount = lift _systemClips, lengthOf

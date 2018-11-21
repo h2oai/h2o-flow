@@ -1,4 +1,8 @@
-H2O.ScalaIntpOutput = (_, _go, _result) ->
+{ defer, map } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _result) ->
   _scalaIntpView = signal null
 
   createScalaIntpView = (result) ->

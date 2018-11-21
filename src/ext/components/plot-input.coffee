@@ -1,4 +1,10 @@
-H2O.PlotInput = (_, _go, _frame) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ TString, TNumber } = require('../../core/modules/types')
+
+module.exports = (_, _go, _frame) ->
   _types = [ 'point', 'path', 'rect' ]
   _vectors = for vector in _frame.vectors when vector.type is TString or vector.type is TNumber
     vector.label
@@ -10,7 +16,8 @@ H2O.PlotInput = (_, _go, _frame) ->
   _canPlot = lift _type, _x, _y, (type, x, y) -> type and x and y
   
   plot = ->
-    command = if color = _color()
+    color = _color()
+    command = if color
       """
       plot (g) -> g(
         g.#{_type()}(

@@ -1,4 +1,6 @@
-Flow.FileUploadDialog = (_, _go) ->
+{ link, signal, lift } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go) ->
   _form = signal null
   _file = signal null
 
@@ -17,4 +19,3 @@ Flow.FileUploadDialog = (_, _go) ->
   accept: accept
   decline: decline
   template: 'file-upload-dialog'
-

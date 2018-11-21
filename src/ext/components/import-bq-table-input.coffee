@@ -1,4 +1,9 @@
-H2O.ImportBqTableInput = (_, _go) ->
+{ defer } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go) ->
 
   _specifiedProject = signal ''
   _specifiedDataset = signal ''

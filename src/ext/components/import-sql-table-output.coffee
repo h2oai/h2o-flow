@@ -1,4 +1,8 @@
-H2O.ImportSqlTableOutput = (_, _go, _importResults) ->
+{ defer } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+
+module.exports = (_, _go, _importResults) ->
   viewData = ->
     if _importResults.status == 'DONE'
       _.insertAndExecuteCell 'cs', "getFrameSummary #{ stringify _importResults.dest.name }"

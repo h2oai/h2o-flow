@@ -1,4 +1,8 @@
-H2O.RDDsOutput = (_, _go, _rDDs) ->
+{ defer, map } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _rDDs) ->
   _rDDViews = signal []
 
   createRDDView = (rDD) ->

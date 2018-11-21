@@ -1,4 +1,15 @@
-H2O.CloudOutput = (_, _go, _cloud) ->
+{ defer, delay } = require('lodash')
+d3 = require('d3')
+moment = require('moment')
+
+{ signal, signals, act, react } = require('../../core/modules/dataflow')
+
+html = require('../../core/modules/html')
+failure = require('../../core/components/failure')
+FlowError = require('../../core/modules/flow-error')
+util = require('../../core/modules/util')
+
+module.exports = (_, _go, _cloud) ->
   _exception = signal null #TODO Display in .jade
   _isLive = signal no
   _isBusy = signal no
@@ -16,7 +27,7 @@ H2O.CloudOutput = (_, _go, _cloud) ->
   _nodes = do signals
   
   formatMilliseconds = (ms) ->
-    Flow.Util.fromNow new Date (new Date()).getTime() - ms
+    util.fromNow new Date (new Date()).getTime() - ms
 
   format3f = d3.format '.3f' # precision = 3
 
@@ -130,7 +141,7 @@ H2O.CloudOutput = (_, _go, _cloud) ->
     ]
 
   createGrid = (cloud, isExpanded) ->
-    [ grid, table, thead, tbody, tr, th, td, success, danger] = Flow.HTML.template '.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'i.fa.fa-check-circle.text-success', 'i.fa.fa-exclamation-circle.text-danger'
+    [ grid, table, thead, tbody, tr, th, td, success, danger] = html.template '.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'i.fa.fa-check-circle.text-success', 'i.fa.fa-exclamation-circle.text-danger'
     nodeRows = map cloud.nodes, createNodeRow
     nodeRows.push createTotalRow cloud
 
@@ -145,7 +156,7 @@ H2O.CloudOutput = (_, _go, _cloud) ->
           td cell
       tr tds
 
-    Flow.HTML.render 'div',
+    html.render 'div',
       grid [
         table [
           thead tr ths
@@ -171,7 +182,7 @@ H2O.CloudOutput = (_, _go, _cloud) ->
     _.requestCloud (error, cloud) ->
       _isBusy no
       if error
-        _exception Flow.Failure _, new Flow.Error 'Error fetching cloud status', error
+        _exception failure _, new FlowError 'Error fetching cloud status', error
         _isLive no
       else
         updateCloud (_cloud = cloud), _isExpanded()

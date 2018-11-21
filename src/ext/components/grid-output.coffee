@@ -1,4 +1,9 @@
-H2O.GridOutput = (_, _go, _grid) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _grid) ->
   _modelViews = signal []
   _hasModels = _grid.model_ids.length > 0
   _errorViews = signal []

@@ -1,4 +1,8 @@
-H2O.SplitFrameOutput = (_, _go, _splitFrameResult) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+
+module.exports = (_, _go, _splitFrameResult) ->
 
   computeRatios = (sourceRatios) ->
     total = 0

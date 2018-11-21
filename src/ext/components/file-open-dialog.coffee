@@ -1,11 +1,15 @@
-Flow.FileOpenDialog = (_, _go) ->
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+util = require('../modules/util')
+
+module.exports = (_, _go) ->
   _overwrite = signal no
   _form = signal null
   _file = signal null
 
   _canAccept = lift _file, (file) ->
     if file?.name
-      H2O.Util.validateFileExtension file.name, '.flow'
+      util.validateFileExtension file.name, '.flow'
     else
       no
 
@@ -18,7 +22,7 @@ Flow.FileOpenDialog = (_, _go) ->
 
   accept = ->
     if file = _file()
-      basename = H2O.Util.getFileBaseName file.name, '.flow'
+      basename = util.getFileBaseName file.name, '.flow'
       if _overwrite()
         uploadFile basename
       else

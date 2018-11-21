@@ -1,4 +1,9 @@
-H2O.ImportModelInput = (_, _go, path, opt={}) ->
+{ defer } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, path, opt={}) ->
   _path = signal path 
   _overwrite = signal if opt.overwrite then yes else no
   _canImportModel = lift _path, (path) -> path and path.length

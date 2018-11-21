@@ -1,4 +1,8 @@
-H2O.MergeFramesOutput = (_, _go, _mergeFramesResult) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+
+module.exports = (_, _go, _mergeFramesResult) ->
 
   _frameKey = _mergeFramesResult.key
 

@@ -1,5 +1,12 @@
-H2O.PredictInput = (_, _go, opt) ->
-  _destinationKey = signal opt.predictions_frame ? "prediction-#{Flow.Util.uuid()}"
+{ defer, map, isString, head } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+FlowError = require('../../core/modules/flow-error')
+
+module.exports = (_, _go, opt) ->
+  _destinationKey = signal opt.predictions_frame ? "prediction-#{util.uuid()}"
 
   _selectedModels = if opt.models
     opt.models
@@ -17,8 +24,8 @@ H2O.PredictInput = (_, _go, opt) ->
     else
       []
 
-  _selectedModelsCaption = join _selectedModels, ', '
-  _selectedFramesCaption = join _selectedFrames, ', '
+  _selectedModelsCaption = _selectedModels.join ', '
+  _selectedFramesCaption = _selectedFrames.join ', '
   _exception = signal null
   _selectedFrame = signal null
   _selectedModel = signal null
@@ -75,14 +82,14 @@ H2O.PredictInput = (_, _go, opt) ->
   unless _hasFrames
     _.requestFrames (error, frames) ->
       if error
-        _exception new Flow.Error 'Error fetching frame list.', error
+        _exception new FlowError 'Error fetching frame list.', error
       else
         _frames (frame.frame_id.name for frame in frames when not frame.is_text)
 
   unless _hasModels
     _.requestModels (error, models) ->
       if error
-        _exception new Flow.Error 'Error fetching model list.', error
+        _exception new FlowError 'Error fetching model list.', error
       else
         #TODO use models directly
         _models (model.model_id.name for model in models)

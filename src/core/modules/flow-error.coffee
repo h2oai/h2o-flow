@@ -1,5 +1,6 @@
 class FlowError extends Error
   constructor: (@message, @cause) ->
+    super()
     @name = 'FlowError'
     if @cause?.stack
       @stack = @cause.stack
@@ -10,5 +11,4 @@ class FlowError extends Error
       else
         @stack = printStackTrace()
 
-Flow.Error = FlowError
-
+module.exports = FlowError

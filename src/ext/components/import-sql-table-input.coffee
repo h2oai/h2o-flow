@@ -1,4 +1,9 @@
-H2O.ImportSqlTableInput = (_, _go) ->
+{ defer } = require('lodash')
+
+{ lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../modules/util')
+
+module.exports = (_, _go) ->
   _specifiedUrl = signal ''
   _specifiedTable = signal ''
   _specifiedColumns = signal ''
@@ -8,7 +13,7 @@ H2O.ImportSqlTableInput = (_, _go) ->
   _hasErrorMessage = lift _exception, (exception) -> if exception then yes else no
 
   importSqlTableAction = ->
-    encryptedPassword = H2O.Util.encryptPassword _specifiedPassword()
+    encryptedPassword = util.encryptPassword _specifiedPassword()
 
     opt =
        connection_url: _specifiedUrl()

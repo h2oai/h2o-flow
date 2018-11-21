@@ -1,21 +1,21 @@
-Flow.Autosave = (_) ->
-  warnOnExit = (e) ->
-    # message = 'You have unsaved changes to this notebook.'
-    message = 'Warning: you are about to exit Flow.'
+{ link } = require("./dataflow")
 
-    # < IE8 and < FF4
-    if e = e ? window.event
-      e.returnValue = message
+warnOnExit = (e) ->
+  # message = 'You have unsaved changes to this notebook.'
+  message = 'Warning: you are about to exit Flow.'
 
-    message
+  # < IE8 and < FF4
+  if e = e ? window.event
+    e.returnValue = message
 
-  setDirty = ->
-    window.onbeforeunload = warnOnExit
+  message
 
-  setPristine = ->
-    window.onbeforeunload = null
+setDirty = ->
+  window.onbeforeunload = warnOnExit
 
-  link _.ready, ->
-    link _.setDirty, setDirty
-    link _.setPristine, setPristine
+setPristine = ->
+  window.onbeforeunload = null
 
+exports.init = (_) -> link _.ready, ->
+  link _.setDirty, setDirty
+  link _.setPristine, setPristine

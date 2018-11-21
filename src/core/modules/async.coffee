@@ -1,3 +1,8 @@
+{ isString, isFunction, isArray, forEach } = require('lodash')
+
+{ typeOf } = require('./prelude')
+FlowError = require('./flow-error')
+
 createBuffer = (array) ->
   _array = array or []
   _go = null
@@ -17,10 +22,10 @@ _noop = (go) -> go null
 
 _applicate = (go) -> 
   (error, args) ->
-    apply go, null, [ error ].concat args if isFunction go
+    go.apply null, [ error ].concat args if isFunction go
 
 _fork = (f, args) ->
-  throw new Error "Not a function." unless isFunction f
+  throw new FlowError "Not a function." unless isFunction f
   self = (go) ->
     canGo = isFunction go
     if self.settled
@@ -37,7 +42,7 @@ _fork = (f, args) ->
           self.rejected = yes
           go error if canGo
         else
-          apply f, null,
+          f.apply null,
             args.concat (error, result) ->
               if error
                 self.error = error
@@ -87,7 +92,7 @@ _join = (args, go) ->
       return if _settled
       if error
         _settled = yes
-        go new Flow.Error "Error evaluating future[#{task.resultIndex}]", error
+        go new FlowError "Error evaluating future[#{task.resultIndex}]", error
       else
         _results[task.resultIndex] = result
         _actual++
@@ -100,27 +105,27 @@ _join = (args, go) ->
 # Like _.compose, but async. 
 # Equivalent to caolan/async.waterfall()
 pipe = (tasks) ->
-  _tasks = slice tasks, 0
+  _tasks = tasks.slice 0
 
   next = (args, go) ->
-    task = shift _tasks
+    task = _tasks.shift()
     if task
-      apply task, null, args.concat (error, results...) ->
+      task.apply null, args.concat (error, results...) ->
         if error
           go error
         else
           next results, go
     else
-      apply go, null, [ null ].concat args
+      go.apply null, [ null ].concat args
 
   (args..., go) ->
     next args, go
 
 iterate = (tasks) ->
-  _tasks = slice tasks, 0
+  _tasks = tasks.slice 0
   _results = []
   next = (go) ->
-    task = shift _tasks
+    task = _tasks.shift()
     if task
       task (error, result) ->
         if error
@@ -142,7 +147,7 @@ iterate = (tasks) ->
 _async = (f, args...) ->
   later = (args..., go) ->
     try
-      result = apply f, null, args
+      result = f.apply null, args
       go null, result
     catch error
       go error
@@ -208,7 +213,7 @@ _get = (attr, obj) ->
       return obj[attr]
   return
 
-Flow.Async =
+module.exports =
   createBuffer: createBuffer #XXX rename
   noop: _noop
   applicate: _applicate

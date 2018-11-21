@@ -1,4 +1,6 @@
-Flow.Markdown = (_) ->
+marked = require('../modules/marked')
+
+module.exports = (_) ->
   render = (input, output) ->
     try
       output.data

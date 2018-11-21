@@ -1,4 +1,6 @@
-H2O.Assist = (_, _go, _items) ->
+{ defer } = require('lodash')
+
+module.exports = (_, _go, _items) ->
   createAssistItem = (name, item) ->
     name: name
     description: item.description
@@ -9,4 +11,3 @@ H2O.Assist = (_, _go, _items) ->
 
   routines: (createAssistItem name, item for name, item of _items)
   template: 'flow-assist'
-

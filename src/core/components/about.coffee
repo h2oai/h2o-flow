@@ -1,11 +1,12 @@
-Flow.Version = '999.999.999'
+{ link, signal, signals } = require("../modules/dataflow")
 
-Flow.About = (_) ->
+exports.init = (_) ->
+  _.Version = '999.999.999' # TODO replace with component version
   _properties = signals []
 
   link _.ready, ->
-    if Flow.BuildProperties
-      _properties Flow.BuildProperties
+    if _.BuildProperties
+      _properties _.BuildProperties
     else
       _.requestAbout (error, response) ->
         properties = []
@@ -18,9 +19,9 @@ Flow.About = (_) ->
 
         properties.push
           caption: 'Flow version'
-          value: Flow.Version
+          value: _.Version
 
-        _properties Flow.BuildProperties = properties
+        _properties _.BuildProperties = properties
 
   properties: _properties
 

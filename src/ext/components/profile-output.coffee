@@ -1,4 +1,8 @@
-H2O.ProfileOutput = (_, _go, _profile) ->
+{ defer, head } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _profile) ->
   _activeNode = signal null
 
   createNode = (node) ->

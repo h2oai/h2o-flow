@@ -1,4 +1,9 @@
-Flow.Browser = (_) ->
+{ map, sortBy } = require('lodash')
+
+{ lift, link, signal, signals } = require("../modules/dataflow")
+{ fromNow } = require('../modules/util')
+
+exports.init = (_) ->
   _docs = signals []
 
   _sortedDocs = lift _docs, (docs) ->
@@ -9,7 +14,7 @@ Flow.Browser = (_) ->
   createNotebookView = (notebook) ->
     _name = notebook.name
     _date = signal new Date notebook.timestamp_millis
-    _fromNow = lift _date, Flow.Util.fromNow
+    _fromNow = lift _date, fromNow
 
     load = ->
       _.confirm 'This action will replace your active notebook.\nAre you sure you want to continue?', { acceptCaption: 'Load Notebook', declineCaption: 'Cancel' }, (accept) ->
@@ -36,7 +41,7 @@ Flow.Browser = (_) ->
   loadNotebooks = ->
     _.requestObjects 'notebook', (error, notebooks) ->
       if error
-        debug error
+        console.debug error
       else
         #XXX sort
         _docs map notebooks, (notebook) -> createNotebookView notebook

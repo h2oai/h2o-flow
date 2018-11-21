@@ -1,6 +1,13 @@
-H2O.MergeFramesInput = (_, _go) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+FlowError = require('../../core/modules/flow-error')
+
+module.exports = (_, _go) ->
   _exception = signal null #TODO display in .jade
-  _destinationKey = signal "merged-#{Flow.Util.uuid()}"
+  _destinationKey = signal "merged-#{util.uuid()}"
 
   _frames = signals []
   _selectedLeftFrame = signal null
@@ -45,7 +52,7 @@ H2O.MergeFramesInput = (_, _go) ->
 
   _.requestFrames (error, frames) ->
     if error
-      _exception new Flow.Error 'Error fetching frame list.', error
+      _exception new FlowError 'Error fetching frame list.', error
     else
       _frames (frame.frame_id.name for frame in frames when not frame.is_text)
 

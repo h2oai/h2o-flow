@@ -1,6 +1,10 @@
-Flow.AlertDialog = (_, _message, _opts={}, _go) ->
+lodash = require('lodash')
 
-  defaults _opts,
+util = require('../modules/util')
+
+module.exports = (_, _message, _opts={}, _go) ->
+
+  lodash.defaults _opts,
     title: 'Alert'
     acceptCaption: 'OK'
 
@@ -8,6 +12,6 @@ Flow.AlertDialog = (_, _message, _opts={}, _go) ->
 
   title: _opts.title
   acceptCaption: _opts.acceptCaption
-  message: Flow.Util.multilineTextToHTML _message
+  message: util.multilineTextToHTML _message
   accept: accept
   template: 'alert-dialog'

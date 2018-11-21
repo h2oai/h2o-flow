@@ -1,4 +1,4 @@
-Flow.Heading = (_, level) ->
+module.exports = (_, level) ->
   render = (input, output) ->
     output.data
       text: input.trim() or '(Untitled)'
@@ -6,4 +6,3 @@ Flow.Heading = (_, level) ->
     output.end()
   render.isCode = no
   render
-

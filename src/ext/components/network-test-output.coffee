@@ -1,4 +1,8 @@
-H2O.NetworkTestOutput = (_, _go, _testResult) ->
+{ defer, map } = require('lodash')
+
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _testResult) ->
   _result = signal null
   render = _.plot (g) ->
     g(
@@ -8,7 +12,7 @@ H2O.NetworkTestOutput = (_, _go, _testResult) ->
 
   render (error, vis) ->
     if error
-      debug error
+      console.debug error
     else
       _result vis.element
 

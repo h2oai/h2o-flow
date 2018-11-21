@@ -1,4 +1,12 @@
-H2O.TimelineOutput = (_, _go, _timeline) ->
+{ defer, tail, head, delay } = require('lodash')
+
+{ act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+html = require('../../core/modules/html')
+failure = require('../../core/components/failure')
+FlowError = require('../../core/modules/flow-error')
+
+module.exports = (_, _go, _timeline) ->
   _isLive = signal no
   _isBusy = signal no
 
@@ -51,14 +59,14 @@ H2O.TimelineOutput = (_, _go, _timeline) ->
         ]
 
   updateTimeline = (timeline) ->
-    [ grid, table, thead, tbody, tr, th, td ] = Flow.HTML.template '.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td'
+    [ grid, table, thead, tbody, tr, th, td ] = html.template '.grid', 'table', 'thead', 'tbody', 'tr', 'th', 'td'
 
     ths = (th header for header in _headers)
 
     trs = for event in timeline.events
       tr (td cell for cell in createEvent event)
 
-    _data Flow.HTML.render 'div',
+    _data html.render 'div',
       grid [
         table [
           thead tr ths
@@ -74,7 +82,7 @@ H2O.TimelineOutput = (_, _go, _timeline) ->
     _.requestTimeline (error, timeline) ->
       _isBusy no
       if error
-        _exception Flow.Failure _, new Flow.Error 'Error fetching timeline', error
+        _exception failure() _, new FlowError 'Error fetching timeline', error
         _isLive no
       else
         updateTimeline timeline

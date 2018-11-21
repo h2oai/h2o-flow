@@ -1,3 +1,8 @@
+{ defer, map, times, every, filter, throttle, forEach, find } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
 MaxItemsPerPage = 15
 
 parseTypes = map [ 'AUTO', 'ARFF', 'XLS', 'XLSX', 'CSV', 'SVMLight', 'ORC', 'AVRO', 'PARQUET' ], (type) -> type: type, caption: type
@@ -52,7 +57,7 @@ parseDelimiters = do ->
 
   otherDelimiters = [ charCode: -1, caption: 'AUTO' ]
 
-  concat whitespaceDelimiters, characterDelimiters, otherDelimiters
+  whitespaceDelimiters.concat characterDelimiters, otherDelimiters
 
 dataTypes = [
   'Unknown'
@@ -64,7 +69,7 @@ dataTypes = [
   'Invalid'
 ]
 
-H2O.SetupParseOutput = (_, _go, _inputs, _result) ->
+module.exports = (_, _go, _inputs, _result) ->
   _inputKey = if _inputs.paths then 'paths' else 'source_frames'
   _sourceKeys = map _result.source_frames, (src) -> src.name
   _parseType =  signal find parseTypes, (parseType) -> parseType.type is _result.parse_type

@@ -1,13 +1,20 @@
-H2O.Proxy = (_) ->
+{ isString, isNumber, isArray, isObject, map, filter, head } = require('lodash')
+
+{ lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ iterate } = require('../../core/modules/async')
+FlowError = require('../../core/modules/flow-error')
+util = require('./util')
+
+exports.init = (_) ->
 
   download = (type, url, go) ->
     if url.substring(0,1) == "/"
-        url = window.Flow.ContextPath + url.substring(1)
+        url = _.ContextPath + url.substring(1)
     $.ajax
       dataType: type
       url: url
       success: (data, status, xhr) -> go null, data
-      error: (xhr, status, error) -> go new Flow.Error error
+      error: (xhr, status, error) -> go new FlowError error
 
   optsToString = (opts) ->
     if opts?
@@ -18,10 +25,10 @@ H2O.Proxy = (_) ->
         str
     else
       ''
-  
+
   http = (method, path, opts, go) ->
     if path.substring(0,1) == "/"
-      path = window.Flow.ContextPath + path.substring(1)
+      path = _.ContextPath + path.substring(1)
 
     _.status 'server', 'request', path
 
@@ -58,27 +65,28 @@ H2O.Proxy = (_) ->
       try
         go null, data
       catch error
-        go new Flow.Error "Error processing #{method} #{path}", error
+        console.debug(error)
+        go new FlowError "Error processing #{method} #{path}", error
 
     req.fail (xhr, status, error) ->
       _.status 'server', 'error', path
 
       response = xhr.responseJSON
-      
+
       cause = if (meta = response?.__meta) and (meta.schema_type is 'H2OError' or meta.schema_type is 'H2OModelBuilderError')
-        serverError = new Flow.Error response.exception_msg
+        serverError = new FlowError response.exception_msg
         serverError.stack = "#{response.dev_msg} (#{response.exception_type})" + "\n  " + response.stacktrace.join "\n  "
         serverError
       else if error?.message
-        new Flow.Error error.message
+        new FlowError error.message
       else
         # special-case net::ERR_CONNECTION_REFUSED
         if status is 'error' and xhr.status is 0
-          new Flow.Error "Could not connect to H2O. Your H2O cloud is currently unresponsive."
+          new FlowError "Could not connect to H2O. Your H2O cloud is currently unresponsive."
         else
-          new Flow.Error "HTTP connection failure: status=#{status}, code=#{xhr.status}, error=#{error or '?'}"
+          new FlowError "HTTP connection failure: status=#{status}, code=#{xhr.status}, error=#{error or '?'}"
 
-      go new Flow.Error "Error calling #{method} #{path}#{optsToString opts}", cause
+      go new FlowError "Error calling #{method} #{path}#{optsToString opts}", cause
 
   doGet = (path, go) -> http 'GET', path, null, go
   doPost = (path, opts, go) -> http 'POST', path, opts, go
@@ -106,17 +114,17 @@ H2O.Proxy = (_) ->
   composePath = (path, opts) ->
     if opts
       params = mapWithKey opts, (v, k) -> "#{k}=#{v}"
-      path + '?' + join params, '&'
+      path + '?' + params.join '&'
     else
       path
 
   requestWithOpts = (path, opts, go) ->
     doGet (composePath path, opts), go
 
-  encodeArrayForPost = (array) -> 
+  encodeArrayForPost = (array) ->
     if array
       if array.length is 0
-        null 
+        null
       else
         mappedArray = map array, (element) ->
           if isNumber element
@@ -124,7 +132,7 @@ H2O.Proxy = (_) ->
           if isObject element
             return JSON.stringify element
           return "\"#{element}\""
-        "[#{join mappedArray, ','}]"
+        "[#{mappedArray.join ','}]"
     else
       null
 
@@ -154,7 +162,7 @@ H2O.Proxy = (_) ->
       else
         #TODO HACK - this api returns a 200 OK on failures
         if result.error
-          go new Flow.Error result.error
+          go new FlowError result.error
         else
           go null, result
 
@@ -219,21 +227,21 @@ H2O.Proxy = (_) ->
   requestJobs = (go) ->
     doGet '/3/Jobs', (error, result) ->
       if error
-        go new Flow.Error 'Error fetching jobs', error
+        go new FlowError 'Error fetching jobs', error
       else
-        go null, result.jobs 
+        go null, result.jobs
 
   requestJob = (key, go) ->
     doGet "/3/Jobs/#{encodeURIComponent key}", (error, result) ->
       if error
-        go new Flow.Error "Error fetching job '#{key}'", error
+        go new FlowError "Error fetching job '#{key}'", error
       else
         go null, head result.jobs
 
   requestCancelJob = (key, go) ->
     doPost "/3/Jobs/#{encodeURIComponent key}/cancel", {}, (error, result) ->
       if error
-        go new Flow.Error "Error canceling job '#{key}'", error
+        go new FlowError "Error canceling job '#{key}'", error
       else
         go null
 
@@ -247,14 +255,14 @@ H2O.Proxy = (_) ->
     tasks = map paths, (path) ->
       (go) ->
         requestImportFile path, go
-    (Flow.Async.iterate tasks) go
+    (iterate tasks) go
 
   requestImportFile = (path, go) ->
     opts = path: encodeURIComponent path
     requestWithOpts '/3/ImportFiles', opts, go
 
   requestImportSqlTable = (args, go) ->
-    decryptedPassword = H2O.Util.decryptPassword args.password
+    decryptedPassword = util.decryptPassword args.password
     opts =
       connection_url: args.connection_url
       table: args.table
@@ -270,7 +278,7 @@ H2O.Proxy = (_) ->
     doPost '/3/ParseSetup', opts, go
 
   requestParseSetupPreview = (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, columnTypes, go) ->
-    opts = 
+    opts =
       source_frames: encodeArrayForPost sourceKeys
       parse_type: parseType
       separator: separator
@@ -294,7 +302,7 @@ H2O.Proxy = (_) ->
       chunk_size: chunkSize
     doPost '/3/Parse', opts, go
 
-  # Create data for partial dependence plot(s) 
+  # Create data for partial dependence plot(s)
   # for the specified model and frame.
   #
   # make a post request to h2o-3 to do request
@@ -311,10 +319,10 @@ H2O.Proxy = (_) ->
   # subject to the other options `opts`
   #
   # returns a json response that contains
-  # 
+  #
   requestPartialDependenceData = (key, go) ->
     doGet "/3/PartialDependence/#{encodeURIComponent key}", (error, result) ->
-      if error 
+      if error
         go error, result
       else go error, result
 
@@ -465,7 +473,7 @@ H2O.Proxy = (_) ->
       else
         #
         # TODO workaround for a filtering bug in the API
-        # 
+        #
         predictions = for prediction in result.model_metrics
           if modelKey and prediction.model.name isnt modelKey
             null
@@ -575,7 +583,7 @@ H2O.Proxy = (_) ->
     doGet "/3/Metadata/schemas/#{encodeURIComponent name}", go
 
   getLines = (data) ->
-    filter (split data, '\n'), (line) -> if line.trim() then yes else no
+    filter (data.split '\n'), (line) -> if line.trim() then yes else no
 
   requestPacks = (go) ->
     download 'text', '/flow/packs/index.list', unwrap go, getLines

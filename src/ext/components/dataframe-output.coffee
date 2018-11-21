@@ -1,4 +1,6 @@
-H2O.DataFrameOutput = (_, _go, _result) ->
+{ defer } = require('lodash')
+
+module.exports = (_, _go, _result) ->
   _dataFrameView = signal null
 
   createDataFrameView = (result) ->

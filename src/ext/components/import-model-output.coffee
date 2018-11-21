@@ -1,4 +1,8 @@
-H2O.ImportModelOutput = (_, _go, result) ->
+{ defer } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+
+module.exports = (_, _go, result) ->
   viewModel = ->
     _.insertAndExecuteCell 'cs', "getModel #{stringify result.models[0].model_id.name}" 
   defer _go

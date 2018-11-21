@@ -1,10 +1,9 @@
-return unless window?.marked?
+marked = require('marked')
+highlightjs = require('highlightjs')
 
 marked.setOptions
   smartypants: yes
   highlight: (code, lang) ->
-    if window.hljs
-      (window.hljs.highlightAuto code, [ lang ]).value
-    else
-      code
+    (highlightjs.highlightAuto code, [ lang ]).value
 
+module.exports = marked

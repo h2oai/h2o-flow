@@ -1,4 +1,8 @@
-H2O.InspectOutput = (_, _go, _frame) ->
+{ defer } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+
+module.exports = (_, _go, _frame) ->
   
   view = ->
     _.insertAndExecuteCell 'cs', "grid inspect #{stringify _frame.label}, #{_frame.metadata.origin}"

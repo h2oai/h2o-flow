@@ -1,5 +1,12 @@
-Flow.Coffeescript = (_, guid, sandbox) ->
-  _kernel = Flow.CoffeescriptKernel
+{ isRoutine, isFunction } = require('lodash')
+
+{ signal, link } = require('../modules/dataflow')
+async = require('../modules/async')
+kernel = require('../modules/coffeescript-kernel')
+FlowError = require('../modules/flow-error')
+objectBrowser = require('./object-browser')
+
+module.exports = (_, guid, sandbox) ->
 
   print = (arg) ->
     if arg isnt print
@@ -13,38 +20,39 @@ Flow.Coffeescript = (_, guid, sandbox) ->
 
   # XXX special-case functions so that bodies are not printed with the raw renderer.
   render = (input, output) ->
+    outputBuffer = async.createBuffer []
     sandbox.results[guid] = cellResult =
       result: signal null
-      outputs: outputBuffer = Flow.Async.createBuffer []
+      outputs: outputBuffer
     
     evaluate = (ft) ->
       if ft?.isFuture
         ft (error, result) ->
           if error
-            output.error new Flow.Error 'Error evaluating cell', error
+            output.error new FlowError 'Error evaluating cell', error
             output.end()
           else
             if result?._flow_?.render
               output.data result._flow_.render -> output.end()
             else
-              output.data Flow.ObjectBrowser _, (-> output.end()), 'output', result
+              output.data objectBrowser _, (-> output.end()), 'output', result
       else
-        output.data Flow.ObjectBrowser _, (-> output.end()), 'output', ft
+        output.data objectBrowser _, (-> output.end()), 'output', ft
 
     outputBuffer.subscribe evaluate
 
     tasks = [
-      _kernel.safetyWrapCoffeescript guid
-      _kernel.compileCoffeescript
-      _kernel.parseJavascript
-      _kernel.createRootScope sandbox
-      _kernel.removeHoistedDeclarations
-      _kernel.rewriteJavascript sandbox
-      _kernel.generateJavascript
-      _kernel.compileJavascript
-      _kernel.executeJavascript sandbox, print
+      kernel.safetyWrapCoffeescript guid
+      kernel.compileCoffeescript
+      kernel.parseJavascript
+      kernel.createRootScope sandbox
+      kernel.removeHoistedDeclarations
+      kernel.rewriteJavascript sandbox
+      kernel.generateJavascript
+      kernel.compileJavascript
+      kernel.executeJavascript sandbox, print
     ]
-    (Flow.Async.pipe tasks) input, (error) ->
+    (async.pipe tasks) input, (error) ->
       output.error error if error
 
       result = cellResult.result()
@@ -54,7 +62,7 @@ Flow.Coffeescript = (_, guid, sandbox) ->
         else
           evaluate result
       else
-        output.close Flow.ObjectBrowser _, (-> output.end()), 'result', result
+        output.close objectBrowser _, (-> output.end()), 'result', result
 
   render.isCode = yes
   render

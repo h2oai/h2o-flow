@@ -1,26 +1,27 @@
-Flow.ApplicationContext = (_) ->
-  _.ready = do slots
-  _.initialized = do slots
-  _.open = do slot
-  _.load = do slot
-  _.saved = do slots
-  _.loaded = do slots
-  _.setDirty = do slots
-  _.setPristine = do slots
-  _.status = do slot
-  _.trackEvent = do slot
-  _.trackException = do slot
-  _.selectCell = do slot
-  _.insertCell = do slot
-  _.insertAndExecuteCell = do slot
-  _.executeAllCells = do slot
-  _.showHelp = do slot
-  _.showOutline = do slot
-  _.showBrowser = do slot
-  _.showClipboard = do slot
-  _.saveClip = do slot
-  _.growl = do slot
-  _.confirm = do slot
-  _.alert = do slot
-  _.dialog = do slot
+{slots, slot} = require("./dataflow")
 
+module.exports =
+  ready: do slots,
+  initialized: do slots
+  open: do slot
+  load: do slot
+  saved: do slots
+  loaded: do slots
+  setDirty: do slots
+  setPristine: do slots
+  status: do slot
+  trackEvent: do slot
+  trackException: do slot
+  selectCell: do slot
+  insertCell: do slot
+  insertAndExecuteCell: do slot
+  executeAllCells: do slot
+  showHelp: do slot
+  showOutline: do slot
+  showBrowser: do slot
+  showClipboard: do slot
+  saveClip: do slot
+  growl: do slot
+  confirm: do slot
+  alert: do slot
+  dialog: do slot

@@ -1,4 +1,8 @@
-H2O.InspectsOutput = (_, _go, _tables) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+
+module.exports = (_, _go, _tables) ->
   createTableView = (table) ->
     inspect = -> 
       _.insertAndExecuteCell 'cs', "inspect #{stringify table.label}, #{table.metadata.origin}"

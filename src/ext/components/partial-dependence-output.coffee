@@ -1,4 +1,9 @@
-H2O.PartialDependenceOutput = (_, _go, _result) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _result) ->
 
   _destinationKey = _result.destination_key
   _modelId = _result.model_id.name
@@ -8,7 +13,7 @@ H2O.PartialDependenceOutput = (_, _go, _result) ->
   renderPlot = (target, render) ->
     render (error, vis) ->
       if error
-        debug error
+        console.debug error
       else
         target vis.element
 

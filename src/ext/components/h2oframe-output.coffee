@@ -1,4 +1,6 @@
-H2O.H2OFrameOutput = (_, _go, _result) ->
+{ defer } = require('lodash')
+
+module.exports = (_, _go, _result) ->
   _h2oframeView = signal null
   createH2oFrameView = (result) ->
     h2oframe_id: result.h2oframe_id

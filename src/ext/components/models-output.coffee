@@ -1,4 +1,9 @@
-H2O.ModelsOutput = (_, _go, _models) ->
+{ defer, map } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+module.exports = (_, _go, _models) ->
   _modelViews = signal []
   _checkAllModels = signal no
   _checkedModelCount = signal 0

@@ -1,4 +1,10 @@
-H2O.FrameOutput = (_, _go, _frame) ->
+{ defer, throttle } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+util = require('../../core/modules/util')
+
+module.exports = (_, _go, _frame) ->
   MaxItemsPerPage = 20
 
   _grid = signal null
@@ -13,14 +19,14 @@ H2O.FrameOutput = (_, _go, _frame) ->
   renderPlot = (container, render) ->
     render (error, vis) ->
       if error
-        debug error
+        console.debug error
       else
         container vis.element
 
   renderGrid = (render) ->
     render (error, vis) ->
       if error
-        debug error
+        console.debug error
       else
         $('a', vis.element).on 'click', (e) ->
           $a = $ e.target
@@ -50,7 +56,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
     _.insertAndExecuteCell 'cs', "predict frame: #{stringify _frame.frame_id.name}"
 
   download = ->
-    window.open window.Flow.ContextPath + "3/DownloadDataset?frame_id=#{encodeURIComponent _frame.frame_id.name}", '_blank'
+    window.open _.ContextPath + "3/DownloadDataset?frame_id=#{encodeURIComponent _frame.frame_id.name}", '_blank'
 
   exportFrame = ->
     _.insertAndExecuteCell 'cs', "exportFrame #{stringify _frame.frame_id.name}"
@@ -116,7 +122,7 @@ H2O.FrameOutput = (_, _go, _frame) ->
   key: _frame.frame_id.name
   rowCount: _frame.rows
   columnCount: _frame.total_column_count
-  size: Flow.Util.formatBytes _frame.byte_size
+  size: util.formatBytes _frame.byte_size
   chunkSummary: _chunkSummary
   distributionSummary: _distributionSummary
   columnNameSearchTerm: _columnNameSearchTerm

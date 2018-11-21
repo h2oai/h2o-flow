@@ -1,4 +1,13 @@
-jobOutputStatusColors = 
+{ defer, delay } = require('lodash')
+
+{ stringify } = require('../../core/modules/prelude')
+{ act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+
+failure = require('../../core/components/failure')
+FlowError = require('../../core/modules/flow-error')
+util = require('../../core/modules/util')
+
+jobOutputStatusColors =
   failed: '#d9534f'
   done: '#ccc' #'#5cb85c'
   running: '#f0ad4e'
@@ -20,7 +29,7 @@ getJobOutputStatusColor = (status) ->
 getJobProgressPercent = (progress) ->
   "#{Math.ceil 100 * progress}%"
 
-H2O.JobOutput = (_, _go, _job) ->
+module.exports = (_, _go, _job) ->
   _isBusy = signal no
   _isLive = signal no
 
@@ -72,9 +81,9 @@ H2O.JobOutput = (_, _go, _job) ->
         not isJobRunning job
 
   updateJob = (job) ->
-    _runTime Flow.Util.formatMilliseconds job.msec
+    _runTime util.formatMilliseconds job.msec
     _progress getJobProgressPercent job.progress
-    _remainingTime if job.progress then (Flow.Util.formatMilliseconds Math.round((1 - job.progress) * job.msec / job.progress)) else 'Estimating...'
+    _remainingTime if job.progress then (util.formatMilliseconds Math.round((1 - job.progress) * job.msec / job.progress)) else 'Estimating...'
     _progressMessage job.progress_msg
     _status job.status
     _statusColor getJobOutputStatusColor job.status
@@ -88,7 +97,7 @@ H2O.JobOutput = (_, _go, _job) ->
       cause = new Error job.exception
       if job.stacktrace
         cause.stack = job.stacktrace
-      _exception Flow.Failure _, new Flow.Error 'Job failure.', cause
+      _exception failure _, new FlowError 'Job failure.', cause
 
     _canView canView job
     _canCancel isJobRunning job
@@ -98,7 +107,7 @@ H2O.JobOutput = (_, _go, _job) ->
     _.requestJob _key, (error, job) ->
       _isBusy no
       if error
-        _exception Flow.Failure _, new Flow.Error 'Error fetching jobs', error
+        _exception failure _, new FlowError 'Error fetching jobs', error
         _isLive no
       else
         updateJob job
@@ -132,7 +141,7 @@ H2O.JobOutput = (_, _go, _job) ->
   cancel = ->
     _.requestCancelJob _key, (error, result) ->
       if error
-        debug error
+        console.debug error
       else
         updateJob _job
 

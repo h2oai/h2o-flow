@@ -1,4 +1,6 @@
-H2O.ApplicationContext = (_) ->
+{ slot, slots, signal } = require('../../core/modules/dataflow')
+
+exports.init = (_) ->
   _.requestFileGlob = do slot
   _.requestCreateFrame = do slot
   _.requestSplitFrame = do slot
