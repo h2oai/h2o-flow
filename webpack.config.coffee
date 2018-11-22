@@ -6,8 +6,10 @@ HtmlWebpackPlugin = require('html-webpack-plugin')
 CleanWebpackPlugin = require('clean-webpack-plugin')
 MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
+packageJson = require('./package.json');
+
 config =
-  mode: 'development',
+  mode: 'development'
   context: path.resolve __dirname, 'src'
   entry: './index.coffee'
   devtool: 'inline-source-map'
@@ -100,12 +102,15 @@ config =
       filename: 'css/flow.css'
     }),
     new webpack.ProvidePlugin({
-      $: 'jquery',
+      $: 'jquery'
       jQuery: 'jquery'
     }),
     new webpack.LoaderOptionsPlugin({
          debug: true
-    })
+    }),
+    new webpack.DefinePlugin({
+      FLOW_VERSION: JSON.stringify packageJson.version
+    });
   ]
 
 module.exports = config

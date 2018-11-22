@@ -84,9 +84,8 @@ try {
                                     ln -s /home/jenkins/flow-cache/node_modules/ ./node_modules
                                     ln -s /home/jenkins/flow-cache/lib/ ./lib
 
+                                    sed -E "s/.+version.+/  \\"version\\": \\"$flowVersion\\",/" package.json > package.json.tmp && mv package.json.tmp package.json
                                     make build
-                                    sed -E "s/.+version.+/  \\"version\\": \\"$flowVersion\\",/" bower.json > bower.json.tmp && mv bower.json.tmp bower.json
-                                    sed -E "s/999\\.999\\.999/$flowVersion/" build/js/flow.js > build/js/flow.js.tmp && mv build/js/flow.js.tmp build/js/flow.js
                                 """
                             }
                         }
