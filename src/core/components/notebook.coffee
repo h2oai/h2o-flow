@@ -1,4 +1,4 @@
-{ map, defer, head, join, find } = require('lodash')
+{ map, defer, head, join, find, escape, last } = require('lodash')
 
 Mousetrap = require('mousetrap')
 window.Mousetrap = Mousetrap

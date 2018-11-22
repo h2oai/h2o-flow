@@ -88,7 +88,7 @@ _join = (args, go) ->
   _settled = no
 
   forEach _tasks, (task) ->
-    call task.future, null, (error, result) ->
+    task.future.call null, (error, result) ->
       return if _settled
       if error
         _settled = yes

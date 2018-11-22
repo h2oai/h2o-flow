@@ -1,5 +1,5 @@
 marked = require('../modules/marked')
-{ map, filter, head } = require('lodash')
+{ map, filter, head, escape } = require('lodash')
 
 { lift, link, signal, signals } = require("../modules/dataflow")
 html = require('../modules/html')

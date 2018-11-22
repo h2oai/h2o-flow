@@ -1,4 +1,4 @@
-{ defer, delay } = require('lodash')
+{ defer, delay, map } = require('lodash')
 d3 = require('d3')
 moment = require('moment')
 
