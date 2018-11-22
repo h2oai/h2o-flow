@@ -81,12 +81,12 @@ exports.init = (_) ->
     switch action
       when 'help'
         topic = _index[$el.attr 'data-topic']
-        _.requestHelpContent topic.name, (error, html) ->
+        _.requestHelpContent topic.name, (error, content) ->
           [ div, mark, h5, h6 ] = html.template 'div', 'mark', 'h5', 'h6'
           contents = [
             mark 'Help'
             h5 topic.title
-            fixImageSources div html
+            fixImageSources div content
           ]
 
           # render a TOC if this topic has children

@@ -1,7 +1,7 @@
 { link, signal, signals } = require("../modules/dataflow")
 
 exports.init = (_) ->
-  _.Version = '999.999.999' # TODO replace with component version
+  _.Version = FLOW_VERSION # global provided by webpack
   _properties = signals []
 
   link _.ready, ->
