@@ -1,4 +1,4 @@
-{ defer, mpa, delay } = require('lodash')
+{ defer, map, delay } = require('lodash')
 
 { stringify } = require('../../core/modules/prelude')
 { act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")

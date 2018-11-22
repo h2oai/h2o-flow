@@ -14,7 +14,7 @@ Digits = (digits, value) ->
       magnitude = Math.pow 10, digits - sd
       Math.round(value * magnitude) / magnitude
 
-formatTime = d3.timeFormat '%Y-%m-%d %H:%M:%S' unless exports?
+formatTime = d3.timeFormat '%Y-%m-%d %H:%M:%S'
 
 formatDate = (time) -> if time then formatTime new Date time else '-'
 

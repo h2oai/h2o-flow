@@ -1,13 +1,15 @@
 webpack = require('webpack')
-HtmlWebpackPlugin = require('html-webpack-plugin')
-CleanWebpackPlugin = require('clean-webpack-plugin')
 path = require('path')
 nib = require('nib')
+
+HtmlWebpackPlugin = require('html-webpack-plugin')
+CleanWebpackPlugin = require('clean-webpack-plugin')
+MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 config =
   mode: 'development',
   context: path.resolve __dirname, 'src'
-  entry: './core/flow.coffee'
+  entry: './index.coffee'
   devtool: 'inline-source-map'
   devServer: {
     contentBase: './build'
@@ -15,7 +17,7 @@ config =
   module:
     rules: [
       {
-        test: /\.coffee$/,
+        test: /\.coffee$/
         use: [
           {
             loader: 'coffee-loader'
@@ -23,7 +25,7 @@ config =
         ]
       },
       {
-        test: /\.jade$/,
+        test: /\.jade$/
         use: [
           {
             loader: 'pug-loader'
@@ -32,45 +34,77 @@ config =
         ]
       },
       {
-        test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        test: /\.css$/
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader
+            options: {
+              publicPath: '../'
+            }
+          },
+          'css-loader'
+        ]
       },
       {
-        test: /\.styl$/,
+        test: /\.styl$/
         use: [
-          'style-loader',
+          {
+            loader: MiniCssExtractPlugin.loader
+            options: {
+              publicPath: '../'
+            }
+          },
           'css-loader',
           {
-            loader: 'stylus-loader',
+            loader: 'stylus-loader'
             options: {
-              use: [nib()],
-            },
-          },
-        ],
+              use: [nib()]
+            }
+          }
+        ]
       },
       {
-        test: /\.(png|svg|jpg|gif|ico)$/,
-        use: ['file-loader']
+        test: /\.(png|svg|jpg|gif|ico)$/
+        use: [
+          {
+            loader: 'file-loader'
+            options:
+              name: '[name].[ext]'
+              outputPath: 'img/'
+          }
+        ]
       },
       {
-        test: /\.(woff|woff2|eot|ttf|otf)$/,
-        use: ['file-loader']
+        test: /\.(woff|woff2|eot|ttf|otf)$/
+        use: [
+          {
+            loader: 'file-loader'
+            options:
+              name: '[name].[ext]'
+              outputPath: 'fonts/'
+          }
+        ]
       }
     ]
   resolve:
     extensions: [".coffee", ".js"]
   output:
-    filename: 'js/bundle.js'
+    filename: 'js/flow.js'
     path: path.resolve(__dirname, 'build')
   plugins: [
-    new CleanWebpackPlugin(['dist']),
     new HtmlWebpackPlugin({
-      favicon: './favicon.ico',
+      favicon: './favicon.ico'
       template: './index.jade'
+    }),
+    new MiniCssExtractPlugin({
+      filename: 'css/flow.css'
     }),
     new webpack.ProvidePlugin({
       $: 'jquery',
       jQuery: 'jquery'
+    }),
+    new webpack.LoaderOptionsPlugin({
+         debug: true
     })
   ]
 

@@ -34,6 +34,9 @@ ko = require('knockout')
 require('typeahead.js')
 
 CodeMirror = require('codemirror')
+require('codemirror/mode/clike/clike')
+require('codemirror/addon/edit/matchbrackets')
+
 marked = require('./marked')
 
 ko.bindingHandlers.raw =

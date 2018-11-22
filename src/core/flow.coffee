@@ -14,10 +14,6 @@ context = require("./modules/application-context")
 h2oApplication = require('../ext/modules/application')
 
 ko = require('./modules/knockout')
-bootstrap = require('bootstrap/js/modal')
-$ = require("jquery")
-window.$ = $
-window.Flow = {}
 
 getContextPath = (_) ->
     if process.env.NODE_ENV == "development"
@@ -45,7 +41,7 @@ checkSparklingWater = (context) ->
         async: false
 
 console.debug "Checking jQuery loaded"
-if window?.$?
+if $
   $ ->
     console.debug "Starting Flow"
     getContextPath context
