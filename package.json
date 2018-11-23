@@ -8,14 +8,13 @@
   },
   "scripts": {
     "build": "webpack",
+    "clean": "rm -r build",
     "watch": "webpack --watch",
     "start": "webpack-dev-server --open",
-    "clean": "webpack clean",
-    "build-tests": "gulp buildTests",
-    "headless": "gulp && phantomjs build/js/headless-test.js --packs examples",
-    "test-raw": "gulp buildTests && node build/js/flow-tests.js -s",
-    "test": "gulp buildTests && node build/js/flow-tests.js -s | faucet",
-    "coverage": "mkdir -p build/js/coverage && gulp buildTests && istanbul cover --dir build/js/coverage -x \"**/lib/**\" build/js/flow-tests.js && istanbul report --dir build/js/coverage cobertura"
+    "test-raw": "coffee test/unit.tests.coffee -s",
+    "test": "coffee test/unit.tests.coffee -s | faucet",
+    "headless": "phantomjs build/js/headless-test.js --host localhost:8080 --packs examples",
+    "headless-compile": "coffee --compile --transpile --output build/js test/*-test.coffee"
   },
   "repository": {
     "type": "git",
@@ -59,7 +58,6 @@
     "file-loader": "^2.0.0",
     "groc": "^0.8.0",
     "html-webpack-plugin": "^3.2.0",
-    "istanbul": "^0.4.5",
     "js-yaml": "~3.2.2",
     "jshint": "^2.9.6",
     "mini-css-extract-plugin": "^0.4.5",

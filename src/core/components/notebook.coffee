@@ -480,14 +480,14 @@ exports.init = (_, _renderers) ->
 
     executeNextCell = ->
       if _isRunningAll() # will be false if user-aborted
-        cell = shift cells
+        cell = cells.shift()
         if cell
           # Scroll immediately without affecting selection state.
           cell.scrollIntoView yes
 
           cellIndex++
           _runningCaption "Running cell #{cellIndex} of #{cellCount}"
-          _runningPercent "#{floor 100 * cellIndex/cellCount}%"
+          _runningPercent "#{Math.floor 100 * cellIndex/cellCount}%"
           _runningCellInput cell.input()
 
           #TODO Continuation should be EFC, and passing an error should abort 'run all'

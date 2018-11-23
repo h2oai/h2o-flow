@@ -82,7 +82,6 @@ try {
                                     id
 
                                     ln -s /home/jenkins/flow-cache/node_modules/ ./node_modules
-                                    ln -s /home/jenkins/flow-cache/lib/ ./lib
 
                                     sed -E "s/.+version.+/  \\"version\\": \\"$flowVersion\\",/" package.json > package.json.tmp && mv package.json.tmp package.json
                                     make build

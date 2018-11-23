@@ -3,7 +3,6 @@
 #
 { map, forEach, isFunction, isArray } = require('lodash')
 
-ko = require('./knockout')
 { copy, never, remove } = require('./prelude')
 
 createSlot = ->
@@ -47,7 +46,8 @@ createSlots = ->
 
   self
 
-if ko?
+if window?
+  ko = require('./knockout')
   createObservable = ko.observable
   createObservableArray = ko.observableArray
   isObservable = ko.isObservable

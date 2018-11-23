@@ -31,7 +31,7 @@ config =
         use: [
           {
             loader: 'pug-loader'
-            options: {pretty: yes}
+            options: { pretty: yes }
           }
         ]
       },
@@ -40,9 +40,8 @@ config =
         use: [
           {
             loader: MiniCssExtractPlugin.loader
-            options: {
+            options:
               publicPath: '../'
-            }
           },
           'css-loader'
         ]
@@ -52,16 +51,14 @@ config =
         use: [
           {
             loader: MiniCssExtractPlugin.loader
-            options: {
+            options:
               publicPath: '../'
-            }
           },
           'css-loader',
           {
             loader: 'stylus-loader'
-            options: {
+            options:
               use: [nib()]
-            }
           }
         ]
       },

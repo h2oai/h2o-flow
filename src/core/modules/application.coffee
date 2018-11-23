@@ -18,3 +18,4 @@ exports.init = (_) ->
   context: _
   sandbox: _sandbox
   view: _notebook
+  async: require('./async')
