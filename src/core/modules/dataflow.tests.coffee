@@ -1,3 +1,8 @@
+test = require('tape')
+{ isUndefined } = require('lodash')
+
+{ act, react, merge, slot, slots, link, unlink, signal, lift } = require('./dataflow')
+
 test 'dataflow slot should not fail when unlinked', (t) ->
   func = do slot
   result = null
@@ -32,7 +37,7 @@ test 'dataflow slot should stop propagating when unlinked', (t) ->
 test 'dataflow slot should stop propagating when disposed', (t) ->
   func = do slot
   target = (a, b, c) -> a + b + c
-  arrow = link func, target
+  link func, target
   t.equal func(1, 2, 3), 6
   func.dispose()
   result = null
@@ -210,8 +215,8 @@ test 'dataflow context should unlink multiple arrows at once', (t) ->
   sig = signal 42
   propagated1 = no
   propagated2 = no
-  target1 = (value) -> propagated1 = yes
-  target2 = (value) -> propagated2 = yes
+  target1 = -> propagated1 = yes
+  target2 = -> propagated2 = yes
   arrow1 = link sig, target1
   arrow2 = link sig, target2
   t.equal propagated1, no

@@ -131,112 +131,115 @@ waitFor = (test, onReady) ->
 
   interval = setInterval retest, 2000
 
-page.open "http://#{hostname}/flow/index.html", (status) ->
-  if status is 'success'
-    test = ->
-      page.evaluate(
-        (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf, excludeFlowsNames) ->
-          window._date = date
-          window._buildId = buildId
-          window._gitHash = gitHash
-          window._gitBranch = gitBranch
-          window._hostname = hostname
-          window._ncpu = ncpu
-          window._os = os
-          window._jobName = jobName
-          window._perf = perf
-          window._excludeFlowsNames = excludeFlowsNames
-          context = window.flow.context
-          if window._phantom_started_
-            if window._phantom_exit_ then yes else no
+runner = (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf, excludeFlowsNames) ->
+  window._date = date
+  window._buildId = buildId
+  window._gitHash = gitHash
+  window._gitBranch = gitBranch
+  window._hostname = hostname
+  window._ncpu = ncpu
+  window._os = os
+  window._jobName = jobName
+  window._perf = perf
+  window._excludeFlowsNames = excludeFlowsNames
+  console.log "getting context from window.flow", window.flow
+  context = window.flow.context
+  async = window.flow.async
+  if window._phantom_started_
+    if window._phantom_exit_ then yes else no
+  else
+    runPacks = (go) ->
+      window._phantom_test_summary_ = {}
+      tasks = packNames.map (packName) ->
+        (go) -> runPack packName, go
+      (async.iterate tasks) go
+
+    runPack = (packName, go) ->
+      console.log "Fetching pack: #{packName}..."
+      context.requestPack packName, (error, flowNames) ->
+        if error
+          console.log "*** ERROR *** Failed fetching pack #{packName}"
+          go new Error "Failed fetching pack #{packName}", error
+        else
+          console.log 'Processing pack...'
+          tasks = flowNames.map (flowName) ->
+            (go) -> runFlow packName, flowName, go
+          (async.iterate tasks) go
+
+    runFlow = (packName, flowName, go) ->
+      doFlow = (flowName, excludeFlowsNames) ->
+        for f in excludeFlowsNames
+          return false if flowName is f
+        true
+
+      if doFlow flowName, window._excludeFlowsNames
+        flowTitle = "#{packName} - #{flowName}"
+        window._phantom_test_summary_[flowTitle] = 'FAILED'
+        console.log "Fetching flow document: #{packName} - #{flowName}..."
+        context.requestFlow packName, flowName, (error, flow) ->
+          if error
+            console.log "*** ERROR *** Failed fetching flow #{flowTitle}"
+            go new Error "Failed fetching flow #{flowTitle}", error
           else
-            runPacks = (go) ->
-              window._phantom_test_summary_ = {}
-              tasks = packNames.map (packName) ->
-                (go) -> runPack packName, go
-              (Flow.Async.iterate tasks) go
+            console.log "Opening flow #{flowTitle}..."
 
-            runPack = (packName, go) ->
-              console.log "Fetching pack: #{packName}..."
-              context.requestPack packName, (error, flowNames) ->
-                if error
-                  console.log "*** ERROR *** Failed fetching pack #{packName}"
-                  go new Error "Failed fetching pack #{packName}", error
-                else
-                  console.log 'Processing pack...'
-                  tasks = flowNames.map (flowName) ->
-                    (go) -> runFlow packName, flowName, go
-                  (Flow.Async.iterate tasks) go
+            window._phantom_running_ = yes
 
-            runFlow = (packName, flowName, go) ->
-              doFlow = (flowName, excludeFlowsNames) ->
-                for f in excludeFlowsNames
-                  return false if flowName is f
-                true
+            # open flow
+            context.open flowTitle, flow
 
-              if doFlow flowName, window._excludeFlowsNames
-                flowTitle = "#{packName} - #{flowName}"
-                window._phantom_test_summary_[flowTitle] = 'FAILED'
-                console.log "Fetching flow document: #{packName} - #{flowName}..."
-                context.requestFlow packName, flowName, (error, flow) ->
-                  if error
-                    console.log "*** ERROR *** Failed fetching flow #{flowTitle}"
-                    go new Error "Failed fetching flow #{flowTitle}", error
-                  else
-                    console.log "Opening flow #{flowTitle}..."
+            waitForFlow = ->
+              if window._phantom_running_
+                console.log 'ACK'
+                setTimeout waitForFlow, 2000
+              else
+                console.log 'Flow completed!'
+                errors = window._phantom_errors_
+                # delete all keys from the k/v store
+                context.requestRemoveAll ->
+                  go if errors then errors else null
 
-                    window._phantom_running_ = yes
-
-                    # open flow
-                    context.open flowTitle, flow
-
-                    waitForFlow = ->
-                      if window._phantom_running_
-                        console.log 'ACK'
-                        setTimeout waitForFlow, 2000
-                      else
-                        console.log 'Flow completed!'
-                        errors = window._phantom_errors_
-                        # delete all keys from the k/v store
-                        context.requestRemoveAll ->
-                          go if errors then errors else null
-
-                    console.log 'Running flow...'
-                    window._startTime = new Date().getTime() / 1000
-                    context.executeAllCells yes, (status, errors) ->
-                      window._endTime = new Date().getTime() / 1000
-                      console.log "Flow finished with status: #{status}"
-                      if status is 'failed'
-                        window._pass = 0
-                        window._phantom_errors_ = errors
-                      else
-                        window._pass = 1
-                        window._phantom_test_summary_[flowTitle] = 'PASSED'
-                      if window._perf
-                        window.callPhantom "#{window._date}, #{window._buildId}, #{window._gitHash}, \
+            console.log 'Running flow...'
+            window._startTime = new Date().getTime() / 1000
+            context.executeAllCells yes, (status, errors) ->
+              window._endTime = new Date().getTime() / 1000
+              console.log "Flow finished with status: #{status}"
+              if status is 'failed'
+                window._pass = 0
+                window._phantom_errors_ = errors
+              else
+                window._pass = 1
+                window._phantom_test_summary_[flowTitle] = 'PASSED'
+              if window._perf
+                window.callPhantom "#{window._date}, #{window._buildId}, #{window._gitHash}, \
                                             #{window._gitBranch}, #{window._hostname}, #{flowName}, \
                                             #{window._startTime}, #{window._endTime}, #{window._pass}, \
                                             #{window._ncpu}, #{window._os}, #{window._jobName}\n"
-                      window._phantom_running_ = no
+              window._phantom_running_ = no
 
-                  setTimeout waitForFlow, 2000
-              else
-                console.log "Ignoring flow: #{flowName}"
-                go null
+          setTimeout waitForFlow, 2000
+      else
+        console.log "Ignoring flow: #{flowName}"
+        go null
 
-            console.log 'Starting tests...'
-            window._phantom_errors_ = null
-            window._phantom_started_ = yes
-            runPacks (error) ->
-              if error
-                console.log '*** ERROR *** Error running packs'
-                window._phantom_errors_ = error.message ? error
-              else
-                console.log 'Finished running all packs!'
-              window._phantom_exit_ = yes
-            no
-        packNames, opts['date'], opts['buildId'], opts['gitHash'], opts['gitBranch'], hostname, opts['ncpu'], \
-        opts['os'], opts['jobName'], opts['perf'], excludeFlowsNames
+    console.log 'Starting tests...'
+    window._phantom_errors_ = null
+    window._phantom_started_ = yes
+    runPacks (error) ->
+      if error
+        console.log '*** ERROR *** Error running packs'
+        window._phantom_errors_ = error.message ? error
+      else
+        console.log 'Finished running all packs!'
+      window._phantom_exit_ = yes
+    no
+
+page.open "http://#{hostname}", (status) ->
+  if status is 'success'
+    test = ->
+      page.evaluate(runner, \
+        packNames, opts['date'], opts['buildId'], opts['gitHash'], opts['gitBranch'], hostname, \
+        opts['ncpu'], opts['os'], opts['jobName'], opts['perf'], excludeFlowsNames
       )
 
     printErrors = (errors, prefix='') ->

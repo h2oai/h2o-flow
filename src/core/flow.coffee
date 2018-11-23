@@ -17,6 +17,7 @@ ko = require('./modules/knockout')
 
 getContextPath = (_) ->
     if process.env.NODE_ENV == "development"
+      console.debug "Development mode, using localhost:54321"
       _.ContextPath = "http://localhost:54321/"
     else
       _.ContextPath = "/"
@@ -40,16 +41,13 @@ checkSparklingWater = (context) ->
                     context.onSparklingWater = true
         async: false
 
-console.debug "Checking jQuery loaded"
-if $
-  $ ->
-    console.debug "Starting Flow"
-    getContextPath context
-    checkSparklingWater context
-    window.flow = application.init context
-    h2oApplication.init context
-    ko.applyBindings window.flow
-    context.ready()
-    context.initialized()
-    console.debug "Initialization complete", context
-
+$ ->
+  console.debug "Starting Flow"
+  getContextPath context
+  checkSparklingWater context
+  window.flow = application.init context
+  h2oApplication.init context
+  ko.applyBindings window.flow
+  context.ready()
+  context.initialized()
+  console.debug "Initialization complete", context
