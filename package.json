@@ -13,8 +13,8 @@
     "start": "webpack-dev-server --open",
     "test-raw": "coffee test/unit.tests.coffee -s",
     "test": "coffee test/unit.tests.coffee -s | faucet",
-    "headless": "phantomjs build/js/headless-test.js --host localhost:8080 --packs examples",
-    "headless-compile": "coffee --compile --transpile --output build/js test/*-test.coffee"
+    "headless": "coffee test/headless-test.coffee --host localhost:8080 --packs examples",
+    "headless-compile": "coffee --compile --output build/js test/*-test.coffee"
   },
   "repository": {
     "type": "git",
@@ -65,6 +65,7 @@
     "nib": "^1.1.2",
     "pug": "~2.0.0",
     "pug-loader": "~2.4.0",
+    "puppeteer": "^1.10.0",
     "request": "^2.88.0",
     "style-loader": "^0.23.1",
     "stylus": "^0.54.5",
