@@ -197,7 +197,7 @@ runner = (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobN
       window._phantom_exit_ = yes
     no
 
-waitFor = (test, onReady) ->
+waitFor = (test, browser, onReady) ->
   startTime = new Date().getTime()
   isComplete = no
   retest = ->
@@ -250,7 +250,7 @@ main = ->
       else
         errors
 
-    waitFor test, ->
+    waitFor test, browser, ->
       errors = await page.evaluate -> window._phantom_errors_
       if errors
         console.log '------------------ FAILED -------------------'
@@ -271,5 +271,4 @@ main = ->
     console.log "TEST: *** ERROR *** Failed to load the page. Message: #{errorMessage}"
     await browser.close()
 
-main().then ->
-  console.log "TEST: Done."
+main()

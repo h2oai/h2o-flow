@@ -1,4 +1,4 @@
-{ flatten, compact, keyBy,
+{ flatten, compact, keyBy, findIndex,
   isFunction, isString, isNumber, isArray, isObject,
   map, uniq, head, keys, range, escape } = require('lodash')
 

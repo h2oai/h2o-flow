@@ -1,6 +1,7 @@
 { isString, isNumber, isArray, isObject, map, filter, head } = require('lodash')
 
 { lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ stringify } = require('../../core/modules/prelude')
 { iterate } = require('../../core/modules/async')
 FlowError = require('../../core/modules/flow-error')
 util = require('./util')
@@ -18,7 +19,7 @@ exports.init = (_) ->
 
   optsToString = (opts) ->
     if opts?
-      str = " with opts #{ JSON.stringify opts }"
+      str = " with opts #{ stringify opts }"
       if str.length > 50
         "#{ str.substr 0, 50 }..."
       else
@@ -45,7 +46,7 @@ exports.init = (_) ->
           type: 'POST'
           contentType: 'application/json'
           cache: no
-          data: JSON.stringify opts
+          data: stringify opts
       when 'PUT'
         $.ajax url: path, type: method, data: opts
       when 'DELETE'
@@ -130,7 +131,7 @@ exports.init = (_) ->
           if isNumber element
             return element
           if isObject element
-            return JSON.stringify element
+            return stringify element
           return "\"#{element}\""
         "[#{mappedArray.join ','}]"
     else
@@ -530,7 +531,7 @@ exports.init = (_) ->
   requestPutObject = (type, name, value, go) ->
     uri = "/3/NodePersistentStorage/#{encodeURIComponent type}"
     uri += "/#{encodeURIComponent name}" if name
-    doPost uri, { value: JSON.stringify value, null, 2 }, unwrap go, (result) -> result.name
+    doPost uri, { value: stringify value, null, 2 }, unwrap go, (result) -> result.name
 
   requestUploadObject = (type, name, formData, go) ->
     uri = "/3/NodePersistentStorage.bin/#{encodeURIComponent type}"
