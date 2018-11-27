@@ -7,10 +7,10 @@
     "test": "test"
   },
   "scripts": {
-    "build": "webpack",
+    "build": "webpack --mode production",
     "clean": "rm -r build",
-    "watch": "webpack --watch",
-    "start": "webpack-dev-server --open",
+    "watch": "webpack --watch --mode development",
+    "start": "webpack-dev-server --open --mode development",
     "test-raw": "coffee test/unit.tests.coffee -s",
     "test": "coffee test/unit.tests.coffee -s | faucet",
     "headless": "coffee test/headless-test.coffee --host localhost:8080 --packs test-small",
@@ -46,8 +46,12 @@
   },
   "homepage": "https://github.com/h2oai/h2o-flow",
   "devDependencies": {
+    "@babel/core": "^7.1.6",
+    "@babel/preset-env": "^7.1.6",
     "@fortawesome/fontawesome-free": "^5.5.0",
     "async": "~0.9.0",
+    "babel-loader": "^8.0.4",
+    "babel-preset-minify": "^0.5.0",
     "browserify": "~16.2.0",
     "clean-webpack-plugin": "^1.0.0",
     "coffee-loader": "^0.9.0",
