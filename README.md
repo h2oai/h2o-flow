@@ -2,38 +2,48 @@
 
 # H2O Flow
 
-*H2O Flow* is a web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media to build machine learning workflows.
+*H2O Flow* is a web-based interactive computational environment where you can combine code execution, 
+text, mathematics, plots and rich media to build machine learning workflows.
 
-Think of Flow as a hybrid [GUI](https://en.wikipedia.org/wiki/Graphical_user_interface) + [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) + storytelling environment for exploratory data analysis and machine learning, with async, re-scriptable record/replay capabilities. Flow sandboxes and evals user-Javascript in the browser via static analysis and tree-rewriting. Flow is written in non-standard Javascript (with compile-time unqualified imports), with a veritable heap of little embedded [DSL](https://en.wikipedia.org/wiki/Domain-specific_language)s for reactive [dataflow programming](https://en.wikipedia.org/wiki/Dataflow_programming), markup generation, lazy evaluation and multicast signals/slots.
+Think of Flow as a hybrid [GUI](https://en.wikipedia.org/wiki/Graphical_user_interface) + 
+[REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) + storytelling environment for 
+exploratory data analysis and machine learning, with async, re-scriptable record/replay capabilities. 
+Flow sandboxes and evals user-Javascript in the browser via static analysis and tree-rewriting. 
+Flow is written in CoffeeScript, with a veritable heap of little embedded 
+[DSL](https://en.wikipedia.org/wiki/Domain-specific_language)s for reactive 
+[dataflow programming](https://en.wikipedia.org/wiki/Dataflow_programming), markup generation, 
+lazy evaluation and multicast signals/slots.
 
 ## Docs
 
-there is a nice [user guide](https://github.com/h2oai/h2o-3/blob/8858aac90dce771f9025b16948b675f92b542715/h2o-docs/src/product/flow/README.md) for *H2O Flow* housed over in the [h2o-3](https://github.com/h2oai/h2o-3) repo
+There is a nice [user guide](https://github.com/h2oai/h2o-3/blob/8858aac90dce771f9025b16948b675f92b542715/h2o-docs/src/product/flow/README.md) 
+for *H2O Flow* housed over in the [h2o-3](https://github.com/h2oai/h2o-3) repo.
 
-## Development Instructions
+## Development Setup
 
 It is recommended that you clone [h2o-3](https://github.com/h2oai/h2o-3) and h2o-flow in the same parent directory. 
 
-If you develop for Flow from a Java [IDE](https://en.wikipedia.org/wiki/Integrated_development_environment) like [IntelliJ IDEA](https://www.jetbrains.com/idea/) or [Eclipse](https://eclipse.org/users/), you can see your changes to Flow in the browser immediately after you run the `make` command, without waiting to build a new H2O binary and restart H2O.  
-
-If you have not already, follow these instructions to  [set up your preferred IDE environment](https://github.com/h2oai/h2o-3#47-setting-up-your-preferred-ide-environment) for [h2o-3](https://github.com/h2oai/h2o-3) development.  
+If you have not already, follow these instructions to  [set up your preferred IDE environment](https://github.com/h2oai/h2o-3#47-setting-up-your-preferred-ide-environment) 
+for [h2o-3](https://github.com/h2oai/h2o-3) development.  
     
-### Within IDEA/Eclipse
+1. First build H2O-3  `cd h2o-3 && ./gradlew build -x test` (in h2o-E)
 
-1. First, clean up all built files:  `cd h2o-3 && ./gradlew clean`
-2. Open up [h2o-3](https://github.com/h2oai/h2o-3) in IDEA, build and launch `H2OApp`.
-3. Run `cd h2o-flow && make install`. You can now access and debug Flow at [http://localhost:54321/](http://localhost:54321/)
-4. After each change to h2o-flow sources, run the command `cd h2o-flow && make` to push your changes to the running instance of [h2o-3](https://github.com/h2oai/h2o-3).
+1. Install npm dependencies for h2o-flow `npm i` (in h2o-flow)
 
-### Phantom JS installation notes
+### Developing with live reload
 
-The task `npm run headless` requires installing [Phantom JS](http://phantomjs.org).
+1. Start H2O-3 with CORS checks disabled `java -Dsys.ai.h2o.disable.cors=true -jar build/h2o.jar` (in h2o-3)
 
-Note:
-Phantom JS refuses to run on OSX Yosemite, and requires [this fix](https://github.com/ariya/phantomjs/issues/12900):
+1. Start webpack dev-server `npm run start` (in h2o-flow)
 
-    brew install upx
-    upx -d bin/phantomjs
+This will open a browser window with auto-refreshing dev server.
+
+
+### Development within h2o-3 instance
+
+1. Run `make` command. This will copy the build resources into the neighbouring h2o-3 directory.
+
+2. Start h2o-3 from IDE without running gradle (which would write over your local flow build)
 
 ### Testing a new Flow Feature with Sparkling Water  
 

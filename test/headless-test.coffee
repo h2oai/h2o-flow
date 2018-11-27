@@ -1,24 +1,15 @@
-system = require 'system'
-webpage =  require 'webpage'
-
-phantom.onError = (message, stacktrace) ->
-  if stacktrace?.length
-    stack = for t in stacktrace
-      ' -> ' + (t.file || t.sourceURL) + ': ' + t.line + (if t.function then ' (in function ' + t.function + ')' else '')
-    console.log "PHANTOM: *** ERROR *** #{message}\n" + stack.join '\n'
-    phantom.exit 1
+puppeteer = require 'puppeteer'
 
 printUsageAndExit = (message) ->
   console.log "*** #{message} ***"
-  console.log 'Usage: phantomjs headless-test.js [--host ip:port] [--timeout seconds] [--packs foo:bar:baz] \
-                                                 [--perf date buildId gitHash gitBranch ncpu os jobName outputDir] \
-                                                 [--excludeFlows flow1;flow2]'
+  console.log 'Usage: node headless-test.js [--host ip:port] [--timeout seconds] [--packs foo:bar:baz] \
+                                            [--perf date buildId gitHash gitBranch ncpu os jobName outputDir] \
+                                            [--excludeFlows flow1;flow2]'
   console.log '    ip:port      defaults to localhost:54321'
   console.log '    timeout      defaults to 3600'
   console.log '    packs        defaults to examples'
   console.log '    perf         performance of individual tests will be recorded in perf.csv in the output directory'
   console.log '    excludeFlows do not run these flows'
-  phantom.exit 1
 
 parseOpts = (args) ->
   console.log "Using args #{args.join ' '}"
@@ -72,16 +63,16 @@ parseOpts = (args) ->
     i = i + 1
   opts
 
-opts = parseOpts system.args[1..]
+opts = parseOpts process.argv[2..]
 
 hostname = opts['hostname'] ? 'localhost:54321'
-console.log "PHANTOM: Using #{hostname}"
+console.log "TEST: Using #{hostname}"
 
 timeout = if timeoutArg = opts['timeout']
   1000 * parseInt timeoutArg, 10
 else
   3600000
-console.log "PHANTOM: Using timeout #{timeout}ms"
+console.log "TEST: Using timeout #{timeout}ms"
 
 packsArg = opts['packs']
 packNames = if packsArg
@@ -95,41 +86,12 @@ excludeFlowsNames = if excludeFlowsArg
 else
   []
 for excludeFlowName in excludeFlowsNames
-  console.log "PHANTOM: Excluding flow: #{excludeFlowName}"
-
-page = webpage.create()
+  console.log "TEST: Excluding flow: #{excludeFlowName}"
 
 if opts['perf']
-  console.log "PHANTOM: Performance of individual tests will be recorded in perf.csv in output directory: \
+  console.log "TEST: Performance of individual tests will be recorded in perf.csv in output directory: \
                #{opts['outputDir']}."
-  page._outputDir = opts['outputDir']
-
-page.onResourceError = ({ url, errorString }) ->
-  console.log "BROWSER: *** RESOURCE ERROR *** #{url}: #{errorString}"
-
-page.onConsoleMessage = (message) ->
-  console.log "BROWSER: #{message}"
-
-page.onCallback = (perfLine) ->
-  fs = require 'fs'
-  fs.write page._outputDir + '/perf.csv', perfLine, 'a'
-
-waitFor = (test, onReady) ->
-  startTime = new Date().getTime()
-  isComplete = no
-  retest = ->
-    if (new Date().getTime() - startTime < timeout) and not isComplete
-      console.log 'PHANTOM: PING'
-      isComplete = test()
-    else
-      if isComplete
-        onReady()
-        clearInterval interval
-      else
-        console.log 'PHANTOM: *** ERROR *** Timeout Exceeded'
-        phantom.exit 1
-
-  interval = setInterval retest, 2000
+  outputDir = opts['outputDir']
 
 runner = (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobName, perf, excludeFlowsNames) ->
   window._date = date
@@ -144,7 +106,7 @@ runner = (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobN
   window._excludeFlowsNames = excludeFlowsNames
   console.log "getting context from window.flow", window.flow
   context = window.flow.context
-  async = window.flow.async
+  async = window.flow.async || window.Flow.Async
   if window._phantom_started_
     if window._phantom_exit_ then yes else no
   else
@@ -189,6 +151,7 @@ runner = (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobN
             context.open flowTitle, flow
 
             waitForFlow = ->
+              console.log "Waiting for flow #{flowTitle}..."
               if window._phantom_running_
                 console.log 'ACK'
                 setTimeout waitForFlow, 2000
@@ -211,10 +174,10 @@ runner = (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobN
                 window._pass = 1
                 window._phantom_test_summary_[flowTitle] = 'PASSED'
               if window._perf
-                window.callPhantom "#{window._date}, #{window._buildId}, #{window._gitHash}, \
-                                            #{window._gitBranch}, #{window._hostname}, #{flowName}, \
-                                            #{window._startTime}, #{window._endTime}, #{window._pass}, \
-                                            #{window._ncpu}, #{window._os}, #{window._jobName}\n"
+                window._phantom_perf "#{window._date}, #{window._buildId}, #{window._gitHash}, \
+                                      #{window._gitBranch}, #{window._hostname}, #{flowName}, \
+                                      #{window._startTime}, #{window._endTime}, #{window._pass}, \
+                                      #{window._ncpu}, #{window._os}, #{window._jobName}\n"
               window._phantom_running_ = no
 
           setTimeout waitForFlow, 2000
@@ -234,15 +197,46 @@ runner = (packNames, date, buildId, gitHash, gitBranch, hostname, ncpu, os, jobN
       window._phantom_exit_ = yes
     no
 
-page.open "http://#{hostname}", (status) ->
-  if status is 'success'
+waitFor = (test, onReady) ->
+  startTime = new Date().getTime()
+  isComplete = no
+  retest = ->
+    if (new Date().getTime() - startTime < timeout) and not isComplete
+      console.log 'TEST: PING'
+      isComplete = await test()
+    else
+      clearInterval interval
+      if isComplete
+        onReady()
+      else
+        console.log 'TEST: *** ERROR *** Timeout Exceeded'
+        await browser.close()
+
+  interval = setInterval retest, 2000
+
+main = ->
+  browser = await puppeteer.launch()
+  page = await browser.newPage()
+
+  page.on 'requestfailed', (request) ->
+    console.log "BROWSER: *** REQUEST FAILED *** #{request.method()} #{request.url()}: #{request.failure().errorText}"
+
+  page.on 'console', (message) ->
+    console.log "BROWSER: #{message.text()}"
+
+  await page.exposeFunction '_phantom_perf', (perfLine) ->
+    fs = require 'fs'
+    fs.write outputDir + '/perf.csv', perfLine, 'a'
+
+  response = await page.goto "http://#{hostname}"
+  if response.ok()
     test = ->
       page.evaluate(runner, \
         packNames, opts['date'], opts['buildId'], opts['gitHash'], opts['gitBranch'], hostname, \
         opts['ncpu'], opts['os'], opts['jobName'], opts['perf'], excludeFlowsNames
       )
 
-    printErrors = (errors, prefix='') ->
+    printErrors = (errors, prefix = '') ->
       if errors
         if Array.isArray errors
           (printErrors error, prefix + '  ' for error in errors).join '\n'
@@ -257,14 +251,13 @@ page.open "http://#{hostname}", (status) ->
         errors
 
     waitFor test, ->
-      errors = page.evaluate -> window._phantom_errors_
+      errors = await page.evaluate -> window._phantom_errors_
       if errors
         console.log '------------------ FAILED -------------------'
         console.log printErrors errors
         console.log '---------------------------------------------'
-        phantom.exit 1
       else
-        summary = page.evaluate -> window._phantom_test_summary_
+        summary = await page.evaluate -> window._phantom_test_summary_
         console.log '------------------ PASSED -------------------'
         testCount = 0
         for flowTitle, testStatus of summary
@@ -272,7 +265,11 @@ page.open "http://#{hostname}", (status) ->
           testCount++
         console.log "(#{testCount} tests executed.)"
         console.log '---------------------------------------------'
-        phantom.exit 0
+      await browser.close()
   else
-    console.log 'PHANTOM: *** ERROR *** Unable to access network.'
-    phantom.exit 1
+    errorMessage = await response.text()
+    console.log "TEST: *** ERROR *** Failed to load the page. Message: #{errorMessage}"
+    await browser.close()
+
+main().then ->
+  console.log "TEST: Done."
