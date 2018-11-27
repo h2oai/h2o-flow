@@ -9,7 +9,6 @@ MiniCssExtractPlugin = require("mini-css-extract-plugin");
 packageJson = require('./package.json');
 
 config =
-  mode: 'development'
   context: path.resolve __dirname, 'src'
   entry: './index.coffee'
   devtool: 'inline-source-map'
@@ -18,6 +17,14 @@ config =
   }
   module:
     rules: [
+      {
+        test: /\.m?js$/,
+        exclude: /(node_modules)|(vendor)/,
+        use:
+          loader: 'babel-loader',
+          options:
+            presets: ['@babel/preset-env', 'minify']
+      },
       {
         test: /\.coffee$/
         use: [
@@ -107,7 +114,7 @@ config =
     }),
     new webpack.DefinePlugin({
       FLOW_VERSION: JSON.stringify packageJson.version
-    });
+    })
   ]
 
 module.exports = config

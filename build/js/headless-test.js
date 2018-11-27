@@ -255,7 +255,7 @@
     }
   };
 
-  waitFor = function(test, onReady) {
+  waitFor = function(test, browser, onReady) {
     var interval, isComplete, retest, startTime;
     startTime = new Date().getTime();
     isComplete = false;
@@ -322,7 +322,7 @@
           return errors;
         }
       };
-      return waitFor(test, async function() {
+      return waitFor(test, browser, async function() {
         var errors, flowTitle, summary, testCount, testStatus;
         errors = (await page.evaluate(function() {
           return window._phantom_errors_;
@@ -354,8 +354,6 @@
     }
   };
 
-  main().then(function() {
-    return console.log("TEST: Done.");
-  });
+  main();
 
 }).call(this);
