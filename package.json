@@ -13,7 +13,7 @@
     "start": "webpack-dev-server --open",
     "test-raw": "coffee test/unit.tests.coffee -s",
     "test": "coffee test/unit.tests.coffee -s | faucet",
-    "headless": "coffee test/headless-test.coffee --host localhost:8080 --packs examples",
+    "headless": "coffee test/headless-test.coffee --host localhost:8080 --packs test-small",
     "headless-compile": "coffee --compile --output build/js test/*-test.coffee"
   },
   "repository": {
