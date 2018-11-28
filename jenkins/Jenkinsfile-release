@@ -23,6 +23,7 @@ try {
     ansiColor('xterm') {
         timestamps {
             node('master') {
+                cleanWs()
                 buildSummary.stageWithSummary('Checkout') {
                     def final scmEnv = checkout scm
                     env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
