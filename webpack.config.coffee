@@ -11,7 +11,6 @@ packageJson = require('./package.json');
 config =
   context: path.resolve __dirname, 'src'
   entry: './index.coffee'
-  devtool: 'inline-source-map'
   devServer: {
     contentBase: './build'
   }
