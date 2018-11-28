@@ -3,7 +3,7 @@ default:
 	cp -r build/* ../h2o-3/h2o-web/src/main/resources/www/flow/
 
 install:
-	npm i
+	npm install
 
 build:
 	npm run build
