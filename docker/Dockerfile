@@ -7,7 +7,7 @@ ARG JENKINS_GID='2117'
 
 RUN \
     apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y git make curl && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y git make curl g++ && \
     curl -sL https://deb.nodesource.com/setup_8.x | bash - && \
     apt-get install -y nodejs
 
