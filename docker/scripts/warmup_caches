@@ -2,20 +2,21 @@
 
 set -e -x
 
-id
-env
+if [ -z "${H2O_BRANCH}" ]; then
+    echo "H2O_BRANCH must be set"
+    exit 1
+fi
 
 cd ~
-pwd
 
 git clone https://github.com/h2oai/h2o-flow
 cd h2o-flow
-
+git checkout ${H2O_BRANCH}
 mkdir -p /home/jenkins/flow-cache/node_modules /home/jenkins/flow-cache/lib
-ln -s /home/jenkins/flow-cache/node_modules/ ./node_modules
-ln -s /home/jenkins/flow-cache/lib/ ./lib
-
+ln -s /home/jenkins/flow-cache/node_modules .
+ln -s /home/jenkins/flow-cache/lib .
 make install
 make
 cd ..
+
 rm -rf h2o-flow
