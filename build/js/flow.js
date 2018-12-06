@@ -51,7 +51,7 @@
     }
 }.call(this));
 (function () {
-    Flow.Version = '0.8.11';
+    Flow.Version = '0.8.13';
     Flow.About = function (_) {
         var _properties;
         _properties = Flow.Dataflow.signals([]);
@@ -1557,7 +1557,7 @@
         exportNotebook = function () {
             var remoteName;
             if (remoteName = _remoteName()) {
-                return window.open('/3/NodePersistentStorage.bin/notebook/' + remoteName, '_blank');
+                return window.open(_.ContextPath + ('3/NodePersistentStorage.bin/notebook/' + remoteName), '_blank');
             } else {
                 return _.alert('Please save this notebook before exporting.');
             }
@@ -12556,13 +12556,13 @@
                 });
             };
             downloadPojo = function () {
-                return window.open('/3/Models.java/' + encodeURIComponent(_model.model_id.name), '_blank');
+                return window.open(_.ContextPath + ('3/Models.java/' + encodeURIComponent(_model.model_id.name)), '_blank');
             };
             downloadGenJar = function () {
-                return window.open('/3/h2o-genmodel.jar', '_blank');
+                return window.open(_.ContextPath + '3/h2o-genmodel.jar', '_blank');
             };
             downloadMojo = function () {
-                return window.open('/3/Models/' + encodeURIComponent(_model.model_id.name) + '/mojo', '_blank');
+                return window.open(_.ContextPath + ('3/Models/' + encodeURIComponent(_model.model_id.name) + '/mojo'), '_blank');
             };
             exportModel = function () {
                 return _.insertAndExecuteCell('cs', 'exportModel ' + Flow.Prelude.stringify(_model.model_id.name));

@@ -56493,9 +56493,9 @@ CodeMirror.defineMode("clike", function(config, parserConfig) {
   });
 });
 
-"use strict";
-
+/*! MIT License. Copyright 2015-2018 Richard Moore <me@ricmoo.com>. See LICENSE.txt. */
 (function(root) {
+    "use strict";
 
     function checkInt(value) {
         return (parseInt(value) === value);
@@ -56516,7 +56516,7 @@ CodeMirror.defineMode("clike", function(config, parserConfig) {
     function coerceArray(arg, copy) {
 
         // ArrayBuffer view
-        if (arg.buffer && ArrayBuffer.isView(arg) && arg.name === 'Uint8Array') {
+        if (arg.buffer && arg.name === 'Uint8Array') {
 
             if (copy) {
                 if (arg.slice) {
@@ -57281,7 +57281,7 @@ CodeMirror.defineMode("clike", function(config, parserConfig) {
     // http://www.requirejs.org/docs/api.html
     // https://github.com/amdjs/amdjs-api/wiki/AMD
     } else if (typeof(define) === 'function' && define.amd) {
-        define(aesjs);
+        define([], function() { return aesjs; });
 
     // Web Browsers
     } else {
