@@ -44,7 +44,7 @@ try {
 
                 buildSummary.stageWithSummary("Build Image") {
                     dir('docker') {
-                        sh "docker build -t ${IMAGE_NAME} ."
+                        sh "docker build -t ${IMAGE_NAME} --build-arg H2O_BRANCH=${params.gitBranch} ."
                     }
                 }
 
