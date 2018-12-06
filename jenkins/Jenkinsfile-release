@@ -52,8 +52,6 @@ try {
                         echo "Current major version already exists, increment last number."
                         def final latestVersionMinor = Integer.parseInt(lastVersionParts.last())
                         flowVersion = "${flowVersionMajor}.${latestVersionMinor + 1}"
-                        // Temporarily hardcode version
-                        flowVersion = '0.8.13'
                     }
                     currentBuild.displayName = "v${flowVersion}"
 
