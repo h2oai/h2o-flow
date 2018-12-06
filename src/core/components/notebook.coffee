@@ -457,7 +457,7 @@ exports.init = (_, _renderers) ->
 
   exportNotebook = ->
     if remoteName = _remoteName()
-      window.open "/3/NodePersistentStorage.bin/notebook/#{remoteName}", '_blank'
+      window.open _.ContextPath + "3/NodePersistentStorage.bin/notebook/#{remoteName}", '_blank'
     else
       _.alert "Please save this notebook before exporting."
 
