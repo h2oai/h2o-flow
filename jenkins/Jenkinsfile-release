@@ -27,6 +27,11 @@ try {
                     def final scmEnv = checkout scm
                     env.BRANCH_NAME = scmEnv['GIT_BRANCH'].replaceAll('origin/', '')
                     env.GIT_COMMIT = scmEnv['GIT_COMMIT']
+                    if (env.BRANCH_NAME != 'master') {
+                        IMAGE_NAME += ":${env.BRANCH_NAME.toLowerCase().replaceAll('/', '-')}"
+                    } else {
+                        IMAGE_NAME += ":latest"
+                    }
                 }
 
                 buildSummary.stageWithSummary('Calculate Version') {
