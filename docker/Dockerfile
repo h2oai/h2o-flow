@@ -4,6 +4,7 @@ MAINTAINER h2oai "h2o.ai"
 
 ARG JENKINS_UID='2117'
 ARG JENKINS_GID='2117'
+ARG H2O_BRANCH
 
 RUN \
     apt-get update && \
