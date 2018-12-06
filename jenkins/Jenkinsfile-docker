@@ -15,6 +15,11 @@ properties([
 ])
 
 IMAGE_NAME = "${params.registry}/opsh2oai/h2o-flow-build"
+if (params.gitBranch != 'master') {
+    IMAGE_NAME += ":${params.gitBranch.toLowerCase().replaceAll('/', '-')}"
+} else {
+    IMAGE_NAME += ":latest"
+}
 
 BuildResult result = BuildResult.FAILURE
 
