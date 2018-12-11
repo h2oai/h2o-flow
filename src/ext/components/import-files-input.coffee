@@ -75,7 +75,7 @@ module.exports = (_, _go) ->
     map result.matches, (path) ->
       createFileItem path, _selectedFilesDictionary()[path]
 
-  listPathHints = (query, process) ->
+  listPathHints = (query, sync, process) ->
     _.requestFileGlob query, 10, (error, result) ->
       unless error
         process map result.matches, (value) -> value: value
