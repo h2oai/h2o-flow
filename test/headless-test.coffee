@@ -215,7 +215,7 @@ waitFor = (test, browser, onReady) ->
   interval = setInterval retest, 2000
 
 main = ->
-  browser = await puppeteer.launch()
+  browser = await puppeteer.launch({args: ['--no-sandbox']})
   page = await browser.newPage()
 
   page.on 'requestfailed', (request) ->
