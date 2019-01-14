@@ -11,7 +11,7 @@ buildSummary('https://github.com/h2oai/h2o-flow', true)
 // use default StagesSummary implementation
 buildSummary.get().addStagesSummary(this, new StagesSummary())
 
-REGISTRY = 'docker.h2o.ai'
+REGISTRY = 'harbor.h2o.ai'
 IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
 
 MASTER_BRANCH = 'master'
