@@ -278,7 +278,9 @@
 
   main = async function() {
     var browser, errorMessage, page, printErrors, response, test;
-    browser = (await puppeteer.launch());
+    browser = (await puppeteer.launch({
+      args: ['--no-sandbox']
+    }));
     page = (await browser.newPage());
     page.on('requestfailed', function(request) {
       return console.log(`BROWSER: *** REQUEST FAILED *** ${request.method()} ${request.url()}: ${(request.failure().errorText)}`);
