@@ -8,7 +8,7 @@ properties([
         buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '25')),
         parameters([
                 string(name: 'gitBranch', defaultValue: 'master', description: 'Branch to load the Dockerfile from.'),
-                string(name: 'registry', defaultValue: 'docker.h2o.ai', description: 'Docker registry to push images to'),
+                string(name: 'registry', defaultValue: 'harbor.h2o.ai', description: 'Docker registry to push images to'),
                 booleanParam(name: 'publish', defaultValue: true, description: 'If true, publish the docker image'),
         ]),
         pipelineTriggers([])
