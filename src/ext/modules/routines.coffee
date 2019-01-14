@@ -693,7 +693,7 @@ exports.init = (_) ->
     if algos.length is 1
       inspections.parameters = inspectParametersAcrossModels models
 
-    # modelCategories = unique (model.output.model_category for model in models)
+    # modelCategories = uniq (model.output.model_category for model in models)
     # TODO implement model comparision after 2d table cleanup for model metrics
     #if modelCategories.length is 1
     #  inspections.outputs = inspectOutputsAcrossModels (head modelCategories), models

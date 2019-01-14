@@ -1,4 +1,4 @@
-{ defer, map } = require('lodash')
+{ defer, map, sortBy, uniq } = require('lodash')
 
 { stringify } = require('../../core/modules/prelude')
 { react, lift, link, signal, signals } = require("../../core/modules/dataflow")
@@ -63,7 +63,7 @@ module.exports = (_, _go, _frameKey) ->
 
     return go 'Please specify at least two splits.' if splitKeys.length < 2
 
-    return go 'Duplicate keys specified.' if splitKeys.length isnt (unique splitKeys).length
+    return go 'Duplicate keys specified.' if splitKeys.length isnt (uniq splitKeys).length
 
     return go null, splitRatios, splitKeys
 
@@ -102,7 +102,7 @@ module.exports = (_, _go, _frameKey) ->
         #TODO handle properly
       else
         frameKeys = (frame.frame_id.name for frame in frames when not frame.is_text)
-        sort frameKeys
+        frameKeys = sortBy frameKeys
         _frames frameKeys
         _frame _frameKey
     addSplitRatio 0.75
