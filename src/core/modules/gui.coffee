@@ -1,5 +1,5 @@
 { act, react, lift, merge, isSignal, signal, signals } = require("../../core/modules/dataflow")
-{ isString, isNumber, isArray, uniqueId } = require('lodash')
+{ isString, isNumber, isArray, isFunction, noop, uniqueId } = require('lodash')
 
 wrapValue = (value, init) ->
   if value is undefined

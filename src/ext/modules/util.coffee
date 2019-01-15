@@ -169,7 +169,7 @@ columnLabelsFromFrame = (frame) ->
     type: if column.type is 'enum' then "enum(#{column.domain_cardinality})" else column.type
     value: column.label
     missingPercent: missingPercent
-    missingLabel: if missingPercent is 0 then '' else "#{round missingPercent}% NA"
+    missingLabel: if missingPercent is 0 then '' else "#{Math.round missingPercent}% NA"
 
   columnLabels
 

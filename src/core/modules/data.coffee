@@ -21,7 +21,8 @@
 #
 
 { stringify } = require('../../core/modules/prelude')
-{ uniqueId } = require('lodash')
+{ TNumber, TFactor } = require('../../core/modules/types')
+{ uniqueId, identity } = require('lodash')
 
 _prototypeId = 0
 nextPrototypeName = -> "Map#{++_prototypeId}"
