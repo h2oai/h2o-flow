@@ -1,5 +1,6 @@
 { defer } = require('lodash')
 
+{ stringify } = require('../../core/modules/prelude')
 { lift, link, signal, signals } = require("../../core/modules/dataflow")
 util = require('../modules/util')
 
