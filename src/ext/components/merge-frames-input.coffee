@@ -6,7 +6,7 @@ util = require('../../core/modules/util')
 FlowError = require('../../core/modules/flow-error')
 
 module.exports = (_, _go) ->
-  _exception = signal null #TODO display in .jade
+  _exception = signal null #TODO display in .pug
   _destinationKey = signal "merged-#{util.uuid()}"
 
   _frames = signals []
