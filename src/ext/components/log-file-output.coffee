@@ -3,7 +3,7 @@
 { react, lift, link, signal, signals } = require("../../core/modules/dataflow")
 
 module.exports = (_, _go, _cloud, _nodeIpPort, _fileType, _logFile) ->
-  _exception = signal null #TODO Display in .jade
+  _exception = signal null #TODO Display in .pug.
 
   _contents = signal ''
   _nodes = signal []

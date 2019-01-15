@@ -10,7 +10,7 @@ FlowError = require('../../core/modules/flow-error')
 util = require('../../core/modules/util')
 
 module.exports = (_, _go, _cloud) ->
-  _exception = signal null #TODO Display in .jade
+  _exception = signal null #TODO Display in .pug
   _isLive = signal no
   _isBusy = signal no
 

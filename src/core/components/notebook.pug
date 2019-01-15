@@ -6,16 +6,16 @@ h2.flow-print-title(data-bind='text:name')
       .container-fluid.flow-repl(data-bind="css:{ 'flow-hide-inputs':areInputsHidden, 'flow-hide-outputs':areOutputsHidden }, template:{ name:templateOf, foreach:cells }")
     .flow-box-sidebar
       // ko with:sidebar
-      include sidebar.jade
+      include sidebar.pug
       // /ko
   .flow-box-footer
     // ko with:status
-    include status.jade
+    include status.pug
     // /ko
   //- This is at the bottom so that menus are not clipped.
   //- Could have been done using CSS z-index, but those can get hairy.
   .flow-box-header
-    include navigation.jade
+    include navigation.pug
   .flow-box-blocker(data-bind="visible:isRunningAll")
     .flow-playbar
       div
@@ -37,8 +37,8 @@ div(data-bind='template:{name:template, data:dialog}')
 // /ko
 // /ko
 
-include keyboard-help-dialog.jade
-include about-dialog.jade
+include keyboard-help-dialog.pug
+include about-dialog.pug
 
 // /ko
 
@@ -47,113 +47,113 @@ include about-dialog.jade
 //-
 
 script(type="text/html" id="flow-keyboard-shortcut-table")
-  include keyboard-help-table.jade
+  include keyboard-help-table.pug
 
 script(type="text/html" id="flow-toolbar")
-  include toolbar.jade
+  include toolbar.pug
 
 script(type="text/html" id="flow-navbar")
-  include navbar.jade
+  include navbar.pug
 
 script(type="text/html" id="flow-status")
-  include status.jade
+  include status.pug
 
 script(type="text/html" id="flow-sidebar")
-  include sidebar.jade
+  include sidebar.pug
 
 script(type="text/html" id="flow-help")
-  include help.jade
+  include help.pug
 
 script(type="text/html" id="flow-outline")
-  include outline.jade
+  include outline.pug
 
 script(type="text/html" id="flow-browser")
-  include browser.jade
+  include browser.pug
 
 script(type="text/html" id="flow-clipboard")
-  include clipboard.jade
+  include clipboard.pug
 
 script(type="text/html" id="flow-clips")
-  include clips.jade
+  include clips.pug
 
 script(type="text/html" id="flow-h1")
-  include h1.jade
+  include h1.pug
 
 script(type="text/html" id="flow-h2")
-  include h2.jade
+  include h2.pug
 
 script(type="text/html" id="flow-h3")
-  include h3.jade
+  include h3.pug
 
 script(type="text/html" id="flow-h4")
-  include h4.jade
+  include h4.pug
 
 script(type="text/html" id="flow-h5")
-  include h5.jade
+  include h5.pug
 
 script(type="text/html" id="flow-h6")
-  include h6.jade
+  include h6.pug
 
 script(type="text/html" id="flow-html")
-  include html.jade
+  include html.pug
 
 script(type="text/html" id="flow-object")
-  include object.jade
+  include object.pug
 
 script(type="text/html" id="flow-object-part")
-  include object-part.jade
+  include object-part.pug
 
 script(type="text/html" id="flow-raw")
-  include raw.jade
+  include raw.pug
 
 script(type="text/html" id="flow-json")
-  include json.jade
+  include json.pug
 
 script(type="text/html" id="flow-dom")
-  include dom.jade
+  include dom.pug
 
 script(type="text/html" id="flow-form-text")
-  include form-text.jade
+  include form-text.pug
 
 script(type="text/html" id="flow-form-html")
-  include form-html.jade
+  include form-html.pug
 
 script(type="text/html" id="flow-form-markdown")
-  include form-markdown.jade
+  include form-markdown.pug
 
 script(type="text/html" id="flow-form-checkbox")
-  include form-checkbox.jade
+  include form-checkbox.pug
 
 script(type="text/html" id="flow-form-dropdown")
-  include form-dropdown.jade
+  include form-dropdown.pug
 
 script(type="text/html" id="flow-form-listbox")
-  include form-listbox.jade
+  include form-listbox.pug
 
 script(type="text/html" id="flow-form-textbox")
-  include form-textbox.jade
+  include form-textbox.pug
 
 script(type="text/html" id="flow-form-textarea")
-  include form-textarea.jade
+  include form-textarea.pug
 
 script(type="text/html" id="flow-form-button")
-  include form-button.jade
+  include form-button.pug
 
 script(type="text/html" id="flow-form")
-  include form.jade
+  include form.pug
 
 script(type="text/html" id="flow-failure")
-  include failure.jade
+  include failure.pug
 
 script(type="text/html" id="flow-cell")
-  include cell.jade
+  include cell.pug
 //- 
 //- Dialog Templates
 //-
 
 script(type="text/html" id="flow-alert-dialog")
-  include alert-dialog.jade
+  include alert-dialog.pug
 
 script(type="text/html" id="flow-confirm-dialog")
-  include confirm-dialog.jade
+  include confirm-dialog.pug
 

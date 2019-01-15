@@ -33,7 +33,7 @@ config =
         ]
       },
       {
-        test: /\.jade$/
+        test: /\.pug$/
         use: [
           {
             loader: 'pug-loader'
@@ -99,7 +99,7 @@ config =
   plugins: [
     new HtmlWebpackPlugin({
       favicon: './favicon.ico'
-      template: './index.jade'
+      template: './index.pug'
     }),
     new MiniCssExtractPlugin({
       filename: 'css/flow.css'
