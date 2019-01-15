@@ -1,3 +1,4 @@
+{ signal } = require("../../core/modules/dataflow")
 { defer } = require('lodash')
 
 module.exports = (_, _go, _result) ->
