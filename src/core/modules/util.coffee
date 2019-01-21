@@ -105,67 +105,71 @@ getCellWithTooltip = (tdClasses, content, tooltipText) ->
     html.template("td.#{tdClasses}")(tooltipDiv)
 
 renderMultinomialConfusionMatrix = (title, cm) ->
-  cm.columns.push({'name':'Precision', 'type':'long', 'format': '%.2f', 'description': 'Precision'})
-  errorColumnIndex = cm.columns.length - 3 # last three cols are Error, Rate Recall
-  precisionValues = []
-  cm.rowcount += 1 # We will have new row with Precision values
-  totalRowIndex = cm.rowcount - 2 # Last two rows will be Totals and Precision
-  for column, i in cm.data
-      if i < errorColumnIndex
-          column.push(calcRecall(cm, i, errorColumnIndex)) # calculate recall for each feature and add it as last column for each row
-      if i < totalRowIndex
-          precisionValues.push(calcPrecision(cm, i, totalRowIndex)) # calculate precision for each feature and add it as last row for each column
-  cm.data.push(precisionValues) # add recall values as new (last) column
+  if cm.columns.length <= 100 + 2 # + 2 for Error and Rate columns
+    cm.columns.push({'name':'Precision', 'type':'long', 'format': '%.2f', 'description': 'Precision'})
+    errorColumnIndex = cm.columns.length - 3 # last three cols are Error, Rate Recall
+    precisionValues = []
+    cm.rowcount += 1 # We will have new row with Precision values
+    totalRowIndex = cm.rowcount - 2 # Last two rows will be Totals and Precision
+    for column, i in cm.data
+        if i < errorColumnIndex
+            column.push(calcRecall(cm, i, errorColumnIndex)) # calculate recall for each feature and add it as last column for each row
+        if i < totalRowIndex
+            precisionValues.push(calcPrecision(cm, i, totalRowIndex)) # calculate precision for each feature and add it as last row for each column
+    cm.data.push(precisionValues) # add recall values as new (last) column
 
-  [table, tbody, tr, normal, bold] = html.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'
-  tooltip = (tooltipText) ->
-      return (content) ->
-          getCellWithTooltip('', content, tooltipText)
-  tooltipYellowBg = (tooltipText) ->
-      return (content) ->
-          getCellWithTooltip('.bg-yellow', content, tooltipText)
-  tooltipBold = (tooltipText) ->
-      return (content) ->
-          getCellWithTooltip('.strong', content, tooltipText)
-  headers = map cm.columns, (column, i) -> bold column.description
-  headers.unshift normal ' ' # NW corner cell
-  rows = [tr headers]
-  precisionColumnIndex = cm.columns.length - 1
-  recallRowIndex = cm.rowcount - 1
-  for rowIndex in [0 ... cm.rowcount]
-    cells = for column, i in cm.data
-      tooltipText = "Actual: #{cm.columns[rowIndex].description}&#013;&#010;Predicted: #{cm.columns[i].description}"
-      cell = if i < errorColumnIndex
-        if i is rowIndex
-          tooltipYellowBg(tooltipText) # Yellow lines on diagonal
+    [table, tbody, tr, normal, bold] = html.template 'table.flow-confusion-matrix', 'tbody', 'tr', 'td', 'td.strong'
+    tooltip = (tooltipText) ->
+        return (content) ->
+            getCellWithTooltip('', content, tooltipText)
+    tooltipYellowBg = (tooltipText) ->
+        return (content) ->
+            getCellWithTooltip('.bg-yellow', content, tooltipText)
+    tooltipBold = (tooltipText) ->
+        return (content) ->
+            getCellWithTooltip('.strong', content, tooltipText)
+    headers = map cm.columns, (column, i) -> bold column.description
+    headers.unshift normal ' ' # NW corner cell
+    rows = [tr headers]
+    precisionColumnIndex = cm.columns.length - 1
+    recallRowIndex = cm.rowcount - 1
+    for rowIndex in [0 ... cm.rowcount]
+      cells = for column, i in cm.data
+        tooltipText = "Actual: #{cm.columns[rowIndex].description}&#013;&#010;Predicted: #{cm.columns[i].description}"
+        cell = if i < errorColumnIndex
+          if i is rowIndex
+            tooltipYellowBg(tooltipText) # Yellow lines on diagonal
+          else
+            if rowIndex < totalRowIndex
+              tooltip(tooltipText) # "Basic" cells inside cm
+            else
+              if rowIndex is totalRowIndex
+                  tooltipBold("Total: #{cm.columns[i].description}") # Totals of features
+              else
+                  if rowIndex is recallRowIndex
+                      tooltipBold("Recall: #{cm.columns[i].description}") # Precision of features
+                  else
+                      bold
         else
           if rowIndex < totalRowIndex
-            tooltip(tooltipText) # "Basic" cells inside cm
+              tooltipBold("#{cm.columns[i].description}: #{cm.columns[rowIndex].description}") # Error, Rate and Recall of features
           else
-            if rowIndex is totalRowIndex
-                tooltipBold("Total: #{cm.columns[i].description}") # Totals of features
-            else
-                if rowIndex is recallRowIndex
-                    tooltipBold("Recall: #{cm.columns[i].description}") # Precision of features
-                else
-                    bold
-      else
-        if rowIndex < totalRowIndex
-            tooltipBold("#{cm.columns[i].description}: #{cm.columns[rowIndex].description}") # Error, Rate and Recall of features
-        else
-            if rowIndex is totalRowIndex and i < precisionColumnIndex
-                tooltipBold("Total: #{cm.columns[i].description}") # Totals of Error and Rate
-            else
-                bold
-      # special-format error column
-      cell if i is errorColumnIndex then format4f column[rowIndex] else column[rowIndex]
-    # Add the corresponding column label
-    cells.unshift bold if rowIndex is cm.rowcount - 2 then 'Total' else if rowIndex is cm.rowcount - 1 then 'Recall' else cm.columns[rowIndex].description
-    rows.push tr cells
+              if rowIndex is totalRowIndex and i < precisionColumnIndex
+                  tooltipBold("Total: #{cm.columns[i].description}") # Totals of Error and Rate
+              else
+                  bold
+        # special-format error column
+        cell if i is errorColumnIndex then format4f column[rowIndex] else column[rowIndex]
+      # Add the corresponding column label
+      cells.unshift bold if rowIndex is cm.rowcount - 2 then 'Total' else if rowIndex is cm.rowcount - 1 then 'Recall' else cm.columns[rowIndex].description
+      rows.push tr cells
+      plot = html.render 'div', table tbody rows
+  else
+    plot = html.render 'blockquote', 'Confusion Matrix too big to render.'
 
   return {
     title: title + if cm.description then " #{cm.description}" else ''
-    plot: signal html.render 'div', table tbody rows
+    plot: signal plot
     frame: signal null
     controls: signal null
     isCollapsed: no
