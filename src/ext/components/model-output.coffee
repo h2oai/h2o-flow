@@ -31,6 +31,12 @@ module.exports = (_, _go, _model, refresh) ->
             null
         when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
           if actual_value then actual_value.join ', ' else null
+        when 'KeyValue[]'
+          if actual_value
+            keyValues = actual_value.map (kv) -> kv.key + ' =  ' + kv.value
+            keyValues.join ', '
+          else
+            null
         else
           actual_value
 
