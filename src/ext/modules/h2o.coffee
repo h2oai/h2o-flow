@@ -58,3 +58,5 @@ module.exports =
   SplitFrameOutput: require('../components/split-frame-output')
   StackTraceOutput: require('../components/stacktrace-output')
   TimelineOutput: require('../components/timeline-output')
+  SetS3CredentialsInput: require('../components/set-s3-credentials-input')
+  SetS3CredentialsOutput: require('../components/set-s3-credentials-output')

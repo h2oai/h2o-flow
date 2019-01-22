@@ -76,6 +76,7 @@ exports.init = (_) ->
   _.plot = do slot
   _.grid = do slot
   _.enumerate = do slot
+  _.setS3Credentials = do slot
   #
   # Sparkling-Water
   _.scalaIntpId = signal -1

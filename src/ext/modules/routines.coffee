@@ -56,6 +56,9 @@ _assistance =
   predict:
     description: 'Make a prediction'
     icon: 'bolt'
+  setS3Credentials:
+    description: 'Set new Amazon S3 Credentials'
+    icon: 'cube'
 
 parseNumbers = (source) ->
   target = new Array source.length
@@ -1495,6 +1498,14 @@ exports.init = (_) ->
       else
         go null, extendImportResults importResults
 
+
+  setS3Credentials = (args, go) ->
+    _.setS3Credentials arg, (error, importResults) ->
+      if error
+        go error
+      else
+        go null
+
   importFiles = (paths) ->
     switch typeOf paths
       when 'Array'
@@ -1985,6 +1996,8 @@ exports.init = (_) ->
           _fork proceed, h2o.ImportModelInput, args
         when exportModel
           _fork proceed, h2o.ExportModelInput, args
+        when setS3Credentials
+          _fork proceed, h2o.SetS3CredentialsInput, args
         else
           _fork proceed, h2o.NoAssist, []
 
@@ -2096,6 +2109,7 @@ exports.init = (_) ->
     getLogFile: getLogFile
     testNetwork: testNetwork
     deleteAll: deleteAll
+    setS3Credentials: setS3Credentials
 
   if _.onSparklingWater
     routinesOnSw =

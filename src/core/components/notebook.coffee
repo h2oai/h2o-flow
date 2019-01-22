@@ -660,6 +660,7 @@ exports.init = (_, _renderers) ->
         createMenuItem 'Jobs', executeCommand 'getJobs'
         createMenuItem 'Cluster Status', executeCommand 'getCloud'
         createMenuItem 'Water Meter (CPU meter)', goToH2OUrl 'perfbar.html'
+        createMenuItem 'Set S3 Credentials', executeCommand 'setS3Credentials'
         menuDivider
         createMenuHeader 'Inspect Log'
         createMenuItem 'View Log', executeCommand 'getLogFile'

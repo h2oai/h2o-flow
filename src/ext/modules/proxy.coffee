@@ -634,6 +634,9 @@ exports.init = (_) ->
   requestScalaCodeExecutionResult = (key, go) ->
     doPost "/3/scalaint/result/#{key}", {result_key: key}, go
 
+  setS3Credentials = (secret_key_id, secret_access_key ,go) ->
+    doPost '/3/Persist',{secret_key_id: secret_key_id, secret_access_key: secret_access_key},go
+
   link _.requestInspect, requestInspect
   link _.requestCreateFrame, requestCreateFrame
   link _.requestSplitFrame, requestSplitFrame
@@ -702,6 +705,7 @@ exports.init = (_) ->
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
   link _.requestExec, requestExec
+  link _.setS3Credentials setS3Credentials
   #
   # Sparkling-Water
   link _.requestRDDs, requestRDDs

@@ -1677,6 +1677,108 @@
 </div>
 <!-- /ko-->
     </script>
+    <script type="text/html" id="flow-set-s3-credentials">
+<div class="flow-widget">
+  <h3 class="flow-hint"><i class="fa fa-files-o"></i>Import Files</h3>
+  <table class="flow-form">
+    <tbody>
+      <tr>
+        <th width="125">Search:</th>
+        <td>
+          <table width="100%">
+            <tbody>
+              <tr>
+                <td class="flow-wide">
+                  <input class="flow-textbox" type="text" style="width:100%" data-bind="value:specifiedPath, valueUpdate:'keydown', enterKey:tryImportFiles, typeahead:listPathHints" placeholder="Enter a file or directory path and press the Enter key">
+                </td>
+                <td class="flow-narrow" style="padding:0">
+                  <button class="flow-button" type="button" data-bind="click:tryImportFiles" title="Search for files"><i class="fa fa-search"></i></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>
+      <!-- ko if:hasErrorMessage-->
+      <tr>
+        <th>&nbsp;</th>
+        <td data-bind="text:exception"></td>
+      </tr>
+      <!-- /ko-->
+      <!-- ko if:hasImportedFiles-->
+      <tr>
+        <th>Search Results:</th>
+        <!-- ko if:hasUnselectedFiles-->
+        <td>
+          <div><span data-bind="text:importedFileCount"></span>  
+            <!-- ko if:hasUnselectedFiles--><a href="#" data-bind="click:selectAllFiles">Add all</a>
+            <!-- /ko-->
+          </div>
+          <div class="flow-well">
+            <!-- ko foreach:importedFiles-->
+            <!-- ko ifnot:isSelected-->
+            <div class="flow-hint flow-pointer" data-bind="click:select"><i class="fa fa-plus" title="Select file"></i><span data-bind="text:path"></span></div>
+            <!-- /ko-->
+            <!-- /ko-->
+          </div>
+        </td>
+        <!-- /ko-->
+        <!-- ko ifnot:hasUnselectedFiles-->
+        <td>(All files added)</td>
+        <!-- /ko-->
+      </tr>
+      <!-- /ko-->
+      <tr>
+        <th>Selected Files:</th>
+        <td>
+          <div><span data-bind="text:selectedFileCount"></span>   
+            <!-- ko if:hasSelectedFiles--><a href="#" data-bind="click:deselectAllFiles">Clear All</a>
+            <!-- /ko-->
+          </div>
+          <!-- ko if:hasSelectedFiles-->
+          <div class="flow-well">
+            <!-- ko foreach:selectedFiles-->
+            <div class="flow-hint flow-pointer" data-bind="click:deselect"><i class="fa fa-remove" title="Deselect file"></i><span data-bind="text:path"></span></div>
+            <!-- /ko-->
+          </div>
+          <!-- /ko-->
+        </td>
+      </tr>
+      <tr class="flow-actions">
+        <th>Actions:</th>
+        <td>
+          <button class="flow-button" type="button" data-bind="click:importSelectedFiles, enable:hasSelectedFiles"><i class="fa fa-cloud-upload"></i>Import</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<!-- /ko-->
+    </script>
+    <script type="text/html" id="flow-set-s3-credentials-output">
+      <div class="flow-widget">
+        <h3 class="flow-hint"><i class="fa fa-cloud-upload"></i><span data-bind="text:title"></span></h3>
+        <table class="flow-form">
+          <tbody>
+            <tr>
+              <th class="flow-narrow">Files</th>
+              <td class="flow-wide">
+                <div data-bind="template: { name:templateOf, foreach:importViews }"></div>
+              </td>
+            </tr>
+            <!-- ko if:canParse-->
+            <tr class="flow-actions">
+              <th class="flow-narrow">Actions</th>
+              <td class="flow-wide">
+                    <button class="flow-button" type="button" data-bind="click:parse, enable:canParse"><i class="fa fa-cog"></i><span>Parse these files&hellip;</span>
+                    </button>
+              </td>
+            </tr>
+            <!-- /ko-->
+          </tbody>
+        </table>
+      </div>
+    </script>
     <script type="text/html" id="flow-import-sql-table-input">
 <div class="flow-widget">
   <h3 class="flow-hint"><i class="fa fa-table"></i>Import SQL Table</h3>

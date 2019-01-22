@@ -14,6 +14,9 @@ config =
   devServer: {
     contentBase: './build'
   }
+  optimization: {
+    minimize: false
+  }
   module:
     rules: [
       {
