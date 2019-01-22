@@ -1500,11 +1500,7 @@ exports.init = (_) ->
 
 
   setS3Credentials = (args, go) ->
-    _.setS3Credentials arg, (error, importResults) ->
-      if error
-        go error
-      else
-        go null
+    assist setS3Credentials
 
   importFiles = (paths) ->
     switch typeOf paths
