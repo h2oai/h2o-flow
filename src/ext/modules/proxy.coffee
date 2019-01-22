@@ -705,7 +705,7 @@ exports.init = (_) ->
   link _.requestHelpIndex, requestHelpIndex
   link _.requestHelpContent, requestHelpContent
   link _.requestExec, requestExec
-  link _.setS3Credentials setS3Credentials
+  link _.setS3Credentials, setS3Credentials
   #
   # Sparkling-Water
   link _.requestRDDs, requestRDDs
