@@ -2080,6 +2080,51 @@
   <td colspan="3" data-bind="text:message"></td>
 </tr>
     </script>
+    <script type="text/html" id="flow-keyvalues-model-parameter">
+<tr data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}">
+  <th>
+    <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
+  </th>
+  <td>
+    <table>
+      <tbody>
+        <!-- ko with:newKeyValue-->
+        <tr>
+          <td style="padding-bottom:10px;">
+            <select data-bind="options:keyOpts, value:key, optionsCaption:'Choose...'" style="width:150px;text-overflow:ellipsis;"></select>
+          </td>
+          <td><i class="fa fa-arrows-h"></i></td>
+          <td>
+            <select data-bind="options:valueOpts, value:value, enable:keySelected" style="width:150px;text-overflow:ellipsis;"></select>
+          </td>
+          <td>
+            <button type="button" data-bind="click:create" title="Create constraint" style="border:0px;padding:0 10px;margin-right:20px;background-color:inherit;"><i class="fa fa-plus"></i></button>
+          </td>
+        </tr>
+        <!-- /ko-->
+        <!-- ko foreach:keyValues-->
+        <tr>
+          <td data-bind="style: {paddingTop: $index() == 0 ? '5px' : 'inherit', textAlign: 'right', paddingRight: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '150px'}, text:key"></td>
+          <td data-bind="style: {paddingTop: $index() == 0 ? '5px' : 'inherit'}"><i class="fa fa-arrows-h"></i></td>
+          <td data-bind="style: {paddingTop: $index() == 0 ? '5px' : 'inherit', textAlign: 'left', paddingRight: '10px', paddingLeft: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '150px'}, text:value"></td>
+          <td data-bind="style: {padding: '0', textAlign: 'center', verticalAlign: 'middle'}">
+            <button type="button" data-bind="click:remove" title="Remove constraint" style="border:0px;padding:0 10px;margin-right:20px;background-color:inherit;"><i class="fa fa-times"></i></button>
+          </td>
+        </tr>
+        <!-- /ko-->
+      </tbody>
+    </table>
+  </td>
+  <td><span data-bind="text:description"></span></td>
+  <td>
+    <input type="checkbox" title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided">
+  </td>
+</tr>
+<tr data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasInfo}, visible:hasMessage">
+  <th>&nbsp;</th>
+  <td colspan="3" data-bind="text:message"></td>
+</tr>
+    </script>
     <script type="text/html" id="flow-grids-output">
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-th"></i>Grids
