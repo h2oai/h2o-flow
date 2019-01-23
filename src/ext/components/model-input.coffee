@@ -205,6 +205,75 @@ createStringPairsControl = (parameter) ->
   control.columns = _columns
   control
 
+createMonotoneContraintsControl = (opts, valueEncoder, parameter) ->
+  _keyValues = signal []
+  _columns = signal []
+
+  react _columns, () ->
+    _keyValues []
+
+  _keyValueObject = (key, value) ->
+    _key = signal key
+    _value = signal value
+    _id = signal uniqueId()
+
+    key: _key
+    value: _value
+    id: _id
+    encodedValue: ->
+      valueEncoder _value()
+    remove: ->
+      _keyValues (entry for entry in _keyValues() when entry.id() != _id())
+
+  _keyValueConstructor = ->
+    _key = signal ''
+    _keyOpts = signal _columns()
+    _keySelected = signal no
+
+    _value = signal ''
+    _valueOpts = signal []
+
+    react _key, (value) ->
+      if value
+        _keySelected yes
+        _valueOpts opts
+      else
+        _keySelected no
+        _valueOpts []
+    
+    _keyValueExists = (checkedKey) ->
+      sameKeys = (keyValue for keyValue in _keyValues() when keyValue.key() == checkedKey)
+      return sameKeys.length != 0
+
+    react _keyValues, (_) ->
+      _keyOpts (key for key in _keyOpts() when not _keyValueExists(key))
+      _key null
+
+    key: _key
+    keyOpts: _keyOpts
+    keySelected: _keySelected
+    value: _value
+    valueOpts: _valueOpts
+    create: ->
+      if not _key() or not _value() or _keyValueExists(_key())
+        return
+      new_entries = _keyValues()
+      new_entries.push _keyValueObject(_key(), _value())
+      _keyValues new_entries
+
+  _keyValuesToValue = (keyValues) ->
+    result = []
+    keyValues.forEach (keyValue) ->
+      result.push {key: keyValue.key(), value: keyValue.encodedValue()}
+    result
+
+  control = createControl 'keyvalues', parameter
+  control.value = lift _keyValues, _keyValuesToValue
+  control.columns = _columns
+  control.keyValues = _keyValues
+  control.newKeyValue = _keyValueConstructor
+  control
+
 createControlFromParameter = (_, parameter) ->
   switch parameter.type
     when 'enum', 'Key<Frame>', 'VecSpecifier'
@@ -219,6 +288,20 @@ createControlFromParameter = (_, parameter) ->
       createModelsControl _, parameter
     when 'StringPair[]'
       createStringPairsControl parameter
+    when 'KeyValue[]'
+      if parameter.name is 'monotone_constraints'
+        increasing = 'Increasing'
+        decreasing = 'Decreasing'
+        valueEncoder = (value) ->
+          switch value
+            when increasing
+              return 1
+            when decreasing
+              return -1
+            else
+              console.error "Unknown value #{_value()} to encode."
+              return 0
+        createMonotoneContraintsControl [increasing, decreasing], valueEncoder, parameter
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null
@@ -283,7 +366,7 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
   findFormField = (name) -> find _form, (field) -> field.name is name
 
   do ->
-    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter, interactionsParameter, metalearnerFoldColumnParameter, interactionPairsParameter, startColumnParameter, stopColumnParameter] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column', 'interactions' , 'metalearner_fold_column', 'interaction_pairs', 'start_column', 'stop_column'], findFormField
+    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter, interactionsParameter, metalearnerFoldColumnParameter, interactionPairsParameter, monotoneConstraintsParameter, startColumnParameter, stopColumnParameter] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column', 'interactions' , 'metalearner_fold_column', 'interaction_pairs', 'monotone_constraints', 'start_column', 'stop_column'], findFormField
 
     if trainingFrameParameter
       if responseColumnParameter or ignoredColumnsParameter
@@ -322,6 +405,9 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
 
                 if interactionPairsParameter
                   interactionPairsParameter.columns columnValues
+
+                if monotoneConstraintsParameter
+                  monotoneConstraintsParameter.columns columnValues
 
                 if startColumnParameter
                   startColumnParameter.values columnValues
