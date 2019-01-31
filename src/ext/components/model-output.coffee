@@ -21,6 +21,12 @@ module.exports = (_, _go, _model, refresh) ->
       value = switch type
         when 'Key<Frame>', 'Key<Model>'
           if actual_value then actual_value.name else null
+        when 'Key<Frame>[]', 'Key<Model>[]'
+          if actual_value
+            key_ids = actual_value.map (key) -> key.name
+            key_ids.join ', '
+          else
+            null
         when 'VecSpecifier'
           if actual_value then actual_value.column_name else null
         when 'StringPair[]'
