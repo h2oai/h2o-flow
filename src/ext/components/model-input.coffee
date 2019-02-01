@@ -366,7 +366,34 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
   findFormField = (name) -> find _form, (field) -> field.name is name
 
   do ->
-    [ trainingFrameParameter, validationFrameParameter, responseColumnParameter, ignoredColumnsParameter, offsetColumnsParameter, weightsColumnParameter, foldColumnParameter, interactionsParameter, metalearnerFoldColumnParameter, interactionPairsParameter, monotoneConstraintsParameter, startColumnParameter, stopColumnParameter] = map [ 'training_frame', 'validation_frame', 'response_column', 'ignored_columns', 'offset_column', 'weights_column', 'fold_column', 'interactions' , 'metalearner_fold_column', 'interaction_pairs', 'monotone_constraints', 'start_column', 'stop_column'], findFormField
+    [ trainingFrameParameter,
+      validationFrameParameter,
+      responseColumnParameter,
+      ignoredColumnsParameter,
+      offsetColumnsParameter,
+      weightsColumnParameter,
+      foldColumnParameter,
+      interactionsParameter,
+      metalearnerFoldColumnParameter,
+      interactionPairsParameter,
+      monotoneConstraintsParameter,
+      startColumnParameter,
+      stopColumnParameter
+    ] = map [
+      'training_frame',
+      'validation_frame',
+      'response_column',
+      'ignored_columns',
+      'offset_column',
+      'weights_column',
+      'fold_column',
+      'interactions',
+      'metalearner_fold_column',
+      'interaction_pairs',
+      'monotone_constraints',
+      'start_column',
+      'stop_column'
+    ], findFormField
 
     if trainingFrameParameter
       if responseColumnParameter or ignoredColumnsParameter
