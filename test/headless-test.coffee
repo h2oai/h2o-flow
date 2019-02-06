@@ -215,7 +215,10 @@ waitFor = (test, browser, onReady) ->
   interval = setInterval retest, 2000
 
 main = ->
-  browser = await puppeteer.launch({args: ['--no-sandbox']})
+  args = {args: ['--no-sandbox']}
+  if process.env.CHROME_BIN
+    args.executablePath = process.env.CHROME_BIN
+  browser = await puppeteer.launch(args)
   page = await browser.newPage()
 
   page.on 'requestfailed', (request) ->
