@@ -277,10 +277,14 @@
   };
 
   main = async function() {
-    var browser, errorMessage, page, printErrors, response, test;
-    browser = (await puppeteer.launch({
+    var args, browser, errorMessage, page, printErrors, response, test;
+    args = {
       args: ['--no-sandbox']
-    }));
+    };
+    if (process.env.CHROME_BIN) {
+      args.executablePath = process.env.CHROME_BIN;
+    }
+    browser = (await puppeteer.launch(args));
     page = (await browser.newPage());
     page.on('requestfailed', function(request) {
       return console.log(`BROWSER: *** REQUEST FAILED *** ${request.method()} ${request.url()}: ${(request.failure().errorText)}`);
