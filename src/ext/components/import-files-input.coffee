@@ -14,13 +14,16 @@ module.exports = (_, _go) ->
 
   tryImportFiles = ->
     specifiedPath = _specifiedPath()
-    _.requestFileGlob specifiedPath, -1, (error, result) ->
-      if error
-        _exception error.stack
-      else
-        _exception ''
-        #_go 'confirm', result
-        processImportResult result
+    if specifiedPath.trim().length == 0
+      _exception 'Empty path. Please provide a valid path.'
+    else
+      _.requestFileGlob specifiedPath, -1, (error, result) ->
+        if error
+          _exception error.stack
+        else
+          _exception ''
+          #_go 'confirm', result
+          processImportResult result
 
   #
   # File selection 
