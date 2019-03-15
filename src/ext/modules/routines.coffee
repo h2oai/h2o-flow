@@ -1610,6 +1610,7 @@ exports.init = (_) ->
       input_spec:
         training_frame: opts.training_frame
         validation_frame: opts.validation_frame
+        blending_frame: opts.blending_frame
         response_column: opts.response_column
         fold_column: opts.fold_column
         weights_column: opts.weights_column
@@ -1631,6 +1632,7 @@ exports.init = (_) ->
           seed: opts.seed
           max_models: opts.max_models
           max_runtime_secs: opts.max_runtime_secs
+          max_runtime_secs_per_model: opts.max_runtime_secs_per_model
           stopping_rounds: opts.stopping_rounds
           stopping_tolerance: opts.stopping_tolerance
           # TODO Enums currently fail with:

@@ -73,6 +73,11 @@
           select(data-bind="options:validationFrames, value:validationFrame, optionsCaption:'(Select)'")
       tr
         th
+          label Blending Frame:
+        td
+          select(data-bind="options:blendingFrames, value:blendingFrame, optionsCaption:'(Select)'")
+      tr
+        th
           label Leaderboard Frame:
         td
           select(data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'")
@@ -122,6 +127,11 @@
           label Max Run Time (sec):
         td
           input(data-bind="value:maxRuntimeSecs")
+      tr
+        th
+          label Max Run Time Per Model (sec):
+        td
+          input(data-bind="value:maxRuntimeSecsPerModel")
       tr
         th
           label Early stopping metric:
