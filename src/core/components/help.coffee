@@ -23,7 +23,12 @@ Or, <a href='#' data-action='get-pack' data-pack-name='examples'>view example Fl
 
 ###### Star H2O on Github!
 
-<iframe src="https://ghbtns.com/github-btn.html?user=h2oai&repo=h2o-3&type=star&count=true" frameborder="0" scrolling="0" width="170px" height="20px"></iframe>
+<span class="github-btn">
+    <a class="gh-btn" href="https://github.com/h2oai/h2o-3/" target="_blank">
+      <span class="gh-ico"></span><span class="gh-text">Star</span>
+    </a>
+</span>
+<br/>
 
 ###### General
 
