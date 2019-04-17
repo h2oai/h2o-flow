@@ -3,6 +3,7 @@
 { lift, link, signal, signals } = require("../../core/modules/dataflow")
 { stringify } = require('../../core/modules/prelude')
 { iterate } = require('../../core/modules/async')
+JSONbig = require('json-bigint')
 FlowError = require('../../core/modules/flow-error')
 util = require('./util')
 
@@ -26,6 +27,8 @@ exports.init = (_) ->
         str
     else
       ''
+
+  $.ajaxSetup converters: { "text json": JSONbig.parse }
 
   http = (method, path, opts, go) ->
     if path.substring(0,1) == "/"
