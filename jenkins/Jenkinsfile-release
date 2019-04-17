@@ -86,9 +86,6 @@ try {
                                 sh """
                                     env
                                     id
-
-                                    ln -s /home/jenkins/flow-cache/node_modules/ ./node_modules
-
                                     sed -E "s/.+version.+/  \\"version\\": \\"$flowVersion\\",/" package.json > package.json.tmp && mv package.json.tmp package.json
                                     make install build
                                 """
