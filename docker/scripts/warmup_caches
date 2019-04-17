@@ -10,12 +10,11 @@ fi
 cd ~
 
 git clone https://github.com/h2oai/h2o-flow
+
 cd h2o-flow
+
 git checkout ${H2O_BRANCH}
-mkdir -p /home/jenkins/flow-cache/node_modules /home/jenkins/flow-cache/lib
-ln -s /home/jenkins/flow-cache/node_modules .
-
 make install
-cd ..
 
+cd ..
 rm -rf h2o-flow
