@@ -1,4 +1,6 @@
-{ map, isArray, isObject, keyBy, values } = require("lodash")
+{ map, isArray, keyBy, values } = require("lodash")
+{ isObject } = require('./prelude')
+
 esprima = require('esprima')
 escodegen = require('escodegen')
 CoffeeScript = require('coffeescript')

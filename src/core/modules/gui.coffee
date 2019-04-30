@@ -1,5 +1,6 @@
 { act, react, lift, merge, isSignal, signal, signals } = require("../../core/modules/dataflow")
-{ isString, isNumber, isArray, isFunction, noop, uniqueId } = require('lodash')
+{ isString, isArray, isFunction, noop, uniqueId } = require('lodash')
+{ isNumber } = require('./prelude')
 
 wrapValue = (value, init) ->
   if value is undefined

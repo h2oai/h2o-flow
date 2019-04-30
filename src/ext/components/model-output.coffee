@@ -5,6 +5,60 @@
 util = require('../../core/modules/util')
 lightning = require('../../core/modules/lightning')
 
+getParameterValue = (type, default_value, actual_value) ->
+  switch type
+    when 'Key<Frame>', 'Key<Model>'
+      if actual_value then actual_value.name else null
+    when 'Key<Frame>[]', 'Key<Model>[]'
+      if actual_value
+        key_ids = actual_value.map (key) -> key.name
+        key_ids.join ', '
+      else
+        null
+    when 'VecSpecifier'
+      if actual_value then actual_value.column_name else null
+    when 'StringPair[]'
+      if actual_value
+        pairs = actual_value.map (pair) -> pair.a + ':' + pair.b
+        pairs.join ', '
+      else
+        null
+    when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
+      if actual_value then actual_value.join ', ' else null
+    when 'KeyValue[]'
+      if actual_value
+        keyValues = actual_value.map (kv) -> kv.key + ' =  ' + kv.value
+        keyValues.join ', '
+      else
+        null
+    else
+      actual_value
+
+getAucAsLabel = (_, model, tableName) ->
+  if metrics = _.inspect tableName, model
+    " , AUC = #{metrics.schema.AUC.at 0}"
+  else
+    ''
+
+getThresholdsAndCriteria = (_, model, tableName) ->
+  if criterionTable = _.inspect tableName, model
+    # Threshold dropdown items
+    thresholdVector = criterionTable.schema.threshold
+    thresholds = for i in [0 ... thresholdVector.count()]
+      index: i
+      value: thresholdVector.at i
+
+    # Threshold criterion dropdown item
+    metricVector = criterionTable.schema.metric
+    idxVector = criterionTable.schema.idx
+    criteria = for i in [0 ... metricVector.count()]
+      index: idxVector.at i
+      value: metricVector.valueAt i
+
+    { thresholds, criteria }
+  else
+    undefined
+
 module.exports = (_, _go, _model, refresh) ->
   _output = signal null
 
@@ -14,78 +68,15 @@ module.exports = (_, _go, _model, refresh) ->
     _pojoPreview = signal null
     _isPojoLoaded = lift _pojoPreview, (preview) -> if preview then yes else no
 
-    #TODO use _.enumerate()
     _inputParameters = map _model.parameters, (parameter) ->
       { type, default_value, actual_value, label, help } = parameter
 
-      value = switch type
-        when 'Key<Frame>', 'Key<Model>'
-          if actual_value then actual_value.name else null
-        when 'Key<Frame>[]', 'Key<Model>[]'
-          if actual_value
-            key_ids = actual_value.map (key) -> key.name
-            key_ids.join ', '
-          else
-            null
-        when 'VecSpecifier'
-          if actual_value then actual_value.column_name else null
-        when 'StringPair[]'
-          if actual_value
-            pairs = actual_value.map (pair) -> pair.a + ':' + pair.b
-            pairs.join ', '
-          else
-            null
-        when 'string[]', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
-          if actual_value then actual_value.join ', ' else null
-        when 'KeyValue[]'
-          if actual_value
-            keyValues = actual_value.map (kv) -> kv.key + ' =  ' + kv.value
-            keyValues.join ', '
-          else
-            null
-        else
-          actual_value
-
       label: label
-      value: value
+      value: getParameterValue(type, default_value, actual_value)
       help: help
       isModified: default_value is actual_value
 
-    #TODO copied over from routines.coffee. replace post h2o.js integration.
-    format4f = (number) ->
-      if number
-        if number is 'NaN'
-          undefined
-        else
-          number.toFixed(4).replace(/\.0+$/, '.0')
-      else
-        number
 
-    getAucAsLabel = (model, tableName) ->
-      if metrics = _.inspect tableName, model
-        " , AUC = #{metrics.schema.AUC.at 0}"
-      else
-        ''
-
-    getThresholdsAndCriteria = (model, tableName) ->
-      if criterionTable = _.inspect tableName, _model
-
-        # Threshold dropdown items
-        thresholdVector = table.schema.threshold
-        thresholds = for i in [0 ... thresholdVector.count()]
-          index: i
-          value: thresholdVector.at i
-
-        # Threshold criterion dropdown item
-        metricVector = criterionTable.schema.metric
-        idxVector = criterionTable.schema.idx
-        criteria = for i in [0 ... metricVector.count()]
-          index: idxVector.at i
-          value: metricVector.valueAt i
-
-        { thresholds, criteria }
-      else
-        undefined
 
     # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
     renderPlot = (title, isCollapsed, render, thresholdsAndCriteria) ->
@@ -236,7 +227,8 @@ module.exports = (_, _go, _model, refresh) ->
               g.domainY_HACK 0, 1
             )
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _, _model, 'output - training_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - training_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
@@ -251,7 +243,8 @@ module.exports = (_, _go, _model, refresh) ->
               g.domainY_HACK 0, 1
             )
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _, _model, 'output - validation_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - validation_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
@@ -266,7 +259,8 @@ module.exports = (_, _go, _model, refresh) ->
               g.domainY_HACK 0, 1
             )
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _, _model, 'output - cross_validation_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - cross_validation_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - Standardized Coefficient Magnitudes', _model
           renderPlot 'Standardized Coefficient Magnitudes', no, _.plot (g) ->
@@ -409,7 +403,8 @@ module.exports = (_, _go, _model, refresh) ->
               g.domainY_HACK 0, 1
             )
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _, _model, 'output - training_metrics'}", no, plotter,
+            getThresholdsAndCriteria _, _model, 'output - training_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
@@ -424,7 +419,8 @@ module.exports = (_, _go, _model, refresh) ->
               g.domainY_HACK 0, 1
             )
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _, _model, 'output - validation_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - validation_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
@@ -439,7 +435,8 @@ module.exports = (_, _go, _model, refresh) ->
               g.domainY_HACK 0, 1
             )
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _, _model, 'output - cross_validation_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - cross_validation_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - Variable Importances', _model
           renderPlot 'Variable Importances', no, _.plot (g) ->
@@ -547,7 +544,8 @@ module.exports = (_, _go, _model, refresh) ->
             )
 
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _, _model, 'output - training_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - training_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
@@ -563,7 +561,8 @@ module.exports = (_, _go, _model, refresh) ->
             )
 
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _, _model, 'output - validation_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - validation_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
@@ -579,7 +578,8 @@ module.exports = (_, _go, _model, refresh) ->
             )
 
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _, _model, 'output - cross_validation_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - cross_validation_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - Variable Importances', _model
           renderPlot 'Variable Importances', no, _.plot (g) ->
@@ -615,7 +615,8 @@ module.exports = (_, _go, _model, refresh) ->
             )
 
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _model, 'output - training_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - training_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Training Metrics#{getAucAsLabel _, _model, 'output - training_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - training_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - validation_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
@@ -631,7 +632,8 @@ module.exports = (_, _go, _model, refresh) ->
             )
 
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _model, 'output - validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - validation_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Validation Metrics#{getAucAsLabel _, _model, 'output - validation_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - validation_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - cross_validation_metrics - Metrics for Thresholds', _model
           plotter = _.plot (g) ->
@@ -647,7 +649,8 @@ module.exports = (_, _go, _model, refresh) ->
             )
 
           # TODO Mega-hack alert. Last arg thresholdsAndCriteria applicable only to ROC charts for binomial models.
-          renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _model, 'output - cross_validation_metrics'}", no, plotter, getThresholdsAndCriteria _model, 'output - cross_validation_metrics - Maximum Metrics'
+          renderPlot "ROC Curve - Cross Validation Metrics#{getAucAsLabel _, _model, 'output - cross_validation_metrics'}",
+            no, plotter, getThresholdsAndCriteria _, _model, 'output - cross_validation_metrics - Maximum Metrics'
 
         if table = _.inspect 'output - Variable Importances', _model
           renderPlot 'Variable Importances', no, _.plot (g) ->

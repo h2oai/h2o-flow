@@ -1,4 +1,5 @@
-{ head, isUndefined, indexOf } = require('lodash')
+{ head, isUndefined, indexOf, isNumber, isObject } = require('lodash')
+BigNumber = require('bignumber.js');
 
 { TNull, TUndefined, TBoolean, TString, TNumber, TFunction, TObject, TArray, TArguments, TDate, TRegExp, TError } = require('./types')
 
@@ -6,6 +7,8 @@ module.exports = do ->
   _isDefined = (value) -> not isUndefined value
   _isTruthy = (value) -> if value then yes else no
   _isFalsy = (value) -> if value then no else yes
+  _isNumber = (value) -> isNumber(value) || value instanceof BigNumber
+  _isObject = (value) -> isObject(value) && !(value instanceof BigNumber)
   _negative = (value) -> not value
   _always = -> yes
   _never = -> no
@@ -59,6 +62,8 @@ module.exports = do ->
   isDefined: _isDefined
   isTruthy: _isTruthy
   isFalsy: _isFalsy
+  isNumber: _isNumber
+  isObject: _isObject
   negative: _negative
   always: _always
   never: _never
