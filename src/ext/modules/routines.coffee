@@ -1,7 +1,7 @@
-{ flatten, compact, keyBy, findIndex,
-  isFunction, isString, isNumber, isArray, isObject,
+{ flatten, compact, keyBy, findIndex, isFunction, isArray,
   map, uniq, head, keys, range, escape, sortBy, some, 
   tail, concat, values } = require('lodash')
+{ isObject, isNumber } = require('../../core/modules/prelude')
 
 { words, typeOf, stringify } = require('../../core/modules/prelude')
 { act, react, lift, link, merge, isSignal, signal, signals } = require("../../core/modules/dataflow")

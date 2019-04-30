@@ -1,4 +1,5 @@
-{ isString, isNumber, isArray, isObject, map, filter, head } = require('lodash')
+{ isArray, map, filter, head } = require('lodash')
+{ isObject, isNumber } = require('../../core/modules/prelude')
 
 { lift, link, signal, signals } = require("../../core/modules/dataflow")
 { stringify } = require('../../core/modules/prelude')

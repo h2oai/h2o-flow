@@ -1,4 +1,4 @@
-{ isString, isNumber, uniqueId, escape } = require('lodash')
+{ uniqueId, escape } = require('lodash')
 
 { act, react, lift, merge, isSignal, signal, signals } = require("../../core/modules/dataflow")
 { stringify } = require('../../core/modules/prelude')
