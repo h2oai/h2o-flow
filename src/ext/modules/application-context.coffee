@@ -1,4 +1,4 @@
-{ slot, slots, signal } = require('../../core/modules/dataflow')
+{ slot, signal } = require('../../core/modules/dataflow')
 
 exports.init = (_) ->
   _.requestFileGlob = do slot

@@ -75,9 +75,8 @@ module.exports = (_, _go, _cloud) ->
     [ "Sys CPU %", yes ]
     [ "GFLOPS", yes ]
     [ "Memory Bandwidth", yes ]
-    [ "Data (Used/Total)", yes ]
-    [ "Data (% Cached)", yes ]
-    [ "GC (Free / Total / Max)", yes ]
+    [ "Data", yes ]
+    [ "GC (Free / Max)", yes ]
     [ "Disk (Free / Max)", yes ]
     [ "Disk (% Free)", yes ]
     [ "PID", no ]
@@ -100,9 +99,8 @@ module.exports = (_, _go, _cloud) ->
       node.sys_cpu_pct
       format3f node.gflops
       "#{prettyPrintBytes node.mem_bw} / s"
-      "#{prettyPrintBytes node.mem_value_size} / #{prettyPrintBytes node.total_value_size}"
-      "#{Math.floor node.mem_value_size * 100 / node.total_value_size}%"
-      "#{prettyPrintBytes node.free_mem} / #{prettyPrintBytes node.tot_mem} / #{prettyPrintBytes node.max_mem}"
+      "#{prettyPrintBytes node.mem_value_size}"
+      "#{prettyPrintBytes node.free_mem} / #{prettyPrintBytes node.max_mem}"
       "#{prettyPrintBytes node.free_disk} / #{prettyPrintBytes node.max_disk}"
       "#{Math.floor node.free_disk * 100 / node.max_disk}%"
       node.pid
@@ -126,9 +124,8 @@ module.exports = (_, _go, _cloud) ->
       '-'
       "#{(format3f sum nodes, (node) -> node.gflops)}"
       "#{prettyPrintBytes (sum nodes, (node) -> node.mem_bw)} / s"
-      "#{prettyPrintBytes (sum nodes, (node) -> node.mem_value_size)} / #{prettyPrintBytes (sum nodes, (node) -> node.total_value_size)}"
-      "#{Math.floor (avg nodes, (node) -> node.mem_value_size * 100 / node.total_value_size)}%"
-      "#{prettyPrintBytes (sum nodes, (node) -> node.free_mem)} / #{prettyPrintBytes (sum nodes, (node) -> node.tot_mem)} / #{prettyPrintBytes (sum nodes, (node) -> node.max_mem)}"
+      "#{prettyPrintBytes (sum nodes, (node) -> node.mem_value_size)}"
+      "#{prettyPrintBytes (sum nodes, (node) -> node.free_mem)} / #{prettyPrintBytes (sum nodes, (node) -> node.max_mem)}"
       "#{prettyPrintBytes (sum nodes, (node) -> node.free_disk)} / #{prettyPrintBytes (sum nodes, (node) -> node.max_disk)}"
       "#{Math.floor (avg nodes, (node) -> node.free_disk * 100 / node.max_disk)}%"
       '-'
