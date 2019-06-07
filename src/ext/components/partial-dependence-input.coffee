@@ -7,7 +7,7 @@ FlowError = require('../../core/modules/flow-error')
 
 module.exports = (_, _go) ->
   _exception = signal null 
-  _destinationKey = signal "ppd-#{util.uuid()}"
+  _destinationKey = signal "pdp-#{util.uuid()}"
 
   _frames = signals []
   _models = signals []
@@ -16,6 +16,7 @@ module.exports = (_, _go) ->
   _useCustomColumns = signal no
   _columns = signal []
   _nbins = signal 20
+  _row_index = signal -1
 
 
   # search & filter functionalities
@@ -104,8 +105,8 @@ module.exports = (_, _go) ->
   # a conditional check that makes sure that 
   # all fields in the form are filled in
   # before the button is shown as active
-  _canCompute = lift _destinationKey, _selectedFrame, _selectedModel, _nbins, (dk, sf, sm, nb) ->
-    dk and sf and sm and nb
+  _canCompute = lift _destinationKey, _selectedFrame, _selectedModel, _nbins, _row_index, (dk, sf, sm, nb, ri) ->
+    dk and sf and sm and nb and ri
 
   _compute = ->
     return unless _canCompute()
@@ -126,6 +127,7 @@ module.exports = (_, _go) ->
       frame_id: _selectedFrame()
       cols: cols
       nbins: _nbins()
+      row_index: _row_index()
 
     # assemble a string for the h2o Rapids AST
     # this contains the function to call
@@ -193,6 +195,7 @@ module.exports = (_, _go) ->
   visibleItems: _visibleItems
   useCustomColumns: _useCustomColumns
   nbins: _nbins
+  row_index: _row_index
   compute: _compute
   updateColumns: _updateColumns
   canCompute: _canCompute

@@ -23,6 +23,11 @@
         td(colspan='2')
           select(data-bind="options:frames, value:selectedFrame, optionsCaption:'(Select)', event:{ change:updateColumns}")
       tr
+        th row_index
+        td
+          input.flow-textbox(type='text' data-bind="value:row_index")
+        td Row for which partial dependence will be calculated instead of the whole input frame (-1 for all).
+      tr
         th nbins
         td
           input.flow-textbox(type='text' data-bind="value:nbins")
