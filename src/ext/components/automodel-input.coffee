@@ -10,6 +10,8 @@ module.exports = (_, _go, opts={}) ->
   _trainingFrame = signal null
   _validationFrames = signal []
   _validationFrame = signal null
+  _blendingFrames = signal []
+  _blendingFrame = signal null
   _leaderboardFrames = signal []
   _leaderboardFrame = signal null
   _hasTrainingFrame = lift _trainingFrame, (frame) -> if frame then yes else no
@@ -26,6 +28,8 @@ module.exports = (_, _go, opts={}) ->
   _maxModels = signal ''
   defaultMaxRunTime = 3600
   _maxRuntimeSecs = signal defaultMaxRunTime
+  defaultMaxRunTimePerModel = 0
+  _maxRuntimeSecsPerModel = signal defaultMaxRunTimePerModel
   _stoppingMetrics = signal []
   _stoppingMetric = signal null
   _sortMetrics = signal []
@@ -76,6 +80,10 @@ module.exports = (_, _go, opts={}) ->
     unless isNaN parsed = parseInt _maxRuntimeSecs(), 10
       maxRuntimeSecs = parsed
 
+    maxRuntimeSecsPerModel = defaultMaxRunTimePerModel
+    unless isNaN parsed = parseInt _maxRuntimeSecsPerModel(), 10
+      maxRuntimeSecsPerModel = parsed
+
     stoppingRounds = defaultStoppingRounds
     unless isNaN parsed = parseInt _stoppingRounds(), 10
       stoppingRounds = parsed
@@ -112,10 +120,12 @@ module.exports = (_, _go, opts={}) ->
       fold_column: _foldColumn()
       weights_column: _weightsColumn()
       validation_frame: _validationFrame()
+      blending_frame: _blendingFrame()
       leaderboard_frame: _leaderboardFrame()
       seed: seed
       max_models: maxModels
       max_runtime_secs: maxRuntimeSecs
+      max_runtime_secs_per_model: maxRuntimeSecsPerModel
       stopping_metric: _stoppingMetric()
       sort_metric: sortMetric
       stopping_rounds: stoppingRounds
@@ -142,11 +152,14 @@ module.exports = (_, _go, opts={}) ->
       frames = (frame.frame_id.name for frame in frames when not frame.is_text)
       _trainingFrames frames
       _validationFrames frames
+      _blendingFrames frames
       _leaderboardFrames frames
       if opts.training_frame
         _trainingFrame opts.training_frame
       if opts.validation_frame
         _validationFrame opts.validation_frame
+      if opts.blending_frame
+        _blendingFrame opts.blending_frame
       if opts.leaderboard_frame
         _leaderboardFrame opts.leaderboard_frame
 
@@ -189,6 +202,8 @@ module.exports = (_, _go, opts={}) ->
   hasTrainingFrame: _hasTrainingFrame
   validationFrames: _validationFrames
   validationFrame: _validationFrame
+  blendingFrames: _blendingFrames
+  blendingFrame: _blendingFrame
   leaderboardFrames: _leaderboardFrames
   leaderboardFrame: _leaderboardFrame
   columns: _columns
@@ -198,6 +213,7 @@ module.exports = (_, _go, opts={}) ->
   seed: _seed
   maxModels: _maxModels
   maxRuntimeSecs: _maxRuntimeSecs
+  maxRuntimeSecsPerModel: _maxRuntimeSecsPerModel
   stoppingMetrics: _stoppingMetrics
   stoppingMetric: _stoppingMetric
   sortMetrics: _sortMetrics
