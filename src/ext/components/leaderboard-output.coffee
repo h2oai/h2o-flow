@@ -11,8 +11,8 @@ module.exports = (_, _go, _result) ->
 
   _leaderboard = signal ''
   _leaderboardDescription = signal ''
-  _feedback = signal ''
-  _feedbackDescription = signal ''
+  _eventLog = signal ''
+  _eventLogDescription = signal ''
   _exception = signal null
   _isLive = signal no
 
@@ -47,10 +47,10 @@ module.exports = (_, _go, _result) ->
     _leaderboardDescription description
     _leaderboard leaderboardEl
 
-  renderFeedback = (feedback) ->
+  renderEventLog = (event_log) ->
     [table, thead, tbody, tr, th, td] = html.template 'table', 'thead', 'tbody', 'tr', 'th', 'td'
 
-    { description, columns, rowcount, data } = feedback
+    { description, columns, rowcount, data } = event_log
 
     ths = map columns, (column) -> th column.name
 
@@ -58,15 +58,15 @@ module.exports = (_, _go, _result) ->
     for i in [0 ... rowcount]
       trs.push tr map data, (d) -> td d[i]
 
-    _feedbackDescription description
-    _feedback html.render 'div', table [
+    _eventLogDescription description
+    _eventLog html.render 'div', table [
       thead tr ths
       tbody trs
     ]
 
   render = (result) ->
     renderLeaderboard result.leaderboard_table
-    renderFeedback result.user_feedback_table
+    renderEventLog result.event_log_table
 
   toggleRefresh = ->
     _isLive not _isLive()
@@ -89,8 +89,8 @@ module.exports = (_, _go, _result) ->
 
   leaderboard: _leaderboard
   leaderboardDescription: _leaderboardDescription
-  feedback: _feedback
-  feedbackDescription: _feedbackDescription
+  eventLog: _eventLog
+  eventLogDescription: _eventLogDescription
   isLive: _isLive
   toggleRefresh: toggleRefresh
   exception: _exception
