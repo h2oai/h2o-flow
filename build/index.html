@@ -2714,6 +2714,14 @@
             </tr>
             <tr>
               <th>
+                <label>Blending Frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:blendingFrames, value:blendingFrame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
                 <label>Leaderboard Frame:</label>
               </th>
               <td>
@@ -2785,6 +2793,14 @@
               </th>
               <td>
                 <input data-bind="value:maxRuntimeSecs">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Max Run Time Per Model (sec):</label>
+              </th>
+              <td>
+                <input data-bind="value:maxRuntimeSecsPerModel">
               </td>
             </tr>
             <tr>
