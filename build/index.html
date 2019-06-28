@@ -2721,6 +2721,14 @@
             </tr>
             <tr>
               <th>
+                <label>Blending Frame:</label>
+              </th>
+              <td>
+                <select data-bind="options:blendingFrames, value:blendingFrame, optionsCaption:'(Select)'"></select>
+              </td>
+            </tr>
+            <tr>
+              <th>
                 <label>Leaderboard Frame:</label>
               </th>
               <td>
@@ -2792,6 +2800,14 @@
               </th>
               <td>
                 <input data-bind="value:maxRuntimeSecs">
+              </td>
+            </tr>
+            <tr>
+              <th>
+                <label>Max Run Time Per Model (sec):</label>
+              </th>
+              <td>
+                <input data-bind="value:maxRuntimeSecsPerModel">
               </td>
             </tr>
             <tr>
@@ -2901,10 +2917,10 @@
     <div data-bind="text:leaderboardDescription"></div>
     <div class="flow-plot" data-bind="raw:leaderboard"></div>
   </div>
-  <h4 data-bind="collapse:false">User Feedback</h4>
+  <h4 data-bind="collapse:false">Event Log</h4>
   <div>
-    <div data-bind="text:feedbackDescription"></div>
-    <div class="flow-plot" data-bind="raw:feedback"></div>
+    <div data-bind="text:eventLogDescription"></div>
+    <div class="flow-plot" data-bind="raw:eventLog"></div>
   </div>
 </div>
     </script>
