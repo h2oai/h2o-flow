@@ -69,6 +69,20 @@
                   +button('Next 100', 'arrow-right', 'goToNextPage', 'canGoToNextPage')
       tr
         th
+          label 2D PDP Columns:
+        td
+          div
+            // ko foreach:colums2d
+            div
+              select(data-bind="options:columnValues, value:firstColumn")
+              select(data-bind="options:columnValues, value:secondColumn")
+              +button('Remove', 'trash', 'removeSelf', true)
+            // /ko
+          div(style='height:25px')
+            +button('Add', 'plus', 'addColumns2d', 'selectedFrame')
+        td Select lists of column name pairs to plot 2D partial dependence plot for.
+      tr
+        th
           label Actions:
         td
           button.flow-button(type='button' data-bind='click:compute, enable:canCompute')

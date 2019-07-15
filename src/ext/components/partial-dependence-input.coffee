@@ -15,6 +15,8 @@ module.exports = (_, _go) ->
   _selectedFrame = signal null
   _useCustomColumns = signal no
   _columns = signal []
+  _columnValues = signal []
+  _columns2d = signal []
   _nbins = signal 20
   _row_index = signal -1
 
@@ -100,9 +102,38 @@ module.exports = (_, _go) ->
       _currentPage _currentPage() + 1
       filterItems()
     return
-  #end of search & filter functionalities  
 
-  # a conditional check that makes sure that 
+  _selectedColsToString = ->
+    cols = ""
+    for col in _columns() when col.isSelected()
+      cols = cols + "\"" + col.value + "\","
+    if cols != ""
+      cols ="[" + cols + "]"
+    cols
+  #end of search & filter functionalities
+
+  _addColumns2d = ->
+    vals = _columns2d()
+    entry = {
+      firstColumn: _columnValues()[0]
+      secondColumn: _columnValues()[0]
+      columnValues: _columnValues
+    }
+    _removeSelf = ->
+      _columns2d _columns2d().filter (it) -> it != entry
+    entry.removeSelf = _removeSelf
+    vals.push entry
+    _columns2d vals
+
+  _cols2dToString = ->
+    cols = ""
+    for col in _columns2d()
+      cols = cols + "[\"" + col.firstColumn + "\",\"" + col.secondColumn + "\"], "
+    if cols != ""
+      cols ="[" + cols + "]"
+    cols
+
+  # a conditional check that makes sure that
   # all fields in the form are filled in
   # before the button is shown as active
   _canCompute = lift _destinationKey, _selectedFrame, _selectedModel, _nbins, _row_index, (dk, sf, sm, nb, ri) ->
@@ -111,21 +142,13 @@ module.exports = (_, _go) ->
   _compute = ->
     return unless _canCompute()
 
-    # parameters are selections from Flow UI
-    # form dropdown menus, text boxes, etc
-    cols = ""
-
-    for col in _columns() when col.isSelected()
-      cols = cols + "\"" + col.value + "\","
-
-    if cols != ""
-      cols ="[" + cols + "]"
 
     opts =
       destination_key: _destinationKey()
       model_id: _selectedModel()
       frame_id: _selectedFrame()
-      cols: cols
+      cols: _selectedColsToString()
+      col_pairs_2dpdp: _cols2dToString()
       nbins: _nbins()
       row_index: _row_index()
 
@@ -145,7 +168,7 @@ module.exports = (_, _go) ->
         _.requestFrameSummaryWithoutData frameKey, (error, frame) ->
           unless error
             columnValues = map frame.columns, (column) -> column.label
-            columnLabels = map frame.columns, (column) -> 
+            columnLabels = map frame.columns, (column) ->
               missingPercent = 100 * column.missing_count / frame.rows
               isSelected = signal no
               react isSelected, (isSelected) -> 
@@ -163,11 +186,14 @@ module.exports = (_, _go) ->
               missingLabel: if missingPercent is 0 then '' else "#{Math.round missingPercent}% NA"
 
             _columns columnLabels
+            _columnValues columnValues
 
             #reset filtered views
             _currentPage 0
             _searchTerm ''
             filterItems()
+      else
+        _columns2d []
 
   _.requestFrames (error, frames) ->
     if error
@@ -192,6 +218,8 @@ module.exports = (_, _go) ->
   selectedModel: _selectedModel
   selectedFrame: _selectedFrame
   columns: _columns
+  columnValues: _columnValues
+  colums2d: _columns2d
   visibleItems: _visibleItems
   useCustomColumns: _useCustomColumns
   nbins: _nbins
@@ -200,7 +228,10 @@ module.exports = (_, _go) ->
   updateColumns: _updateColumns
   canCompute: _canCompute
 
-  #search & filter functionalities of column selector
+  # add&remove functionality of columns2d
+  addColumns2d:_addColumns2d
+
+  # search & filter functionalities of column selector
   hasFilteredItems: _hasFilteredItems
   selectFiltered: _selectFiltered
   deselectFiltered: _deselectFiltered

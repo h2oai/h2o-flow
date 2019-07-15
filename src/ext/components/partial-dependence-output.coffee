@@ -49,13 +49,6 @@ module.exports = (_, _go, _result) ->
 
       section.isFrameShown = lift _isFrameShown, (value)-> value
 
-  # _partialDependencePlots = map _result.partial_dependence_data, (item) ->
-  # 	description: item.columns[0].description
-  # 	plot: item.data
-  # 	table: item.data
-
-  # _partialDependenceData = _result.partial_dependence_data
-
   _viewFrame = ->
     _.insertAndExecuteCell 'cs', "requestPartialDependenceData #{stringify _destinationKey}"
 
