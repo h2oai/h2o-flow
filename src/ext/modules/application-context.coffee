@@ -74,6 +74,7 @@ exports.init = (_) ->
   _.ls = do slot
   _.inspect = do slot
   _.plot = do slot
+  _.plotlyPlot = do slot
   _.grid = do slot
   _.enumerate = do slot
   #

@@ -1,3 +1,5 @@
+Plotly = require('plotly.js')
+
 { flatten, compact, keyBy, findIndex, isFunction, isArray,
   map, uniq, head, keys, range, escape, sortBy, some, 
   tail, concat, values } = require('lodash')
@@ -362,7 +364,7 @@ exports.init = (_) ->
   extendPlot = (vis) ->
     render_ vis, h2o.PlotOutput, vis.element
 
-  createPlot = (f, go) ->
+  createLightningPlot = (f, go) ->
     _plot (f lightning), (error, vis) ->
       if error
         go error
@@ -373,9 +375,19 @@ exports.init = (_) ->
     if _isFuture f
       _fork proceed, h2o.PlotInput, f
     else if isFunction f
-      _fork createPlot, f
+      _fork createLightningPlot, f
     else
       assist plot
+
+  createPlotlyPlot = (f, go) ->
+    _plot (f Plotly), (error, vis) ->
+      if error
+        go error
+      else
+        go null, extendPlot vis
+
+  plotlyPlot = (f) ->
+    _fork createPlotlyPlot, f
 
   grid = (f) ->
     plot (g) -> g(
@@ -1993,7 +2005,8 @@ exports.init = (_) ->
   link _.ready, ->
     link _.ls, ls
     link _.inspect, inspect
-    link _.plot, (plot) -> plot lightning
+    link _.plot, (p) -> p lightning
+    link _.plotlyPlot, (p) -> p Plotly
     link _.grid, (frame) ->
       lightning(
         lightning.select()
@@ -2040,6 +2053,7 @@ exports.init = (_) ->
     dump: dump
     inspect: inspect
     plot: plot
+    plotlyPlot: plotlyPlot
     grid: grid
     get: _get
     #
