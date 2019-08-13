@@ -25,6 +25,10 @@ config =
             presets: ['@babel/preset-env', 'minify']
       },
       {
+        test: /\.js$/,
+        loader: 'ify-loader'
+      },
+      {
         test: /\.coffee$/
         use: [
           {
