@@ -1229,6 +1229,28 @@
             </tr>
             <tr>
               <th>
+                <label>2D PDP Columns:</label>
+              </th>
+              <td>
+                <div>
+                  <!-- ko foreach:colums2d-->
+                  <div>
+                    <select data-bind="options:columnValues, value:firstColumn"></select>
+                    <select data-bind="options:columnValues, value:secondColumn"></select>
+                        <button class="flow-button" type="button" data-bind="click:removeSelf, enable:true"><i class="fa fa-trash"></i><span>Remove</span>
+                        </button>
+                  </div>
+                  <!-- /ko-->
+                </div>
+                <div style="height:25px">
+                      <button class="flow-button" type="button" data-bind="click:addColumns2d, enable:selectedFrame"><i class="fa fa-plus"></i><span>Add</span>
+                      </button>
+                </div>
+              </td>
+              <td>Select lists of column name pairs to plot 2D partial dependence plot for.</td>
+            </tr>
+            <tr>
+              <th>
                 <label>Actions:</label>
               </th>
               <td>
