@@ -278,7 +278,7 @@ createControlFromParameter = (_, parameter) ->
   switch parameter.type
     when 'enum', 'Key<Frame>', 'VecSpecifier'
       createDropdownControl parameter
-    when 'string[]'
+    when 'string[]', 'VecSpecifier[]'
       createListControl parameter
     when 'boolean'
       createCheckboxControl parameter
@@ -378,7 +378,9 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
       interactionPairsParameter,
       monotoneConstraintsParameter,
       startColumnParameter,
-      stopColumnParameter
+      stopColumnParameter,
+      targetColumnParameter,
+      encodedColumnsParameter
     ] = map [
       'training_frame',
       'validation_frame',
@@ -392,11 +394,13 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
       'interaction_pairs',
       'monotone_constraints',
       'start_column',
-      'stop_column'
+      'stop_column',
+      'target_column',
+      'encoded_columns'
     ], findFormField
 
     if trainingFrameParameter
-      if responseColumnParameter or ignoredColumnsParameter
+      if responseColumnParameter or ignoredColumnsParameter or targetColumnParameter
         act trainingFrameParameter.value, (frameKey) ->
           if frameKey
             _.requestFrameSummaryWithoutData frameKey, (error, frame) ->
@@ -442,6 +446,13 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
                 if stopColumnParameter
                   stopColumnParameter.values columnValues
 
+                # Target Encoding fields
+                if targetColumnParameter
+                  targetColumnParameter.values columnValues
+
+                if encodedColumnsParameter
+                  encodedColumnsParameter.values columnLabelsFromFrame(frame)
+
           return
 
   collectParameters = (includeUnchangedParameters=no) ->
@@ -458,6 +469,7 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
               hyperParameters[control.name] = control.valueGrided()
             when 'dropdown'
               hyperParameters[control.name] = selectedValues = []
+              print(control.gridedValues())
               for item in control.gridedValues()
                 if item.value()
                   selectedValues.push item.label
