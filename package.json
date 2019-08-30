@@ -1,6 +1,6 @@
 {
   "name": "h2o-flow",
-  "version": "0.10.3",
+  "version": "0.10.4",
   "description": "Interactive computational environment for H2O",
   "private": true,
   "directories": {
