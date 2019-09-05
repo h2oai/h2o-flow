@@ -10,18 +10,19 @@ module.exports = (_, _go) ->
   _specifiedColumns = signal ''
   _specifiedUsername = signal ''
   _specifiedPassword = signal ''
+  _specifiedFetchMode = signal 'DISTRIBUTED'
   _exception = signal ''
   _hasErrorMessage = lift _exception, (exception) -> if exception then yes else no
 
   importSqlTableAction = ->
     encryptedPassword = util.encryptPassword _specifiedPassword()
-
     opt =
        connection_url: _specifiedUrl()
        table: _specifiedTable()
        columns: _specifiedColumns()
        username: _specifiedUsername()
        password: encryptedPassword
+       fetch_mode: _specifiedFetchMode()
     _.insertAndExecuteCell 'cs', "importSqlTable #{ stringify opt }"
 
   defer _go
@@ -32,6 +33,7 @@ module.exports = (_, _go) ->
   specifiedColumns: _specifiedColumns
   specifiedUsername: _specifiedUsername
   specifiedPassword: _specifiedPassword
+  specifiedFetchMode: _specifiedFetchMode
   exception: _exception
   importSqlTableAction: importSqlTableAction
   template: 'flow-import-sql-table-input'
