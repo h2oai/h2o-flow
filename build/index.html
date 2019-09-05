@@ -1781,6 +1781,23 @@
           </table>
         </td>
       </tr>
+      <tr>
+        <th width="125">Fetch mode:</th>
+        <td>
+          <table width="100%">
+            <tbody>
+              <tr>
+                <td class="flow-wide">
+                  <select data-bind="value:specifiedFetchMode">
+                    <option value="DISTRIBUTED">DISTRIBUTED</option>
+                    <option value="SINGLE">SINGLE</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>
       <!-- ko if:hasErrorMessage-->
       <tr>
         <th>&nbsp;</th>
@@ -1796,7 +1813,6 @@
     </tbody>
   </table>
 </div>
-<!-- /ko-->
     </script>
     <script type="text/html" id="flow-import-bq-table-input">
 <div class="flow-widget">
