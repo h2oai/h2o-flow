@@ -1,4 +1,4 @@
-{ map, defer, head, join, find, escape, last } = require('lodash')
+{ map, filter, defer, head, join, find, escape, last } = require('lodash')
 
 Mousetrap = require('mousetrap')
 window.Mousetrap = Mousetrap
@@ -595,13 +595,18 @@ exports.init = (_, _renderers) ->
   if _.onSparklingWater
     menuCell = [menuCell..., menuCellSW...]
 
-  initializeMenus = (builder) ->
+  initializeMenus = (builders) ->
+    mojoModelMenuItem = builders
+      .filter (builder) -> builder.algo == "generic"
+      .map (builder) -> createMenuItem(builder.algo_full_name, executeCommand "buildModel #{stringify builder.algo}")
+    builderMenuItems = builders
+      .filter (builder) -> builder.algo != "generic"
+      .map (builder) -> createMenuItem("#{ builder.algo_full_name }...", executeCommand "buildModel #{stringify builder.algo}")
     modelMenuItems = [createMenuItem('Run AutoML...', executeCommand 'runAutoML'), menuDivider]
-    modelMenuItems = modelMenuItems.concat map(builder, (builder) ->
-      createMenuItem("#{ builder.algo_full_name }...", executeCommand "buildModel #{stringify builder.algo}")
-    )
+    modelMenuItems = modelMenuItems.concat builderMenuItems
+    modelMenuItems = modelMenuItems.concat [ menuDivider ]
+    modelMenuItems = modelMenuItems.concat mojoModelMenuItem
     modelMenuItems = modelMenuItems.concat [
-      menuDivider
       createMenuItem 'List All Models', executeCommand 'getModels'
       createMenuItem 'List Grid Search Results', executeCommand 'getGrids'
       createMenuItem 'Import Model...', executeCommand 'importModel'
