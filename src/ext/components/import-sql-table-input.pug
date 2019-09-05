@@ -45,6 +45,17 @@
                 td.flow-wide
                   input.flow-textbox(type='password' style='width:100%' data-bind="value:specifiedPassword" placeholder='Enter a password for SQL server.')
 
+      tr
+        th(width='125') Fetch mode:
+        td
+          table(width='100%')
+            tbody
+              tr
+                td.flow-wide
+                  select(data-bind="value:specifiedFetchMode")
+                    option(value="DISTRIBUTED") DISTRIBUTED
+                    option(value="SINGLE") SINGLE
+
       // ko if:hasErrorMessage
       tr
         th &nbsp;
@@ -57,5 +68,3 @@
           button.flow-button(type='button' data-bind='click:importSqlTableAction')
             i.fa.fa-cloud-upload
             | Import
-// /ko
-

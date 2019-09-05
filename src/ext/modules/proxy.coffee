@@ -273,6 +273,7 @@ exports.init = (_) ->
       table: args.table
       username: args.username
       password: decryptedPassword
+      fetch_mode: args.fetch_mode
     if args.columns != ''
       opts.columns = args.columns
     doPost '/99/ImportSQLTable', opts, go
