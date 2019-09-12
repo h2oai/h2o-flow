@@ -15,11 +15,15 @@ h2oApplication = require('../ext/modules/application')
 ko = require('./modules/knockout')
 
 getContextPath = (_) ->
-    url = window.location.toString()
-    parts = url.split('/')
-    # remove flow/index.html from end of the URL
-    contextPathParts = parts.splice(0, parts.length - 2)
-    _.ContextPath = contextPathParts.join('/')
+    if process.env.NODE_ENV == "development"
+      console.debug "Development mode, using localhost:54321"
+      _.ContextPath = "http://localhost:54321/"
+    else
+      url = window.location.toString()
+      parts = url.split('/')
+      # remove flow/index.html from end of the URL
+      contextPathParts = parts.splice(0, parts.length - 2)
+      _.ContextPath = contextPathParts.join('/')
 
 checkSparklingWater = (context) ->
     context.onSparklingWater = false
