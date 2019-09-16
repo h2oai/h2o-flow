@@ -23,7 +23,7 @@ getContextPath = (_) ->
       parts = url.split('/')
       # remove flow/index.html from end of the URL
       contextPathParts = parts.splice(0, parts.length - 2)
-      _.ContextPath = contextPathParts.join('/')
+      _.ContextPath = contextPathParts.join('/') + "/"
 
 checkSparklingWater = (context) ->
     context.onSparklingWater = false
