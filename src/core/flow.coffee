@@ -20,10 +20,11 @@ getContextPath = (_) ->
       _.ContextPath = "http://localhost:54321/"
     else
       url = window.location.toString()
-      parts = url.split('/')
-      # remove flow/index.html from end of the URL
-      contextPathParts = parts.splice(0, parts.length - 2)
-      _.ContextPath = contextPathParts.join('/') + "/"
+      if !url.endsWith("flow/index.html")
+        console.warn("URL does not have expected form -> does not end with /flow/index.html")
+        _.ContextPath = "/"
+      else
+        _.ContextPath = url.substring(0, url.length -  "flow/index.html".length)
 
 checkSparklingWater = (context) ->
     context.onSparklingWater = false
