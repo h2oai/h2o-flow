@@ -444,6 +444,9 @@ exports.init = (_) ->
     else
       doPost getModelBuilderEndpoint(algo), (encodeObjectForPost parameters), go
 
+  requestAutoMLBuild = (parameters, go) ->
+    doPostJSON "/99/AutoMLBuilder", parameters, go
+
   requestAutoModelBuild = (parameters, go) ->
     doPostJSON "/99/AutoMLBuilder", parameters, go
 
@@ -676,6 +679,7 @@ exports.init = (_) ->
   link _.requestModelBuilders, requestModelBuilders
   link _.requestModelBuild, requestModelBuild
   link _.requestModelInputValidation, requestModelInputValidation
+  link _.requestAutoMLBuild, requestAutoMLBuild
   link _.requestAutoModelBuild, requestAutoModelBuild
   link _.requestPredict, requestPredict
   link _.requestPrediction, requestPrediction

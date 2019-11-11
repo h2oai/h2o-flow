@@ -49,6 +49,9 @@ _assistance =
   runAutoML:
     description: 'Automatically train and tune many models'
     icon: 'sitemap'
+  runAutoML_:
+    description: 'Automatically train and tune many models (new version)'
+    icon: 'sitemap'
   buildModel:
     description: 'Build a model'
     icon: 'cube'
@@ -1615,6 +1618,8 @@ exports.init = (_) ->
         else
           go null, extendJob result.job
 
+  requestAutoMLBuild = (opts , go) ->
+    requestAutoModelBuild opts, go
 
   requestAutoModelBuild = (opts, go) ->
     # TODO loss
@@ -1631,6 +1636,7 @@ exports.init = (_) ->
         sort_metric: opts.sort_metric
       build_models:
         exclude_algos: opts.exclude_algos
+        monotone_constraints: opts.monotone_constraints
       build_control:
         nfolds: opts.nfolds
         keep_cross_validation_predictions: opts.keep_cross_validation_predictions
@@ -1658,6 +1664,12 @@ exports.init = (_) ->
         go error
       else
         go null, extendJob result.job
+
+  runAutoML_ = (opts) ->
+    if opts and keys(opts).length > 1
+      _fork requestAutoMLBuild, opts
+    else
+      assist runAutoML_, opts
 
   runAutoML = (opts) ->
     if opts and keys(opts).length > 1
@@ -1979,6 +1991,8 @@ exports.init = (_) ->
           _fork proceed, h2o.ImportBqTableInput, args
         when buildModel
           _fork proceed, h2o.ModelInput, args
+        when runAutoML_
+          _fork proceed, h2o.AutoMLInput, args
         when runAutoML
           _fork proceed, h2o.AutoModelInput, args
         when predict, getPrediction
@@ -2093,6 +2107,7 @@ exports.init = (_) ->
     imputeColumn: imputeColumn
     buildModel: buildModel
     runAutoML: runAutoML
+    runAutoML_: runAutoML_
     getGrids: getGrids
     getLeaderboard: getLeaderboard
     getModels: getModels

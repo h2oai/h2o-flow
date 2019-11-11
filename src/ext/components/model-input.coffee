@@ -41,7 +41,7 @@ createTextboxControl = (parameter, type) ->
           vals.push value
       vals
     else
-      text
+      if text == '' then null else text
 
   _value = lift _text, textToValues
 
@@ -72,7 +72,7 @@ createDropdownControl = (parameter) ->
   control = createControl 'dropdown', parameter
   control.values = signals parameter.values
   control.value = _value
-  control.gridedValues = lift control.values, (values) ->
+  control.valueGrided = lift control.values, (values) ->
     createGridableValues values
   control
 
@@ -82,6 +82,7 @@ createCheckboxControl = (parameter) ->
   control = createControl 'checkbox', parameter
   control.clientId = do uniqueId
   control.value = _value
+  control.valueGrided = [true, false]
   control
 
 createModelsControl = (_, parameter) ->
@@ -129,6 +130,7 @@ createModelsControl = (_, parameter) ->
   control.selectedFrame = _selectedFrame
   control.checkAllModels = _checkAllModels
   control.value = _models
+  control.defaultValue = []
   control
 
 createStringPairsControl = (parameter) ->
@@ -278,7 +280,7 @@ createControlFromParameter = (_, parameter) ->
   switch parameter.type
     when 'enum', 'Key<Frame>', 'VecSpecifier'
       createDropdownControl parameter
-    when 'string[]'
+    when 'string[]', 'enum[]'
       createListControl parameter
     when 'boolean'
       createCheckboxControl parameter
@@ -306,7 +308,79 @@ createControlFromParameter = (_, parameter) ->
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null
 
-exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
+exports.ControlGroups = ControlGroups = (_, _parameters) ->
+  _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
+  _controlGroups = map [ 'critical', 'secondary', 'expert' ], (type) ->
+    controls = map _parametersByLevel[type], (p) -> createControlFromParameter _, p
+    controls = filter controls, (a) -> if a then yes else no
+    controls
+
+  _findControl = (name) ->
+    for controls in _controlGroups
+      for control in controls when control.name is name
+        return control
+    return
+
+  _createForm =  ->
+    form = []
+    [critical, secondary, expert] = _controlGroups
+    labels =  ['Parameters', 'Advanced', 'Expert']
+    for controls, i in _controlGroups
+      if controls.length
+        gridEnabled = controls.some (c) -> c.isGridable
+        form.push kind: 'group', title: labels[i], grided: gridEnabled
+        form.push control for control in controls
+    form
+
+  _readControlValue = (control) ->
+    value = if control.isGrided() and control.valueGrided then control.valueGrided() else control.value()
+    switch control.kind
+      when 'dropdown'
+        selected = if value then value else control.defaultValue
+        if Array.isArray selected
+          selected = (item.label for item in selected when item.value())
+        selected
+      when 'list', 'models'
+        selected = control.defaultValue
+        if value.length
+          selected = (entry.value for entry in value when entry.isSelected())
+        selected
+      else
+       value
+
+  _validateControl = (control, validations, checkForErrors=no) ->
+    if validations
+      for validation in validations
+        if validation.message_type is 'TRACE'
+          control.isVisible no
+        else
+          control.isVisible yes
+          if checkForErrors
+            switch validation.message_type
+              when 'INFO'
+                control.hasInfo yes
+                control.message validation.message
+              when 'WARN'
+                control.hasWarning yes
+                control.message validation.message
+              when 'ERRR'
+                control.hasError yes
+                control.message validation.message
+    else
+      control.isVisible yes
+      control.hasInfo no
+      control.hasWarning no
+      control.hasError no
+      control.message ''
+
+  createForm: _createForm
+  findControl: _findControl
+  readControlValue: _readControlValue
+  validateControl: _validateControl
+  list: _controlGroups
+
+
+ModelBuilderForm = (_, _algorithm, _parameters) ->
   _exception = signal null
   _validationFailureMessage = signal ''
   _hasValidationFailures = lift _validationFailureMessage, isTruthy
@@ -323,43 +397,16 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
   _gridStoppingMetric = signal _gridStoppingMetrics[0]
   _gridStoppingTolerance = signal 0.001
 
-  _parametersByLevel = groupBy _parameters, (parameter) -> parameter.level
-  _controlGroups = map [ 'critical', 'secondary', 'expert' ], (type) ->
-    controls = map _parametersByLevel[type], (p) -> createControlFromParameter _, p
-    controls = filter controls, (a) -> if a then yes else no
-    # Show/hide grid settings if any controls are grid-ified.
-    forEach controls, (control) ->
-      react control.isGrided, ->
-        isGrided = no
-        for control in controls
-          if control.isGrided()
-            _isGrided isGrided = yes
-            break
-        unless isGrided
-          _isGrided no
+  _controlGroups = ControlGroups _, _parameters
 
-    controls
+  # Show/hide grid settings if any controls are grid-ified.
 
-  [ criticalControls, secondaryControls, expertControls ] = _controlGroups
+  controls = _controlGroups.list.flat()
+  forEach controls, (control) ->
+    react control.isGrided, ->
+      _isGrided controls.some (c) -> c.isGrided()
 
-  _form = []
-  if criticalControls.length
-    _form.push kind: 'group', title: 'Parameters'
-    _form.push control for control in criticalControls
-
-  if secondaryControls.length
-    _form.push kind: 'group', title: 'Advanced'
-    _form.push control for control in secondaryControls
-
-  if expertControls.length
-    _form.push kind: 'group', title: 'Expert'
-    _form.push control for control in expertControls
-
-  findControl = (name) ->
-    for controls in _controlGroups
-      for control in controls when control.name is name
-        return control
-    return
+  _form = _controlGroups.createForm()
 
   parameterTemplateOf = (control) -> "flow-#{control.kind}-model-parameter"
 
@@ -445,42 +492,18 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
           return
 
   collectParameters = (includeUnchangedParameters=no) ->
-    isGrided = no
+    controls = _controlGroups.list.flat()
+    isGrided = controls.some (c) -> c.isGrided()
 
     parameters = {}
     hyperParameters = {}
-    for controls in _controlGroups
-      for control in controls
-        if control.isGrided()
-          isGrided = yes
-          switch control.kind
-            when 'textbox'
-              hyperParameters[control.name] = control.valueGrided()
-            when 'dropdown'
-              hyperParameters[control.name] = selectedValues = []
-              for item in control.gridedValues()
-                if item.value()
-                  selectedValues.push item.label
-            else # checkbox
-              hyperParameters[control.name] = [ true, false ]
-        else
-          value = control.value()
-          if control.isVisible() and (includeUnchangedParameters or control.isRequired or (control.defaultValue isnt value))
-            switch control.kind
-              when 'dropdown'
-                if value
-                  parameters[control.name] = value
-              when 'list'
-                if value.length
-                  selectedValues = for entry in value when entry.isSelected()
-                    entry.value
-                  parameters[control.name] = selectedValues
-              when 'models'
-                selectedValues = for entry in value when entry.isSelected()
-                  entry.value
-                parameters[control.name] = selectedValues
-              else
-                parameters[control.name] = value
+    for control in controls
+      value = _controlGroups.readControlValue(control)
+      if control.isGrided()
+        hyperParameters[control.name] = value
+      else if value? and control.isVisible() and (includeUnchangedParameters or control.isRequired or (control.defaultValue isnt value))
+        parameters[control.name] = value
+
     if isGrided
       parameters.grid_id = _gridId()
       parameters.hyper_parameters = hyperParameters
@@ -532,32 +555,10 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
         if modelBuilder.messages.length
           validationsByControlName = groupBy modelBuilder.messages, (validation) -> validation.field_name
 
-          for controls in _controlGroups
-            for control in controls
-              if validations = validationsByControlName[control.name]
-                for validation in validations
-                  if validation.message_type is 'TRACE'
-                    control.isVisible no
-                  else
-                    control.isVisible yes
-                    if checkForErrors
-                      switch validation.message_type
-                        when 'INFO'
-                          control.hasInfo yes
-                          control.message validation.message
-                        when 'WARN'
-                          control.hasWarning yes
-                          control.message validation.message
-                        when 'ERRR'
-                          control.hasError yes
-                          control.message validation.message
-                          hasErrors = yes
-              else
-                control.isVisible yes
-                control.hasInfo no
-                control.hasWarning no
-                control.hasError no
-                control.message ''
+          for control in _controlGroups.list.flat()
+            validations = validationsByControlName[control.name]
+            _controlGroups.validateControl(control, validations, checkForErrors)
+            hasErrors = hasErrors or control.hasError()
 
         if hasErrors
           _validationFailureMessage 'Your model parameters have one or more errors. Please fix them and try again.'
@@ -580,9 +581,8 @@ exports.ModelBuilderForm = ModelBuilderForm = (_, _algorithm, _parameters) ->
 
   # Kick off validations (minus error checking) to get hidden parameters
   performValidations no, ->
-    for controls in _controlGroups
-      for control in controls
-        react control.value, revalidate
+    for control in _controlGroups.list.flat()
+      react control.value, revalidate
     return
 
   form: _form
