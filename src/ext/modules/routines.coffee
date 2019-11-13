@@ -1619,7 +1619,11 @@ exports.init = (_) ->
           go null, extendJob result.job
 
   requestAutoMLBuild = (opts , go) ->
-    requestAutoModelBuild opts, go
+    _.requestAutoModelBuild opts, (error, result) ->
+      if error
+        go error
+      else
+        go null, extendJob result.job
 
   requestAutoModelBuild = (opts, go) ->
     # TODO loss
@@ -1666,7 +1670,7 @@ exports.init = (_) ->
         go null, extendJob result.job
 
   runAutoML_ = (opts) ->
-    if opts and keys(opts).length > 1
+    if opts and opts?.input_spec
       _fork requestAutoMLBuild, opts
     else
       assist runAutoML_, opts

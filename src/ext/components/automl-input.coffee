@@ -1,188 +1,132 @@
-{ defer, map, head } = require('lodash')
+{ assign, defer, flatten, head, identity, map } = require('lodash')
 
-{ react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ act, lift, merge, react, signal } = require("../../core/modules/dataflow")
 { stringify, isTruthy } = require('../../core/modules/prelude')
-util = require('../modules/util')
-{ ControlGroups } = require('./model-input')
+{ ControlGroups, columnLabelsFromFrame } = require('./controls')
 
-AutoMLForm = (_, _parameters) ->
+AutoMLForm = (_, _parameters, _opts={}) ->
   _exception = signal null
   _validationFailureMessage = signal ''
   _hasValidationFailures = lift _validationFailureMessage, isTruthy
 
-  _validParameters = (p for p in _parameters when p.name not in ['algo_parameters', 'modeling_plan' ])
-  _controlGroups = ControlGroups _,  _validParameters
+  requiredParameters = [
+    'training_frame',
+    'response_column'
+  ]
+  ignoredParameters = [
+    'include_algos',
+    'algo_parameters',
+    'modeling_plan',
+  ]
+  # for the most part, defaults are taken from the REST API (default value of the property on the schema instance)
+  # but we can set different defaults for Flow here
+  localDefaults =
+    keep_cross_validation_predictions: true
+    keep_cross_validation_models: true
+
+  defaults = assign({}, localDefaults, _opts)
+
+  validParameters = (p for p in _parameters when p.name not in ignoredParameters)
+  for p in validParameters
+    if p.name in requiredParameters
+      p.required = true
+    if defaults[p.name]?
+      p.value = defaults[p.name]
+
+  columnParameterNames = (p.name for p in validParameters when p.type is 'VecSpecifier')
+
+  _controlGroups = ControlGroups _,  validParameters
   _form = _controlGroups.createForm()
+  _valid = null
 
   _parameterTemplateOf = (control) -> "flow-#{control.kind}-model-parameter"
 
+  fullParameterPath = (name) ->
+    for p in validParameters
+      if p.name == name
+        return p.path
+
+  _collectParameters = ({includeUnchangedParameters=no, flat=yes}={}) ->
+    controls = flatten _controlGroups.list
+    parameters = {}
+    for control in controls
+      value = _controlGroups.readControlValue(control)
+      if value? and control.isVisible() and (includeUnchangedParameters or control.isRequired or (control.defaultValue isnt value))
+        if flat
+          parameters[control.name] = value
+        else
+          nested = (fullParameterPath control.name).split '.'
+          p = parameters
+          level = 0
+          for token in nested
+            level += 1
+            if !p[token]?
+              p[token] = {}
+            p = p[token]
+            if level == nested.length
+              p[control.name] = value
+    parameters
+
+  # bind controls that depend on each other
+  do ->
+    [ trainingFrame,
+      response,
+      ignoredColumns,
+      monotoneConstraints,
+    ] = map [
+      'training_frame',
+      'response_column',
+      'ignored_columns',
+      'monotone_constraints',
+    ], _controlGroups.findControl
+    columnControls = map columnParameterNames, _controlGroups.findControl
+
+    _valid = lift trainingFrame.value, response.value, (training, response) -> training? and response?
+
+    populateColumns = (columns) ->
+      colNames = (c.value for c in columns)
+      for colControl in columnControls
+        colControl.values colNames
+      ignoredColumns.values columns
+      monotoneConstraints.columns colNames
+
+    act trainingFrame.value, (frameId) ->
+      if frameId
+        _.requestFrameSummaryWithoutData frameId, (error, frame) ->
+          unless error
+            columns = columnLabelsFromFrame(frame)
+            populateColumns columns
+      else
+        populateColumns []
+
+
   exception: _exception
   form: _form
+  collectParameters: _collectParameters
   parameterTemplateOf: _parameterTemplateOf
+  valid: _valid
 
-
-module.exports = (_, _go, opts={}) ->
+module.exports = (_, _go, _opts) ->
   _automlForm = signal null
-  _projectName = signal null
-  _trainingFrames = signal []
-  _trainingFrame = signal null
-  _validationFrames = signal []
-  _validationFrame = signal null
-  _blendingFrames = signal []
-  _blendingFrame = signal null
-  _leaderboardFrames = signal []
-  _leaderboardFrame = signal null
-  _hasTrainingFrame = lift _trainingFrame, (frame) -> if frame then yes else no
-  _columns = signal []
-  _column = signal null
-  _foldColumn = signal null
-  _weightsColumn = signal null
-  _canRunAutoML = lift _trainingFrame, _column, (frame, column) -> frame and column
+  _canRunAutoML = signal null
+  _exception = signal null
+  react _automlForm, (aml) ->
+    if aml?
+      merge aml.valid, _canRunAutoML, identity
+      merge aml.exception, _exception, identity
 
-  # TODO loss
-  defaultSeed = -1
-  _seed = signal defaultSeed
-  defaultMaxModels = 0
-  _maxModels = signal ''
-  defaultMaxRunTime = 3600
-  _maxRuntimeSecs = signal defaultMaxRunTime
-  defaultMaxRunTimePerModel = 0
-  _maxRuntimeSecsPerModel = signal defaultMaxRunTimePerModel
-  _stoppingMetrics = signal []
-  _stoppingMetric = signal null
-  _sortMetrics = signal []
-  _sortMetric = signal null
-  defaultStoppingRounds = 3
-  _stoppingRounds = signal defaultStoppingRounds
-  defaultStoppingTolerance = -1
-  _stoppingTolerance = signal ''
-  _balanceClasses = signal no
-  _classSamplingFactors = signal null
-  defaultMaxAfterBalanceSize = 5
-  _maxAfterBalanceSize = signal defaultMaxAfterBalanceSize
+  performValidations = (checkForErrors, go) ->
+    _exception null
+    parameters = _automlForm().collectParameters {includeUnchangedParameters: yes}
+    # do validation here
+    go()
 
-  _ignoredColumnsControl = util.createListControl({
-      name: 'ignored_columns',
-      label: 'Ignored Columns',
-      required: no,
-      gridable: no
-  })
+  _runAutoML = ->
+    _exception null
+    performValidations yes, ->
+      parameters = _automlForm().collectParameters {flat: no}
+      _.insertAndExecuteCell 'cs', "runAutoML_ #{stringify parameters}"
 
-  _excludeAlgosControl = util.createListControl({
-      name: 'exclude_algos',
-      label: 'Exclude these algorithms',
-      required: no,
-      gridable: no
-  })
-  excludeAlgosValues = [{value: 'GLM'}, {value: 'DRF'}, {value: 'GBM'}, {value: 'XGBoost'}, {value: 'DeepLearning'}, {value: 'StackedEnsemble'}]
-  _excludeAlgosControl.values excludeAlgosValues
-
-  defaultNfolds = 5
-  _nfolds = signal defaultNfolds
-
-  _keepCrossValidationPredictions = signal yes
-  _keepCrossValidationModels = signal yes
-  _keepCrossValidationFoldAssignment = signal no
-  _exportCheckpointsDir = signal ""
-
-  runAutoML = ->
-    seed = defaultSeed
-    unless isNaN parsed = parseInt _seed(), 10
-      seed = parsed
-
-    maxModels = defaultMaxModels
-    unless isNaN parsed = parseInt _maxModels(), 10
-      maxModels = parsed
-
-    maxRuntimeSecs = defaultMaxRunTime
-    unless isNaN parsed = parseInt _maxRuntimeSecs(), 10
-      maxRuntimeSecs = parsed
-
-    maxRuntimeSecsPerModel = defaultMaxRunTimePerModel
-    unless isNaN parsed = parseInt _maxRuntimeSecsPerModel(), 10
-      maxRuntimeSecsPerModel = parsed
-
-    stoppingRounds = defaultStoppingRounds
-    unless isNaN parsed = parseInt _stoppingRounds(), 10
-      stoppingRounds = parsed
-
-    stoppingTolerance = defaultStoppingTolerance
-    unless isNaN parsed = parseFloat _stoppingTolerance()
-      stoppingTolerance = parsed
-
-    nfolds = defaultNfolds
-    unless isNaN parsed = parseInt _nfolds()
-      nfolds = parsed
-
-    sortMetric = _sortMetric()
-    if sortMetric is 'deviance'
-      sortMetric = 'mean_residual_deviance'
-    if sortMetric is 'AUTO'
-      sortMetric = null
-
-    classSamplingFactors = []
-    for value in (_classSamplingFactors() ? '').split /\s*,\s*/g
-      unless isNaN parsed = parseFloat value
-        classSamplingFactors.push parsed
-    if classSamplingFactors is []
-      classSamplingFactors = null
-
-    maxAfterBalanceSize = defaultMaxAfterBalanceSize
-    unless isNaN parsed = parseInt _maxAfterBalanceSize(), 10
-      maxAfterBalanceSize = parsed
-
-    # TODO loss
-    arg =
-      training_frame: _trainingFrame()
-      response_column: _column()
-      fold_column: _foldColumn()
-      weights_column: _weightsColumn()
-      validation_frame: _validationFrame()
-      blending_frame: _blendingFrame()
-      leaderboard_frame: _leaderboardFrame()
-      seed: seed
-      max_models: maxModels
-      max_runtime_secs: maxRuntimeSecs
-      max_runtime_secs_per_model: maxRuntimeSecsPerModel
-      stopping_metric: _stoppingMetric()
-      sort_metric: sortMetric
-      stopping_rounds: stoppingRounds
-      stopping_tolerance: stoppingTolerance
-      nfolds: nfolds
-      balance_classes: _balanceClasses()
-      class_sampling_factors: classSamplingFactors
-      max_after_balance_size: maxAfterBalanceSize
-      keep_cross_validation_predictions: _keepCrossValidationPredictions()
-      keep_cross_validation_models: _keepCrossValidationModels()
-      keep_cross_validation_fold_assignment: _keepCrossValidationFoldAssignment()
-      export_checkpoints_dir: _exportCheckpointsDir()
-      ignored_columns: for entry in _ignoredColumnsControl.value() when entry.isSelected()
-          entry.value
-      exclude_algos: for entry in _excludeAlgosControl.value() when entry.isSelected()
-          entry.value
-    if _projectName() and _projectName().trim() != ''
-      arg.project_name = _projectName().trim()
-
-    _.insertAndExecuteCell 'cs', "runAutoML_ #{stringify arg}"
-
-  _.requestFrames (error, frames) ->
-    unless error
-      frames = (frame.frame_id.name for frame in frames when not frame.is_text)
-      _trainingFrames frames
-      _validationFrames frames
-      _blendingFrames frames
-      _leaderboardFrames frames
-      if opts.training_frame
-        _trainingFrame opts.training_frame
-      if opts.validation_frame
-        _validationFrame opts.validation_frame
-      if opts.blending_frame
-        _blendingFrame opts.blending_frame
-      if opts.leaderboard_frame
-        _leaderboardFrame opts.leaderboard_frame
-
-      return
-  
   findSchemaField = (schema, name) ->
     for field in schema.fields when field.schema_name is name
       return field
@@ -204,9 +148,9 @@ module.exports = (_, _go, opts={}) ->
         return
       for field in fields
         if field.is_schema and field.value?.__meta
-          path = if path == '' then field.name else path+'.'+field.name
+          fpath = if path == '' then field.name else path+'.'+field.name
           waiting waiting()+1
-          loadFields field.schema_name, path, acc
+          loadFields field.schema_name, fpath, acc
         else if field.direction in ['INPUT', 'INOUT']
           field.path = path
           parameters.push field
@@ -216,28 +160,26 @@ module.exports = (_, _go, opts={}) ->
     loadFields 'AutoMLBuildSpecV99', '', acc
     react waiting, (w) -> if w == 0 then go(null, parameters)
 
-  react _trainingFrame, (frame) ->
-    if frame
-      _.requestFrameSummaryWithoutData frame, (error, frame) ->
-        unless error
-          _columns (column.label for column in frame.columns)
-          _ignoredColumnsControl.values util.columnLabelsFromFrame(frame)
-          if opts.response_column
-            _column opts.response_column
-            delete opts.response_column #HACK
-    else
-      _columns []
-  
+  populateFrames = (parameters, go) ->
+    _.requestFrames (error, frames) ->
+      unless error
+        frameIds = (frame.frame_id.name for frame in frames)
+        frameParameters = (p for p in parameters when p.type is 'Key<Frame>')
+        for frame in frameParameters
+          frame.values = frameIds
+        go()
+
   do ->
     requestBuilderParameters (error, parameters)  ->
       unless error
-        _automlForm AutoMLForm _, parameters
+        populateFrames parameters, ->
+          _automlForm AutoMLForm _, parameters, _opts
 
   defer _go
 
   automlForm: _automlForm
   canRunAutoML: _canRunAutoML
-  runAutoML: runAutoML
+  runAutoML: _runAutoML
   template: 'flow-automl-input'
 
 
