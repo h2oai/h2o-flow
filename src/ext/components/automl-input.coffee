@@ -100,12 +100,14 @@ AutoMLForm = (_, _parameters, _opts={}) ->
       else
         populateColumns []
 
-
   exception: _exception
   form: _form
   collectParameters: _collectParameters
   parameterTemplateOf: _parameterTemplateOf
   valid: _valid
+  hasValidationFailures: _hasValidationFailures
+  validationFailureMessage: _validationFailureMessage
+
 
 module.exports = (_, _go, _opts) ->
   _automlForm = signal null
@@ -118,8 +120,8 @@ module.exports = (_, _go, _opts) ->
 
   performValidations = (checkForErrors, go) ->
     _exception null
-    parameters = _automlForm().collectParameters {includeUnchangedParameters: yes}
-    # do validation here
+    # parameters = _automlForm().collectParameters {includeUnchangedParameters: yes}
+    # AutoML doesn't support server side validation yet, but this could be a useful addition.
     go()
 
   _runAutoML = ->

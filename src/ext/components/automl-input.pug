@@ -12,3 +12,8 @@
 
   .flow-panel
     +button('Build Model', 'cube', 'runAutoML', 'canRunAutoML')
+
+  // ko with:automlForm
+  span(style='margin-left:10px; color:red' data-bind='visible:hasValidationFailures, text:validationFailureMessage')
+  // /ko
+
