@@ -1,7 +1,6 @@
 module.exports =
   Assist: require('../components/assist')
   AutoMLInput: require('../components/automl-input')
-  AutoModelInput: require('../components/automodel-input')
   BindFramesOutput: require('../components/bind-frames-output')
   CancelJobOutput: require('../components/cancel-job-output')
   CloudOutput: require('../components/cloud-output')

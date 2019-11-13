@@ -1,4 +1,4 @@
-{ assign, defer, flatten, head, identity, map } = require('lodash')
+{ assign, defer, find, flatten, head, identity, map } = require('lodash')
 
 { act, lift, merge, react, signal } = require("../../core/modules/dataflow")
 { stringify, isTruthy } = require('../../core/modules/prelude')
@@ -41,10 +41,8 @@ AutoMLForm = (_, _parameters, _opts={}) ->
 
   _parameterTemplateOf = (control) -> "flow-#{control.kind}-model-parameter"
 
-  fullParameterPath = (name) ->
-    for p in validParameters
-      if p.name == name
-        return p.path
+  findParameter = (name) ->
+    find validParameters, (p) -> p.name == name
 
   _collectParameters = ({includeUnchangedParameters=no, flat=yes}={}) ->
     controls = flatten _controlGroups.list
@@ -55,7 +53,7 @@ AutoMLForm = (_, _parameters, _opts={}) ->
         if flat
           parameters[control.name] = value
         else
-          nested = (fullParameterPath control.name).split '.'
+          nested = (findParameter control.name).path.split '.'
           p = parameters
           level = 0
           for token in nested
@@ -87,6 +85,9 @@ AutoMLForm = (_, _parameters, _opts={}) ->
       colNames = (c.value for c in columns)
       for colControl in columnControls
         colControl.values colNames
+        paramValue = (findParameter colControl.name).value
+        if paramValue in colNames
+          colControl.value paramValue
       ignoredColumns.values columns
       monotoneConstraints.columns colNames
 
@@ -125,7 +126,7 @@ module.exports = (_, _go, _opts) ->
     _exception null
     performValidations yes, ->
       parameters = _automlForm().collectParameters {flat: no}
-      _.insertAndExecuteCell 'cs', "runAutoML_ #{stringify parameters}"
+      _.insertAndExecuteCell 'cs', "runAutoML #{stringify parameters}"
 
   findSchemaField = (schema, name) ->
     for field in schema.fields when field.schema_name is name

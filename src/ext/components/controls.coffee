@@ -124,7 +124,7 @@ createCheckboxControl = (parameter) ->
 
 
 createListControl = (parameter) ->
-  MaxItemsPerPage = 100
+  MaxItemsPerPage = 25
   _searchTerm = signal ''
   _ignoreNATerm = signal ''
 
@@ -248,6 +248,8 @@ createListControl = (parameter) ->
   control.selectFiltered = selectFiltered
   control.deselectFiltered = deselectFiltered
   control.navEnabled = _navEnabled
+  control.previousLabel = 'Previous #{MaxItemsPerPage}'
+  control.nextLabel = 'Next #{MaxItemsPerPage}'
   control.goToPreviousPage = goToPreviousPage
   control.goToNextPage = goToNextPage
   control.canGoToPreviousPage = _canGoToPreviousPage

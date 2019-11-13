@@ -447,9 +447,6 @@ exports.init = (_) ->
   requestAutoMLBuild = (parameters, go) ->
     doPostJSON "/99/AutoMLBuilder", parameters, go
 
-  requestAutoModelBuild = (parameters, go) ->
-    doPostJSON "/99/AutoMLBuilder", parameters, go
-
   requestPredict = (destinationKey, modelKey, frameKey, options, go) ->
     opts = {}
     opts.predictions_frame = destinationKey if destinationKey
@@ -680,7 +677,6 @@ exports.init = (_) ->
   link _.requestModelBuild, requestModelBuild
   link _.requestModelInputValidation, requestModelInputValidation
   link _.requestAutoMLBuild, requestAutoMLBuild
-  link _.requestAutoModelBuild, requestAutoModelBuild
   link _.requestPredict, requestPredict
   link _.requestPrediction, requestPrediction
   link _.requestPredictions, requestPredictions

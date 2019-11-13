@@ -27,7 +27,6 @@ exports.init = (_) ->
   _.requestModelBuild = do slot
   _.requestModelInputValidation = do slot
   _.requestAutoMLBuild = do slot
-  _.requestAutoModelBuild = do slot
   _.requestPredict = do slot
   _.requestPrediction = do slot
   _.requestPredictions = do slot
