@@ -163,12 +163,14 @@ module.exports = (_, _go, _opts) ->
     loadFields 'AutoMLBuildSpecV99', '', acc
     react waiting, (w) -> if w == 0 then go(null, parameters)
 
-  _frames = signals []
-  _.requestFrames (error, frames) ->
-    unless error
-      _frames (frame.frame_id.name for frame in frames)
+  loadFrameIds = (go)->
+    _.requestFrames (error, frames) ->
+      unless error
+         go null, (frame.frame_id.name for frame in frames)
+      else
+         go error, null
 
-  populateFrames = (parameters, go) ->
+  populateFrames = (_frames, parameters, go) ->
     act _frames, (frames) ->
       frameParameters = (p for p in parameters when p.type is 'Key<Frame>')
       for frame in frameParameters
@@ -176,9 +178,11 @@ module.exports = (_, _go, _opts) ->
       go()
 
   do ->
+    _frames = signals []
+    loadFrameIds (error, ids) -> _frames ids
     requestBuilderParameters (error, parameters)  ->
       unless error
-        populateFrames parameters, ->
+        populateFrames _frames, parameters, ->
           _automlForm AutoMLForm _, parameters, _opts
 
   defer _go
