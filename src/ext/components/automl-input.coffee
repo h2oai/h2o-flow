@@ -1,6 +1,6 @@
 { assign, defer, find, flatten, head, identity, map } = require('lodash')
 
-{ act, lift, merge, react, signal } = require("../../core/modules/dataflow")
+{ act, lift, merge, react, signal, signals, unlink } = require("../../core/modules/dataflow")
 { stringify, isTruthy } = require('../../core/modules/prelude')
 { ControlGroups, columnLabelsFromFrame } = require('./controls')
 
@@ -163,14 +163,17 @@ module.exports = (_, _go, _opts) ->
     loadFields 'AutoMLBuildSpecV99', '', acc
     react waiting, (w) -> if w == 0 then go(null, parameters)
 
+  _frames = signals []
+  _.requestFrames (error, frames) ->
+    unless error
+      _frames (frame.frame_id.name for frame in frames)
+
   populateFrames = (parameters, go) ->
-    _.requestFrames (error, frames) ->
-      unless error
-        frameIds = (frame.frame_id.name for frame in frames)
-        frameParameters = (p for p in parameters when p.type is 'Key<Frame>')
-        for frame in frameParameters
-          frame.values = frameIds
-        go()
+    act _frames, (frames) ->
+      frameParameters = (p for p in parameters when p.type is 'Key<Frame>')
+      for frame in frameParameters
+        frame.values = frames
+      go()
 
   do ->
     requestBuilderParameters (error, parameters)  ->
