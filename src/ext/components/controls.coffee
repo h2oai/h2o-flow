@@ -124,7 +124,7 @@ createCheckboxControl = (parameter) ->
 
 
 createListControl = (parameter) ->
-  MaxItemsPerPage = 25
+  MaxItemsPerPage = 10
   _searchTerm = signal ''
   _ignoreNATerm = signal ''
 

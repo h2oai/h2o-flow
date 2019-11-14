@@ -6,7 +6,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     div(style='height:25px')
       input.flow-textbox(type='text' placeholder='Search...' data-bind="value:searchTerm, valueUpdate:'afterkeydown'")
     div(style='font-size:80%' data-bind='visible:navEnabled, text:searchCaption')
-    div(style='margin-bottom:5px;overflow:auto;border:1px dotted #ccc')
+    div(style='margin-bottom:5px;border:1px dotted #ccc')
       table
         tbody
           // ko foreach:entries
@@ -26,8 +26,8 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
             +button('All', 'check-square-o', 'selectFiltered', 'hasFilteredItems')
             +button('None', 'square-o', 'deselectFiltered', 'hasFilteredItems')
           td(data-bind="visible:navEnabled" style='text-align:right')
-            +button('Previous 25', 'arrow-left', 'goToPreviousPage', 'canGoToPreviousPage')
-            +button('Next 25', 'arrow-right', 'goToNextPage', 'canGoToNextPage')
+            +button('Previous 10', 'arrow-left', 'goToPreviousPage', 'canGoToPreviousPage')
+            +button('Next 10', 'arrow-right', 'goToNextPage', 'canGoToNextPage')
     div(data-bind="visible:columnsFilterEnabled" style='font-size:80%')
       | Only show columns with more than&nbsp;
       input.flow-textbox(type='text' style='width:30px' placeholder='0' data-bind="value:ignoreNATerm, valueUpdate:'afterkeydown'")

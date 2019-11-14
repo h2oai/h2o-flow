@@ -1623,7 +1623,7 @@ exports.init = (_) ->
         go null, extendJob result.job
 
   runAutoML = (opts) ->
-    if opts and opts?.input_spec
+    if opts?.input_spec
       _fork requestAutoMLBuild, opts
     else
       assist runAutoML, opts
