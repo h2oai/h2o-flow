@@ -1,5 +1,5 @@
 { defer, filter, find, flatten, forEach, groupBy, map, throttle, uniqueId } = require('lodash')
-{ act, lift, react, signal, signals } = require("../../core/modules/dataflow")
+{ act, lift, merge, react, signal, signals, unlink } = require("../../core/modules/dataflow")
 
 columnLabelsFromFrame = (frame) ->
   columnLabels = map frame.columns, (column) ->
@@ -96,30 +96,41 @@ createTextboxControl = (parameter, type) ->
   control
 
 
-createGridableValues = (values, defaultValue) ->
-  map values, (value) ->
-    label: value
-    value: signal true
-
-
 createDropdownControl = (parameter) ->
   _value = signal parameter.value
+  _values = signals parameter.values
+  _valueGrided = signal null
+  _choices = signal []
+
+  arrows = null
+
+  act _values, (values) ->
+    choices = map values, (v) ->
+      label: v
+      value: signal true
+    _choices choices
+    if arrows
+      unlink arrows
+    vs = (c.value for c in choices)
+    readValue =  ->
+      (c.label for c in choices when c.value())
+    arrows = merge vs..., _valueGrided, throttle readValue, 500
 
   control = createControl 'dropdown', parameter
-  control.values = signals parameter.values
+  control.values = _values
   control.value = _value
-  control.valueGrided = lift control.values, (values) ->
-    createGridableValues values
+  control.valueGrided = _valueGrided
+  control.choices = _choices
   control
 
 
 createCheckboxControl = (parameter) ->
-  _value = signal parameter.value
+  _value = signal parameter.value ? false
 
   control = createControl 'checkbox', parameter
   control.clientId = do uniqueId
   control.value = _value
-  control.valueGrided = [true, false]
+  control.valueGrided = signal [true, false]
   control
 
 
@@ -128,6 +139,7 @@ createListControl = (parameter) ->
   _searchTerm = signal ''
   _ignoreNATerm = signal ''
 
+  _value = signal parameter.value ? []
   _values = signals parameter.values
 
   _selectionCount = signal 0
@@ -142,8 +154,9 @@ createListControl = (parameter) ->
     _selectionCount _selectionCount() + amount
 
   createEntry = (value) ->
-    isSelected = signal no
-    react isSelected, (isSelected) ->
+    val = if typeof value is 'string' then value else value.value
+    isSelected = signal val in _value()
+    act isSelected, (isSelected) ->
       unless _isUpdatingSelectionCount
         if isSelected
           incrementSelectionCount 1
@@ -152,7 +165,7 @@ createListControl = (parameter) ->
       return
 
     isSelected: isSelected
-    value: if typeof value is 'string' then value else value.value
+    value: val
     type: value.type
     missingLabel: value.missingLabel
     missingPercent: value.missingPercent
@@ -232,9 +245,17 @@ createListControl = (parameter) ->
     return
 
   control = createControl 'list', parameter
-  act _entries, ->
+  arrows = null
+  act _entries, (entries) ->
       filterItems yes
-      control.isVisible _entries().length > 0
+      control.isVisible entries.length > 0
+      if arrows
+        unlink arrows
+      selections = (s.isSelected for s in entries)
+      readValue = ->
+        (e.value for e in entries when e.isSelected())
+      arrows = merge selections..., _value, throttle readValue, 500
+
   react _searchTerm, throttle filterItems, 500
   react _ignoreNATerm, throttle filterItems, 500
 
@@ -244,7 +265,7 @@ createListControl = (parameter) ->
   control.searchCaption = _searchCaption
   control.searchTerm = _searchTerm
   control.ignoreNATerm = _ignoreNATerm
-  control.value = _entries
+  control.value = _value
   control.selectFiltered = selectFiltered
   control.deselectFiltered = deselectFiltered
   control.paginationEnabled = _paginationEnabled
@@ -386,8 +407,8 @@ createMonotoneContraintsControl = (opts, valueEncoder, parameter) ->
   _keyValues = signal []
   _columns = signal []
 
-  react _columns, () ->
-    _keyValues []
+  _value = lift _keyValues, (keyValues) ->
+    ({key: kv.key(), value: kv.encodedValue()} for kv in keyValues)
 
   _keyValueObject = (key, value) ->
     _key = signal key
@@ -438,14 +459,11 @@ createMonotoneContraintsControl = (opts, valueEncoder, parameter) ->
       new_entries.push _keyValueObject(_key(), _value())
       _keyValues new_entries
 
-  _keyValuesToValue = (keyValues) ->
-    result = []
-    keyValues.forEach (keyValue) ->
-      result.push {key: keyValue.key(), value: keyValue.encodedValue()}
-    result
+  react _columns, (cols) ->
+    _keyValues []
 
   control = createControl 'keyvalues', parameter
-  control.value = lift _keyValues, _keyValuesToValue
+  control.value = _value
   control.columns = _columns
   control.keyValues = _keyValues
   control.newKeyValue = _keyValueConstructor
@@ -507,20 +525,7 @@ ControlGroups = (_, _parameters) ->
     form
 
   _readControlValue = (control) ->
-    value = if control.isGrided() and control.valueGrided then control.valueGrided() else control.value()
-    switch control.kind
-      when 'dropdown'
-        selected = if value then value else control.defaultValue
-        if Array.isArray selected
-          selected = (item.label for item in selected when item.value())
-        selected
-      when 'list', 'models'
-        selected = control.defaultValue
-        if value.length
-          selected = (entry.value for entry in value when entry.isSelected())
-        selected
-      else
-       value
+    if control.isGrided() and control.valueGrided then control.valueGrided() else control.value()
 
   _validateControl = (control, validations, checkForErrors=no) ->
     if validations

@@ -1,4 +1,4 @@
-{ assign, defer, find, flatten, head, identity, map } = require('lodash')
+{ assign, defer, every, find, flatten, head, identity, isPlainObject, map, some} = require('lodash')
 
 { act, lift, merge, react, signal, signals, unlink } = require("../../core/modules/dataflow")
 { stringify, isTruthy } = require('../../core/modules/prelude')
@@ -94,7 +94,16 @@ AutoMLForm = (_, _parameters, _opts={}) ->
         paramValue = (findParameter colControl.name).value
         if paramValue in colNames
           colControl.value paramValue
+
+      ignoredColValue = (findParameter ignoredColumns.name).value
+      if every ignoredColValue, (v) -> v in colNames
+        ignoredColumns.value ignoredColValue
       ignoredColumns.values columns
+
+      #mcValue = (findParameter ignoredColumns.name).value
+      #mcCols = (mc.key for mc in mcValue)
+      #if every mcCols in colNames
+      #  monotoneConstraints.value mcValue
       monotoneConstraints.columns colNames
 
     act trainingFrame.value, (frameId) ->
@@ -138,6 +147,7 @@ module.exports = (_, _go, _opts) ->
     _exception null
     performValidations yes, ->
       parameters = _automlForm().collectParameters {flat: no}
+      parameters._exec = true
       _.insertAndExecuteCell 'cs', "runAutoML #{stringify parameters}"
 
   findSchemaField = (schema, name) ->
@@ -187,13 +197,27 @@ module.exports = (_, _go, _opts) ->
         frame.values = frames
       go()
 
+  flattenParams = (params) ->
+    if isPlainObject params
+      flatParams = {}
+      collect = (kvs, target) ->
+        for k, v of kvs
+          if isPlainObject v
+            collect v, target
+          else
+            target[k] = v
+      collect params, flatParams
+      flatParams
+    else
+      params
+
   do ->
     _frames = signals []
     loadFrameIds (error, ids) -> _frames ids
     requestBuilderParameters (error, parameters)  ->
       unless error
         populateFrames _frames, parameters, ->
-          _automlForm AutoMLForm _, parameters, _opts
+          _automlForm AutoMLForm _, parameters, flattenParams _opts
 
   defer _go
 
