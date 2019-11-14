@@ -71,11 +71,17 @@ AutoMLForm = (_, _parameters, _opts={}) ->
       response,
       ignoredColumns,
       monotoneConstraints,
+      balanceClasses,
+      classSamplingFactors,
+      maxAfterBalanceSize,
     ] = map [
       'training_frame',
       'response_column',
       'ignored_columns',
       'monotone_constraints',
+      'balance_classes',
+      'class_sampling_factors',
+      'max_after_balance_size',
     ], _controlGroups.findControl
     columnControls = map columnParameterNames, _controlGroups.findControl
 
@@ -99,6 +105,10 @@ AutoMLForm = (_, _parameters, _opts={}) ->
             populateColumns columns
       else
         populateColumns []
+
+    act balanceClasses.value, (enabled) ->
+      classSamplingFactors.isVisible enabled
+      maxAfterBalanceSize.isVisible enabled
 
   exception: _exception
   form: _form
