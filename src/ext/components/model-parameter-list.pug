@@ -5,7 +5,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
   td
     div(style='height:25px')
       input.flow-textbox(type='text' placeholder='Search...' data-bind="value:searchTerm, valueUpdate:'afterkeydown'")
-    div(style='font-size:80%' data-bind='visible:navEnabled, text:searchCaption')
+    div(style='font-size:80%' data-bind='visible:paginationEnabled, text:searchCaption')
     div(style='margin-bottom:5px;border:1px dotted #ccc')
       table
         tbody
@@ -25,7 +25,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
           td
             +button('All', 'check-square-o', 'selectFiltered', 'hasFilteredItems')
             +button('None', 'square-o', 'deselectFiltered', 'hasFilteredItems')
-          td(data-bind="visible:navEnabled" style='text-align:right')
+          td(data-bind="visible:paginationEnabled" style='text-align:right')
             +button('Previous 10', 'arrow-left', 'goToPreviousPage', 'canGoToPreviousPage')
             +button('Next 10', 'arrow-right', 'goToNextPage', 'canGoToNextPage')
     div(data-bind="visible:columnsFilterEnabled" style='font-size:80%')
