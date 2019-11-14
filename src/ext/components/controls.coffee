@@ -139,8 +139,8 @@ createListControl = (parameter) ->
   _searchTerm = signal ''
   _ignoreNATerm = signal ''
 
-  _value = signal parameter.value ? []
   _values = signals parameter.values
+  _value = signal if parameter.value then (v for v in parameter.value when v in _values()) else []
 
   _selectionCount = signal 0
 
@@ -403,23 +403,31 @@ createStringPairsControl = (parameter) ->
   control
 
 
-createMonotoneContraintsControl = (opts, valueEncoder, parameter) ->
+createMonotoneConstraintsControl = (encodingMap, parameter) ->
   _keyValues = signal []
   _columns = signal []
 
+  options = (k for k in Object.keys encodingMap when k != '_')
   _value = lift _keyValues, (keyValues) ->
     ({key: kv.key(), value: kv.encodedValue()} for kv in keyValues)
 
+  encode = (opt) ->
+    if opt in options then encodingMap[opt] else encodingMap._
+  decode = (val) ->
+    for k, v of encodingMap
+      if v == val
+        return k
+
   _keyValueObject = (key, value) ->
     _key = signal key
-    _value = signal value
+    _val = signal value
     _id = signal uniqueId()
 
     key: _key
-    value: _value
+    value: _val
     id: _id
     encodedValue: ->
-      valueEncoder _value()
+      encode _val()
     remove: ->
       _keyValues (entry for entry in _keyValues() when entry.id() != _id())
 
@@ -428,16 +436,16 @@ createMonotoneContraintsControl = (opts, valueEncoder, parameter) ->
     _keyOpts = signal _columns()
     _keySelected = signal no
 
-    _value = signal ''
-    _valueOpts = signal []
+    _val = signal ''
+    _valOpts = signal []
 
     react _key, (value) ->
       if value
         _keySelected yes
-        _valueOpts opts
+        _valOpts options
       else
         _keySelected no
-        _valueOpts []
+        _valOpts []
 
     _keyValueExists = (checkedKey) ->
       sameKeys = (keyValue for keyValue in _keyValues() when keyValue.key() == checkedKey)
@@ -450,17 +458,24 @@ createMonotoneContraintsControl = (opts, valueEncoder, parameter) ->
     key: _key
     keyOpts: _keyOpts
     keySelected: _keySelected
-    value: _value
-    valueOpts: _valueOpts
+    value: _val
+    valueOpts: _valOpts
     create: ->
-      if not _key() or not _value() or _keyValueExists(_key())
+      if not _key() or not _val() or _keyValueExists(_key())
         return
       new_entries = _keyValues()
-      new_entries.push _keyValueObject(_key(), _value())
+      new_entries.push _keyValueObject(_key(), _val())
       _keyValues new_entries
 
   react _columns, (cols) ->
-    _keyValues []
+    kvs = _value()
+    keyValues = []
+    for kv in kvs
+      if kv.key in cols
+        opt = decode kv.value
+        if opt?
+          keyValues.push _keyValueObject(kv.key, opt)
+    _keyValues keyValues
 
   control = createControl 'keyvalues', parameter
   control.value = _value
@@ -486,18 +501,11 @@ createControlFromParameter = (_, parameter) ->
       createStringPairsControl parameter
     when 'KeyValue[]'
       if parameter.name is 'monotone_constraints'
-        increasing = 'Increasing'
-        decreasing = 'Decreasing'
-        valueEncoder = (value) ->
-          switch value
-            when increasing
-              return 1
-            when decreasing
-              return -1
-            else
-              console.error "Unknown value #{_value()} to encode."
-              return 0
-        createMonotoneContraintsControl [increasing, decreasing], valueEncoder, parameter
+        encodingMap =
+          Increasing: 1
+          Decreasing: -1
+          _: 0
+        createMonotoneConstraintsControl encodingMap, parameter
     else
       console.error 'Invalid field', JSON.stringify parameter, null, 2
       null

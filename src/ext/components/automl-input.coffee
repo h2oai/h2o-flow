@@ -96,14 +96,11 @@ AutoMLForm = (_, _parameters, _opts={}) ->
           colControl.value paramValue
 
       ignoredColValue = (findParameter ignoredColumns.name).value
-      if every ignoredColValue, (v) -> v in colNames
-        ignoredColumns.value ignoredColValue
+      ignoredColumns.value ignoredColValue ? []
       ignoredColumns.values columns
 
-      #mcValue = (findParameter ignoredColumns.name).value
-      #mcCols = (mc.key for mc in mcValue)
-      #if every mcCols in colNames
-      #  monotoneConstraints.value mcValue
+      mcValue = (findParameter monotoneConstraints.name).value
+      monotoneConstraints.value mcValue ? []
       monotoneConstraints.columns colNames
 
     act trainingFrame.value, (frameId) ->
