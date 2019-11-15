@@ -144,8 +144,7 @@ module.exports = (_, _go, _opts) ->
     _exception null
     performValidations yes, ->
       parameters = _automlForm().collectParameters {flat: no}
-      parameters._exec = true
-      _.insertAndExecuteCell 'cs', "runAutoML #{stringify parameters}"
+      _.insertAndExecuteCell 'cs', "runAutoML #{stringify parameters}, 'exec'"
 
   findSchemaField = (schema, name) ->
     for field in schema.fields when field.schema_name is name

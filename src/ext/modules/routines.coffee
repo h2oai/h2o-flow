@@ -1622,12 +1622,10 @@ exports.init = (_) ->
       else
         go null, extendJob result.job
 
-  runAutoML = (opts) ->
-    if opts?._exec
-      delete opts._exec
+  runAutoML = (opts, action) ->
+    if action is 'exec'
       _fork requestAutoMLBuild, opts
     else
-      delete opts?._exec
       assist runAutoML, opts
 
   buildModel = (algo, opts) ->
