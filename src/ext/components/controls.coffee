@@ -114,7 +114,7 @@ createDropdownControl = (parameter) ->
     vs = (c.value for c in choices)
     readValue =  ->
       (c.label for c in choices when c.value())
-    arrows = merge vs..., _valueGrided, throttle readValue, 500
+    arrows = merge vs..., _valueGrided, readValue
 
   control = createControl 'dropdown', parameter
   control.values = _values
@@ -254,7 +254,7 @@ createListControl = (parameter) ->
       selections = (s.isSelected for s in entries)
       readValue = ->
         (e.value for e in entries when e.isSelected())
-      arrows = merge selections..., _value, throttle readValue, 500
+      arrows = merge selections..., _value, readValue
 
   react _searchTerm, throttle filterItems, 500
   react _ignoreNATerm, throttle filterItems, 500
