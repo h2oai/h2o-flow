@@ -1954,7 +1954,7 @@
       <select data-bind="options:values, value:value, optionsCaption: '(Choose...)'"></select>
     </div>
     <div data-bind="visible:isGrided">
-      <!-- ko foreach:gridedValues-->
+      <!-- ko foreach:choices-->
       <div>
         <label>
           <input type="checkbox" data-bind="checked:value"><span data-bind="text:label"></span>
@@ -1978,12 +1978,12 @@
         <th>
           <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
         </th>
-        <td colspan="2">
+        <td>
           <div style="height:25px">
             <input class="flow-textbox" type="text" placeholder="Search..." data-bind="value:searchTerm, valueUpdate:'afterkeydown'">
           </div>
-          <div style="font-size:80%" data-bind="text:searchCaption"></div>
-          <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
+          <div style="font-size:80%" data-bind="visible:paginationEnabled, text:searchCaption"></div>
+          <div style="margin-bottom:5px;border:1px dotted #ccc">
             <table>
               <tbody>
                 <!-- ko foreach:entries-->
@@ -1993,8 +1993,8 @@
                       <input type="checkbox" data-bind="checked:isSelected"><span data-bind="text:value"></span>
                     </label>
                   </td>
-                  <td class="flow-narrow flow-aside" data-bind="text:type"></td>
-                  <td class="flow-narrow flow-aside" data-bind="text:missingLabel"></td>
+                  <td class="flow-narrow flow-aside" data-bind="visible:type, text:type"></td>
+                  <td class="flow-narrow flow-aside" data-bind="visible:missingLabel, text:missingLabel"></td>
                 </tr>
                 <!-- /ko-->
               </tbody>
@@ -2009,19 +2009,20 @@
                       <button class="flow-button" type="button" data-bind="click:deselectFiltered, enable:hasFilteredItems"><i class="fa fa-square-o"></i><span>None</span>
                       </button>
                 </td>
-                <td style="text-align:right">
-                      <button class="flow-button" type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage"><i class="fa fa-arrow-left"></i><span>Previous 100</span>
+                <td data-bind="visible:paginationEnabled" style="text-align:right">
+                      <button class="flow-button" type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage"><i class="fa fa-arrow-left"></i><span>Previous 10</span>
                       </button>
-                      <button class="flow-button" type="button" data-bind="click:goToNextPage, enable:canGoToNextPage"><i class="fa fa-arrow-right"></i><span>Next 100</span>
+                      <button class="flow-button" type="button" data-bind="click:goToNextPage, enable:canGoToNextPage"><i class="fa fa-arrow-right"></i><span>Next 10</span>
                       </button>
                 </td>
               </tr>
             </tbody>
           </table>
-          <div style="font-size:80%">Only show columns with more than&nbsp;
+          <div data-bind="visible:columnsFilterEnabled" style="font-size:80%">Only show columns with more than&nbsp;
             <input class="flow-textbox" type="text" style="width:30px" placeholder="0" data-bind="value:ignoreNATerm, valueUpdate:'afterkeydown'">% missing values.
           </div>
         </td>
+        <td><span data-bind="text:description"></span></td>
         <td>
           <input type="checkbox" title="Check to enable grid search on this parameter" data-bind="visible:isGridable, checked:isGrided">
         </td>
@@ -2075,7 +2076,7 @@
   <th colspan="3" style="text-align:left;text-transform:inherit">
     <h4 data-bind="text:title" style="margin-top:20px; border-bottom:1px dotted #ccc"></h4>
   </th>
-  <th style="text-align:left;text-transform:inherit">
+  <th data-bind="visible:grided" style="text-align:left;text-transform:inherit">
     <h4 style="margin-top:20px; border-bottom:1px dotted #ccc">Grid?</h4>
   </th>
 </tr>
@@ -2447,15 +2448,17 @@
                 <p><a href="#" data-bind="text:key, click:view"></a></p>
                 <!-- ko if:isText-->
                 <p>
-                      <button class="flow-button" type="button" data-bind="click:view"><i class="fa fa-cog"></i><span>Parse&hellip;</span>
+                      <button class="flow-button" type="button" data-bind="click:view"><i class="fa fa-cog"></i><span>Parse</span>
                       </button>
                 </p>
                 <!-- /ko-->
                 <!-- ko ifnot:isText-->
                 <p>
-                      <button class="flow-button" type="button" data-bind="click:createModel"><i class="fa fa-cube"></i><span>Build Model&hellip;</span>
+                      <button class="flow-button" type="button" data-bind="click:createModel"><i class="fa fa-cube"></i><span>Build Model</span>
                       </button>
-                      <button class="flow-button" type="button" data-bind="click:predict"><i class="fa fa-bolt"></i><span>Predict&hellip;</span>
+                      <button class="flow-button" type="button" data-bind="click:createAutoML"><i class="fa fa-sitemap"></i><span>Run AutoML</span>
+                      </button>
+                      <button class="flow-button" type="button" data-bind="click:predict"><i class="fa fa-bolt"></i><span>Predict</span>
                       </button>
                       <button class="flow-button" type="button" data-bind="click:inspect"><i class="fa fa-list"></i><span>Inspect</span>
                       </button>
@@ -2651,289 +2654,22 @@
   </div>
 </div>
     </script>
-    <script type="text/html" id="flow-automodel-input">
+    <script type="text/html" id="flow-automl-input">
       <div class="flow-widget">
             <h3 class="flow-hint"><i class="fa fa-sitemap"></i>Run AutoML
             </h3>
-        <table class="flow-form">
-          <tbody>
-            <tr>
-              <th>
-                <label>Project Name:</label>
-              </th>
-              <td>
-                <input data-bind="value:projectName">
-              </td>
-            </tr>
-            <tr>
-              <th width="225">
-                <label>Training Frame:</label>
-              </th>
-              <td>
-                <select data-bind="options:trainingFrames, value:trainingFrame, optionsCaption:'(Select)'"></select>
-              </td>
-            </tr>
-            <!-- ko if:hasTrainingFrame-->
-            <tr>
-              <th>
-                <label>Response Column:</label>
-              </th>
-              <td>
-                <select data-bind="options:columns, value:column, optionsCaption:'(Select)'"></select>
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Fold Column:</label>
-              </th>
-              <td>
-                <select data-bind="options:columns, value:foldColumn, optionsCaption:'(Select)'"></select>
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Weights Column:</label>
-              </th>
-              <td>
-                <select data-bind="options:columns, value:weightsColumn, optionsCaption:'(Select)'"></select>
-              </td>
-            </tr>
-            <tr>
-              <!-- ko with:ignoredColumnsControl-->
-              <th>
-                <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
-              </th>
-              <td colspan="2">
-                <div style="height:25px">
-                  <input class="flow-textbox" type="text" placeholder="Search..." data-bind="value:searchTerm, valueUpdate:'afterkeydown'">
-                </div>
-                <div style="font-size:80%" data-bind="text:searchCaption"></div>
-                <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
-                  <table>
-                    <tbody>
-                      <!-- ko foreach:entries-->
-                      <tr>
-                        <td>
-                          <label>
-                            <input type="checkbox" data-bind="checked:isSelected"><span data-bind="text:value"></span>
-                          </label>
-                        </td>
-                        <td class="flow-narrow flow-aside" data-bind="text:type"></td>
-                        <td class="flow-narrow flow-aside" data-bind="text:missingLabel"></td>
-                      </tr>
-                      <!-- /ko-->
-                    </tbody>
-                  </table>
-                </div>
-                <table style="margin-bottom:10px;width:100%">
-                  <tbody>
-                    <tr>
-                      <td>
-                            <button class="flow-button" type="button" data-bind="click:selectFiltered, enable:hasFilteredItems"><i class="fa fa-check-square-o"></i><span>All</span>
-                            </button>
-                            <button class="flow-button" type="button" data-bind="click:deselectFiltered, enable:hasFilteredItems"><i class="fa fa-square-o"></i><span>None</span>
-                            </button>
-                      </td>
-                      <td style="text-align:right">
-                            <button class="flow-button" type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage"><i class="fa fa-arrow-left"></i><span>Previous 100</span>
-                            </button>
-                            <button class="flow-button" type="button" data-bind="click:goToNextPage, enable:canGoToNextPage"><i class="fa fa-arrow-right"></i><span>Next 100</span>
-                            </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div style="font-size:80%">Only show columns with more than&nbsp;
-                  <input class="flow-textbox" type="text" style="width:30px" placeholder="0" data-bind="value:ignoreNATerm, valueUpdate:'afterkeydown'">% missing values.
-                </div>
-              </td>
-              <!-- /ko-->
-            </tr>
-            <tr>
-              <th>
-                <label>Validation Frame:</label>
-              </th>
-              <td>
-                <select data-bind="options:validationFrames, value:validationFrame, optionsCaption:'(Select)'"></select>
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Blending Frame:</label>
-              </th>
-              <td>
-                <select data-bind="options:blendingFrames, value:blendingFrame, optionsCaption:'(Select)'"></select>
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Leaderboard Frame:</label>
-              </th>
-              <td>
-                <select data-bind="options:leaderboardFrames, value:leaderboardFrame, optionsCaption:'(Select)'"></select>
-              </td>
-            </tr>
-            <!-- /ko-->
-            <tr>
-              <th>
-                <label>Balance classes:</label>
-              </th>
-              <td>
-                <input type="checkbox" data-bind="checked:balanceClasses">
-              </td>
-            </tr>
-            <!-- ko if:balanceClasses-->
-            <tr>
-              <th>
-                <label>Class sampling factors:</label>
-              </th>
-              <td>
-                <input data-bind="value:classSamplingFactors">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Maximum after-balance size:</label>
-              </th>
-              <td>
-                <input data-bind="value:maxAfterBalanceSize">
-              </td>
-            </tr>
-            <!-- /ko-->
-            <tr>
-              <!-- ko with:excludeAlgosControl-->
-              <th>
-                <label data-bind="text:label"></label><span data-bind="visible:isRequired">*</span>
-              </th>
-              <td colspan="2">
-                <div style="margin-bottom:5px;max-height:300px;overflow:auto;border:1px dotted #ccc">
-                  <table>
-                    <tbody>
-                      <!-- ko foreach:entries-->
-                      <tr>
-                        <td>
-                          <label>
-                            <input type="checkbox" data-bind="checked:isSelected"><span data-bind="text:value"></span>
-                          </label>
-                        </td>
-                      </tr>
-                      <!-- /ko-->
-                    </tbody>
-                  </table>
-                </div>
-              </td>
-              <!-- /ko-->
-            </tr>
-            <tr>
-              <th>
-                <label>Max models to build:</label>
-              </th>
-              <td>
-                <input data-bind="value:maxModels">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Max Run Time (sec):</label>
-              </th>
-              <td>
-                <input data-bind="value:maxRuntimeSecs">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Max Run Time Per Model (sec):</label>
-              </th>
-              <td>
-                <input data-bind="value:maxRuntimeSecsPerModel">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Early stopping metric:</label>
-              </th>
-              <td>
-                <select data-bind="options:stoppingMetrics, value:stoppingMetric"></select>
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Leaderboard sort metric:</label>
-              </th>
-              <td>
-                <select data-bind="options:sortMetrics, value:sortMetric"></select>
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Early stopping rounds:</label>
-              </th>
-              <td>
-                <input data-bind="value:stoppingRounds">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Early stopping tolerance:</label>
-              </th>
-              <td>
-                <input data-bind="value:stoppingTolerance">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>nfolds:</label>
-              </th>
-              <td>
-                <input data-bind="value:nfolds">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Keep cross-validation predictions</label>
-              </th>
-              <td>
-                <input data-bind="checked:keepCrossValidationPredictions" type="checkbox">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Keep cross-validation models</label>
-              </th>
-              <td>
-                <input data-bind="checked:keepCrossValidationModels" type="checkbox">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Keep cross-validation fold assignment</label>
-              </th>
-              <td>
-                <input data-bind="checked:keepCrossValidationFoldAssignment" type="checkbox">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Seed:</label>
-              </th>
-              <td>
-                <input data-bind="value:seed">
-              </td>
-            </tr>
-            <tr>
-              <th>
-                <label>Checkpoints path:</label>
-              </th>
-              <td>
-                <input data-bind="value:exportCheckpointsDir">
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- ko with:automlForm-->
+        <!-- ko if:exception-->
+        <div data-bind="template: { name:'flow-failure', data:exception }"></div>
+        <!-- /ko-->
+        <table class="flow-form" data-bind="template: { name: parameterTemplateOf, foreach:form }"></table>
+        <!-- /ko-->
         <div class="flow-panel">
-              <button class="flow-button" type="button" data-bind="click:buildModel, enable:canBuildModel"><i class="fa fa-cube"></i><span>Build Model</span>
+              <button class="flow-button" type="button" data-bind="click:runAutoML, enable:canRunAutoML"><i class="fa fa-sitemap"></i><span>Build Models</span>
               </button>
         </div>
+        <!-- ko with:automlForm--><span style="margin-left:10px; color:red" data-bind="visible:hasValidationFailures, text:validationFailureMessage"></span>
+        <!-- /ko-->
       </div>
     </script>
     <script type="text/html" id="flow-leaderboard-output">
@@ -3024,9 +2760,11 @@
                 <td>
                       <button class="flow-button" type="button" data-bind="click:inspectData"><i class="fa fa-th"></i><span>View Data</span>
                       </button>
-                      <button class="flow-button" type="button" data-bind="click:splitFrame"><i class="fa fa-scissors"></i><span>Split...</span>
+                      <button class="flow-button" type="button" data-bind="click:splitFrame"><i class="fa fa-scissors"></i><span>Split</span>
                       </button>
-                      <button class="flow-button" type="button" data-bind="click:createModel"><i class="fa fa-cube"></i><span>Build Model&hellip;</span>
+                      <button class="flow-button" type="button" data-bind="click:createModel"><i class="fa fa-cube"></i><span>Build Model</span>
+                      </button>
+                      <button class="flow-button" type="button" data-bind="click:createAutoML"><i class="fa fa-sitemap"></i><span>Run AutoML</span>
                       </button>
                       <button class="flow-button" type="button" data-bind="click:predict"><i class="fa fa-bolt"></i><span>Predict</span>
                       </button>
