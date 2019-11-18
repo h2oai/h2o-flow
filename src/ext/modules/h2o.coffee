@@ -1,6 +1,6 @@
 module.exports =
   Assist: require('../components/assist')
-  AutoModelInput: require('../components/automodel-input')
+  AutoMLInput: require('../components/automl-input')
   BindFramesOutput: require('../components/bind-frames-output')
   CancelJobOutput: require('../components/cancel-job-output')
   CloudOutput: require('../components/cloud-output')
@@ -36,7 +36,6 @@ module.exports =
   MergeFramesInput: require('../components/merge-frames-input')
   MergeFramesOutput: require('../components/merge-frames-output')
   ModelInput: require('../components/model-input').ModelInput
-  ModelBuilderForm: require('../components/model-input').ModelBuilderForm
   ModelOutput: require('../components/model-output')
   ModelsOutput: require('../components/models-output')
   NetworkTestOutput: require('../components/network-test-output')

@@ -43,6 +43,9 @@ module.exports = (_, _go, _frame) ->
   createModel = ->
     _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify _frame.frame_id.name}"
 
+  createAutoML = ->
+    _.insertAndExecuteCell 'cs', "assist runAutoML, training_frame: #{stringify _frame.frame_id.name}"
+
   inspect = ->
     _.insertAndExecuteCell 'cs', "inspect getFrameSummary #{stringify _frame.frame_id.name}"
 
@@ -129,6 +132,7 @@ module.exports = (_, _go, _frame) ->
   grid: _grid
   inspect: inspect
   createModel: createModel
+  createAutoML: createAutoML
   inspectData: inspectData
   splitFrame: splitFrame
   predict: predict

@@ -41,6 +41,9 @@ module.exports = (_, _go, _frames) ->
     createModel = ->
       _.insertAndExecuteCell 'cs', "assist buildModel, null, training_frame: #{stringify frame.frame_id.name}"
 
+    createAutoML = ->
+      _.insertAndExecuteCell 'cs', "assist runAutoML, training_frame: #{stringify frame.frame_id.name}"
+
 
     key: frame.frame_id.name
     isChecked: _isChecked
@@ -52,6 +55,7 @@ module.exports = (_, _go, _frames) ->
     predict: predict
     inspect: inspect
     createModel: createModel
+    createAutoML: createAutoML
 
   importFiles = ->
     _.insertAndExecuteCell 'cs', 'importFiles'

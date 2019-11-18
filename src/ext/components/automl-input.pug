@@ -1,0 +1,19 @@
+.flow-widget
+  +subtitle('Run AutoML', 'sitemap')
+
+  // ko with:automlForm
+
+  // ko if:exception
+  div(data-bind="template: { name:'flow-failure', data:exception }")
+  // /ko
+
+  table.flow-form(data-bind='template: { name: parameterTemplateOf, foreach:form }')
+  // /ko
+
+  .flow-panel
+    +button('Build Models', 'sitemap', 'runAutoML', 'canRunAutoML')
+
+  // ko with:automlForm
+  span(style='margin-left:10px; color:red' data-bind='visible:hasValidationFailures, text:validationFailureMessage')
+  // /ko
+

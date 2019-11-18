@@ -1615,53 +1615,16 @@ exports.init = (_) ->
         else
           go null, extendJob result.job
 
-
-  requestAutoModelBuild = (opts, go) ->
-    # TODO loss
-    params =
-      input_spec:
-        training_frame: opts.training_frame
-        validation_frame: opts.validation_frame
-        blending_frame: opts.blending_frame
-        response_column: opts.response_column
-        fold_column: opts.fold_column
-        weights_column: opts.weights_column
-        ignored_columns: opts.ignored_columns
-        leaderboard_frame: opts.leaderboard_frame
-        sort_metric: opts.sort_metric
-      build_models:
-        exclude_algos: opts.exclude_algos
-      build_control:
-        nfolds: opts.nfolds
-        keep_cross_validation_predictions: opts.keep_cross_validation_predictions
-        keep_cross_validation_models: opts.keep_cross_validation_models
-        keep_cross_validation_fold_assignment: opts.keep_cross_validation_fold_assignment
-        balance_classes: opts.balance_classes
-        class_sampling_factors: opts.class_sampling_factors
-        max_after_balance_size: opts.max_after_balance_size
-        export_checkpoints_dir: opts.export_checkpoints_dir
-        stopping_criteria:
-          seed: opts.seed
-          max_models: opts.max_models
-          max_runtime_secs: opts.max_runtime_secs
-          max_runtime_secs_per_model: opts.max_runtime_secs_per_model
-          stopping_rounds: opts.stopping_rounds
-          stopping_tolerance: opts.stopping_tolerance
-          # TODO Enums currently fail with:
-          # ERROR MESSAGE: setField can't yet convert a: class java.lang.String to a: class hex.ScoreKeeper$StoppingMetric
-          # stopping_metric: opts.stopping_metric
-    if opts.project_name != ''
-      params.build_control.project_name = opts.project_name
-
-    _.requestAutoModelBuild params, (error, result) ->
+  requestAutoMLBuild = (opts , go) ->
+    _.requestAutoMLBuild opts, (error, result) ->
       if error
         go error
       else
         go null, extendJob result.job
 
-  runAutoML = (opts) ->
-    if opts and keys(opts).length > 1
-      _fork requestAutoModelBuild, opts
+  runAutoML = (opts, action) ->
+    if action is 'exec'
+      _fork requestAutoMLBuild, opts
     else
       assist runAutoML, opts
 
@@ -1980,7 +1943,7 @@ exports.init = (_) ->
         when buildModel
           _fork proceed, h2o.ModelInput, args
         when runAutoML
-          _fork proceed, h2o.AutoModelInput, args
+          _fork proceed, h2o.AutoMLInput, args
         when predict, getPrediction
           _fork proceed, h2o.PredictInput, args
         when createFrame

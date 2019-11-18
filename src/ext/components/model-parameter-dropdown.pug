@@ -6,7 +6,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
     div(data-bind="visible:isNotGrided")
       select(data-bind="options:values, value:value, optionsCaption: '(Choose...)'")
     div(data-bind="visible:isGrided")
-      // ko foreach:gridedValues
+      // ko foreach:choices
       div
         label
           input(type='checkbox' data-bind='checked:value')
