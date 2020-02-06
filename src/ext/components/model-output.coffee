@@ -765,6 +765,8 @@ module.exports = (_, _go, _model, refresh) ->
         if accept
           _.insertAndExecuteCell 'cs', "deleteModel #{stringify _model.model_id.name}"
 
+    visualizeTree = ->
+        window.open _.ContextPath + "3/Models.visualize.tree/#{encodeURIComponent _model.model_id.name}", '_blank'
 
     key: _model.model_id
     algo: _model.algo_full_name
@@ -785,6 +787,7 @@ module.exports = (_, _go, _model, refresh) ->
     isPojoLoaded: _isPojoLoaded
     exportModel: exportModel
     deleteModel: deleteModel
+    visualizeTree: visualizeTree
 
 
   _isLive = signal no
