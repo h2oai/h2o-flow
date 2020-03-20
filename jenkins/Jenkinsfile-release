@@ -13,6 +13,7 @@ buildSummary.get().addStagesSummary(this, new StagesSummary())
 
 REGISTRY = 'harbor.h2o.ai'
 IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
+NODE = "docker && linux"
 
 MASTER_BRANCH = 'master'
 REL_BRANCH_PREFIX = 'rel-'
@@ -22,7 +23,7 @@ def flowVersion = null
 try {
     ansiColor('xterm') {
         timestamps {
-            node('master') {
+            node(NODE) {
                 cleanWs()
                 buildSummary.stageWithSummary('Checkout') {
                     def final scmEnv = checkout scm
