@@ -495,7 +495,7 @@ createControlFromParameter = (_, parameter) ->
       createCheckboxControl parameter
     when 'Key<Model>', 'string', 'byte', 'short', 'int', 'long', 'float', 'double', 'byte[]', 'short[]', 'int[]', 'long[]', 'float[]', 'double[]'
       createTextboxControl parameter, parameter.type
-    when 'Key<Model>[]'
+    when 'Key<Model>[]', 'Key<Keyed>[]'
       createModelsControl _, parameter
     when 'StringPair[]'
       createStringPairsControl parameter
