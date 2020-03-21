@@ -15,6 +15,7 @@ REGISTRY = 'harbor.h2o.ai'
 IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
 NODE = "docker && linux"
 
+GIT_CREDENTIALS='h2oOpsGitPrivateKey'
 MASTER_BRANCH = 'master'
 REL_BRANCH_PREFIX = 'rel-'
 
@@ -96,13 +97,20 @@ try {
                 }
 
                 buildSummary.stageWithSummary("Commit and Push") {
-                    sh """
-                        git add .
-                        git commit -m "Release $flowVersion"
-                        git push --set-upstream origin ${env.BRANCH_NAME}
-                        git tag -a $flowVersion -m "$flowVersion"
-                        git push --tags
-                    """
+                    withCredentials([sshUserPrivateKey(credentialsId: GIT_CREDENTIALS, usernameVariable: 'USERNAME', keyFileVariable: 'KEY_FILE')]) {
+                        sh """
+                            git config --local credential.username ${USERNAME}
+                            git config --local credential.helper 'store --file=${KEY_FILE}'
+
+                            git add .
+                            git commit -m "Release $flowVersion"
+                            git push --set-upstream origin ${env.BRANCH_NAME}
+                            git tag -a $flowVersion -m "$flowVersion"
+                            git push --tags
+
+                            git config --local --remove-section credential
+                        """
+                    }
                 }
             }
             result = BuildResult.SUCCESS
