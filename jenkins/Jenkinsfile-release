@@ -99,6 +99,7 @@ try {
                 buildSummary.stageWithSummary("Commit and Push") {
                     withCredentials([sshUserPrivateKey(credentialsId: GIT_CREDENTIALS, usernameVariable: 'USERNAME', keyFileVariable: 'KEY_FILE')]) {
                         sh """
+                            git config --global user.name ${USERNAME}
                             git config --local credential.username ${USERNAME}
                             git config --local credential.helper 'store --file=${KEY_FILE}'
 
