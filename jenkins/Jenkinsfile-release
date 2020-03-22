@@ -13,7 +13,8 @@ buildSummary.get().addStagesSummary(this, new StagesSummary())
 
 REGISTRY = 'harbor.h2o.ai'
 IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
-NODE = "docker && linux"
+#NODE = "docker && linux"
+NODE = "master"
 
 GIT_CREDENTIALS='h2oOpsGitPrivateKey'
 MASTER_BRANCH = 'master'
@@ -96,12 +97,12 @@ try {
                     }
                 }
 
-                buildSummary.stageWithSummary("Commit and Push") {
+                stage("Commit and Push") {
                     withCredentials([sshUserPrivateKey(credentialsId: GIT_CREDENTIALS, usernameVariable: 'USERNAME', keyFileVariable: 'KEY_FILE')]) {
                         sh """
-                            git config --global user.name ${USERNAME}
-                            git config --local credential.username ${USERNAME}
-                            git config --local credential.helper 'store --file=${KEY_FILE}'
+                            #git config --global user.name ${USERNAME}
+                            #git config --local credential.username ${USERNAME}
+                            #git config --local credential.helper 'store --file=${KEY_FILE}'
 
                             git add .
                             git commit -m "Release $flowVersion"
@@ -109,7 +110,7 @@ try {
                             git tag -a $flowVersion -m "$flowVersion"
                             git push --tags
 
-                            git config --local --remove-section credential
+                            #git config --local --remove-section credential
                         """
                     }
                 }
