@@ -13,7 +13,7 @@ buildSummary.get().addStagesSummary(this, new StagesSummary())
 
 REGISTRY = 'harbor.h2o.ai'
 IMAGE = "${REGISTRY}/opsh2oai/h2o-flow-build"
-#NODE = "docker && linux"
+// NODE = "docker && linux"
 NODE = "master"
 
 GIT_CREDENTIALS='h2oOpsGitPrivateKey'
