@@ -14,7 +14,7 @@ tr(data-bind="css:{'bg-danger':hasError, 'bg-warning':hasWarning, 'bg-info':hasI
               input(type='checkbox' title='Select or deselect all' data-bind="checked:checkAllModels")
               | Select All
     div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
-      // ko foreach:value
+      // ko foreach:entries
       div(style='padding:5px')
         label
           input(type='checkbox' data-bind='checked:isSelected')
