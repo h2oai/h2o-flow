@@ -280,11 +280,11 @@ createListControl = (parameter) ->
 
 
 createModelsControl = (_, parameter) ->
-  _models = signal []
+  _entries = signal []
+  _value = signal []
   _frames = signal []
   _selectedFrame = signal null
   _checkAllModels = signal false
-
   _.requestFrames (error, frames) ->
     unless error
       _frames (frame.frame_id.name for frame in frames)
@@ -296,34 +296,44 @@ createModelsControl = (_, parameter) ->
     isSelected: _isSelected
 
   createModelItems = (error, frame) ->
-    _models map frame.compatible_models, createModelItem
+    _entries map frame.compatible_models, createModelItem
 
   _isCheckingAll = no
   lift _checkAllModels, (checkAll) ->
     _isCheckingAll = yes
-    for view in _models()
+    for view in _entries()
       view.isSelected checkAll
     _isCheckingAll = no
     return
 
   selectFiltered = ->
-    entries = _models()
+    entries = _entries()
     blockSelectionUpdates -> changeSelection entries, yes
 
   deselectFiltered = ->
-    entries = _models()
+    entries = _entries()
     blockSelectionUpdates -> changeSelection entries, no
 
   lift _selectedFrame, (frameKey) ->
     if frameKey
       _.requestFrame frameKey, createModelItems, find_compatible_models: yes
 
+  arrows = null
+  act _entries, (entries) ->
+      if arrows
+        unlink arrows
+      selections = (s.isSelected for s in entries)
+      readValue = ->
+        (e.value for e in entries when e.isSelected())
+      arrows = merge selections..., _value, readValue
+
   control = createControl 'models', parameter
   control.clientId = do uniqueId
   control.frames = _frames
   control.selectedFrame = _selectedFrame
   control.checkAllModels = _checkAllModels
-  control.value = _models
+  control.entries = _entries
+  control.value = _value
   control.defaultValue = []
   control
 
