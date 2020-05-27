@@ -131,9 +131,8 @@ module.exports = (_, _go, _result) ->
     if table = _.inspect "plot#{i+1}", _result
       x = data.columns[0].name
       y = data.columns[1].name
-
       _plots.push section = 
-        title: "#{x} vs #{y}"
+        title: data.description
         plot: signal null
         frame: signal null
         isFrameShown: signal no
