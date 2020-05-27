@@ -33,6 +33,11 @@
           input.flow-textbox(type='text' data-bind="value:nbins")
         td How many levels should PDP compute. More levels will make it slower.
       tr
+        th target
+        td
+          input.flow-textbox(type='text' data-bind="value:targets")
+        td Target class for multinomial classification.
+      tr
         th
           label Select columns?
         td 

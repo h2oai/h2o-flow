@@ -19,6 +19,7 @@ module.exports = (_, _go) ->
   _columns2d = signal []
   _nbins = signal 20
   _row_index = signal -1
+  _targets = signal null
 
 
   # search & filter functionalities
@@ -76,7 +77,7 @@ module.exports = (_, _go) ->
 
   # when searchterm changes, filterItems is called
   react _searchTerm, throttle filterItems, 500
-  
+
   changeSelection = (source, value) ->
     for entry in source
       entry.isSelected value
@@ -96,7 +97,7 @@ module.exports = (_, _go) ->
       _currentPage _currentPage() - 1
       filterItems()
     return
-  
+
   _goToNextPage = ->
     if _canGoToNextPage()
       _currentPage _currentPage() + 1
@@ -136,7 +137,7 @@ module.exports = (_, _go) ->
   # a conditional check that makes sure that
   # all fields in the form are filled in
   # before the button is shown as active
-  _canCompute = lift _destinationKey, _selectedFrame, _selectedModel, _nbins, _row_index, (dk, sf, sm, nb, ri) ->
+  _canCompute = lift _destinationKey, _selectedFrame, _selectedModel, _nbins, _row_index, _targets, (dk, sf, sm, nb, ri) ->
     dk and sf and sm and nb and ri
 
   _compute = ->
@@ -151,13 +152,14 @@ module.exports = (_, _go) ->
       col_pairs_2dpdp: _cols2dToString()
       nbins: _nbins()
       row_index: _row_index()
+      targets: _targets()
 
     # assemble a string for the h2o Rapids AST
     # this contains the function to call
     # along with the options to pass in
     cs = "buildPartialDependence #{stringify opts}"
 
-    # insert a cell with the expression `cs` 
+    # insert a cell with the expression `cs`
     # into the current Flow notebook
     # and run the cell
     _.insertAndExecuteCell 'cs', cs
@@ -171,7 +173,7 @@ module.exports = (_, _go) ->
             columnLabels = map frame.columns, (column) ->
               missingPercent = 100 * column.missing_count / frame.rows
               isSelected = signal no
-              react isSelected, (isSelected) -> 
+              react isSelected, (isSelected) ->
                 unless _isUpdatingSelectionCount
                   if isSelected
                     incrementSelectionCount 1
@@ -223,6 +225,7 @@ module.exports = (_, _go) ->
   visibleItems: _visibleItems
   useCustomColumns: _useCustomColumns
   nbins: _nbins
+  targets: _targets
   row_index: _row_index
   compute: _compute
   updateColumns: _updateColumns
@@ -244,5 +247,3 @@ module.exports = (_, _go) ->
 
 
   template: 'flow-partial-dependence-input'
-
-
