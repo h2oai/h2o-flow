@@ -46,7 +46,7 @@ try {
                         latestSecondNum = Integer.parseInt(lastVersionParts[1])
                         expectedSecondNum = latestSecondNum + 1
                         if (currentSecondNum != expectedSecondNum) {
-                            error "Latest tag should be 0.${expectedSecondNum}.# but was 0.${latestSecondNum}.#"
+                            //error "Latest tag should be 0.${expectedSecondNum}.# but was 0.${latestSecondNum}.#"
                         }
                         flowVersion = "${flowVersionMajor}.1"
                     } else {
