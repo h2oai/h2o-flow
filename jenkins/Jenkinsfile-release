@@ -95,13 +95,15 @@ try {
                 }
 
                 buildSummary.stageWithSummary("Commit and Push") {
-                    sh """
-                        git add .
-                        git commit -m "Release $flowVersion"
-                        git push --set-upstream origin ${env.BRANCH_NAME}
-                        git tag -a $flowVersion -m "$flowVersion"
-                        git push --tags
-                    """
+                    sshagent (credentials: ['h2oOpsGitPrivateKey']) {
+                        sh """
+                            git add .
+                            git commit -m "Release $flowVersion"
+                            git push --set-upstream origin ${env.BRANCH_NAME}
+                            git tag -a $flowVersion -m "$flowVersion"
+                            git push --tags
+                        """
+                    }
                 }
             }
             result = BuildResult.SUCCESS
