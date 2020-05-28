@@ -222,7 +222,11 @@ main = ->
   page = await browser.newPage()
 
   page.on 'requestfailed', (request) ->
-    console.log "BROWSER: *** REQUEST FAILED *** #{request.method()} #{request.url()}: #{request.failure().errorText}"
+    errorText = if request.failure()
+      request.failure().errorText
+    else
+      "(no errorText)"
+    console.log "BROWSER: *** REQUEST FAILED *** #{request.method()} #{request.url()}: #{errorText}"
 
   page.on 'console', (message) ->
     console.log "BROWSER: #{message.text()}"
@@ -259,6 +263,7 @@ main = ->
         console.log '------------------ FAILED -------------------'
         console.log printErrors errors
         console.log '---------------------------------------------'
+        exit_status = 1
       else
         summary = await page.evaluate -> window._phantom_test_summary_
         console.log '------------------ PASSED -------------------'
@@ -268,7 +273,9 @@ main = ->
           testCount++
         console.log "(#{testCount} tests executed.)"
         console.log '---------------------------------------------'
+        exit_status = 0
       await browser.close()
+      process.exit exit_status
   else
     errorMessage = await response.text()
     console.log "TEST: *** ERROR *** Failed to load the page. Message: #{errorMessage}"

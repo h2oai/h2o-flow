@@ -1,11 +1,11 @@
-default:
-	npm run build
+default: build
 	cp -r build/* ../h2o-3/h2o-web/src/main/resources/www/flow/
 
 install:
 	npm install
 
 build:
+	npm run headless-compile
 	npm run build
 
 clean:

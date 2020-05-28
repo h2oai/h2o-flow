@@ -287,7 +287,9 @@
     browser = (await puppeteer.launch(args));
     page = (await browser.newPage());
     page.on('requestfailed', function(request) {
-      return console.log(`BROWSER: *** REQUEST FAILED *** ${request.method()} ${request.url()}: ${(request.failure().errorText)}`);
+      var errorText;
+      errorText = request.failure() ? request.failure().errorText : "(no errorText)";
+      return console.log(`BROWSER: *** REQUEST FAILED *** ${request.method()} ${request.url()}: ${errorText}`);
     });
     page.on('console', function(message) {
       return console.log(`BROWSER: ${message.text()}`);
@@ -329,7 +331,7 @@
         }
       };
       return waitFor(test, browser, async function() {
-        var errors, flowTitle, summary, testCount, testStatus;
+        var errors, exit_status, flowTitle, summary, testCount, testStatus;
         errors = (await page.evaluate(function() {
           return window._phantom_errors_;
         }));
@@ -337,6 +339,7 @@
           console.log('------------------ FAILED -------------------');
           console.log(printErrors(errors));
           console.log('---------------------------------------------');
+          exit_status = 1;
         } else {
           summary = (await page.evaluate(function() {
             return window._phantom_test_summary_;
@@ -350,8 +353,10 @@
           }
           console.log(`(${testCount} tests executed.)`);
           console.log('---------------------------------------------');
+          exit_status = 0;
         }
-        return (await browser.close());
+        await browser.close();
+        return process.exit(exit_status);
       });
     } else {
       errorMessage = (await response.text());
