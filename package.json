@@ -103,7 +103,7 @@
     "marked": "^0.7.0",
     "moment": "~2.22.0",
     "mousetrap": "~1.6.2",
-    "plotly.js": "^1.48.3",
+    "plotly.js": "^1.54.1",
     "stacktrace-js": "~2.0.0",
     "typeahead.js": "~0.11.1",
     "uuid": "~3.3.2"
