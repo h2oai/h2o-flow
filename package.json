@@ -86,7 +86,7 @@
     "bootstrap": "~3.4.1",
     "chai": "~4.2.0",
     "chroma-js": "~1.4.0",
-    "codemirror": "~5.41.0",
+    "codemirror": "~5.54.0",
     "coffeescript": "~2.3.0",
     "d3": "~5.7.0",
     "diecut": "~0.0.1",
