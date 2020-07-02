@@ -561,6 +561,9 @@ exports.init = (_) ->
       description: ''
       origin: origin
 
+  _globalHacks =
+    fields: 'reproducibility_information_table'
+
   _schemaHacks =
     KMeansOutput:
       fields: 'names domains help'
@@ -606,6 +609,14 @@ exports.init = (_) ->
           dict[field] = yes
     dicts
 
+  blacklistedAttributesSchemaIndependent = do ->
+    dict = {}
+    for attrs of _globalHacks
+      if attrs = 'fields'
+        for field in words _globalHacks[attrs]
+          dict[field] = yes
+    dict
+
   schemaTransforms = do ->
     transforms = {}
     for schema, attrs of _schemaHacks
@@ -614,14 +625,13 @@ exports.init = (_) ->
     transforms
 
   inspectObject = (inspections, name, origin, obj) ->
+    blacklistedAttributes = blacklistedAttributesSchemaIndependent
+
     schemaType = obj.__meta?.schema_type
-    blacklistedAttributes = if schemaType
+    if schemaType
       if attrs = blacklistedAttributesBySchema[schemaType]
-        attrs
-      else
-        {}
-    else
-      {}
+        for key, value of attrs
+          blacklistedAttributes[key] = value
 
     obj = transform obj if transform = schemaTransforms[schemaType]
 
