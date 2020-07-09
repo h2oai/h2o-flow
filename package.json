@@ -99,7 +99,7 @@
     "jquery-textrange": "~1.4.0",
     "json-bigint": "~0.3.0",
     "knockout": "^3.4.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.16",
     "marked": "^0.7.0",
     "moment": "~2.22.0",
     "mousetrap": "~1.6.2",
