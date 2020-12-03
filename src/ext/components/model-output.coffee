@@ -178,25 +178,40 @@ module.exports = (_, _go, _model, refresh) ->
       when 'glm'
         if table = _.inspect 'output - Scoring History', _model
           lambdaSearchParameter = find _model.parameters, (parameter) -> parameter.name is 'lambda_search'
+          hglmParameter = find _model.parameters, (parameter) -> parameter.name is "HGLM"
 
           if lambdaSearchParameter?.actual_value
             renderPlot 'Scoring History', no, _.plot (g) ->
               g(
                 g.path(
-                  g.position 'lambda', 'explained_deviance_train'
+                  g.position 'iteration', 'deviance_train'
                   g.strokeColor g.value '#1f77b4'
                 )
                 g.path(
-                  g.position 'lambda', 'explained_deviance_test'
+                  g.position 'iteration', 'deviance_test'
                   g.strokeColor g.value '#ff7f0e'
                 )
                 g.point(
-                  g.position 'lambda', 'explained_deviance_train'
+                  g.position 'iteration', 'deviance_train'
                   g.strokeColor g.value '#1f77b4'
                 )
                 g.point(
-                  g.position 'lambda', 'explained_deviance_test'
+                  g.position 'iteration', 'deviance_test'
                   g.strokeColor g.value '#ff7f0e'
+                )
+                g.from table
+                g.where 'alpha', (row) -> row == _model.output.alpha_best
+              )
+          else if hglmParameter?.actual_value
+            renderPlot 'Scoring History', no, _.plot (g) ->
+              g(
+                g.path(
+                  g.position 'iterations', 'convergence'
+                  g.strokeColor g.value '#1f77b4'
+                )
+                g.point(
+                  g.position 'iterations', 'convergence'
+                  g.strokeColor g.value '#1f77b4'
                 )
                 g.from table
               )
