@@ -462,12 +462,6 @@ exports.init = (_) ->
     render_ result, h2o.PartialDependenceOutput, result
     result
 
-#   inspectOutputsAcrossModels = (modelCategory, models) -> ->
-#     switch modelCategory
-#       when 'Binomial'
-#       when 'Multinomial'
-#       when 'Regression'
-
   getModelParameterValue = (type, value) ->
     switch type
       when 'Key<Frame>', 'Key<Model>'

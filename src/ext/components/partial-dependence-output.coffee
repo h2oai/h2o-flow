@@ -1,5 +1,6 @@
-{ defer, map } = require('lodash')
+{ defer, map, forEach } = require('lodash')
 { stringify } = require('../../core/modules/prelude')
+{ rainbow } = require('../../core/modules/util')
 { react, lift, link, signal, signals } = require("../../core/modules/dataflow")
 
 module.exports = (_, _go, _result) ->
@@ -102,7 +103,7 @@ module.exports = (_, _go, _result) ->
         layout =
           width: 500, height: 400
           margin:
-            l: 0, r:0, t: 0, b: 0
+            l: 0, r: 0, t: 0, b: 0
           scene:
             xaxis:
               title: { text: response.columns[0].description }
@@ -116,7 +117,7 @@ module.exports = (_, _go, _result) ->
 
         if data.x_cat
           layout.scene.xaxis.type = "category"
-        if data.x_cat
+        if data.y_cat
           layout.scene.yaxis.type = "category"
 
         elem = document.createElement('div')
@@ -126,28 +127,102 @@ module.exports = (_, _go, _result) ->
           element: elem
         go null, vis
 
-  _plots = [] # Hold as many plots as present in the result.
-  for data, i in _result.partial_dependence_data
-    if table = _.inspect "plot#{i+1}", _result
-      x = data.columns[0].name
-      y = data.columns[1].name
-      _plots.push section = 
-        title: data.description
+  plotSingleClass = (_result, _plots) ->
+    for data, i in _result.partial_dependence_data
+      if table = _.inspect "plot#{i+1}", _result
+        _plots.push section =
+          title: data.description
+          plot: signal null
+          frame: signal null
+          isFrameShown: signal no
+
+        if !_result.cols || i >= _result.cols.length
+          renderPlot section.plot, plotPdp2d(data)
+        else
+          x = data.columns[0].name
+          y = data.columns[1].name
+          renderPlot section.plot, plotPdp(x, y, table)
+
+        renderPlot section.frame, _.plot (g) ->
+          g(
+            g.select()
+            g.from table
+          )
+        section.isFrameShown = lift _isFrameShown, (value)-> value
+
+  toNumber = (a) ->
+    map a, (x) ->
+      if x.toNumber
+        x.toNumber()
+      else
+        x
+
+  plotMultiClassPlot = (data, targets) ->
+    _.plotlyPlot (plotly) ->
+      (go) ->
+        plots = []
+        for j in [0 ... data.length]
+          plots.push
+            x: toNumber data[j].data[0]
+            y: toNumber data[j].data[1]
+            type: 'lines+markers'
+            name: targets[j]
+        layout =
+          width: 500, height: 400
+          margin:
+            l: 0, r: 0, t: 0, b: 0
+          legend:
+            y: 0.5
+          scene:
+            xaxis:
+              title: { text: data[0].columns[0].description }
+              type: getAxisType(plots[0].x)
+            yaxis:
+              title: { text: data[0].columns[1].description }
+              type: getAxisType(plots[0].y)
+        config =
+          displayModeBar: false
+
+        elem = document.createElement('div')
+        plotly.newPlot(elem, plots, layout, config)
+        vis =
+          element: elem
+        go null, vis
+
+  multiClassPlotTable = (result, col, num_classes) ->
+    tables = map result.targets, (t, j) -> _.inspect "plot#{col*num_classes+j+1}", result
+    merged = tables[0]
+    merged.vectors[1].label = "#{merged.vectors[1].label} #{result.targets[0]}"
+    for t in [1 ... num_classes]
+      tables[t].vectors[1].label = "#{tables[t].vectors[1].label} #{result.targets[t]}"
+      for v in [1 ... tables[t].vectors.length]
+        merged.vectors.push tables[t].vectors[v]
+    merged
+
+# getPartialDependence "pdp-9994ccb0-8eeb-409b-9909-b580e31a6768"
+  plotMultiClass = (_result, _plots) ->
+    num_cols = _result.cols.length
+    num_classes = _result.targets.length
+    for i in [0 ... num_cols]
+      data = _result.partial_dependence_data[i*num_classes ... (i+1)*num_classes]
+      _plots.push section =
+        title: "Partial Dependence Plot of column #{_result.cols[i]}"
         plot: signal null
         frame: signal null
         isFrameShown: signal no
-
-      if !_result.cols || i >= _result.cols.length
-        renderPlot section.plot, plotPdp2d(data)
-      else
-        renderPlot section.plot, plotPdp(x, y, table)
-
+      renderPlot section.plot, plotMultiClassPlot(data, _result.targets)
       renderPlot section.frame, _.plot (g) ->
         g(
           g.select()
-          g.from table
+          g.from multiClassPlotTable(_result, i, num_classes)
         )
       section.isFrameShown = lift _isFrameShown, (value)-> value
+
+  _plots = [] # Hold as many plots as present in the result.
+  if _result.targets && _result.targets.length > 1
+    plotMultiClass(_result, _plots)
+  else
+    plotSingleClass(_result, _plots)
 
   _viewFrame = ->
     _.insertAndExecuteCell 'cs', "requestPartialDependenceData #{stringify _destinationKey}"

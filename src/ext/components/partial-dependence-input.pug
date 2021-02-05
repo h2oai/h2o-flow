@@ -16,7 +16,7 @@
         th
           label Model:
         td(colspan='2')
-          select(data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'")
+          select(data-bind="options:models, value:selectedModel, optionsCaption:'(Select)', event:{ change:updateTargets}")
       tr
         th
           label Frame:
@@ -32,11 +32,34 @@
         td
           input.flow-textbox(type='text' data-bind="value:nbins")
         td How many levels should PDP compute. More levels will make it slower.
-      tr
-        th target
-        td
-          input.flow-textbox(type='text' data-bind="value:targets")
-        td Target class for multinomial classification.
+      tr(data-bind='visible:useCustomTargets')
+        th
+          label Target classes:
+        td(colspan='2')
+          div(style='height:25px')
+            input.flow-textbox(type='text' placeholder='Search...' data-bind="value:searchTermTargets, valueUpdate:'afterkeydown'")
+          div(style='font-size:80%' data-bind='text:searchTargetsCaption')
+          div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
+            table
+              tbody
+                // ko foreach:visibleTargets
+                tr
+                  td
+                    label
+                      input(type='checkbox' data-bind='checked:isSelected')
+                      span(data-bind='text:value')
+                // /ko
+
+          table(style='margin-bottom:10px;width:100%')
+            tbody
+              tr
+                td
+                  +button('All', 'check-square-o', 'selectFilteredTargets', 'hasFilteredTargets')
+                  +button('None', 'square-o', 'deselectFilteredTargets', 'hasFilteredTargets')
+                td(style='text-align:right')
+                  +button('Previous 100', 'arrow-left', 'goToPreviousTargetsPage', 'canGoToPreviousTargetsPage')
+                  +button('Next 100', 'arrow-right', 'goToNextTargetsPage', 'canGoToNextTargetsPage')
+
       tr
         th
           label Select columns?
@@ -48,12 +71,12 @@
           label Available columns:
         td(colspan='2')
           div(style='height:25px')
-            input.flow-textbox(type='text' placeholder='Search...' data-bind="value:searchTerm, valueUpdate:'afterkeydown'")
-          div(style='font-size:80%' data-bind='text:searchCaption')
+            input.flow-textbox(type='text' placeholder='Search...' data-bind="value:searchTermColumns, valueUpdate:'afterkeydown'")
+          div(style='font-size:80%' data-bind='text:searchColumnsCaption')
           div(style='margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc')
             table
               tbody
-                // ko foreach:visibleItems
+                // ko foreach:visibleColumns
                 tr
                   td
                     label
@@ -67,11 +90,12 @@
             tbody
               tr
                 td
-                  +button('All', 'check-square-o', 'selectFiltered', 'hasFilteredItems')
-                  +button('None', 'square-o', 'deselectFiltered', 'hasFilteredItems')
+                  +button('All', 'check-square-o', 'selectFilteredColumns', 'hasFilteredColumns')
+                  +button('None', 'square-o', 'deselectFilteredColumns', 'hasFilteredColumns')
                 td(style='text-align:right')
-                  +button('Previous 100', 'arrow-left', 'goToPreviousPage', 'canGoToPreviousPage')
-                  +button('Next 100', 'arrow-right', 'goToNextPage', 'canGoToNextPage')
+                  +button('Previous 100', 'arrow-left', 'goToPreviousColumnsPage', 'canGoToPreviousColumnsPage')
+                  +button('Next 100', 'arrow-right', 'goToNextColumnsPage', 'canGoToNextColumnsPage')
+
       tr
         th
           label 2D PDP Columns:
