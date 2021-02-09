@@ -1147,7 +1147,7 @@
                 <label>Model:</label>
               </th>
               <td colspan="2">
-                <select data-bind="options:models, value:selectedModel, optionsCaption:'(Select)'"></select>
+                <select data-bind="options:models, value:selectedModel, optionsCaption:'(Select)', event:{ change:updateTargets}"></select>
               </td>
             </tr>
             <tr>
@@ -1172,12 +1172,49 @@
               </td>
               <td>How many levels should PDP compute. More levels will make it slower.</td>
             </tr>
-            <tr>
-              <th>target</th>
-              <td>
-                <input class="flow-textbox" type="text" data-bind="value:targets">
+            <tr data-bind="visible:useCustomTargets">
+              <th>
+                <label>Target classes:</label>
+              </th>
+              <td colspan="2">
+                <div style="height:25px">
+                  <input class="flow-textbox" type="text" placeholder="Search..." data-bind="value:searchTermTargets, valueUpdate:'afterkeydown'">
+                </div>
+                <div style="font-size:80%" data-bind="text:searchTargetsCaption"></div>
+                <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
+                  <table>
+                    <tbody>
+                      <!-- ko foreach:visibleTargets-->
+                      <tr>
+                        <td>
+                          <label>
+                            <input type="checkbox" data-bind="checked:isSelected"><span data-bind="text:value"></span>
+                          </label>
+                        </td>
+                      </tr>
+                      <!-- /ko-->
+                    </tbody>
+                  </table>
+                </div>
+                <table style="margin-bottom:10px;width:100%">
+                  <tbody>
+                    <tr>
+                      <td>
+                            <button class="flow-button" type="button" data-bind="click:selectFilteredTargets, enable:hasFilteredTargets"><i class="fa fa-check-square-o"></i><span>All</span>
+                            </button>
+                            <button class="flow-button" type="button" data-bind="click:deselectFilteredTargets, enable:hasFilteredTargets"><i class="fa fa-square-o"></i><span>None</span>
+                            </button>
+                      </td>
+                      <td style="text-align:right">
+                            <button class="flow-button" type="button" data-bind="click:goToPreviousTargetsPage, enable:canGoToPreviousTargetsPage"><i class="fa fa-arrow-left"></i><span>Previous 100</span>
+                            </button>
+                            <button class="flow-button" type="button" data-bind="click:goToNextTargetsPage, enable:canGoToNextTargetsPage"><i class="fa fa-arrow-right"></i><span>Next 100</span>
+                            </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </td>
-              <td>Target class for multinomial classification.</td>
             </tr>
             <tr>
               <th>
@@ -1194,13 +1231,13 @@
               </th>
               <td colspan="2">
                 <div style="height:25px">
-                  <input class="flow-textbox" type="text" placeholder="Search..." data-bind="value:searchTerm, valueUpdate:'afterkeydown'">
+                  <input class="flow-textbox" type="text" placeholder="Search..." data-bind="value:searchTermColumns, valueUpdate:'afterkeydown'">
                 </div>
-                <div style="font-size:80%" data-bind="text:searchCaption"></div>
+                <div style="font-size:80%" data-bind="text:searchColumnsCaption"></div>
                 <div style="margin-bottom:5px;height:300px;overflow:auto;border:1px dotted #ccc">
                   <table>
                     <tbody>
-                      <!-- ko foreach:visibleItems-->
+                      <!-- ko foreach:visibleColumns-->
                       <tr>
                         <td>
                           <label>
@@ -1218,15 +1255,15 @@
                   <tbody>
                     <tr>
                       <td>
-                            <button class="flow-button" type="button" data-bind="click:selectFiltered, enable:hasFilteredItems"><i class="fa fa-check-square-o"></i><span>All</span>
+                            <button class="flow-button" type="button" data-bind="click:selectFilteredColumns, enable:hasFilteredColumns"><i class="fa fa-check-square-o"></i><span>All</span>
                             </button>
-                            <button class="flow-button" type="button" data-bind="click:deselectFiltered, enable:hasFilteredItems"><i class="fa fa-square-o"></i><span>None</span>
+                            <button class="flow-button" type="button" data-bind="click:deselectFilteredColumns, enable:hasFilteredColumns"><i class="fa fa-square-o"></i><span>None</span>
                             </button>
                       </td>
                       <td style="text-align:right">
-                            <button class="flow-button" type="button" data-bind="click:goToPreviousPage, enable:canGoToPreviousPage"><i class="fa fa-arrow-left"></i><span>Previous 100</span>
+                            <button class="flow-button" type="button" data-bind="click:goToPreviousColumnsPage, enable:canGoToPreviousColumnsPage"><i class="fa fa-arrow-left"></i><span>Previous 100</span>
                             </button>
-                            <button class="flow-button" type="button" data-bind="click:goToNextPage, enable:canGoToNextPage"><i class="fa fa-arrow-right"></i><span>Next 100</span>
+                            <button class="flow-button" type="button" data-bind="click:goToNextColumnsPage, enable:canGoToNextColumnsPage"><i class="fa fa-arrow-right"></i><span>Next 100</span>
                             </button>
                       </td>
                     </tr>
