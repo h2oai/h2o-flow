@@ -1,4 +1,4 @@
-{ defer, map, throttle } = require('lodash')
+{ defer, map, filter, throttle } = require('lodash')
 
 { stringify } = require('../../core/modules/prelude')
 { react, lift, link, signal, signals } = require("../../core/modules/dataflow")
@@ -19,89 +19,86 @@ module.exports = (_, _go) ->
   _columns2d = signal []
   _nbins = signal 20
   _row_index = signal -1
-  _targets = signal null
-
-
-  # search & filter functionalities
-  _visibleItems = signal []
-  _filteredItems = signal []
+  _useCustomTargets = signal no
+  _targets = signal []
 
   MaxItemsPerPage = 100
-
-  _currentPage = signal 0
-  _maxPages = lift _filteredItems, (entries) -> Math.ceil entries.length / MaxItemsPerPage
-  _canGoToPreviousPage = lift _currentPage, (index) -> index > 0
-  _canGoToNextPage = lift _maxPages, _currentPage, (maxPages, index) -> index < maxPages - 1
-
-  _selectionCount = signal 0
-
-  _isUpdatingSelectionCount = no
-
-  _searchTerm = signal ''
-  _searchCaption = lift _columns, _filteredItems, _selectionCount, _currentPage, _maxPages, (entries, filteredItems, selectionCount, currentPage, maxPages) ->
-    caption = if maxPages is 0 then '' else "Showing page #{currentPage + 1} of #{maxPages}."
-    if filteredItems.length isnt entries.length
-      caption += " Filtered #{filteredItems.length} of #{entries.length}."
-    if selectionCount isnt 0
-      caption += " #{selectionCount} selected for PDP calculations."
-    caption
-
-  blockSelectionUpdates = (f) ->
-    _isUpdatingSelectionCount = yes
-    f()
-    _isUpdatingSelectionCount = no
-
-  incrementSelectionCount = (amount) ->
-    _selectionCount _selectionCount() + amount
-
-  _hasFilteredItems = lift _columns, (entries) -> entries.length > 0
-
-
-  filterItems = ->
-    searchTerm = _searchTerm().trim()
-
-    filteredItems = []
-
-    for entry, i in _columns()
-      hide = no
-      if (searchTerm isnt '') and -1 is entry.value.toLowerCase().indexOf searchTerm.toLowerCase()
-        hide = yes
-
-      unless hide
-        filteredItems.push entry
-
-    _filteredItems filteredItems
-
-    start = _currentPage() * MaxItemsPerPage
-    _visibleItems _filteredItems().slice start, start + MaxItemsPerPage
-
-  # when searchterm changes, filterItems is called
-  react _searchTerm, throttle filterItems, 500
 
   changeSelection = (source, value) ->
     for entry in source
       entry.isSelected value
     return
 
-  _selectFiltered = ->
-    entries = _filteredItems()
-    blockSelectionUpdates -> changeSelection entries, yes
-    _selectionCount entries.length
+  # search & filter columns
+  _visibleColumns = signal []
+  _filteredColumns = signal []
+  _currentColumnsPage = signal 0
+  _maxColumnsPages = lift _filteredColumns, (entries) -> Math.ceil entries.length / MaxItemsPerPage
+  _canGoToPreviousColumnsPage = lift _currentColumnsPage, (index) -> index > 0
+  _canGoToNextColumnsPage = lift _maxColumnsPages, _currentColumnsPage, (maxColumnsPages, index) -> index < maxColumnsPages - 1
 
-  _deselectFiltered = ->
-    blockSelectionUpdates -> changeSelection _columns(), no
-    _selectionCount 0
+  _columnsSelectionCount = signal 0
+  _isUpdatingColumnsSelectionCount = no
 
-  _goToPreviousPage = ->
-    if _canGoToPreviousPage()
-      _currentPage _currentPage() - 1
-      filterItems()
+  _searchTermColumns = signal ''
+  _searchColumnsCaption = lift _columns, _filteredColumns, _columnsSelectionCount, _currentColumnsPage, _maxColumnsPages, (entries, filteredColumns, columnsSelectionCount, currentColumnsPage, maxColumnsPages) ->
+    caption = if maxColumnsPages is 0 then '' else "Showing page #{currentColumnsPage + 1} of #{maxColumnsPages}."
+    if filteredColumns.length isnt entries.length
+      caption += " Filtered #{filteredColumns.length} of #{entries.length}."
+    if columnsSelectionCount isnt 0
+      caption += " #{columnsSelectionCount} selected for PDP calculations."
+    caption
+
+  blockColumnsSelectionUpdates = (f) ->
+    _isUpdatingColumnsSelectionCount = yes
+    f()
+    _isUpdatingColumnsSelectionCount = no
+
+  incrementColumnsSelectionCount = (amount) ->
+    _columnsSelectionCount _columnsSelectionCount() + amount
+
+  _hasFilteredColumns = lift _columns, (entries) -> entries.length > 0
+
+  filterColumns = ->
+    searchTermColumns = _searchTermColumns().trim()
+
+    filteredColumns = []
+
+    for entry, i in _columns()
+      hide = no
+      if (searchTermColumns isnt '') and -1 is entry.value.toLowerCase().indexOf searchTermColumns.toLowerCase()
+        hide = yes
+
+      unless hide
+        filteredColumns.push entry
+
+    _filteredColumns filteredColumns
+
+    start = _currentColumnsPage() * MaxItemsPerPage
+    _visibleColumns _filteredColumns().slice start, start + MaxItemsPerPage
+
+  # when searchTermColumns changes, filterColumns is called
+  react _searchTermColumns, throttle filterColumns, 500
+
+  _selectFilteredColumns = ->
+    entries = _filteredColumns()
+    blockColumnsSelectionUpdates -> changeSelection entries, yes
+    _columnsSelectionCount entries.length
+
+  _deselectFilteredColumns = ->
+    blockColumnsSelectionUpdates -> changeSelection _columns(), no
+    _columnsSelectionCount 0
+
+  _goToPreviousColumnsPage = ->
+    if _canGoToPreviousColumnsPage()
+      _currentColumnsPage _currentColumnsPage() - 1
+      filterColumns()
     return
 
-  _goToNextPage = ->
-    if _canGoToNextPage()
-      _currentPage _currentPage() + 1
-      filterItems()
+  _goToNextColumnsPage = ->
+    if _canGoToNextColumnsPage()
+      _currentColumnsPage _currentColumnsPage() + 1
+      filterColumns()
     return
 
   _selectedColsToString = ->
@@ -111,7 +108,89 @@ module.exports = (_, _go) ->
     if cols != ""
       cols ="[" + cols + "]"
     cols
-  #end of search & filter functionalities
+  # end of search & filter columns
+
+  # search & filter targets
+  _visibleTargets = signal []
+  _filteredTargets = signal []
+  _currentTargetsPage = signal 0
+  _maxTargetsPages = lift _filteredTargets, (entries) -> Math.ceil entries.length / MaxItemsPerPage
+  _canGoToPreviousTargetsPage = lift _currentTargetsPage, (index) -> index > 0
+  _canGoToNextTargetsPage = lift _maxTargetsPages, _currentTargetsPage, (maxTargetsPages, index) -> index < maxTargetsPages - 1
+
+  _targetsSelectionCount = signal 0
+  _isUpdatingTargetsSelectionCount = no
+
+  _searchTermTargets = signal ''
+  _searchTargetsCaption = lift _targets, _filteredTargets, _targetsSelectionCount, _currentTargetsPage, _maxTargetsPages, (entries, filteredTargets, targetsSelectionCount, currentTargetsPage, maxTargetsPages) ->
+    caption = if maxTargetsPages is 0 then '' else "Showing page #{currentTargetsPage + 1} of #{maxTargetsPages}."
+    if filteredTargets.length isnt entries.length
+      caption += " Filtered #{filteredTargets.length} of #{entries.length}."
+    if targetsSelectionCount isnt 0
+      caption += " #{targetsSelectionCount} selected for PDP calculations."
+    caption
+
+
+  blockTargetsSelectionUpdates = (f) ->
+    _isUpdatingTargetsSelectionCount = yes
+    f()
+    _isUpdatingTargetsSelectionCount = no
+
+  incrementTargetsSelectionCount = (amount) ->
+    _targetsSelectionCount _targetsSelectionCount() + amount
+
+  _hasFilteredTargets = lift _targets, (entries) -> entries.length > 0
+
+  filterTargets = ->
+    searchTermTargets = _searchTermTargets().trim()
+
+    filteredTargets = []
+
+    for entry, i in _targets()
+      hide = no
+      if (searchTermTargets isnt '') and -1 is entry.value.toLowerCase().indexOf searchTermTargets.toLowerCase()
+        hide = yes
+
+      unless hide
+        filteredTargets.push entry
+
+    _filteredTargets filteredTargets
+
+    start = _currentTargetsPage() * MaxItemsPerPage
+    _visibleTargets _filteredTargets().slice start, start + MaxItemsPerPage
+
+  # when searchTermTargets changes, filterTargets is called
+  react _searchTermTargets, throttle filterTargets, 500
+
+  _selectFilteredTargets = ->
+    entries = _filteredTargets()
+    blockTargetsSelectionUpdates -> changeSelection entries, yes
+    _targetsSelectionCount entries.length
+
+  _deselectFilteredTargets = ->
+    blockTargetsSelectionUpdates -> changeSelection _targets(), no
+    _targetsSelectionCount 0
+
+  _goToPreviousTargetsPage = ->
+    if _canGoToPreviousTargetsPage()
+      _currentTargetsPage _currentTargetsPage() - 1
+      filterTargets()
+    return
+
+  _goToNextTargetsPage = ->
+    if _canGoToNextTargetsPage()
+      _currentTargetsPage _currentTargetsPage() + 1
+      filterTargets()
+    return
+
+  _selectedTargetsToString = ->
+    res = ""
+    for t in _targets() when t.isSelected()
+      res = res + "\"" + t.value + "\","
+    if res != ""
+      res ="[" + res + "]"
+    res
+  # end of search & filter targets
 
   _addColumns2d = ->
     vals = _columns2d()
@@ -143,16 +222,15 @@ module.exports = (_, _go) ->
   _compute = ->
     return unless _canCompute()
 
-
     opts =
       destination_key: _destinationKey()
       model_id: _selectedModel()
       frame_id: _selectedFrame()
       cols: _selectedColsToString()
+      targets: _selectedTargetsToString()
       col_pairs_2dpdp: _cols2dToString()
       nbins: _nbins()
       row_index: _row_index()
-      targets: _targets()
 
     # assemble a string for the h2o Rapids AST
     # this contains the function to call
@@ -174,11 +252,11 @@ module.exports = (_, _go) ->
               missingPercent = 100 * column.missing_count / frame.rows
               isSelected = signal no
               react isSelected, (isSelected) ->
-                unless _isUpdatingSelectionCount
+                unless _isUpdatingColumnsSelectionCount
                   if isSelected
-                    incrementSelectionCount 1
+                    incrementColumnsSelectionCount 1
                   else
-                    incrementSelectionCount -1
+                    incrementColumnsSelectionCount -1
                 return
 
               isSelected: isSelected
@@ -191,11 +269,41 @@ module.exports = (_, _go) ->
             _columnValues columnValues
 
             #reset filtered views
-            _currentPage 0
-            _searchTerm ''
-            filterItems()
+            _currentColumnsPage 0
+            _searchTermColumns ''
+            filterColumns()
       else
         _columns2d []
+
+  _updateTargets = ->
+    modelKey = _selectedModel()
+    if modelKey
+      _.requestModel modelKey, (error, model) ->
+        unless error
+          responseDomain = model.output.domains[model.output.domains.length-1]
+          _useCustomTargets responseDomain != null && responseDomain.length > 2
+          if _useCustomTargets()
+            targetValues = map responseDomain, (value) ->
+              isSelected = signal no
+              react isSelected, (isSelected) ->
+                unless _isUpdatingTargetsSelectionCount
+                  if isSelected
+                    incrementTargetsSelectionCount 1
+                  else
+                    incrementTargetsSelectionCount -1
+                return
+
+              isSelected: isSelected
+              value: value
+
+            _targets targetValues
+
+            #reset filtered views
+            _currentTargetsPage 0
+            _searchTermTargets ''
+            filterTargets()
+          else
+            _targets null
 
   _.requestFrames (error, frames) ->
     if error
@@ -207,7 +315,6 @@ module.exports = (_, _go) ->
     if error
       _exception new FlowError 'Error fetching model list.', error
     else
-      #TODO use models directly
       _models (model.model_id.name for model in models)
 
 
@@ -220,30 +327,44 @@ module.exports = (_, _go) ->
   selectedModel: _selectedModel
   selectedFrame: _selectedFrame
   columns: _columns
+  visibleColumns: _visibleColumns
+  useCustomColumns: _useCustomColumns
+  targets: _targets
+  useCustomTargets: _useCustomTargets
+  visibleTargets: _visibleTargets
   columnValues: _columnValues
   colums2d: _columns2d
-  visibleItems: _visibleItems
-  useCustomColumns: _useCustomColumns
   nbins: _nbins
-  targets: _targets
   row_index: _row_index
   compute: _compute
   updateColumns: _updateColumns
+  updateTargets: _updateTargets
   canCompute: _canCompute
 
   # add&remove functionality of columns2d
-  addColumns2d:_addColumns2d
+  addColumns2d: _addColumns2d
 
   # search & filter functionalities of column selector
-  hasFilteredItems: _hasFilteredItems
-  selectFiltered: _selectFiltered
-  deselectFiltered: _deselectFiltered
-  goToPreviousPage: _goToPreviousPage
-  goToNextPage: _goToNextPage
-  canGoToPreviousPage: _canGoToPreviousPage
-  canGoToNextPage: _canGoToNextPage
-  searchTerm: _searchTerm
-  searchCaption: _searchCaption
+  hasFilteredColumns: _hasFilteredColumns
+  selectFilteredColumns: _selectFilteredColumns
+  deselectFilteredColumns: _deselectFilteredColumns
+  goToPreviousColumnsPage: _goToPreviousColumnsPage
+  goToNextColumnsPage: _goToNextColumnsPage
+  canGoToPreviousColumnsPage: _canGoToPreviousColumnsPage
+  canGoToNextColumnsPage: _canGoToNextColumnsPage
+  searchTermColumns: _searchTermColumns
+  searchColumnsCaption: _searchColumnsCaption
+
+  # search & filter functionalities of targets selector
+  hasFilteredTargets: _hasFilteredTargets
+  selectFilteredTargets: _selectFilteredTargets
+  deselectFilteredTargets: _deselectFilteredTargets
+  goToPreviousTargetsPage: _goToPreviousTargetsPage
+  goToNextTargetsPage: _goToNextTargetsPage
+  canGoToPreviousTargetsPage: _canGoToPreviousTargetsPage
+  canGoToNextTargetsPage: _canGoToNextTargetsPage
+  searchTermTargets: _searchTermTargets
+  searchTargetsCaption: _searchTargetsCaption
 
 
   template: 'flow-partial-dependence-input'
