@@ -29,6 +29,10 @@
         td.flow-wide
           select(data-bind="options:delimiters, optionsText:'caption', value:delimiter")
       tr
+        th.flow-narrow Escape Character
+        td.flow-wide
+          input.flow-textbox(type='text' data-bind="value:escapechar")
+      tr
         th.flow-narrow Column Headers
         td.flow-wide
           div
