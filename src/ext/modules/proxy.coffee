@@ -283,7 +283,7 @@ exports.init = (_) ->
       source_frames: encodeArrayForPost sourceKeys
     doPost '/3/ParseSetup', opts, go
 
-  requestParseSetupPreview = (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, columnTypes, go) ->
+  requestParseSetupPreview = (sourceKeys, parseType, separator, useSingleQuotes, checkHeader, columnTypes, escapeChar, go) ->
     opts =
       source_frames: encodeArrayForPost sourceKeys
       parse_type: parseType
@@ -291,9 +291,10 @@ exports.init = (_) ->
       single_quotes: useSingleQuotes
       check_header: checkHeader
       column_types: encodeArrayForPost columnTypes
+      escapechar: escapeChar
     doPost '/3/ParseSetup', opts, go
 
-  requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
+  requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, escapeChar, go) ->
     opts =
       destination_frame: destinationKey
       source_frames: encodeArrayForPost sourceKeys
@@ -306,6 +307,7 @@ exports.init = (_) ->
       check_header: checkHeader
       delete_on_done: deleteOnDone
       chunk_size: chunkSize
+      escapechar: escapeChar
     doPost '/3/Parse', opts, go
 
   # Create data for partial dependence plot(s)

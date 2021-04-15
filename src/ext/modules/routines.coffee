@@ -1571,20 +1571,20 @@ exports.init = (_) ->
   extendParseResult = (parseResult) ->
     render_ parseResult, h2o.JobOutput, parseResult.job
 
-  requestImportAndParseFiles = (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
+  requestImportAndParseFiles = (paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, escapechar, go) ->
     _.requestImportFiles paths, (error, importResults) ->
       if error
         go error
       else
         sourceKeys = flatten compact map importResults, (result) -> result.destination_frames
-        _.requestParseFiles sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
+        _.requestParseFiles sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, escapechar, (error, parseResult) ->
           if error
             go error
           else
             go null, extendParseResult parseResult
 
-  requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, go) ->
-    _.requestParseFiles sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, (error, parseResult) ->
+  requestParseFiles = (sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, escapechar, go) ->
+    _.requestParseFiles sourceKeys, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, escapechar, (error, parseResult) ->
       if error
         go error
       else
@@ -1602,11 +1602,12 @@ exports.init = (_) ->
     deleteOnDone = opts.delete_on_done
     checkHeader = opts.check_header
     chunkSize = opts.chunk_size
+    escapechar = opts.escapechar
 
     if opts.paths
-      _fork requestImportAndParseFiles, opts.paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
+      _fork requestImportAndParseFiles, opts.paths, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, escapechar
     else
-      _fork requestParseFiles, opts.source_frames, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize
+      _fork requestParseFiles, opts.source_frames, destinationKey, parseType, separator, columnCount, useSingleQuotes, columnNames, columnTypes, deleteOnDone, checkHeader, chunkSize, escapechar
 
   requestModelBuild = (algo, opts, go) ->
     _.requestModelBuild algo, opts, (error, result) ->
