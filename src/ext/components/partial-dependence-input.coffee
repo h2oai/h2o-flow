@@ -185,10 +185,12 @@ module.exports = (_, _go) ->
 
   _selectedTargetsToString = ->
     res = ""
-    for t in _targets() when t.isSelected()
-      res = res + "\"" + t.value + "\","
-    if res != ""
-      res ="[" + res + "]"
+    targets = _targets()
+    if targets != null
+      for t in targets when t.isSelected()
+        res = res + "\"" + t.value + "\","
+      if res != ""
+        res ="[" + res + "]"
     res
   # end of search & filter targets
 
