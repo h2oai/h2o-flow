@@ -148,7 +148,7 @@ module.exports = (_, _go, _inputs, _result) ->
       headerOption = -1
     columnTypes = (column.type() for column in _columns())
 
-    _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_frame: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  #{if _canReconfigure() then 'column_names: ' + (stringify columnNames) + '\n  ' else ''}#{if _canReconfigure() then 'column_types: ' + (stringify columnTypes) + '\n  ' else ''}delete_on_done: #{_deleteOnDone()}\n  check_header: #{headerOption}\n  chunk_size: #{_chunkSize()}\n  escapechar: #{_escapechar().charCodeAt(0)}"
+    _.insertAndExecuteCell 'cs', "parseFiles\n  #{_inputKey}: #{stringify _inputs[_inputKey]}\n  destination_frame: #{stringify _destinationKey()}\n  parse_type: #{stringify _parseType().type}\n  separator: #{_delimiter().charCode}\n  number_columns: #{_columnCount()}\n  single_quotes: #{_useSingleQuotes()}\n  #{if _canReconfigure() then 'column_names: ' + (stringify columnNames) + '\n  ' else ''}#{if _canReconfigure() then 'column_types: ' + (stringify columnTypes) + '\n  ' else ''}delete_on_done: #{_deleteOnDone()}\n  check_header: #{headerOption}\n  chunk_size: #{_chunkSize()}\n  escapechar: #{_escapechar().charCodeAt}"
 
   _canGoToNextPage = lift _activePage, (currentPage) ->
     (currentPage.index + 1) * MaxItemsPerPage < currentPage.columns.length
