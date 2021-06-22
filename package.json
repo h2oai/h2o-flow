@@ -88,7 +88,7 @@
     "chroma-js": "~1.4.0",
     "codemirror": "~5.41.0",
     "coffeescript": "~2.3.0",
-    "d3": "~5.7.0",
+    "d3": "~5.16.0",
     "diecut": "~0.0.1",
     "escodegen": "~1.11.0",
     "esprima": "~4.0.0",
