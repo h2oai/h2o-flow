@@ -59,7 +59,7 @@ module.exports = (_, _go, _frame) ->
     _.insertAndExecuteCell 'cs', "predict frame: #{stringify _frame.frame_id.name}"
 
   download = ->
-    window.open _.ContextPath + "3/DownloadDataset?frame_id=#{encodeURIComponent _frame.frame_id.name}", '_blank'
+    window.open _.ContextPath + "3/DownloadDataset?frame_id=#{encodeURIComponent _frame.frame_id.name}&hex_string=false&escape_quotes=true", '_blank'
 
   exportFrame = ->
     _.insertAndExecuteCell 'cs', "exportFrame #{stringify _frame.frame_id.name}"
