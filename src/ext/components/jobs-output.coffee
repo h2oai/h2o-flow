@@ -20,7 +20,7 @@ module.exports = (_, _go, jobs) ->
       _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
 
     destination: job.dest.name
-    type: job.dest.type.replace(/^Key<(\w+)>/, "$1")
+    type: if job.dest.type then job.dest.type.replace(/^Key<(\w+)>/, "$1") else "Removed"
     description: job.description
     startTime: format.Time new Date job.start_time
     endTime: format.Time new Date job.start_time + job.msec
