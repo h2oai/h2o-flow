@@ -19,26 +19,8 @@ module.exports = (_, _go, jobs) ->
     view = ->
       _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
 
-    type = switch job.dest.type
-      when 'Key<Frame>'
-        'Frame'
-      when 'Key<Model>'
-        'Model'
-      when 'Key<Grid>'
-        'Grid'
-      when 'Key<PartialDependence>'
-        'PartialDependence'
-      when 'Key<AutoML>'
-        'Auto Model'
-      when 'Key<ScalaCodeResult>'
-        'Scala Code Execution'
-      when 'Key<KeyedVoid>'
-        'Void'
-      else
-        'Unknown'
-
     destination: job.dest.name
-    type: type
+    type: job.dest.type.replace(/^Key<(\w+)>/, "$1")
     description: job.description
     startTime: format.Time new Date job.start_time
     endTime: format.Time new Date job.start_time + job.msec

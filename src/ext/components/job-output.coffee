@@ -36,24 +36,7 @@ module.exports = (_, _go, _job) ->
   _key = _job.key.name
   _description = _job.description
   _destinationKey = _job.dest.name
-  _destinationType = switch _job.dest.type
-      when 'Key<Frame>'
-        'Frame'
-      when 'Key<Model>'
-        'Model'
-      when 'Key<Grid>'
-        'Grid'
-      when 'Key<PartialDependence>'
-        'PartialDependence'
-      when 'Key<AutoML>'
-        'Auto Model'
-      when 'Key<ScalaCodeResult>'
-        'Scala Code Execution'
-      when 'Key<KeyedVoid>'
-        'Void'
-      else
-        'Unknown'
-
+  _destinationType = _job.dest.type.replace(/^Key<(\w+)>/, "$1")
   _runTime = signal null
   _remainingTime = signal null
   _progress = signal null
