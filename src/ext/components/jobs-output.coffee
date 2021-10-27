@@ -2,6 +2,7 @@
 
 { stringify } = require('../../core/modules/prelude')
 { act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ formatJobType } = require("./formatters")
 
 failure = require('../../core/components/failure')
 FlowError = require('../../core/modules/flow-error')
@@ -20,7 +21,7 @@ module.exports = (_, _go, jobs) ->
       _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
 
     destination: job.dest.name
-    type: if job.dest.type then job.dest.type.replace(/^Key<(\w+)>/, "$1") else "Removed"
+    type: formatJobType(job.dest.type)
     description: job.description
     startTime: format.Time new Date job.start_time
     endTime: format.Time new Date job.start_time + job.msec

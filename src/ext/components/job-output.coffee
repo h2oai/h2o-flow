@@ -2,6 +2,7 @@
 
 { stringify } = require('../../core/modules/prelude')
 { act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ formatJobType } = require("./formatters")
 
 failure = require('../../core/components/failure')
 FlowError = require('../../core/modules/flow-error')
@@ -36,7 +37,7 @@ module.exports = (_, _go, _job) ->
   _key = _job.key.name
   _description = _job.description
   _destinationKey = _job.dest.name
-  _destinationType = if _job.dest.type then _job.dest.type.replace(/^Key<(\w+)>/, "$1") else "Removed"
+  _destinationType = formatJobType(_job.dest.type)
   _runTime = signal null
   _remainingTime = signal null
   _progress = signal null
