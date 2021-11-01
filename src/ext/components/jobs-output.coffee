@@ -2,6 +2,7 @@
 
 { stringify } = require('../../core/modules/prelude')
 { act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ formatJobType } = require("./formatters")
 
 failure = require('../../core/components/failure')
 FlowError = require('../../core/modules/flow-error')
@@ -19,26 +20,8 @@ module.exports = (_, _go, jobs) ->
     view = ->
       _.insertAndExecuteCell 'cs', "getJob #{stringify job.key.name}" 
 
-    type = switch job.dest.type
-      when 'Key<Frame>'
-        'Frame'
-      when 'Key<Model>'
-        'Model'
-      when 'Key<Grid>'
-        'Grid'
-      when 'Key<PartialDependence>'
-        'PartialDependence'
-      when 'Key<AutoML>'
-        'Auto Model'
-      when 'Key<ScalaCodeResult>'
-        'Scala Code Execution'
-      when 'Key<KeyedVoid>'
-        'Void'
-      else
-        'Unknown'
-
     destination: job.dest.name
-    type: type
+    type: formatJobType(job.dest.type)
     description: job.description
     startTime: format.Time new Date job.start_time
     endTime: format.Time new Date job.start_time + job.msec

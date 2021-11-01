@@ -2,6 +2,7 @@
 
 { stringify } = require('../../core/modules/prelude')
 { act, react, lift, link, signal, signals } = require("../../core/modules/dataflow")
+{ formatJobType } = require("./formatters")
 
 failure = require('../../core/components/failure')
 FlowError = require('../../core/modules/flow-error')
@@ -36,24 +37,7 @@ module.exports = (_, _go, _job) ->
   _key = _job.key.name
   _description = _job.description
   _destinationKey = _job.dest.name
-  _destinationType = switch _job.dest.type
-      when 'Key<Frame>'
-        'Frame'
-      when 'Key<Model>'
-        'Model'
-      when 'Key<Grid>'
-        'Grid'
-      when 'Key<PartialDependence>'
-        'PartialDependence'
-      when 'Key<AutoML>'
-        'Auto Model'
-      when 'Key<ScalaCodeResult>'
-        'Scala Code Execution'
-      when 'Key<KeyedVoid>'
-        'Void'
-      else
-        'Unknown'
-
+  _destinationType = formatJobType(_job.dest.type)
   _runTime = signal null
   _remainingTime = signal null
   _progress = signal null
