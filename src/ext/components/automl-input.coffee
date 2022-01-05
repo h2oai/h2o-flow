@@ -17,6 +17,7 @@ AutoMLForm = (_, _parameters, _opts={}) ->
     'include_algos',
     'algo_parameters',
     'modeling_plan',
+    'preprocessing',
   ]
   # for the most part, defaults are taken from the REST API (default value of the property on the schema instance)
   # but we can set different defaults for Flow here
