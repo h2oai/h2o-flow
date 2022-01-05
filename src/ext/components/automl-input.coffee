@@ -74,6 +74,11 @@ AutoMLForm = (_, _parameters, _opts={}) ->
       balanceClasses,
       classSamplingFactors,
       maxAfterBalanceSize,
+      distribution,
+      customDistributionFunc,
+      huberAlpha,
+      tweediePower,
+      quantileAlpha,
     ] = map [
       'training_frame',
       'response_column',
@@ -82,6 +87,11 @@ AutoMLForm = (_, _parameters, _opts={}) ->
       'balance_classes',
       'class_sampling_factors',
       'max_after_balance_size',
+      'distribution',
+      'custom_distribution_func',
+      'huber_alpha',
+      'tweedie_power',
+      'quantile_alpha',
     ], _controlGroups.findControl
     columnControls = map columnParameterNames, _controlGroups.findControl
 
@@ -115,6 +125,13 @@ AutoMLForm = (_, _parameters, _opts={}) ->
     act balanceClasses.value, (enabled) ->
       classSamplingFactors.isVisible enabled
       maxAfterBalanceSize.isVisible enabled
+
+    act distribution.value, (distribution) ->
+      huberAlpha.isVisible distribution == "huber"
+      tweediePower.isVisible distribution == "tweedie"
+      quantileAlpha.isVisible distribution == "quantile"
+      customDistributionFunc.isVisible distribution == "custom"
+
 
   exception: _exception
   form: _form
