@@ -3,9 +3,6 @@ name: Snyk Security Vulnerability Scan
 on:
   workflow_dispatch:
   pull_request:
-  create:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
@@ -52,5 +49,3 @@ jobs:
           snyk monitor --org=h2o-3 --remote-repo-url=h2o-flow/${{ steps.extract_ref.outputs.ref }} --file=package-lock.json --project-name=H2O-3/h2o-flow/${{ steps.extract_ref.outputs.ref }}/package-lock.json -d 
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-      
