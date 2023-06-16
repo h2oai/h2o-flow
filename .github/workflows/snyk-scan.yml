@@ -20,15 +20,23 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '16.x'
-      
-      - name: Snyk scan for Node dependencies - package-lock.json 
+
+      - name: Check changed Deps files
+        uses: tj-actions/changed-files@v35
+        id: changed-files
+        with:
+          files: | # This will match all the files with below patterns
+            **/package-lock.json
+        
+      - name: Snyk scan for Node dependencies - package-lock.json
+        if: contains(steps.changed-files.outputs.all_changed_and_modified_files, 'package-lock.json')
         run: |
           snyk test --file=package-lock.json -d --fail-on=all
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       
   snyk_scan_monitor:
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -46,6 +54,10 @@ jobs:
       
       - name: Snyk scan for Node dependencies - package-lock.json files
         run: |
-          snyk monitor --org=h2o-3 --remote-repo-url=h2o-flow/${{ steps.extract_ref.outputs.ref }} --file=package-lock.json --project-name=H2O-3/h2o-flow/${{ steps.extract_ref.outputs.ref }}/package-lock.json -d 
+          snyk monitor \
+            --org=h2o-3 \
+            --remote-repo-url=h2o-flow/${{ steps.extract_ref.outputs.ref }} \
+            --file=package-lock.json \
+            --project-name=H2O-3/h2o-flow/${{ steps.extract_ref.outputs.ref }}/package-lock.json -d 
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
