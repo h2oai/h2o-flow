@@ -11,7 +11,7 @@ on:
 
 jobs:
   snyk_scan_test:
-    if: ${{ github.event_name == 'pull_requests' }}
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
