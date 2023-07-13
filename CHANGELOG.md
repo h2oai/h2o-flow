@@ -7,7 +7,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Split frames using rapids.
 
 ### Fixed
-- PUBDEV-785 Add getFrameSummary() The default frame display now uses /frame/id/summary to fetch summary information.
+- [#13773](https://github.com/h2oai/h2o-3/issues/13773) Add getFrameSummary() The default frame display now uses /frame/id/summary to fetch summary information.
 
 ## [0.2.79] - 2015-04-02
 ### Fixed
@@ -23,13 +23,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.2.76] - 2015-03-24
 ### Fixed
-- Adapt model builder response handling to changes in the API (HEXDEV-121)
+- Adapt model builder response handling to changes in the API ([#private-536](https://github.com/h2oai/private-h2o-3/issues/536))
 - Fix rendering failure in RDDs-output
 - Remove horizontal scrollbars from parse input data preview
 
 ## [0.2.75] - 2015-03-13
 ### Fixed
-- Fix failure while viewing CM for multinomial predictions (HEXDEV-204)
+- Fix failure while viewing CM for multinomial predictions ([#private-473](https://github.com/h2oai/private-h2o-3/issues/473))
 
 
 ## [0.2.74] - 2015-03-13
@@ -42,7 +42,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Fix failures while running parseFiles()
 
 ## [0.2.72] - 2015-03-12
-- Auto-refresh data preview when parse setup input parameters are changed (PUBDEV-532)
+- Auto-refresh data preview when parse setup input parameters are changed ([#13516](https://github.com/h2oai/h2o-3/issues/13516))
 
 ## [0.2.71] - 2015-03-12
 ### Added
@@ -60,24 +60,24 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [0.2.69] - 2015-03-11
 ### Added
 - Add New, Open toolbar buttons.
-- Add ability to upload and parse datasets via browser (PUBDEV-299)
+- Add ability to upload and parse datasets via browser ([#13296](https://github.com/h2oai/h2o-3/issues/13296))
 
 ### Changed
 - setupParse() and parseFiles() now expect an argument that explicitly indicates what needs to be parsed: either a { path: [] } or a { source_keys: [] }
 
 ### Fixed
 - Fix autosizing of non-code cell inputs when opening saved flows.
-- Fix display of object-valued model parameters (PUBDEV-505)
+- Fix display of object-valued model parameters ([#13552](https://github.com/h2oai/h2o-3/issues/13552))
 
 ## [0.2.68] - 2015-03-11
 
 ### Added
-- Integrate and display help content inside the help sidebar (PUBDEV-108)
+- Integrate and display help content inside the help sidebar ([#13124](https://github.com/h2oai/h2o-3/issues/13124))
 
 ## [0.2.67] - 2015-03-10
 
 ### Changed
-- Display point layer for tree vs mse plots in GBM output (PUBDEV-504)
+- Display point layer for tree vs mse plots in GBM output ([#13551](https://github.com/h2oai/h2o-3/issues/13551))
 
 ### Fixed
 - Fix categorical axis label rendering when adequate space is available
@@ -97,15 +97,15 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [0.2.65] - 2015-03-09
 
 ### Added
-- Scan and load Flow packs (HEXDEV-190)
+- Scan and load Flow packs ([#private-483](https://github.com/h2oai/private-h2o-3/issues/483))
 
 ### Fixed
-- Display GLM coefficients only if available (PUBDEV-466)
+- Display GLM coefficients only if available ([#13458](https://github.com/h2oai/h2o-3/issues/13458))
 
 ## [0.2.64] - 2015-03-09
 
 ### Added
-- Add random chance line to RoC chart HEXDEV-168
+- Add random chance line to RoC chart ([#private-496](https://github.com/h2oai/private-h2o-3/issues/496))
 
 ### Changed
 - Upgrade to Lightning 0.1.11
@@ -121,10 +121,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [0.2.62] - 2015-03-04
 
 ### Added
-- Add network test PUBDEV-462
+- Add network test ([#13454](https://github.com/h2oai/h2o-3/issues/13454))
 
 ### Removed
-- Remove notion of job tracking when called via parse() or buildModel() (PUBDEV-449)
+- Remove notion of job tracking when called via parse() or buildModel() ([#13441](https://github.com/h2oai/h2o-3/issues/13441))
 
 ## [0.2.61] - 2015-03-04
 
@@ -150,7 +150,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Add Delete action to frame-output
 - Add output view for deleteFrame()/deleteFrames()
 - Add start / end / run time to jobs-output
-- Add ability to name predictions PUBDEV-233
+- Add ability to name predictions ([#13249](https://github.com/h2oai/h2o-3/issues/13249))
 
 ### Changed
 - Upgrade to Lightning 0.1.10
@@ -182,4 +182,4 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Warn before loading notebooks
 
 ### Fixed
-- Fix ip/port in cloud-status HEXDEV-159
+- Fix ip/port in cloud-status ([#private-505](https://github.com/h2oai/private-h2o-3/issues/505))
